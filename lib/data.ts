@@ -3,7 +3,7 @@
 export const navLinks = [
   { href: "/", label: "Home" },
   { href: "/tim", label: "Team" },
-  { href: "/gabung-siswa", label: "Gabung Siswa" },
+  { href: "/gabung-siswa", label: "Siswa" },
   { href: "/donasi", label: "Donasi" },
   { href: "/blog", label: "Blog" },
   { href: "/kontak", label: "Kontak" },
