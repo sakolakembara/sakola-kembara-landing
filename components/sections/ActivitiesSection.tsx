@@ -13,8 +13,14 @@ export default function ActivitiesSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-24 bg-white" id="activities">
-      <div className="max-w-[1200px] mx-auto px-6" ref={ref}>
+    <section className="py-24 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden" id="activities">
+      {/* Background decoration */}
+      <div className="absolute inset-0">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl" />
+      </div>
+
+      <div className="max-w-[1200px] mx-auto px-6 relative z-10" ref={ref}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -22,14 +28,14 @@ export default function ActivitiesSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Program Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-4xl md:text-5xl text-gray-900 mb-6">
+          <h2 className="font-[var(--font-display)] text-4xl md:text-5xl text-white mb-6">
             Tiga Tahap Pembinaan
           </h2>
-          <p className="text-lg text-gray-600 max-w-[600px] mx-auto">
+          <p className="text-lg text-white/80 max-w-[600px] mx-auto">
             Program pembinaan komprehensif dari penjangkauan siswa hingga
             pendampingan alumni untuk memastikan keberhasilan jangka panjang.
           </p>
