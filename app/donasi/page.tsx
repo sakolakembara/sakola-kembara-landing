@@ -208,7 +208,7 @@ export default function DonasiPage() {
                   <h3 className="font-semibold text-lg mb-3">Ingin Bergabung?</h3>
                   <p className="text-white/80 text-sm mb-4">
                     Jadilah bagian dari perubahan. Daftarkan diri Anda sebagai relawan
-                    atau dukung kami melalui donasi.
+                    atau dukung kami melalui kerjasama lainnya.
                   </p>
                   <div className="flex gap-3">
                     <button className="px-5 py-2.5 bg-secondary-yellow text-gray-900 font-semibold rounded-lg text-sm hover:bg-amber-400 transition-colors">
