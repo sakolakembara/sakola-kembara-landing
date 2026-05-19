@@ -75,11 +75,10 @@ export default function KontakPage() {
                     </label>
                     <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none bg-white">
                       <option value="">Pilih subjek</option>
-                      <option value="general">Pertanyaan Umum</option>
-                      <option value="volunteer">Menjadi Relawan</option>
+                      <option value="volunteer">Gabung Relawan</option>
                       <option value="partnership">Kerjasama/Partnership</option>
-                      <option value="donation">Donasi</option>
-                      <option value="media">Media & Press</option>
+                      <option value="donation">Seputar Donasi</option>
+                      <option value="student">Daftar Siswa</option>
                       <option value="other">Lainnya</option>
                     </select>
                   </div>
