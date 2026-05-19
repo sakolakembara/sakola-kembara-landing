@@ -7,6 +7,7 @@ import Link from "next/link";
 import { donationTiers } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import StakeholderSection from "@/components/sections/StakeholderSection";
 
 const impactItems = [
   {
@@ -234,6 +235,9 @@ export default function DonasiPage() {
             </div>
           </div>
         </section>
+
+        {/* Stakeholder Relations - Transparansi & Akuntabilitas */}
+        <StakeholderSection />
       </main>
       <Footer />
     </>

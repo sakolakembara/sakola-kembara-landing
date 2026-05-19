@@ -3,7 +3,6 @@ import HeroSection from "@/components/sections/HeroSection";
 import ProblemSection from "@/components/sections/ProblemSection";
 import ActivitiesSection from "@/components/sections/ActivitiesSection";
 import ImpactSection from "@/components/sections/ImpactSection";
-import StakeholderSection from "@/components/sections/StakeholderSection";
 import PartnersSection from "@/components/sections/PartnersSection";
 import NewsSection from "@/components/sections/NewsSection";
 import CTASection from "@/components/sections/CTASection";
@@ -29,13 +28,10 @@ export default function Home() {
         {/* Section 5: Blog */}
         <NewsSection />
 
-        {/* Section 6: Stakeholder Relations */}
-        <StakeholderSection />
-
-        {/* Section 7: Partners */}
+        {/* Section 6: Partners */}
         <PartnersSection />
 
-        {/* Section 8: CTA - Gabung Bersama Kami */}
+        {/* Section 7: CTA - Gabung Bersama Kami */}
         <CTASection />
       </main>
       <Footer />
