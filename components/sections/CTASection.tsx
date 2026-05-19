@@ -96,7 +96,7 @@ export default function CTASection() {
         </motion.div>
 
         {/* CTA Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-[900px] mx-auto">
           {ctaOptions.map((option, index) => (
             <motion.div
               key={option.id}

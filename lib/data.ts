@@ -36,7 +36,7 @@ export const problemStats = [
 export const programs = [
   {
     id: "prapembinaan",
-    title: "Prapembinaan",
+    title: "Pra Pembinaan",
     description:
       "Menjangkau dan menyeleksi siswa-siswa berpotensi dari berbagai daerah melalui roadshow ke sekolah dan proses seleksi berbasis motivasi.",
     tag: "Tahap 1",
@@ -88,7 +88,7 @@ export const programs = [
   },
   {
     id: "pasca-pembinaan",
-    title: "Pasca-pembinaan",
+    title: "Pasca Pembinaan",
     description:
       "Pendampingan berkelanjutan bagi alumni dalam pencarian beasiswa, peningkatan kapasitas, dan peluang untuk berkontribusi kembali.",
     tag: "Tahap 3",
@@ -436,9 +436,9 @@ export const contactInfo = [
 
 export const footerLinks = {
   program: [
-    { label: "Prapembinaan", href: "/program/prapembinaan" },
+    { label: "Pra Pembinaan", href: "/program/prapembinaan" },
     { label: "Pembinaan", href: "/program/pembinaan" },
-    { label: "Pasca-pembinaan", href: "/program/pasca-pembinaan" },
+    { label: "Pasca Pembinaan", href: "/program/pasca-pembinaan" },
   ],
   tentang: [
     { label: "Misi Kami", href: "#" },
