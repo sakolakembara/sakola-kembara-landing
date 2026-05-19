@@ -18,7 +18,7 @@ export default function StakeholderSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-24 bg-gray-50" id="stakeholders">
+    <section className="py-24 bg-white" id="stakeholders">
       <div className="max-w-[1200px] mx-auto px-6" ref={ref}>
         {/* Header */}
         <motion.div
@@ -48,7 +48,7 @@ export default function StakeholderSection() {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.2 + index * 0.15 }}
-              className="bg-white border border-gray-100 rounded-2xl p-8 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
               <div
                 className={`w-16 h-16 bg-gradient-to-br ${iconGradients[index]} rounded-2xl mx-auto mb-5 flex items-center justify-center text-3xl`}
@@ -84,7 +84,7 @@ export default function StakeholderSection() {
             {reports.map((report) => (
               <div
                 key={report.id}
-                className="bg-white border border-gray-100 rounded-xl p-5 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer"
+                className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="w-12 h-12 bg-primary-blue/10 rounded-lg flex items-center justify-center text-xl">
                   {report.icon}
