@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { navLinks } from "@/lib/data";
 
@@ -12,9 +13,15 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100">
       <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 text-gray-900 font-bold text-xl">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-secondary-yellow via-secondary-green to-primary-blue" />
-          <span className="font-[var(--font-body)]">Sakola Kembara</span>
+        <Link href="/" aria-label="Sakola Kembara" className="flex items-center">
+          <Image
+            src="/images/logo-sakola-kembara.png"
+            alt="Sakola Kembara"
+            width={300}
+            height={103}
+            priority
+            className="h-10 w-auto"
+          />
         </Link>
 
         {/* Desktop Navigation */}

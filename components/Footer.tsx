@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
 
 export default function Footer() {
@@ -11,11 +12,14 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {/* Logo & Location */}
           <div>
-            <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-secondary-yellow via-secondary-green to-primary-blue" />
-              <span className="text-white font-bold text-lg">
-                Sakola Kembara
-              </span>
+            <Link href="/" aria-label="Sakola Kembara" className="inline-flex items-center mb-4">
+              <Image
+                src="/images/logo-sakola-kembara.png"
+                alt="Sakola Kembara"
+                width={300}
+                height={103}
+                className="h-10 w-auto [filter:invert(1)_hue-rotate(180deg)]"
+              />
             </Link>
             <div className="flex items-start gap-3 text-sm text-gray-400">
               <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
