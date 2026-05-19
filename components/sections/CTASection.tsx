@@ -14,7 +14,7 @@ const ctaOptions = [
     description:
       "Daftarkan diri sebagai siswa Sakola Kembara dan raih kesempatan masuk perguruan tinggi terbaik di Indonesia.",
     buttonText: "Daftar Sekarang",
-    href: "/gabung-siswa",
+    href: "/kontak",
     color: "bg-orange-500",
     hoverColor: "hover:bg-orange-600",
     iconBg: "bg-orange-500/10",
@@ -40,7 +40,7 @@ const ctaOptions = [
     description:
       "Bergabunglah dengan tim kami untuk berbagi ilmu dan pengalaman kepada siswa-siswa yang membutuhkan.",
     buttonText: "Gabung Tim",
-    href: "/tim",
+    href: "/kontak",
     color: "bg-secondary-green",
     hoverColor: "hover:bg-green-600",
     iconBg: "bg-secondary-green/10",
@@ -122,7 +122,7 @@ export default function CTASection() {
                 </p>
                 <Link
                   href={option.href}
-                  className={`inline-flex px-4 py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
+                  className={`inline-flex items-center justify-center min-w-[160px] px-4 py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
                 >
                   {option.buttonText}
                 </Link>
