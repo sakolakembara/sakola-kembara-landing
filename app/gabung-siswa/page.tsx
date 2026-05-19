@@ -76,10 +76,6 @@ export default function GabungSiswaPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
-                <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-                Gabung Sebagai Siswa
-              </div>
               <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-4">
                 Wujudkan Mimpimu Bersama Sakola Kembara
               </h1>

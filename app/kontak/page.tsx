@@ -20,10 +20,6 @@ export default function KontakPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-                <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-                Hubungi Kami
-              </div>
               <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl text-gray-900 mb-4">
                 Mari Bergerak Bersama
               </h1>
