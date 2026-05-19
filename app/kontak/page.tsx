@@ -13,7 +13,7 @@ export default function KontakPage() {
       <Navbar />
       <main className="min-h-screen bg-white">
         {/* Hero Section */}
-        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white py-20">
+        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
           <div className="max-w-[1200px] mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
