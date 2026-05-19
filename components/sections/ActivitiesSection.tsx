@@ -44,12 +44,12 @@ export default function ActivitiesSection() {
         {/* Programs Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {programs.map((program, index) => (
-            <Link href={`/program/${program.id}`} key={program.id}>
+            <Link href={`/program/${program.id}`} key={program.id} className="block h-full">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.6, delay: 0.2 + index * 0.15 }}
-                className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all duration-300 cursor-pointer h-full"
+                className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all duration-300 cursor-pointer h-full flex flex-col"
               >
                 {/* Image */}
                 <div className="h-[200px] relative overflow-hidden">
@@ -66,7 +66,7 @@ export default function ActivitiesSection() {
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-6 flex-1 flex flex-col">
                   <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-primary-blue transition-colors">
                     {program.title}
                   </h3>
@@ -81,7 +81,7 @@ export default function ActivitiesSection() {
                       </li>
                     ))}
                   </ul>
-                  <div className="flex items-center gap-2 text-primary-blue font-semibold text-sm">
+                  <div className="mt-auto flex items-center gap-2 text-primary-blue font-semibold text-sm">
                     <span>Lihat Detail</span>
                     <ArrowRight
                       size={16}
