@@ -30,9 +30,8 @@ export default function ImpactSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // One testimonial per slide so the arrows always move to the next story
-  const testimonialsPerSlide = 1;
-  const totalSlides = Math.ceil(testimonials.length / testimonialsPerSlide);
+  // Show two testimonials at a time, sliding by one each click (wraps around)
+  const totalSlides = testimonials.length;
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % totalSlides);
@@ -171,17 +170,15 @@ export default function ImpactSection() {
                 {Array.from({ length: totalSlides }).map((_, slideIndex) => (
                   <div
                     key={slideIndex}
-                    className="w-full flex-shrink-0 px-1 md:px-12"
+                    className="w-full flex-shrink-0 grid md:grid-cols-2 gap-6 px-1"
                   >
-                    {testimonials
-                      .slice(
-                        slideIndex * testimonialsPerSlide,
-                        slideIndex * testimonialsPerSlide + testimonialsPerSlide
-                      )
-                      .map((testimonial) => (
+                    {[0, 1].map((offset) => {
+                      const testimonial =
+                        testimonials[(slideIndex + offset) % testimonials.length];
+                      return (
                         <div
-                          key={testimonial.id}
-                          className="bg-gray-50 rounded-2xl p-8 flex flex-col md:flex-row gap-6 max-w-[800px] mx-auto"
+                          key={`${slideIndex}-${offset}`}
+                          className="bg-gray-50 rounded-2xl p-8 flex gap-6"
                         >
                           <div className="w-32 h-40 rounded-xl overflow-hidden flex-shrink-0 relative">
                             <Image
@@ -210,7 +207,8 @@ export default function ImpactSection() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
                   </div>
                 ))}
               </div>
