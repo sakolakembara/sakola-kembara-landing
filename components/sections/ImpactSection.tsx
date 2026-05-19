@@ -131,85 +131,89 @@ export default function ImpactSection() {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.6 }}
         >
-          {/* Header with Navigation */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                Cerita Sukses Alumni
-              </h3>
-              <p className="text-gray-600">
-                Perjalanan inspiratif dari siswa-siswa kami
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={prevSlide}
-                className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-blue hover:text-primary-blue transition-colors"
-                aria-label="Previous testimonials"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-blue hover:text-primary-blue transition-colors"
-                aria-label="Next testimonials"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
+          {/* Header */}
+          <div className="mb-8">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              Cerita Sukses Alumni
+            </h3>
+            <p className="text-gray-600">
+              Perjalanan inspiratif dari siswa-siswa kami
+            </p>
           </div>
 
-          {/* Carousel Container */}
-          <div className="overflow-hidden">
-            <div
-              className="flex transition-transform duration-500 ease-in-out"
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+          {/* Carousel Container with side navigation */}
+          <div className="relative">
+            {/* Previous Button */}
+            <button
+              onClick={prevSlide}
+              disabled={totalSlides <= 1}
+              className="absolute top-1/2 -translate-y-1/2 left-2 md:-left-5 z-20 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-blue hover:text-primary-blue hover:scale-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              aria-label="Previous testimonials"
             >
-              {Array.from({ length: totalSlides }).map((_, slideIndex) => (
-                <div
-                  key={slideIndex}
-                  className="w-full flex-shrink-0 grid md:grid-cols-2 gap-8"
-                >
-                  {testimonials
-                    .slice(
-                      slideIndex * testimonialsPerSlide,
-                      slideIndex * testimonialsPerSlide + testimonialsPerSlide
-                    )
-                    .map((testimonial) => (
-                      <div
-                        key={testimonial.id}
-                        className="bg-gray-50 rounded-2xl p-8 flex gap-6"
-                      >
-                        <div className="w-32 h-40 rounded-xl overflow-hidden flex-shrink-0 relative">
-                          <Image
-                            src={testimonial.image}
-                            alt={testimonial.name}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <blockquote className="text-[15px] text-gray-700 italic leading-relaxed mb-4">
-                            &ldquo;{testimonial.quote}&rdquo;
-                          </blockquote>
-                          <div>
-                            <strong className="text-base text-gray-900">
-                              {testimonial.name}
-                            </strong>
-                            <p className="text-sm text-primary-blue">
-                              {testimonial.major}
-                            </p>
+              <ChevronLeft size={22} />
+            </button>
+
+            {/* Next Button */}
+            <button
+              onClick={nextSlide}
+              disabled={totalSlides <= 1}
+              className="absolute top-1/2 -translate-y-1/2 right-2 md:-right-5 z-20 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-blue hover:text-primary-blue hover:scale-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              aria-label="Next testimonials"
+            >
+              <ChevronRight size={22} />
+            </button>
+
+            <div className="overflow-hidden">
+              <div
+                className="flex transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              >
+                {Array.from({ length: totalSlides }).map((_, slideIndex) => (
+                  <div
+                    key={slideIndex}
+                    className="w-full flex-shrink-0 grid md:grid-cols-2 gap-8"
+                  >
+                    {testimonials
+                      .slice(
+                        slideIndex * testimonialsPerSlide,
+                        slideIndex * testimonialsPerSlide + testimonialsPerSlide
+                      )
+                      .map((testimonial) => (
+                        <div
+                          key={testimonial.id}
+                          className="bg-gray-50 rounded-2xl p-8 flex gap-6"
+                        >
+                          <div className="w-32 h-40 rounded-xl overflow-hidden flex-shrink-0 relative">
+                            <Image
+                              src={testimonial.image}
+                              alt={testimonial.name}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
                           </div>
-                          <div className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-lg text-xs text-gray-600 mt-3 border border-gray-200">
-                            <GraduationCap size={14} />
-                            {testimonial.university}
+                          <div className="flex-1">
+                            <blockquote className="text-[15px] text-gray-700 italic leading-relaxed mb-4">
+                              &ldquo;{testimonial.quote}&rdquo;
+                            </blockquote>
+                            <div>
+                              <strong className="text-base text-gray-900">
+                                {testimonial.name}
+                              </strong>
+                              <p className="text-sm text-primary-blue">
+                                {testimonial.major}
+                              </p>
+                            </div>
+                            <div className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-lg text-xs text-gray-600 mt-3 border border-gray-200">
+                              <GraduationCap size={14} />
+                              {testimonial.university}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                </div>
-              ))}
+                      ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
