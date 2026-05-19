@@ -87,18 +87,12 @@ export default function TimPage() {
                 Kami selalu mencari relawan yang bersemangat untuk berkontribusi dalam
                 membuka akses pendidikan bagi siswa Indonesia.
               </p>
-              <div className="flex flex-wrap justify-center gap-4">
+              <div className="flex justify-center">
                 <Link
                   href="/kontak"
                   className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
                 >
                   Bergabung Menjadi Relawan
-                </Link>
-                <Link
-                  href="/kontak"
-                  className="px-8 py-4 bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-yellow-500 transition-colors"
-                >
-                  Hubungi Kami
                 </Link>
               </div>
             </motion.div>
