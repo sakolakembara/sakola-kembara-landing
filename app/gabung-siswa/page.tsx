@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Send, GraduationCap, BookOpen, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { GraduationCap, BookOpen, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -192,159 +193,30 @@ export default function GabungSiswaPage() {
           </div>
         </section>
 
-        {/* Registration Form Section */}
-        <section className="py-20 bg-gray-50">
-          <div className="max-w-[800px] mx-auto px-6">
+        {/* Registration CTA Section */}
+        <section className="py-16 bg-white">
+          <div className="max-w-[800px] mx-auto px-6 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="text-center mb-12"
             >
-              <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-                <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-                Formulir Pendaftaran
-              </div>
               <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-                Daftar Sekarang
+                Tertarik Menjadi Siswa?
               </h2>
-              <p className="text-lg text-gray-600">
-                Isi formulir di bawah ini untuk memulai proses pendaftaran sebagai
-                siswa Sakola Kembara.
+              <p className="text-lg text-gray-600 mb-8">
+                Hubungi tim kami untuk informasi lebih lanjut mengenai proses
+                pendaftaran dan jadwal seleksi di cabang terdekat.
               </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-3xl p-8 md:p-10 shadow-lg"
-            >
-              <form className="space-y-5">
-                <div className="grid md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Masukkan nama lengkap"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tanggal Lahir
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="email@example.com"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nomor WhatsApp
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="08xxxxxxxxxx"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Asal Sekolah
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Nama sekolah saat ini"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kelas
-                    </label>
-                    <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none bg-white">
-                      <option value="">Pilih kelas</option>
-                      <option value="11">Kelas 11</option>
-                      <option value="12">Kelas 12</option>
-                      <option value="lulusan">Lulusan / Gap Year</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Domisili / Kota
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Kota tempat tinggal saat ini"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cabang yang Dituju
-                  </label>
-                  <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none bg-white">
-                    <option value="">Pilih cabang</option>
-                    <option value="cililin">Sakola Kembara Cililin</option>
-                    <option value="bojong">Sakola Kembara Bojong</option>
-                    <option value="bandung">Sakola Kembara Bandung</option>
-                    <option value="cibodas">Sakola Kembara Cibodas</option>
-                    <option value="cirebon">Sakola Kembara Cirebon</option>
-                    <option value="purbalingga">Sakola Kembara Purbalingga</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Surat Motivasi
-                  </label>
-                  <textarea
-                    placeholder="Ceritakan alasan kamu ingin bergabung dengan Sakola Kembara dan apa cita-citamu setelah lulus..."
-                    rows={6}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none resize-none"
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Minimal 200 kata. Ceritakan dengan jujur dan apa adanya.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
+              <div className="flex justify-center">
+                <Link
+                  href="/kontak"
+                  className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
                 >
-                  <Send size={18} />
-                  Kirim Pendaftaran
-                </button>
-
-                <p className="text-center text-xs text-gray-500 mt-2">
-                  Dengan mengirim formulir ini, kamu menyetujui untuk dihubungi
-                  oleh tim Sakola Kembara terkait proses seleksi.
-                </p>
-              </form>
+                  Daftar Sekarang
+                </Link>
+              </div>
             </motion.div>
           </div>
         </section>
