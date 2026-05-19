@@ -147,10 +147,6 @@ export default function GabungSiswaPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
               >
-                <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-                  <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-                  Persyaratan
-                </div>
                 <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-6">
                   Siapa yang Bisa Mendaftar?
                 </h2>
@@ -171,10 +167,6 @@ export default function GabungSiswaPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-                  <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-                  Cara Mendaftar
-                </div>
                 <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-6">
                   Empat Langkah Mudah
                 </h2>
