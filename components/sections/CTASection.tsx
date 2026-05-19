@@ -67,7 +67,7 @@ export default function CTASection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-24 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
+    <section className="py-16 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
@@ -80,53 +80,53 @@ export default function CTASection() {
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-3">
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Bergabung Bersama Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-4xl md:text-5xl text-white mb-6">
+          <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-white mb-4">
             Jadilah Bagian dari Perubahan
           </h2>
-          <p className="text-lg text-white/80 max-w-[600px] mx-auto">
+          <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
             Ada banyak cara untuk berkontribusi dalam membuka akses pendidikan
             bagi anak-anak Indonesia. Pilih peran yang sesuai dengan Anda.
           </p>
         </motion.div>
 
         {/* CTA Cards */}
-        <div className="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-[900px] mx-auto">
+        <div className="grid md:grid-cols-2 gap-5 max-w-[1000px] mx-auto">
           {ctaOptions.map((option, index) => (
             <motion.div
               key={option.id}
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.2 + index * 0.1 }}
-              className="bg-white rounded-2xl p-8 text-center hover:-translate-y-2 hover:shadow-2xl transition-all duration-300"
+              className="bg-white rounded-2xl p-5 flex items-center gap-4 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300"
             >
               {/* Icon */}
               <div
-                className={`w-16 h-16 ${option.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-6`}
+                className={`w-14 h-14 ${option.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}
               >
-                <option.icon className={`w-8 h-8 ${option.iconColor}`} />
+                <option.icon className={`w-7 h-7 ${option.iconColor}`} />
               </div>
 
               {/* Content */}
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
-                {option.title}
-              </h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
-                {option.description}
-              </p>
-
-              {/* Button */}
-              <Link
-                href={option.href}
-                className={`inline-flex px-6 py-3 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} font-semibold rounded-xl transition-colors`}
-              >
-                {option.buttonText}
-              </Link>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">
+                  {option.title}
+                </h3>
+                <p className="text-sm text-gray-600 leading-snug mb-3">
+                  {option.description}
+                </p>
+                <Link
+                  href={option.href}
+                  className={`inline-flex px-4 py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
+                >
+                  {option.buttonText}
+                </Link>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -136,7 +136,7 @@ export default function CTASection() {
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.6, delay: 0.8 }}
-          className="text-center text-white/60 mt-12 text-sm"
+          className="text-center text-white/60 mt-8 text-sm"
         >
           Bersama-sama, kita bisa membuka lebih banyak pintu pendidikan untuk
           generasi masa depan Indonesia.
