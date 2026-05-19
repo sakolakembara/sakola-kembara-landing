@@ -13,17 +13,17 @@ export default function TimPage() {
       <Navbar />
       <main className="min-h-screen bg-gray-50">
         {/* Hero Section */}
-        <section className="bg-white py-20">
+        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white py-20">
           <div className="max-w-[1200px] mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl text-gray-900 mb-6">
+              <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-6">
                 Pahlawan di Balik Sakola Kembara
               </h1>
-              <p className="text-lg text-gray-600 max-w-[600px]">
+              <p className="text-lg text-white/90 max-w-[600px]">
                 Didukung oleh pengurus dan relawan dari berbagai universitas terbaik
                 di Indonesia yang berkomitmen untuk pendidikan yang setara.
               </p>

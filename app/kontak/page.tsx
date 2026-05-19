@@ -13,17 +13,17 @@ export default function KontakPage() {
       <Navbar />
       <main className="min-h-screen bg-white">
         {/* Hero Section */}
-        <section className="bg-gray-50 py-20">
+        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white py-20">
           <div className="max-w-[1200px] mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl text-gray-900 mb-4">
+              <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-4">
                 Mari Bergerak Bersama
               </h1>
-              <p className="text-lg text-gray-600 max-w-[600px]">
+              <p className="text-lg text-white/90 max-w-[600px]">
                 Punya pertanyaan, ingin berkolaborasi, atau tertarik menjadi relawan?
                 Kami senang mendengar dari Anda.
               </p>
