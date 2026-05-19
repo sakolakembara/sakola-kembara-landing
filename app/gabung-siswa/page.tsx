@@ -127,7 +127,7 @@ export default function GabungSiswaPage() {
                   href="/kontak"
                   className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
                 >
-                  Daftar Sekarang
+                  Daftar Gratis Sekarang
                 </Link>
               </div>
             </motion.div>
