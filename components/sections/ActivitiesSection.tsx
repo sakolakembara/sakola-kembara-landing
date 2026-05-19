@@ -67,12 +67,20 @@ export default function ActivitiesSection() {
 
                 {/* Content */}
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-primary-blue transition-colors">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-primary-blue transition-colors">
                     {program.title}
                   </h3>
-                  <p className="text-[15px] text-gray-600 mb-4 leading-relaxed">
-                    {program.description}
-                  </p>
+                  <ul className="space-y-2 mb-5">
+                    {program.points.map((point) => (
+                      <li
+                        key={point}
+                        className="flex gap-2 text-[15px] text-gray-600 leading-relaxed"
+                      >
+                        <span className="mt-2 w-1.5 h-1.5 rounded-full bg-secondary-green flex-shrink-0" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
                   <div className="flex items-center gap-2 text-primary-blue font-semibold text-sm">
                     <span>Lihat Detail</span>
                     <ArrowRight

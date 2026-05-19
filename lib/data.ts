@@ -36,10 +36,15 @@ export const problemStats = [
 export const programs = [
   {
     id: "prapembinaan",
-    title: "Pra Pembinaan",
+    title: "Roadshow & Seleksi",
     description:
       "Menjangkau dan menyeleksi siswa-siswa berpotensi dari berbagai daerah melalui roadshow ke sekolah dan proses seleksi berbasis motivasi.",
-    tag: "Tahap 1",
+    points: [
+      "Menjangkau siswa berpotensi dari berbagai daerah",
+      "Roadshow ke sekolah di wilayah terpencil",
+      "Seleksi berbasis motivasi dan potensi belajar",
+    ],
+    tag: "Pra Pembinaan",
     image: "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=600&h=400&fit=crop",
     subPrograms: [
       {
@@ -54,10 +59,15 @@ export const programs = [
   },
   {
     id: "pembinaan",
-    title: "Pembinaan",
+    title: "Pembelajaran Intensif",
     description:
       "Program pembelajaran intensif selama satu tahun dengan kurikulum khusus, mentoring, dan berbagai kegiatan pendukung untuk mempersiapkan siswa menghadapi UTBK.",
-    tag: "Tahap 2",
+    points: [
+      "Kurikulum khusus selama 1 tahun (Agu–Apr)",
+      "Mentoring personal dan persiapan UTBK",
+      "Asrama intensif menjelang seleksi PTN",
+    ],
+    tag: "Pembinaan",
     image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop",
     subPrograms: [
       {
@@ -88,10 +98,15 @@ export const programs = [
   },
   {
     id: "pasca-pembinaan",
-    title: "Pasca Pembinaan",
+    title: "Alumni & Beasiswa",
     description:
       "Pendampingan berkelanjutan bagi alumni dalam pencarian beasiswa, peningkatan kapasitas, dan peluang untuk berkontribusi kembali.",
-    tag: "Tahap 3",
+    points: [
+      "Pendampingan pencarian beasiswa berkelanjutan",
+      "Peningkatan kapasitas dan pengembangan diri",
+      "50% alumni kembali membantu sebagai volunteer",
+    ],
+    tag: "Pasca Pembinaan",
     image: "https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=600&h=400&fit=crop",
     subPrograms: [
       {
