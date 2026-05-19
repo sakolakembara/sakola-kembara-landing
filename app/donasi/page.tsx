@@ -203,15 +203,6 @@ export default function DonasiPage() {
                   </div>
                 </div>
 
-                {/* Transparency Note */}
-                <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                  <p className="text-sm text-blue-800">
-                    <strong>Transparansi:</strong> Kami berkomitmen untuk melaporkan
-                    penggunaan dana secara berkala. Laporan keuangan dapat diakses
-                    di halaman Stakeholder.
-                  </p>
-                </div>
-
                 {/* Ingin Bergabung - moved from Kontak page */}
                 <div className="mt-6 bg-gradient-to-br from-primary-blue to-accent-navy rounded-2xl p-6 text-white">
                   <h3 className="font-semibold text-lg mb-3">Ingin Bergabung?</h3>
