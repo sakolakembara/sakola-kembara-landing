@@ -14,7 +14,7 @@ const benefits = [
   },
   {
     icon: Users,
-    title: "Mentoring Personal",
+    title: "Mentoring Intensif",
     description:
       "Dapatkan pendampingan langsung dari mentor berpengalaman dari berbagai universitas terbaik di Indonesia.",
   },
