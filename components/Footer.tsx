@@ -9,7 +9,7 @@ export default function Footer() {
       {/* Main Footer */}
       <div className="max-w-[1200px] mx-auto px-6 pt-16 pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-          {/* Logo & Tagline */}
+          {/* Logo & Location */}
           <div>
             <Link href="/" className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-secondary-yellow via-secondary-green to-primary-blue" />
@@ -17,11 +17,10 @@ export default function Footer() {
                 Sakola Kembara
               </span>
             </Link>
-            <p className="text-sm text-gray-400 leading-relaxed mb-6">
-              Berkomitmen untuk memberikan kesempatan pendidikan yang setara
-              kepada seluruh anak Indonesia, terutama di daerah terpencil dan
-              kurang mampu.
-            </p>
+            <div className="flex items-start gap-3 text-sm text-gray-400">
+              <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+              Bandung, Jawa Barat, Indonesia
+            </div>
           </div>
 
           {/* Contact */}
@@ -38,12 +37,6 @@ export default function Footer() {
                   <Mail className="w-4 h-4 mt-0.5 shrink-0" />
                   contact@sakolakembara.org
                 </a>
-              </li>
-              <li>
-                <div className="flex items-start gap-3 text-sm text-gray-400">
-                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  Bandung, Jawa Barat, Indonesia
-                </div>
               </li>
             </ul>
           </div>
