@@ -4,9 +4,22 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
-import { Heart, Users, Handshake } from "lucide-react";
+import { Heart, Users, Handshake, GraduationCap } from "lucide-react";
 
 const ctaOptions = [
+  {
+    id: "siswa",
+    icon: GraduationCap,
+    title: "Menjadi Siswa",
+    description:
+      "Daftarkan diri sebagai siswa Sakola Kembara dan raih kesempatan masuk perguruan tinggi terbaik di Indonesia.",
+    buttonText: "Daftar Sekarang",
+    href: "/gabung-siswa",
+    color: "bg-orange-500",
+    hoverColor: "hover:bg-orange-600",
+    iconBg: "bg-orange-500/10",
+    iconColor: "text-orange-500",
+  },
   {
     id: "donatur",
     icon: Heart,
@@ -83,7 +96,7 @@ export default function CTASection() {
         </motion.div>
 
         {/* CTA Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
           {ctaOptions.map((option, index) => (
             <motion.div
               key={option.id}

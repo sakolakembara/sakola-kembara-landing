@@ -193,7 +193,7 @@ export default function DonasiPage() {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-gray-50 rounded-xl">
-                      <div className="text-3xl font-bold text-primary-blue">400+</div>
+                      <div className="text-3xl font-bold text-primary-blue">500+</div>
                       <div className="text-sm text-gray-600">Siswa Terbantu</div>
                     </div>
                     <div className="text-center p-4 bg-gray-50 rounded-xl">

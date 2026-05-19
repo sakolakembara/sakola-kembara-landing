@@ -10,7 +10,7 @@ export const navLinks = [
 ];
 
 export const heroStats = [
-  { number: "400+", label: "Siswa Terbantu" },
+  { number: "500+", label: "Siswa Terbantu" },
   { number: "75.88%", label: "Berkuliah" },
   { number: "5", label: "Wilayah Jangkauan" },
 ];
@@ -165,9 +165,9 @@ export const teamMembers = [
 ];
 
 export const impactMetrics = [
-  { number: "400+", label: "Total Siswa Terbantu", color: "blue" },
+  { number: "500+", label: "Total Siswa Terbantu", color: "blue" },
   { number: "75.88%", label: "Berkuliah (71.49% di PTN)", color: "yellow" },
-  { number: "10", label: "Siswa Diterima di Top 3 Universitas di Indonesia", color: "green" },
+  { number: "13", label: "Siswa Diterima di Top 3 Universitas di Indonesia", color: "green" },
   { number: "172", label: "Siswa Program 2025/2026", color: "dark" },
 ];
 

@@ -25,14 +25,14 @@ export default function Home() {
         {/* Section 4: Our Impact (with GIS Map) */}
         <ImpactSection />
 
-        {/* Section 5: Blog */}
-        <NewsSection />
-
-        {/* Section 6: Partners */}
+        {/* Section 5: Partners */}
         <PartnersSection />
 
-        {/* Section 7: CTA - Gabung Bersama Kami */}
+        {/* Section 6: CTA - Gabung Bersama Kami */}
         <CTASection />
+
+        {/* Section 7: Blog */}
+        <NewsSection />
       </main>
       <Footer />
     </>
