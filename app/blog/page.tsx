@@ -96,7 +96,7 @@ export default function BlogPage() {
         )}
 
         {/* All Articles Grid */}
-        <section className="py-12 pb-24">
+        <section className="py-12 pb-24 bg-white">
           <div className="max-w-[1200px] mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -113,7 +113,7 @@ export default function BlogPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
-                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all"
+                    className="group bg-gray-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all"
                   >
                     <div className="h-[200px] relative overflow-hidden">
                       <Image
