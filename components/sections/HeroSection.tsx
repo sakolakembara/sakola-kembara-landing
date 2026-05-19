@@ -45,7 +45,7 @@ export default function HeroSection() {
               </Link>
               <Link
                 href="/donasi"
-                className="px-6 py-3 text-[15px] font-semibold text-gray-700 border-2 border-gray-200 rounded-lg hover:border-primary-blue hover:text-primary-blue transition-all"
+                className="px-6 py-3 text-[15px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-primary-blue transition-all"
               >
                 Dukung Misi Kami
               </Link>

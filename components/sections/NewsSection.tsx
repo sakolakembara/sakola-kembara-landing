@@ -51,7 +51,7 @@ export default function NewsSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
-              className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
+              className="group bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
             >
               <div className="h-[160px] relative overflow-hidden">
                 <Image
