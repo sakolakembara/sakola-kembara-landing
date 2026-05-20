@@ -213,7 +213,7 @@ export default function DonasiPage() {
                   <div className="flex gap-3">
                     <Link
                       href="/kontak"
-                      className="px-5 py-2.5 bg-white/20 text-white font-semibold rounded-lg text-sm hover:bg-white/30 transition-colors"
+                      className="px-5 py-2.5 bg-white text-primary-blue font-semibold rounded-lg text-sm hover:bg-gray-100 transition-colors"
                     >
                       Hubungi Kami
                     </Link>
