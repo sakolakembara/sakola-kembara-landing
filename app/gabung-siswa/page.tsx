@@ -68,10 +68,6 @@ export default function GabungSiswaPage() {
               transition={{ duration: 0.6 }}
               className="text-center mb-14"
             >
-              <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-                <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-                Apa yang Kamu Dapatkan
-              </div>
               <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
                 Manfaat Bergabung dengan Sakola Kembara
               </h2>
