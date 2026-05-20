@@ -211,9 +211,6 @@ export default function DonasiPage() {
                     atau dukung kami melalui kerjasama lainnya.
                   </p>
                   <div className="flex gap-3">
-                    <button className="px-5 py-2.5 bg-secondary-yellow text-gray-900 font-semibold rounded-lg text-sm hover:bg-amber-400 transition-colors">
-                      Jadi Relawan
-                    </button>
                     <Link
                       href="/kontak"
                       className="px-5 py-2.5 bg-white/20 text-white font-semibold rounded-lg text-sm hover:bg-white/30 transition-colors"
