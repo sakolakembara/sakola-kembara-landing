@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { Send, Mail, MessageCircle, MapPin } from "lucide-react";
-import Link from "next/link";
 import { contactInfo } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -82,10 +81,8 @@ export default function KontakPage() {
                     </label>
                     <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none bg-white">
                       <option value="">Pilih subjek</option>
-                      <option value="volunteer">Gabung Relawan</option>
                       <option value="partnership">Kerjasama/Partnership</option>
                       <option value="donation">Seputar Donasi</option>
-                      <option value="student">Daftar Siswa</option>
                       <option value="other">Lainnya</option>
                     </select>
                   </div>
