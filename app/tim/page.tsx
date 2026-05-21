@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import Image from "next/image";
 import { teamMembers } from "@/lib/data";
 import Navbar from "@/components/Navbar";
@@ -84,12 +83,14 @@ export default function TimPage() {
                 membuka akses pendidikan bagi siswa Indonesia.
               </p>
               <div className="flex justify-center">
-                <Link
-                  href="/kontak"
+                <a
+                  href="https://linktr.ee/JoinSakolaKembara"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
                 >
                   Bergabung Menjadi Relawan
-                </Link>
+                </a>
               </div>
             </motion.div>
           </div>
