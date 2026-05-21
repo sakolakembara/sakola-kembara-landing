@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { GraduationCap, BookOpen, Users, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -119,12 +118,14 @@ export default function GabungSiswaPage() {
                 pendaftaran dan jadwal seleksi di cabang terdekat.
               </p>
               <div className="flex justify-center">
-                <Link
-                  href="/kontak"
+                <a
+                  href="https://sakolakembara.org/daftar"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
                 >
                   Daftar Gratis Sekarang
-                </Link>
+                </a>
               </div>
             </motion.div>
           </div>
