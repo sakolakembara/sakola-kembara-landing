@@ -201,7 +201,7 @@ export default function DonasiPage() {
                   href={CONFIRMATION_FORM_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-primary-blue text-white font-semibold hover:bg-primary-blue-dark transition-colors"
+                  className="mt-auto w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-primary-blue text-white font-semibold hover:bg-primary-blue-dark transition-colors"
                 >
                   <ClipboardCheck size={18} />
                   Konfirmasi Donasi
@@ -220,7 +220,7 @@ export default function DonasiPage() {
                 </p>
                 <Link
                   href="/kontak"
-                  className="mt-auto inline-flex items-center justify-center px-8 py-3.5 bg-gray-50 text-primary-blue font-semibold rounded-xl text-sm hover:bg-gray-100 transition-colors"
+                  className="mt-auto w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 text-primary-blue font-semibold rounded-xl text-sm hover:bg-gray-100 transition-colors"
                 >
                   Hubungi Kami
                 </Link>

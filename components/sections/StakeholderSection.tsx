@@ -14,9 +14,9 @@ const stakeholderIcons = [
 ];
 
 const reportIcons = [
-  { Icon: BarChart3, iconBg: "bg-primary-blue/10", iconColor: "text-primary-blue" },
-  { Icon: Wallet, iconBg: "bg-secondary-green/10", iconColor: "text-secondary-green" },
-  { Icon: TrendingUp, iconBg: "bg-orange-500/10", iconColor: "text-orange-500" },
+  { Icon: BarChart3, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
+  { Icon: Wallet, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
+  { Icon: TrendingUp, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
 ];
 
 export default function StakeholderSection() {
@@ -52,7 +52,7 @@ export default function StakeholderSection() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.6, delay: 0.2 + index * 0.15 }}
-                className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center flex flex-col hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
               >
                 <div
                   className={`w-16 h-16 ${iconBg} rounded-2xl mx-auto mb-5 flex items-center justify-center`}
@@ -65,7 +65,7 @@ export default function StakeholderSection() {
                 </p>
                 <Link
                   href={stakeholder.href}
-                  className="inline-flex items-center gap-1.5 text-primary-blue text-sm font-semibold hover:underline"
+                  className="mt-auto self-center inline-flex items-center gap-1.5 text-primary-blue text-sm font-semibold hover:underline"
                 >
                   {stakeholder.link}
                   <ArrowRight size={14} />

@@ -303,7 +303,7 @@ export const stakeholders = [
   },
   {
     id: 2,
-    title: "Untuk Orang Tua Siswa",
+    title: "Untuk Orang Tua",
     description:
       "Informasi lengkap tentang program, jadwal kegiatan, dan progress pembelajaran anak. Komunikasi terbuka setiap saat.",
     link: "Portal Orang Tua",

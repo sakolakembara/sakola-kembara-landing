@@ -8,9 +8,9 @@ import Footer from "@/components/Footer";
 import SocialLinks from "@/components/SocialLinks";
 
 const contactIcons = [
-  { Icon: Mail, iconBg: "bg-primary-blue/10", iconColor: "text-primary-blue" },
-  { Icon: MessageCircle, iconBg: "bg-secondary-green/10", iconColor: "text-secondary-green" },
-  { Icon: MapPin, iconBg: "bg-orange-500/10", iconColor: "text-orange-500" },
+  { Icon: Mail, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
+  { Icon: MessageCircle, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
+  { Icon: MapPin, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
 ];
 
 export default function KontakPage() {
