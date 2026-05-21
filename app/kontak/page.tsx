@@ -1,11 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Instagram, Music, Twitter, Send, Mail, MessageCircle, MapPin } from "lucide-react";
+import { Send, Mail, MessageCircle, MapPin } from "lucide-react";
 import Link from "next/link";
 import { contactInfo } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SocialLinks from "@/components/SocialLinks";
 
 const contactIcons = [
   { Icon: Mail, iconBg: "bg-primary-blue/10", iconColor: "text-primary-blue" },
@@ -145,29 +146,7 @@ export default function KontakPage() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Ikuti Kami
                   </h3>
-                  <div className="flex gap-3">
-                    <a
-                      href="#"
-                      className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-primary-blue hover:text-white transition-colors"
-                      aria-label="Instagram"
-                    >
-                      <Instagram size={22} />
-                    </a>
-                    <a
-                      href="#"
-                      className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-primary-blue hover:text-white transition-colors"
-                      aria-label="TikTok"
-                    >
-                      <Music size={22} />
-                    </a>
-                    <a
-                      href="#"
-                      className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-primary-blue hover:text-white transition-colors"
-                      aria-label="Twitter"
-                    >
-                      <Twitter size={22} />
-                    </a>
-                  </div>
+                  <SocialLinks theme="light" />
                 </div>
               </motion.div>
             </div>
