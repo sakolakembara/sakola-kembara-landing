@@ -295,7 +295,6 @@ export const testimonials = [
 export const stakeholders = [
   {
     id: 1,
-    icon: "👨‍👩‍👧‍👦",
     title: "Untuk Donatur",
     description:
       "Laporan penggunaan dana yang transparan dan terperinci. Setiap rupiah Anda berkontribusi langsung untuk pendidikan anak Indonesia.",
@@ -304,8 +303,7 @@ export const stakeholders = [
   },
   {
     id: 2,
-    icon: "🎓",
-    title: "Untuk Siswa & Orang Tua",
+    title: "Untuk Orang Tua Siswa",
     description:
       "Informasi lengkap tentang program, jadwal kegiatan, dan progress pembelajaran anak. Komunikasi terbuka setiap saat.",
     link: "Portal Orang Tua",
@@ -313,7 +311,6 @@ export const stakeholders = [
   },
   {
     id: 3,
-    icon: "🤝",
     title: "Untuk Partner",
     description:
       "Peluang kolaborasi dan kemitraan strategis untuk memperluas dampak pendidikan di Indonesia. Mari bergerak bersama.",
@@ -323,9 +320,9 @@ export const stakeholders = [
 ];
 
 export const reports = [
-  { id: 1, icon: "📊", title: "Laporan Tahunan 2023", size: "PDF • 2.4 MB" },
-  { id: 2, icon: "💰", title: "Laporan Keuangan 2023", size: "PDF • 1.8 MB" },
-  { id: 3, icon: "📈", title: "Impact Report 2023", size: "PDF • 3.1 MB" },
+  { id: 1, title: "Laporan Tahunan", size: "PDF • 2.4 MB" },
+  { id: 2, title: "Laporan Keuangan", size: "PDF • 1.8 MB" },
+  { id: 3, title: "Impact Report", size: "PDF • 3.1 MB" },
 ];
 
 export const partners = [

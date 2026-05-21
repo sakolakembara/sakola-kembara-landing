@@ -1,11 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Instagram, Music, Twitter, Send } from "lucide-react";
+import { Instagram, Music, Twitter, Send, Mail, MessageCircle, MapPin } from "lucide-react";
 import Link from "next/link";
 import { contactInfo } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+
+const contactIcons = [
+  { Icon: Mail, iconBg: "bg-primary-blue/10", iconColor: "text-primary-blue" },
+  { Icon: MessageCircle, iconBg: "bg-secondary-green/10", iconColor: "text-secondary-green" },
+  { Icon: MapPin, iconBg: "bg-orange-500/10", iconColor: "text-orange-500" },
+];
 
 export default function KontakPage() {
   return (
@@ -116,19 +122,22 @@ export default function KontakPage() {
 
                 {/* Contact Methods */}
                 <div className="space-y-5 mb-10">
-                  {contactInfo.map((contact) => (
-                    <div key={contact.title} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm">
-                        {contact.icon}
+                  {contactInfo.map((contact, index) => {
+                    const { Icon, iconBg, iconColor } = contactIcons[index];
+                    return (
+                      <div key={contact.title} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                        <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                          <Icon className={`w-6 h-6 ${iconColor}`} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-900">
+                            {contact.title}
+                          </h4>
+                          <p className="text-gray-600">{contact.value}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-900">
-                          {contact.title}
-                        </h4>
-                        <p className="text-gray-600">{contact.value}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Social Links */}
