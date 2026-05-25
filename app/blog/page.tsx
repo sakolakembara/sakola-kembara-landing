@@ -6,17 +6,10 @@ import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { newsArticles } from "@/lib/data";
+import { getBlogArticlesSorted, cleanExcerpt } from "@/lib/blog";
 
 export default function BlogPage() {
-  // Sort articles by date (newest first)
-  const sortedArticles = [...newsArticles].sort((a, b) => {
-    const dateA = new Date(a.date.split(" ").reverse().join("-"));
-    const dateB = new Date(b.date.split(" ").reverse().join("-"));
-    return dateB.getTime() - dateA.getTime();
-  });
-
-  // Get featured article (first one marked as featured, or first article)
+  const sortedArticles = getBlogArticlesSorted();
   const featuredArticle = sortedArticles.find((a) => a.featured) || sortedArticles[0];
   const otherArticles = sortedArticles.filter((a) => a.id !== featuredArticle?.id);
 
@@ -55,7 +48,10 @@ export default function BlogPage() {
                 <h2 className="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">
                   Artikel Terbaru
                 </h2>
-                <article className="group bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all">
+                <Link
+                  href={`/blog/${featuredArticle.id}`}
+                  className="group block bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
+                >
                   <div className="grid md:grid-cols-2 gap-0">
                     <div className="h-[300px] md:h-[400px] relative overflow-hidden">
                       <Image
@@ -78,18 +74,15 @@ export default function BlogPage() {
                         {featuredArticle.title}
                       </h3>
                       <p className="text-gray-600 leading-relaxed mb-6">
-                        {featuredArticle.excerpt}
+                        {cleanExcerpt(featuredArticle.excerpt)}
                       </p>
-                      <Link
-                        href={`/blog/${featuredArticle.id}`}
-                        className="inline-flex items-center gap-2 text-primary-blue font-semibold hover:underline"
-                      >
+                      <span className="inline-flex items-center gap-2 text-primary-blue font-semibold group-hover:underline">
                         Baca Selengkapnya
                         <span>→</span>
-                      </Link>
+                      </span>
                     </div>
                   </div>
-                </article>
+                </Link>
               </motion.div>
             </div>
           </section>
@@ -112,7 +105,7 @@ export default function BlogPage() {
                     key={article.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
+                    transition={{ duration: 0.5, delay: Math.min(0.1 + index * 0.05, 0.5) }}
                     className="group bg-gray-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all"
                   >
                     <div className="h-[200px] relative overflow-hidden">
@@ -136,7 +129,7 @@ export default function BlogPage() {
                         {article.title}
                       </h3>
                       <p className="text-sm text-gray-600 line-clamp-2 mb-4">
-                        {article.excerpt}
+                        {cleanExcerpt(article.excerpt)}
                       </p>
                       <Link
                         href={`/blog/${article.id}`}

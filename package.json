@@ -6,26 +6,38 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy:cpanel": "bash scripts/deploy-cpanel.sh",
+    "build:deploy": "bash scripts/deploy-cpanel.sh --build-only",
+    "upload:cpanel": "bash scripts/upload-cpanel.sh",
+    "scrape:blog": "node scripts/scrape-blog.mjs",
+    "blog:sync": "node scripts/blog-sync-from-markdown.mjs"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",
     "framer-motion": "^12.27.1",
+    "gray-matter": "^4.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
+    "marked": "^18.0.4",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "tailwindcss": "^4",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
     "typescript": "^5"
   }
 }

@@ -1,0 +1,19 @@
+# Optional Apache rules for static Next.js export on cPanel.
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Serve existing files/directories as-is
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Map clean URLs to generated HTML files (e.g. /blog -> /blog.html)
+  RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_URI}.html -f
+  RewriteRule ^(.+?)/?$ $1.html [L]
+
+  # SPA-style fallback for client routes without a matching HTML file
+  RewriteRule ^ index.html [L]
+</IfModule>
