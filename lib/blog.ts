@@ -1,0 +1,66 @@
+import blogData from "./blog-posts.json";
+
+export interface BlogArticle {
+  /** URL slug — use for `/blog/[id]` routes */
+  id: string;
+  wpId: number;
+  category: string;
+  /** Indonesian date, e.g. "21 Mei 2026" */
+  date: string;
+  dateISO: string;
+  title: string;
+  excerpt: string;
+  /** Markdown source — edit via content/blog/{id}.md */
+  contentMarkdown: string;
+  /** HTML derived from markdown (regenerated on scrape/sync) */
+  content: string;
+  featured: boolean;
+  image: string;
+  author: string;
+  sourceUrl: string;
+  modifiedISO: string;
+}
+
+export interface BlogPostsData {
+  meta: {
+    source: string;
+    scrapedAt: string;
+    total: number;
+    api: string;
+  };
+  articles: BlogArticle[];
+}
+
+export const blogPosts = blogData as BlogPostsData;
+
+export const blogArticles = blogPosts.articles;
+
+export function getBlogArticleBySlug(slug: string): BlogArticle | undefined {
+  return blogArticles.find((a) => a.id === slug);
+}
+
+export function getBlogArticlesSorted(): BlogArticle[] {
+  return [...blogArticles].sort(
+    (a, b) => new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime()
+  );
+}
+
+export function cleanExcerpt(excerpt: string): string {
+  return excerpt
+    .replace(/\[\s*&?hellip;\s*\]/gi, "...")
+    .replace(/…\s*$/, "...")
+    .trim();
+}
+
+/** Card/list shape compatible with existing `newsArticles` in data.ts */
+export function toNewsArticleShape(article: BlogArticle) {
+  return {
+    id: article.id,
+    category: article.category,
+    date: article.date,
+    title: article.title,
+    excerpt: article.excerpt,
+    featured: article.featured,
+    image: article.image,
+  };
+}

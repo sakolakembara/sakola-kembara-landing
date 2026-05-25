@@ -6,14 +6,13 @@ import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import { newsArticles } from "@/lib/data";
+import { getBlogArticlesSorted } from "@/lib/blog";
 
 export default function NewsSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
-  // Only show first 3 articles
-  const displayArticles = newsArticles.slice(0, 3);
+  const displayArticles = getBlogArticlesSorted().slice(0, 3);
 
   return (
     <section className="py-16 bg-white" id="blog">
@@ -51,26 +50,30 @@ export default function NewsSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
-              className="group bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
             >
-              <div className="h-[160px] relative overflow-hidden">
-                <Image
-                  src={article.image}
-                  alt={article.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  unoptimized
-                />
-                <span className="absolute top-3 left-3 text-[10px] font-semibold text-white bg-primary-blue/90 px-2 py-1 rounded">
-                  {article.category}
-                </span>
-              </div>
-              <div className="p-4">
-                <p className="text-xs text-gray-400 mb-2">{article.date}</p>
-                <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 group-hover:text-primary-blue transition-colors">
-                  {article.title}
-                </h3>
-              </div>
+              <Link
+                href={`/blog/${article.id}`}
+                className="group block bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
+              >
+                <div className="h-[160px] relative overflow-hidden">
+                  <Image
+                    src={article.image}
+                    alt={article.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    unoptimized
+                  />
+                  <span className="absolute top-3 left-3 text-[10px] font-semibold text-white bg-primary-blue/90 px-2 py-1 rounded">
+                    {article.category}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <p className="text-xs text-gray-400 mb-2">{article.date}</p>
+                  <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 group-hover:text-primary-blue transition-colors">
+                    {article.title}
+                  </h3>
+                </div>
+              </Link>
             </motion.article>
           ))}
         </div>
