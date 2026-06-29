@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# drizzle-kit migration metadata (the SQL files in drizzle/ are committed;
+# only the cache + journal artifacts that change per-developer are ignored)
+/drizzle/meta/_journal.json.bak
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
