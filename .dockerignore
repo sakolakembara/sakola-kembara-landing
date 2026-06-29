@@ -1,0 +1,49 @@
+# Keep the build context lean. Source + lockfile + content/ + public/ ship.
+
+# Dependency directories
+node_modules
+.pnp
+.pnp.*
+
+# Next.js build output (re-generated inside the image)
+.next
+out
+
+# Git / GitHub
+.git
+.gitignore
+.github
+
+# Docs (not needed at runtime)
+docs
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Env files — these come from the runtime environment, never the image
+.env
+.env.*
+!.env.example
+
+# Docker config (not needed inside the image)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+Caddyfile
+
+# Misc build artifacts
+coverage
+*.tsbuildinfo
+next-env.d.ts
+
+# Claude / IDE local
+.claude
