@@ -16,11 +16,9 @@
 # next.js
 /.next/
 /out/
-.deploy/
 
 # production
 /build
-deploy.zip
 
 # misc
 .DS_Store
@@ -44,7 +42,3 @@ next-env.d.ts
 
 # claude code local settings
 .claude/settings.local.json
-
-# deploy SSH keys (scripts/generate-ssh-key.sh)
-scripts/credentials/*
-!scripts/credentials/.gitkeep

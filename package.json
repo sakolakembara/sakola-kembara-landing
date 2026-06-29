@@ -7,9 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy:cpanel": "bash scripts/deploy-cpanel.sh",
-    "build:deploy": "bash scripts/deploy-cpanel.sh --build-only",
-    "upload:cpanel": "bash scripts/upload-cpanel.sh",
     "scrape:blog": "node scripts/scrape-blog.mjs",
     "blog:sync": "node scripts/blog-sync-from-markdown.mjs"
   },
