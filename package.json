@@ -18,13 +18,13 @@
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",
-    "drizzle-orm": "^0.36.4",
+    "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.27.1",
     "gray-matter": "^4.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "marked": "^18.0.4",
-    "next": "16.1.4",
+    "next": "^16.2.9",
     "pg": "^8.13.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -33,6 +33,9 @@
     "remark-gfm": "^4.0.1",
     "zod": "^3.23.8"
   },
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -40,9 +43,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/turndown": "^5.0.6",
-    "drizzle-kit": "^0.28.1",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.1.4",
+    "eslint-config-next": "^16.2.9",
     "tailwindcss": "^4",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
