@@ -35,8 +35,24 @@ const getCachedCurrent = unstable_cache(
   { tags: ["announcements"] },
 );
 
+// unstable_cache JSON-serializes the value, which turns Date columns into ISO
+// strings. Re-hydrate so callers can safely call .toLocaleString() etc.
+function hydrateAnnouncement(
+  row: Announcement | null | undefined,
+): Announcement | null {
+  if (!row) return null;
+  return {
+    ...row,
+    startsAt: row.startsAt ? new Date(row.startsAt) : null,
+    endsAt: row.endsAt ? new Date(row.endsAt) : null,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  };
+}
+
 export async function getCurrentAnnouncement(): Promise<Announcement | null> {
-  return getCachedCurrent();
+  const row = await getCachedCurrent();
+  return hydrateAnnouncement(row);
 }
 
 /** Used by the admin list — bypasses the cache to always show fresh data. */
