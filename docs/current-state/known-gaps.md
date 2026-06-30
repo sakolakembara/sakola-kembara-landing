@@ -6,7 +6,6 @@ A running list of things that are missing, broken, or placeholder — as identif
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| **`/kontak` form submit handler** | Not wired | The form UI exists but `<form>` has no `onSubmit`. Hook it up to email or a backend. |
 | **LMS provisioning for accepted students** | Out of MVP | Auto-generated temp credentials, onboarding email with WhatsApp / Zoom links. Planned post-MVP. |
 
 > Items previously in this table — `/laporan`, the announcement strip, the on-site student registration form, and the admin dashboard — have all shipped. See `docs/roadmap/mvp-roadmap.md` for status.
