@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// .env files can't distinguish "unset" from "empty string", and an empty
+// string slips past `.optional()`. Coerce "" → undefined before validation
+// so optional URL/UUID fields don't blow up when left blank.
+const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 const schema = z.object({
   // ----- App -----
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -14,12 +19,21 @@ const schema = z.object({
 
   // ----- Auth (Microsoft Entra ID) -----
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 chars (openssl rand -base64 32)"),
-  AUTH_MICROSOFT_ENTRA_ID_ID: z.string().min(1),
-  AUTH_MICROSOFT_ENTRA_ID_SECRET: z.string().min(1),
-  AUTH_MICROSOFT_ENTRA_ID_TENANT_ID: z.string().uuid(),
+  // Entra credentials are optional in dev — the dev credentials provider
+  // (see AUTH_DEV_PROVIDER_ENABLED) lets us run /admin without Entra wired up.
+  // For production, set all three.
+  AUTH_MICROSOFT_ENTRA_ID_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  AUTH_MICROSOFT_ENTRA_ID_SECRET: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  AUTH_MICROSOFT_ENTRA_ID_TENANT_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+  // Dev-only escape hatch — enables a simple email-only sign-in flow against
+  // existing rows in admin_users. NEVER enable in production.
+  AUTH_DEV_PROVIDER_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 
   // ----- Observability -----
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
 const parsed = schema.safeParse(process.env);

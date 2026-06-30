@@ -36,6 +36,8 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 
 ## Phase 1 — Production deploy + auth foundation
 
+> **Status (2026-06-30):** auth wiring is done in dev (`(public)`/`(admin)` route groups, Auth.js v5, `/login` + admin shell at `/admin`, split-config middleware so Edge runtime doesn't load `pg`). A dev-only Credentials provider gated by `AUTH_DEV_PROVIDER_ENABLED=true` + `NODE_ENV=development` lets us iterate without IT involvement; seed your admin with `npm run seed:admin -- you@sakolakembara.org`. VPS provisioning, first production deploy, and the Microsoft Entra ID app registration remain **deferred** per product call.
+
 **Goal**: the public site is live on the new VPS at `sakolakembara.org`, and the `/admin` route group is gated behind Microsoft Entra ID (even though no admin pages exist yet).
 
 **Deliverables**
