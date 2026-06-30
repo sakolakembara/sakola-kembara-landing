@@ -2,6 +2,12 @@
 
 import { motion } from "framer-motion";
 import { GraduationCap, BookOpen, Users, Sparkles } from "lucide-react";
+import { mapLocations } from "@/lib/data";
+import { ApplicationForm } from "./_application-form";
+
+const activeBranches = mapLocations
+  .filter((l) => l.type === "bimbel")
+  .map((l) => l.name.replace(/^Sakola Kembara /, ""));
 
 const benefits = [
   {
@@ -98,30 +104,33 @@ export default function GabungSiswaPage() {
           </div>
         </section>
 
-        {/* Registration CTA Section */}
-        <section className="py-16 bg-white">
-          <div className="max-w-[800px] mx-auto px-6 text-center">
+        {/* Registration Form Section */}
+        <section id="daftar" className="py-16 md:py-20 bg-white">
+          <div className="max-w-[800px] mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
+              className="text-center mb-10"
             >
-              <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-                Tertarik Menjadi Siswa?
+              <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-3">
+                Formulir Pendaftaran Siswa
               </h2>
-              <p className="text-lg text-gray-600 mb-8">
-                Hubungi tim kami untuk informasi lebih lanjut mengenai proses
-                pendaftaran dan jadwal seleksi di cabang terdekat.
+              <p className="text-base text-gray-600 max-w-[560px] mx-auto">
+                Isi formulir berikut untuk mendaftar sebagai siswa Sakola
+                Kembara. Tim akademik akan menghubungi via email setelah
+                pendaftaranmu ditinjau.
               </p>
-              <div className="flex justify-center">
-                <a
-                  href="mailto:contact@sakolakembara.org?subject=Pendaftaran%20Siswa%20Sakola%20Kembara"
-                  className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
-                >
-                  Hubungi Tim Pendaftaran
-                </a>
-              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <ApplicationForm branches={activeBranches} />
             </motion.div>
           </div>
         </section>

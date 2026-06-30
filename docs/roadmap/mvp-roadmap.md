@@ -173,6 +173,8 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 
 ## Phase 4 — Student application flow (MVP priority #3-5)
 
+> **Status (2026-06-30):** public form shipped on `/gabung-siswa`, Zod-validated, honeypot + 1-hour-per-email duplicate guard, writes to `student_applications` + `audit_log`. Admin list at `/admin/applications` with status-filter pills and counts; admin detail at `/admin/applications/[id]` with WhatsApp deep-link + status-change form that updates `reviewed_by` + `reviewed_at` and writes an audit entry. `lib/audit.ts` helper landed; every admin mutation goes through it. **Deferred:** CSV export, pagination beyond 50 rows.
+
 **Goal**: prospective students fill out the form on `/gabung-siswa`; admins review and accept/reject from the dashboard.
 
 **Deliverables**
