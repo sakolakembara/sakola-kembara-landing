@@ -43,6 +43,20 @@ const devProvider = devProviderActive
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [...authConfig.providers, ...devProvider],
+  events: {
+    async signIn({ user }) {
+      const email = user?.email?.toLowerCase();
+      if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) return;
+      try {
+        await db
+          .update(adminUsers)
+          .set({ lastLoginAt: new Date() })
+          .where(eq(adminUsers.email, email));
+      } catch (err) {
+        console.error("[auth] failed to update lastLoginAt:", err);
+      }
+    },
+  },
 });
 
 export { ALLOWED_DOMAIN };
