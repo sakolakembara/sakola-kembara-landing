@@ -15,8 +15,14 @@ export default async function PublicLayout({
   const style = { "--hero-top": heroTop } as CSSProperties;
   return (
     <div style={style}>
+      <a
+        href="#konten-utama"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-blue focus:text-white focus:rounded-lg focus:font-semibold focus:shadow-lg"
+      >
+        Lewat ke konten utama
+      </a>
       <Navbar announcement={announcement} />
-      {children}
+      <div id="konten-utama">{children}</div>
       <Footer />
     </div>
   );

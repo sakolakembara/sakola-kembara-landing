@@ -105,8 +105,12 @@ export default function DonasiPage() {
                   <img
                     src={QRIS_IMAGE}
                     alt="QRIS Sakola Kembara"
+                    width={280}
+                    height={373}
+                    loading="lazy"
+                    decoding="async"
                     onError={() => setQrUnavailable(true)}
-                    className="mx-auto mb-6 w-full max-w-[280px] rounded-2xl"
+                    className="mx-auto mb-6 w-full max-w-[280px] aspect-[3/4] rounded-2xl"
                   />
                 )}
 

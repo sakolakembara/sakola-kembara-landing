@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Lora, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
@@ -20,6 +20,12 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 const DEFAULT_TITLE = "Sakola Kembara - Pendidikan Untuk Semua";
 const DEFAULT_DESCRIPTION =
   "Membuka pintu pendidikan tinggi untuk setiap anak Indonesia. Program bimbingan belajar gratis dan pendampingan intensif untuk siswa dari daerah terpencil dan keluarga kurang mampu.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#122E76",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
