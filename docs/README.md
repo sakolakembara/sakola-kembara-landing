@@ -21,7 +21,8 @@ A factual snapshot of the codebase. Update these as the system changes.
 - [`current-state/homepage-sections.md`](current-state/homepage-sections.md) — Section-by-section breakdown of the homepage.
 - [`current-state/content-and-data.md`](current-state/content-and-data.md) — Where copy and data live, and what is hard-coded vs. generated.
 - [`current-state/blog-pipeline.md`](current-state/blog-pipeline.md) — How the markdown blog is scraped, synced, and rendered.
-- [`current-state/deployment.md`](current-state/deployment.md) — VPS + Docker Compose deploy flow (planned target; cPanel has been removed).
+- [`current-state/deployment.md`](current-state/deployment.md) — Steady-state ops cheat sheet: deploy commands, manual ops, rollback. Pair with the launch runbook for first-time provisioning.
+- [`runbook/launch.md`](runbook/launch.md) — **Sequential first-launch recipe.** Fresh VPS → Entra app registration → CI secrets → first deploy on a staging subdomain → content swap → DNS cutover → post-launch checklist → rollback paths.
 - [`current-state/known-gaps.md`](current-state/known-gaps.md) — Placeholder content, missing dashboard features, work the MVP still owes.
 
 ### 3. `design/` — The visual & UX brief
