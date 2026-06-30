@@ -1,24 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ALLOWED_DOMAIN, auth, signOut } from "@/auth";
+import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { Sidebar } from "./_sidebar";
 
 export const metadata: Metadata = {
   title: { default: "Admin", template: "%s | Admin Sakola Kembara" },
   robots: { index: false, follow: false },
 };
-
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/applications", label: "Pendaftar" },
-  { href: "/admin/messages", label: "Pesan" },
-  { href: "/admin/announcements", label: "Pengumuman" },
-  { href: "/admin/reports", label: "Laporan" },
-  { href: "/admin/blog", label: "Blog" },
-  { href: "/admin/team", label: "Tim" },
-  { href: "/admin/audit", label: "Aktivitas" },
-  { href: "/admin/settings", label: "Pengaturan" },
-];
 
 export default async function AdminLayout({
   children,
@@ -33,38 +21,11 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="h-dvh flex bg-gray-50 overflow-hidden">
-      <aside className="w-60 shrink-0 bg-gray-900 text-white p-6 flex flex-col">
-        <div className="font-[var(--font-display)] text-xl mb-8">SK Admin</div>
-        <nav className="flex flex-col gap-1 text-sm">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="px-3 py-2 rounded-md text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <form
-          className="mt-auto pt-6 border-t border-white/10"
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/" });
-          }}
-        >
-          <div className="text-xs text-gray-500 mb-2 truncate" title={session.user.email!}>
-            {session.user.email}
-          </div>
-          <button
-            type="submit"
-            className="text-sm text-gray-300 hover:text-white transition-colors"
-          >
-            Keluar
-          </button>
-        </form>
-      </aside>
+    // Column on mobile (top bar above main), row on desktop (sidebar left of
+    // main). The sidebar component positions itself fixed on mobile so it
+    // doesn't contribute to the column height when the drawer is closed.
+    <div className="h-dvh flex flex-col md:flex-row bg-gray-50 overflow-hidden">
+      <Sidebar email={session.user.email!} />
       {/* main is the scroll container. Padding is delegated to each page so
           editor pages can have a sticky header that truly pins to top: 0. */}
       <main className="flex-1 overflow-auto">{children}</main>
