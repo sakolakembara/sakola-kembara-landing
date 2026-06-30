@@ -119,12 +119,10 @@ export default function GabungSiswaPage() {
               </p>
               <div className="flex justify-center">
                 <a
-                  href="https://sakolakembara.org/daftar"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="mailto:contact@sakolakembara.org?subject=Pendaftaran%20Siswa%20Sakola%20Kembara"
                   className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
                 >
-                  Daftar Gratis Sekarang
+                  Hubungi Tim Pendaftaran
                 </a>
               </div>
             </motion.div>

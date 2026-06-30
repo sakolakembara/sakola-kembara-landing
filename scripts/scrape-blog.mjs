@@ -1,6 +1,24 @@
 #!/usr/bin/env node
 /**
- * Scrape blog from WordPress API → download images → markdown + JSON + content/blog/*.md
+ * One-time migration: scrape blog from the legacy WordPress API
+ * (https://sakolakembara.org/wp-json/wp/v2) → download images to
+ * public/blog/images/ → emit content/blog/*.md + lib/blog-posts.json.
+ *
+ * STATUS: this is a migration tool, NOT an ongoing sync. Once the
+ * WordPress site is decommissioned the API endpoint will return 404 and
+ * re-running this script will fail. The markdown files under content/blog/
+ * are the source of truth from then on; new posts go through the admin
+ * dashboard (Phase 7 of docs/roadmap/mvp-roadmap.md), which writes back
+ * to content/blog/<slug>.md and reruns the in-process equivalent of
+ * `npm run blog:sync`.
+ *
+ * Day-to-day flow:
+ *   - Edit markdown in content/blog/, run `npm run blog:sync` to refresh
+ *     lib/blog-posts.json. Do NOT run this script in normal operation.
+ *
+ * To refresh a few posts from WordPress while the legacy site still exists:
+ *   - Delete content/blog/<slug>.md for the posts you want refreshed and
+ *     re-run this script. Untouched posts keep their existing markdown.
  */
 
 import fs from "fs";
