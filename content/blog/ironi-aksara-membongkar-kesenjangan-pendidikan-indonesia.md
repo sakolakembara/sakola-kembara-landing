@@ -36,7 +36,7 @@ Perekonomian keluarga masyarakat desa memang cenderung lebih rendah dibandingkan
 
 Wilayah perdesaan yang sering dipandang sebelah mata, disebabkan kondisi geografisnya, seperti tanah yang tidak rata dan medan yang terjal. Akibatnya, sulit membangun perusahaan, bangunan perekonomian, dan infrastruktur lainnya. Kondisi demikian akhirnya merugikan masyarakat desa, mereka dijauhkan dari lapangan pekerjaan yang layak. 
 
-**Baca Juga:** [](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)**[Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/ "Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua")**
+**Baca Juga:** [](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)**[Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua "Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua")**
 
 Tidak mendapatkan pekerjaan dan upah yang layak akan menimbulkan kemiskinan. Kemiskinan ini semakin lama akan berlarut-larut menjadi lingkaran setan, dan akan menjadi bom waktu bagi segala aspek kebutuhan hidup.
 

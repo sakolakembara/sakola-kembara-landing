@@ -51,4 +51,4 @@ Selain kesadaran sosial yang meningkat, Dewi juga mendapatkan bonus lain yang ta
 
 Cerita Dewi mengingatkan kita bahwa menjadi volunteer bukan hanya tentang memberi, tetapi juga tentang menerima. Di tengah hujan dan dengan hanya dua siswa, Dewi menemukan esensi dari mengajar, bahwa semangat belajar tidak bisa dipadamkan oleh cuaca buruk atau jumlah yang sedikit.
 
-Jika Akmal dan Pute bisa datang di tengah hujan deras demi mengejar impian mereka, mengapa kita tidak bisa memberikan sedikit waktu kita sebagai [volunteer](https://sakolakembara.org/apply) untuk membantu lebih banyak anak seperti mereka meraih masa depan yang lebih cerah?
+Jika Akmal dan Pute bisa datang di tengah hujan deras demi mengejar impian mereka, mengapa kita tidak bisa memberikan sedikit waktu kita sebagai [volunteer](/gabung-siswa) untuk membantu lebih banyak anak seperti mereka meraih masa depan yang lebih cerah?

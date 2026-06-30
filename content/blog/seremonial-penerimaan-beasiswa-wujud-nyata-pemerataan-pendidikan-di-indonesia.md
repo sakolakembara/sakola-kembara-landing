@@ -36,6 +36,6 @@ Para siswa yang hadir juga berbahagia, dan senang terhadap seluruh rangkaian pro
 
 **Baca Juga:** 
 
--   [**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
--   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif/)
+-   [**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
+-   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif)

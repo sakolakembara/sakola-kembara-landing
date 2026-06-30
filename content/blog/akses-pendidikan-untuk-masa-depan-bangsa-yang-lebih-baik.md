@@ -21,7 +21,7 @@ modifiedISO: '2026-02-24'
 ---
 ![](/blog/images/2026/02/IMG_15751-1-768x1024.jpg)
 
-[Sakola Kembara](https://sakolakembara.org/) –  Akses pendidikan merupakan fondasi utama dalam membangun masyarakat yang maju, adil, dan sejahtera. Tanpa akses pendidikan yang merata, kesenjangan sosial akan semakin lebar dan peluang generasi muda untuk berkembang menjadi terbatas. Oleh karena itu, pentingnya akses pendidikan bukan hanya isu sosial, tetapi juga investasi jangka panjang bagi masa depan bangsa.
+[Sakola Kembara](/) –  Akses pendidikan merupakan fondasi utama dalam membangun masyarakat yang maju, adil, dan sejahtera. Tanpa akses pendidikan yang merata, kesenjangan sosial akan semakin lebar dan peluang generasi muda untuk berkembang menjadi terbatas. Oleh karena itu, pentingnya akses pendidikan bukan hanya isu sosial, tetapi juga investasi jangka panjang bagi masa depan bangsa.
 
 Di berbagai negara, akses pendidikan yang berkualitas menjadi indikator utama kemajuan. Negara yang berhasil memperluas akses pendidikan umumnya memiliki tingkat kesejahteraan, stabilitas ekonomi, dan kualitas sumber daya manusia yang lebih tinggi.
 
@@ -154,4 +154,4 @@ Melalui Sakola Kembara mereka kembali bisa memiliki harapan untuk mendapatkan ci
 
 ## **Dukung Perjalanan Kami** 
 
-Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](https://sakolakembara.org). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!
+Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](/). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!

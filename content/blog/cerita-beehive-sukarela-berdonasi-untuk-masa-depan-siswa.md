@@ -43,7 +43,7 @@ Isu yang ia lihat dalam masalah pendidikan ini membuatnya peduli untuk berkontri
 
 ## Ekspektasi Sukarela Berdonasi di Sakola Kembara
 
-Selama sukarela [berdonasi rutin](https://sakolakembara.org/cerita/cerita-hilmi-donasi-rutin-untuk-dukung-pemerataan-pendidikan-di-indonesia/ "berdonasi rutin") di Sakola Kembara, BeeHive mengaku ada harapan serta ekspektasi dari apa yang ia upayakan itu. Salah satunya ialah manfaat yang berkepanjangan bagi para siswa yang mengikuti program pendidikan di Sakola Kembara.
+Selama sukarela [berdonasi rutin](/blog/cerita-hilmi-donasi-rutin-untuk-dukung-pemerataan-pendidikan-di-indonesia "berdonasi rutin") di Sakola Kembara, BeeHive mengaku ada harapan serta ekspektasi dari apa yang ia upayakan itu. Salah satunya ialah manfaat yang berkepanjangan bagi para siswa yang mengikuti program pendidikan di Sakola Kembara.
 
 > “Semoga donasi ini dapat memberikan manfaat baik untuk siswa itu sendiri ataupun untuk sekelilingnya. Aku berharap semoga bisa menjadi manfaat untuk siswa, pengurus, dan sekitarnya, baik di masa kini maupun masa depan,” ujarnya.
 
@@ -61,4 +61,4 @@ Agar Sakola Kembara dapat lebih bertumbuh dan berkembang, ia juga memberikan sar
 
 Dalam hal ini, divisi Learning & Development dan Social Media dapat berkolaborasi. Implementasinya bisa dalam bentuk pembuatan konten edukatif yang konsisten agar lebih membantu banyak orang.
 
-Mau sukarela berdonasi juga untuk masa depan siswa seperti BeeHive? Langsung saja [**daftar jadi donasi tetap**](https://sakolakembara.org) di Sakola Kembara.
+Mau sukarela berdonasi juga untuk masa depan siswa seperti BeeHive? Langsung saja [**daftar jadi donasi tetap**](/) di Sakola Kembara.

@@ -36,7 +36,7 @@ Bagi Caca, menjadi seorang mentor bukan sekadar kegiatan mengajar materi UTBK. I
 
 Motivasinya sederhana, yaitu senang melihat seseorang berhasil mencapai tujuan yang sebelumnya terasa sulit. Dalam proses itu, peran mentor menjadi pendamping yang membantu siswa tetap percaya pada kemampuannya sendiri.
 
-**Baca Juga:** [**Mengajar sebagai Investasi Kebaikan: Perjalanan Muhammad Ilham Bersama Sakola Kembara – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](https://sakolakembara.org/cerita/mengajar-sebagai-investasi-kebaikan-perjalanan-muhammad-ilham-bersama-sakola-kembara/)
+**Baca Juga:** [**Mengajar sebagai Investasi Kebaikan: Perjalanan Muhammad Ilham Bersama Sakola Kembara – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](/blog/mengajar-sebagai-investasi-kebaikan-perjalanan-muhammad-ilham-bersama-sakola-kembara)
 
 ## **Diskusi Terbuka Membuat Proses Belajar Lebih Hidup**
 

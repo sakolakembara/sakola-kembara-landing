@@ -67,6 +67,6 @@ Kamu juga bisa punya perubahan besar dalam pendidikan seperti Jeje, Sahabat Kemb
 
 **Baca Juga:**
 
--   [Transportasi Terbatas Bukan Halangan: Cerita Rayhan Menjemput PTN Impian](https://sakolakembara.org/cerita/transportasi-terbatas-bukan-halangan-cerita-rayhan-menjemput-ptn-impian/ "Transportasi Terbatas Bukan Halangan: Cerita Rayhan Menjemput PTN Impian")
--   [Cerita Jidan: Cara Menaklukkan Hambatan Masuk PTN](https://sakolakembara.org/cerita/cerita-jidan-cara-menaklukkan-hambatan-masuk-ptn/ "Cerita Jidan: Cara Menaklukkan Hambatan Masuk PTN ") 
--   [Usaha Meika Belajar Bangkit Dari Kondisi Sulit](https://sakolakembara.org/cerita/usaha-meika-belajar-bangkit-dari-kondisi-sulit/ "Usaha Meika Belajar Bangkit Dari Kondisi Sulit")
+-   [Transportasi Terbatas Bukan Halangan: Cerita Rayhan Menjemput PTN Impian](/blog/transportasi-terbatas-bukan-halangan-cerita-rayhan-menjemput-ptn-impian "Transportasi Terbatas Bukan Halangan: Cerita Rayhan Menjemput PTN Impian")
+-   [Cerita Jidan: Cara Menaklukkan Hambatan Masuk PTN](/blog/cerita-jidan-cara-menaklukkan-hambatan-masuk-ptn "Cerita Jidan: Cara Menaklukkan Hambatan Masuk PTN ") 
+-   [Usaha Meika Belajar Bangkit Dari Kondisi Sulit](/blog/usaha-meika-belajar-bangkit-dari-kondisi-sulit "Usaha Meika Belajar Bangkit Dari Kondisi Sulit")

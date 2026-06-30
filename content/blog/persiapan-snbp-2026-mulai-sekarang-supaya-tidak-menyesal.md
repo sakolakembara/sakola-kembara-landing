@@ -27,7 +27,7 @@ Persiapan SNBP harus dimulai dengan pemahaman mendalam tentang sistem seleksinya
 
 Siswa tidak lagi hanya mengandalkan nilai rapor, melainkan juga harus memiliki nilai Tes Kemampuan Akademik yang sudah dilaksanakan pada November 2025 oleh Kemendikdasmen.
 
-Penilaian dalam persiapan SNBP mencakup prestasi akademik yang tercatat dalam Pangkalan Data Sekolah dan Siswa, prestasi non-akademik seperti kejuaraan dan sertifikat, serta kesesuaian pilihan program studi dengan minat dan kemampuan siswa. Memahami komponen penilaian ini menjadi bagian penting dari persiapan [SNBP](https://sakolakembara.org/tips/8-tips-meraih-nilai-terbaik-di-snbt-nanti/) yang efektif.
+Penilaian dalam persiapan SNBP mencakup prestasi akademik yang tercatat dalam Pangkalan Data Sekolah dan Siswa, prestasi non-akademik seperti kejuaraan dan sertifikat, serta kesesuaian pilihan program studi dengan minat dan kemampuan siswa. Memahami komponen penilaian ini menjadi bagian penting dari persiapan [SNBP](/blog/8-tips-meraih-nilai-terbaik-di-snbt-nanti) yang efektif.
 
 ## **Jadwal Penting dalam Persiapan SNBP 2026**
 

@@ -11,6 +11,8 @@ import {
   htmlToMarkdown,
   buildImageMap,
   applyImageMapToArticle,
+  markdownToHtml,
+  rewriteSakemUrlsInMarkdown,
   writeMarkdownFile,
   writeBlogJson,
 } from "./lib/blog-pipeline.mjs";
@@ -124,10 +126,32 @@ async function main() {
     `  Images: ${total} unique URLs → ${downloaded} downloaded, ${skipped} cached, ${failed} failed`
   );
 
-  console.error("3/4 Converting content → local paths + markdown...");
+  console.error("3/5 Converting content → local paths + markdown...");
   articles = articles.map((a) => applyImageMapToArticle(a, urlMap));
 
-  console.error("4/4 Writing content/blog/*.md and lib/blog-posts.json...");
+  console.error("4/5 Rewriting WordPress URLs to new-site routes...");
+  const unknownPatterns = new Map();
+  articles = articles.map((a) => {
+    const { text, unknown } = rewriteSakemUrlsInMarkdown(a.contentMarkdown);
+    for (const u of unknown) {
+      if (!unknownPatterns.has(u)) unknownPatterns.set(u, []);
+      unknownPatterns.get(u).push(a.id);
+    }
+    return { ...a, contentMarkdown: text, content: markdownToHtml(text) };
+  });
+  if (unknownPatterns.size > 0) {
+    console.error(
+      `  WARNING: ${unknownPatterns.size} unmapped sakolakembara.org pattern(s) left in place:`
+    );
+    for (const [pattern, slugs] of unknownPatterns) {
+      const sample = slugs.slice(0, 3).join(", ");
+      const more = slugs.length > 3 ? `, +${slugs.length - 3} more` : "";
+      console.error(`    ${pattern}`);
+      console.error(`      in: ${sample}${more}`);
+    }
+  }
+
+  console.error("5/5 Writing content/blog/*.md and lib/blog-posts.json...");
   for (const article of articles) {
     writeMarkdownFile(article);
   }

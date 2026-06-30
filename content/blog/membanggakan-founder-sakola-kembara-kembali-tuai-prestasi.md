@@ -25,7 +25,7 @@ modifiedISO: '2025-12-11'
 
 ## **Tentang Sakola Kembara**
 
-Sakola kembara namanya, didirikan pada tahun 2021 oleh Rommy Adany Putra Afauly bersama tiga temannya. [Rommi](https://sakolakembara.org/cerita/perjalanan-seorang-founder/) adalah lulusan Teknik Mesin ITB yang memiliki prestasi gemilang. Ide mendirikan Sakola Kembara muncul saat Rommi mengunjungi pelosok Bandung Barat. Disana, ia menemukan siswa-siswi SMA dari keluarga miskin yang tidak tahu ada jenjang pendidikan kuliah. Cita-cita tertinggi mereka hanya menjadi kasir supermarket. Bahkan guru-guru di sekolah mereka melarang siswa untuk kuliah karena dianggap tidak realistis. Berangkat dari kejadian ini, beliau semakin bersemangat untuk mewujudkan mimpi anak – anak di Indonesia dalam meraih masa depan yang cerah.
+Sakola kembara namanya, didirikan pada tahun 2021 oleh Rommy Adany Putra Afauly bersama tiga temannya. [Rommi](/blog/perjalanan-seorang-founder) adalah lulusan Teknik Mesin ITB yang memiliki prestasi gemilang. Ide mendirikan Sakola Kembara muncul saat Rommi mengunjungi pelosok Bandung Barat. Disana, ia menemukan siswa-siswi SMA dari keluarga miskin yang tidak tahu ada jenjang pendidikan kuliah. Cita-cita tertinggi mereka hanya menjadi kasir supermarket. Bahkan guru-guru di sekolah mereka melarang siswa untuk kuliah karena dianggap tidak realistis. Berangkat dari kejadian ini, beliau semakin bersemangat untuk mewujudkan mimpi anak – anak di Indonesia dalam meraih masa depan yang cerah.
 
 ## **Usaha Yang Membuahkan Hasil**
 
@@ -38,10 +38,10 @@ Innovator Muda Award adalah penghargaan yang diberikan kepada anak muda yang men
 
 ### **Dukung Perjalanan Kami** 
 
-Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](https://sakolakembara.org). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia! 
+Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](/). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia! 
 
 **Baca Juga:** 
 
--   [**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
--   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif/)
+-   [**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
+-   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif)

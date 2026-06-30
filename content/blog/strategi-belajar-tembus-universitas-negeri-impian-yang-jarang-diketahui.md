@@ -39,7 +39,7 @@ Duduk berjam-jam dengan buku terbuka tidak selalu berarti efektif untuk cara bel
 
 Cara ini melatih otak bekerja terarah dan membuat proses belajar terasa lebih ringan. Selain akademik meningkat, sahabat kembara juga sedang melatih disiplin diri yang sangat dibutuhkan saat sudah menjadi mahasiswa Universitas Negeri nanti.
 
-**Baca Juga:** [**Tidak Cukup Belajar Keras: Ini Cara Persiapan TKA Tanpa Tekanan Berlebihan – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](https://sakolakembara.org/education/tidak-cukup-belajar-keras-ini-cara-persiapan-tka-tanpa-tekanan-berlebihan/)
+**Baca Juga:** [**Tidak Cukup Belajar Keras: Ini Cara Persiapan TKA Tanpa Tekanan Berlebihan – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](/blog/tidak-cukup-belajar-keras-ini-cara-persiapan-tka-tanpa-tekanan-berlebihan)
 
 ## **Latihan Mental Sama Pentingnya dengan Latihan Soal**
 

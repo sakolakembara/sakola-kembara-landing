@@ -30,9 +30,9 @@ Pendidikan bukan sekadar proses belajar membaca, menulis, dan berhitung. Ia adal
 
 **Baca Juga:** 
 
--   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](https://sakolakembara.org/news/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung/)
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
--   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif/)
+-   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](/blog/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
+-   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif)
 
 Tokoh pendidikan nasional, Ki Hajar Dewantara, pernah menyampaikan bahwa pendidikan adalah tuntunan dalam hidup tumbuhnya anak-anak. Artinya, pendidikan harus memerdekakan, bukan mengekang. Guru berperan sebagai pembimbing yang membantu peserta didik menemukan potensi terbaik dalam dirinya.
 

@@ -35,7 +35,7 @@ Dari literatur diatas kita telah mengetahui bahwa pendidikan adalah sebuah usaha
 
 Namun, kita kembali dikejutkan dengan berbagai kenyataan yang ada, Seperti banyaknya daerah di Indonesia yang justru penduduknya belum merasakan pendidikan yang layak. Kondisi geografis, keterbatasan akses, dan fasilitas yang ada, menjadi salah satu hambatan bagi penduduk di daerah terpencil untuk bisa merasakan pendidikan yang layak.
 
-**Baca Juga:** [**Pendidikan untuk Semua: Tantangan dan Solusi dalam Pemerataan Akses Pendidikan**](https://sakolakembara.org/education/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan/)
+**Baca Juga:** [**Pendidikan untuk Semua: Tantangan dan Solusi dalam Pemerataan Akses Pendidikan**](/blog/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan)
 
 ## **Cara Menciptakan Pendidikan Yang Berkualitas**
 
@@ -59,8 +59,8 @@ Pemerintah dan masyarakat perlu bekerja sama untuk memastikan semua anak bisa se
 
 ### 5\. **Meningkatkan Peran Orang Tua, Komunitas, dan Masyarakat**
 
-Pendidikan bukan hanya tanggung jawab sekolah atau guru, karena nyatanya orang tua dan masyarakat memiliki peranan yang besar dalam pendidikan anak. Orang tua bisa mendukung anak-anaknya dengan cara sederhana, seperti membantu mereka belajar di rumah, mendengarkan cerita mereka, dan ikut hadir dalam kegiatan sekolah. Masyarakat juga bisa ikut membantu, misalnya dengan menyumbang buku, memberi pelatihan, menciptakan lingkungan sekitar yang mendukung anak untuk belajar, atau bahkan membentuk komunitas untuk bersama berdaya dan memberdayakan, seperti [Sakola Kembara](https://sakolakembara.org/tentang-kami/), yang sudah berkomitmen memberikan bimbingan gratis untuk anak di Indonesia, dan bahkan sudah mencetak alumni alumni yang bisa tembus ke Universitas ternama di Indonesia
+Pendidikan bukan hanya tanggung jawab sekolah atau guru, karena nyatanya orang tua dan masyarakat memiliki peranan yang besar dalam pendidikan anak. Orang tua bisa mendukung anak-anaknya dengan cara sederhana, seperti membantu mereka belajar di rumah, mendengarkan cerita mereka, dan ikut hadir dalam kegiatan sekolah. Masyarakat juga bisa ikut membantu, misalnya dengan menyumbang buku, memberi pelatihan, menciptakan lingkungan sekitar yang mendukung anak untuk belajar, atau bahkan membentuk komunitas untuk bersama berdaya dan memberdayakan, seperti [Sakola Kembara](/tim), yang sudah berkomitmen memberikan bimbingan gratis untuk anak di Indonesia, dan bahkan sudah mencetak alumni alumni yang bisa tembus ke Universitas ternama di Indonesia
 
 #### **Mari Berdampak Bersama Sakola Kembara**
 
-Saat ini [Sakola Kembara](https://sakolakembara.org/#) sudah banyak membantu anak anak di Indonesia. Hadirnya Sakola Kembara menjadi salah satu solusi dalam memberikan pendidikan yang berkualitas, terutama bagi anak-anak yang belum mampu dan tinggal di daerah terpencil. Mari ikut membantu mewujudkan mimpi anak di Indonesia dengan cara berdonasi melalui [Sakola Kembara](https://docs.google.com/forms/d/e/1FAIpQLSe0wQUmreIspbu75JpHYpuHHYbgVi4FaROcfNTiTvgchCywdQ/viewform), dengan langkah kecil ini, diharapkan bisa meminimalisir keterbatasan akses pendidikan, dan sekaligus sebagai upaya untuk mewujudkan mimpi gagasan Indonesia emas di masa mendatang
+Saat ini [Sakola Kembara](/) sudah banyak membantu anak anak di Indonesia. Hadirnya Sakola Kembara menjadi salah satu solusi dalam memberikan pendidikan yang berkualitas, terutama bagi anak-anak yang belum mampu dan tinggal di daerah terpencil. Mari ikut membantu mewujudkan mimpi anak di Indonesia dengan cara berdonasi melalui [Sakola Kembara](https://docs.google.com/forms/d/e/1FAIpQLSe0wQUmreIspbu75JpHYpuHHYbgVi4FaROcfNTiTvgchCywdQ/viewform), dengan langkah kecil ini, diharapkan bisa meminimalisir keterbatasan akses pendidikan, dan sekaligus sebagai upaya untuk mewujudkan mimpi gagasan Indonesia emas di masa mendatang

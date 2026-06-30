@@ -107,9 +107,9 @@ Tips persiapan kuliah negeri yang paling krusial adalah mengasah kemampuan akade
 
 Selain belajar secara mandiri, ada baiknya kamu ikut les tambahan. _Nah_, Sakola Kembara bisa memberikan para siswa tambahan pembelajaran secara gratis. Di Sakola Kembara akan ada mentor yang akan mengajarkan materi tes masuk PTN. 
 
-Bagi kamu yang tidak memiliki biaya dan berada di daerah terpencil (Bandung, Cirebon, dan sekitarnya) bisa buat ikutan bimbel gratis ini. [**Daftar sekarang**!](https://sakolakembara.org/daftar)
+Bagi kamu yang tidak memiliki biaya dan berada di daerah terpencil (Bandung, Cirebon, dan sekitarnya) bisa buat ikutan bimbel gratis ini. [**Daftar sekarang**!](/gabung-siswa)
 
-**Baca Juga:** [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/ "https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/")
+**Baca Juga:** [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua "/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua")
 
 ## **Jaga Kesehatan Mental dan Fisik Biar Optimal** 
 

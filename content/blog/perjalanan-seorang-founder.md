@@ -64,6 +64,6 @@ Inilah yang membedakan Rommy dari _founder_ lainnya. Baginya, kesuksesan bukan d
 
 Sebagai _founder_ yang berpengalaman membangun gerakan dari nol, Rommy memahami bahwa perubahan besar dimulai dari orang orang yang percaya pada visi yang sama. Ini bukan tentang gaji besar atau jabatan prestisius. Ini tentang berapa banyak masa depan yang dapat diubah. Menjadi bagian dari tim yang dampaknya tidak diukur dari profit margin, melainkan dari senyum anak yang akhirnya memiliki kesempatan setara.
 
-Kalau kamu percaya setiap anak Indonesia berhak menentukan masa depannya sendiri, dan kamu pengen ngerasain jadi bagian dari perubahan yang beneran bermakna, kamu bisa langsung daftar di [Sakola Kembara](http://sakolakembara.org/apply) untuk jadi bagian dari gerakan ini.
+Kalau kamu percaya setiap anak Indonesia berhak menentukan masa depannya sendiri, dan kamu pengen ngerasain jadi bagian dari perubahan yang beneran bermakna, kamu bisa langsung daftar di [Sakola Kembara](/gabung-siswa) untuk jadi bagian dari gerakan ini.
 
 Karena seorang _founder_ sejati bukan diukur dari seberapa besar perusahaannya, melainkan seberapa banyak kehidupan yang dapat disentuh dan diubah menjadi lebih baik.

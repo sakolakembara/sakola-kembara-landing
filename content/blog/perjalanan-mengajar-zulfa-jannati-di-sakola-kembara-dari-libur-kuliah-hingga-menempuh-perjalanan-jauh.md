@@ -40,7 +40,7 @@ Zulfa berusaha memberikan kontribusi terbaik bagi kegiatan pendidikan di Sakola 
 
 Selain menjadi volunteer yang membantu mengajar, Ia juga memiliki beberapa peran lain di Sakola Kembara seperti content creator Tiktok dan mentor bagi siswa.
 
-Baca juga : [Mengajar dan Menginspirasi Bersama Nur Febriyanti di Sakola Kembara](https://sakolakembara.org/cerita/mengajar-dan-menginspirasi-bersama-nur-febriyati-di-sakola-kembara/)
+Baca juga : [Mengajar dan Menginspirasi Bersama Nur Febriyanti di Sakola Kembara](/blog/mengajar-dan-menginspirasi-bersama-nur-febriyati-di-sakola-kembara)
 
 ## **Mengisi Libur Kuliah dengan Mengajar**
 

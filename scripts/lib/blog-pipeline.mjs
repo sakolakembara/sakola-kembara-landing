@@ -112,6 +112,81 @@ export function collectUrlVariants(url) {
   return [...variants].filter(Boolean);
 }
 
+// ---------------------------------------------------------------------------
+// WordPress → new-site URL rewriting
+// ---------------------------------------------------------------------------
+// Internal blog links inside content/blog/*.md still point at the legacy
+// WordPress paths (/cerita/<slug>/, /education/<slug>/, etc.). After the
+// cutover, sakolakembara.org resolves to this Next.js site, where those paths
+// 404. Rewrite them at sync time so the markdown source is portable and the
+// rendered HTML doesn't depend on legacy redirects.
+
+const SAKEM_LINK_RE = /https?:\/\/(?:www\.)?sakolakembara\.org(?:\/[^\s)\]"'<>]*)?/gi;
+
+const CATEGORY_PREFIX_RE =
+  /^\/(?:cerita|education|news|tips|testimonials|career|kiat-kiat)\/([^/]+)\/?$/i;
+
+/**
+ * Map a WordPress-era pathname (without scheme/host) to its new-site route.
+ * Returns null when the path is unknown — callers should leave the URL
+ * untouched and surface the pattern so we can extend the mapping.
+ */
+export function mapSakemPath(pathname) {
+  const p = pathname || "/";
+  if (p === "" || p === "/") return "/";
+
+  const m = p.match(CATEGORY_PREFIX_RE);
+  if (m) return `/blog/${m[1]}`;
+
+  if (/^\/donasi\/?$/i.test(p)) return "/donasi";
+  if (/^\/(?:daftar|apply)\/?$/i.test(p)) return "/gabung-siswa";
+  if (/^\/tentang-kami\/?$/i.test(p)) return "/tim";
+  if (/^\/blog(?:\/[^?#]*)?$/i.test(p)) return p.replace(/\/$/, "");
+
+  return null;
+}
+
+/**
+ * Rewrite every sakolakembara.org URL in `text` to its new-site equivalent.
+ * Preserves query strings and fragments. wp-content / wp-admin / wp-json paths
+ * are left alone (the image pipeline owns those).
+ *
+ * Returns { text, unknown } so callers can log unmapped patterns instead of
+ * silently dropping them.
+ */
+export function rewriteSakemUrlsInMarkdown(text) {
+  if (!text) return { text: text ?? "", unknown: [] };
+
+  const unknown = new Set();
+  const rewritten = text.replace(SAKEM_LINK_RE, (full) => {
+    let parsed;
+    try {
+      parsed = new URL(full);
+    } catch {
+      unknown.add(full);
+      return full;
+    }
+
+    const p = parsed.pathname;
+    if (
+      p.startsWith("/wp-content/") ||
+      p.startsWith("/wp-admin/") ||
+      p.startsWith("/wp-json/")
+    ) {
+      return full;
+    }
+
+    const mapped = mapSakemPath(p);
+    if (mapped === null) {
+      unknown.add(full);
+      return full;
+    }
+    return `${mapped}${parsed.search}${parsed.hash}`;
+  });
+
+  return { text: rewritten, unknown: [...unknown] };
+}
+
 export function replaceUrlsInText(text, urlMapOrEntries) {
   let out = text;
   const entries = (

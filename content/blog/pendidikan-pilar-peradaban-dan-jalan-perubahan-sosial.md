@@ -45,7 +45,7 @@ Teori konflik dalam sosiologi menjelaskan bahwa kelompok dominan sering kali men
 
 **Baca Juga:** 
 
--   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](https://sakolakembara.org/news/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung/)
+-   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](/blog/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung)
 
 Di sisi lain, pendidikan juga membentuk kesadaran kritis. Individu yang terdidik cenderung lebih peka terhadap ketidakadilan sosial dan lebih aktif dalam mendorong perubahan. Dalam konteks ini, pendidikan bukan hanya sarana memperoleh pekerjaan, tetapi juga sarana membangun masyarakat yang demokratis dan berkeadaban.
 
@@ -62,4 +62,4 @@ Pendidikan adalah investasi jangka panjang bagi kemajuan bangsa. Ia membentuk ca
 Dengan menjadikan pendidikan sebagai prioritas utama, sebuah bangsa tidak hanya membangun sumber daya manusia, tetapi juga membangun peradaban yang bermartabat.
 
   
-Sakola Kembara sebagai organisasi pendidikan non-formal [masuk PTN](https://sakolakembara.org/tips/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal/), terbuka untuk menerima siswa baru dan berkolaborasi dengan _stakeholders_. [Hubungi kami](https://instagram.com/sakolakembara) untuk meningkatkan pendidikan di daerah tertinggal.
+Sakola Kembara sebagai organisasi pendidikan non-formal [masuk PTN](/blog/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal), terbuka untuk menerima siswa baru dan berkolaborasi dengan _stakeholders_. [Hubungi kami](https://instagram.com/sakolakembara) untuk meningkatkan pendidikan di daerah tertinggal.

@@ -25,7 +25,7 @@ Pada awalnya Angkasa bahkan tidak berniat mendaftar. Trauma membuatnya ragu untu
 
 ## **Akar Empati yang Menumbuhkan Tekad**
 
-Beruntung Angkasa lolos melalui jalur [SNBP](https://sakolakembara.org/tips/persiapan-snbp-2026-mulai-sekarang-supaya-tidak-menyesal/), namun kesulitan yang pernah dialami itu tidak pernah hilang dari ingatannya. Pengalaman itulah yang menjadi benih kemauan kuat dalam dirinya. Ia paham betul sulitnya belajar tanpa arah, tanpa bimbingan yang memadai. Perasaan empati terhadap anak-anak yang mengalami kesulitan serupa mendorongnya untuk mengambil langkah nyata.
+Beruntung Angkasa lolos melalui jalur [SNBP](/blog/persiapan-snbp-2026-mulai-sekarang-supaya-tidak-menyesal), namun kesulitan yang pernah dialami itu tidak pernah hilang dari ingatannya. Pengalaman itulah yang menjadi benih kemauan kuat dalam dirinya. Ia paham betul sulitnya belajar tanpa arah, tanpa bimbingan yang memadai. Perasaan empati terhadap anak-anak yang mengalami kesulitan serupa mendorongnya untuk mengambil langkah nyata.
 
 Bukan sekadar simpati dari kejauhan, tetapi terjun langsung untuk membantu meringankan beban mereka. “Karena aku pernah merasakan sulitnya belajar sendiri dan aku ingin membantu mereka dengan cara meringankan beban mereka yaitu membantu mengarahkan mereka,” jelasnya dengan tulus.
 

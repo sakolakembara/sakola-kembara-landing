@@ -30,7 +30,7 @@ Sakola Kembara sendiri merupakan yayasan nirlaba yang bergerak di bidang pendidi
 
 Jeany lahir dan tumbuh dalam keluarga yang sederhana. Namun, keterbatasan ekonomi tidak pernah memadamkan harapannya untuk terus mengejar bangku sekolah. Hal ini didasari oleh pengalaman pribadinya melihat bagaimana pendidikan menjadi katalisator perubahan besar.
 
-**Baca Juga:** [**Alarm Bagi Pendidikan! Turunnya Nilai TKA dan Solusi Nyata di Pelosok Negeri**](https://sakolakembara.org/education/alarm-bagi-pendidikan-turunnya-nilai-tka-dan-solusi-nyata-di-pelosok-negeri/)
+**Baca Juga:** [**Alarm Bagi Pendidikan! Turunnya Nilai TKA dan Solusi Nyata di Pelosok Negeri**](/blog/alarm-bagi-pendidikan-turunnya-nilai-tka-dan-solusi-nyata-di-pelosok-negeri)
 
 _“Aku lahir dan hidup dari keluarga yang sederhana. Namun kami semua sudah merasakan betapa hebatnya pendidikan dapat mengubah hidup kami 180 derajat. Aku ingin semua orang merasakan pengalaman berharga yang sama,”_ ungkap Jeany dengan penuh syukur.
 
@@ -46,7 +46,7 @@ _“Hal yang paling berkesan menurutku tidak ada, karena rasanya semuanya berkes
 
 Tentu saja, perjalanan ini bukan tanpa tantangan. Mengatur waktu antara tugas kuliah yang menumpuk dengan agenda mengajar memerlukan komitmen tinggi. Namun, Jeany selalu berupaya memberikan prioritas utama bagi Sakola Kembara di tengah kesibukannya.
 
-**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](https://sakolakembara.org/testimonials/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya/)
+**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](/blog/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya)
 
 ## **Transformasi Diri dan Harapan untuk Pendidikan Pelosok**
 

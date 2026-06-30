@@ -38,7 +38,7 @@ Secara umum, passion memiliki ketertarikan terhadap minat yang lebih kuat. Gabun
 
 Banyak platform online menyediakan tes psikologi seperti _talents mapping_  yang berfokus pada potensi penemuan minat dan bakat mencakup pengukuran dan penyataan diri. Hasilnya akan menjadi panduan awal sebelum menentukan jurusan di dunia perkuliahan. 
 
-Baca juga : [Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya](https://sakolakembara.org/testimonials/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya/)
+Baca juga : [Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya](/blog/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya)
 
 ## **2\. Menentukan Tujuan & Motivasi Diri**
 
@@ -50,7 +50,7 @@ Buatlah daftar beberapa jurusan yang paling suka dan menarik terhadap minat dan 
 
 Setiap jurusan perkuliahan mempunyai peluang kerja yang berbeda. Pastikan jurusan yang dipilih mempunyai prospek karir yang jelas sesuai dengan jurusan yang diambil setiap kemampuanmu. 
 
-Baca juga: [Temukan Arah Masa Depan: Cerita Didit Bangun Percaya Diri Lewat Talents Mapping](https://sakolakembara.org/testimonials/temukan-arah-masa-depan-cerita-didit-bangun-percaya-diri-lewat-talents-mapping/)
+Baca juga: [Temukan Arah Masa Depan: Cerita Didit Bangun Percaya Diri Lewat Talents Mapping](/blog/temukan-arah-masa-depan-cerita-didit-bangun-percaya-diri-lewat-talents-mapping)
 
 ## **4\. Potensi Ketersediaan Pilihan Jurusan**
 
@@ -60,6 +60,6 @@ Tanpa disangka, beberapa karir dapat menghasilkan peluang mengisi ketersediaan j
 
 Bertemu dengan alumni dan guru di sekolah sangat penting untuk berbicara mengenai jurusan yang kamu pilih dan minat saat ini di perguruan tinggi. Kamu dapat bertanya tentang pengalaman saat mereka memilih jurusan di perkuliahan sampai bagaimana cara prospek kerja setelah lulus. Bertanya langsung kepada guru dan alumni yang sudah punya pengalaman akan mendapatkan gambaran pilihan jurusan menjadi pengalaman yang bermanfaat dalam kemampuanmu. 
 
-Baca juga : [Persiapan SNBP 2026 Mulai Sekarang Supaya Tidak Menyesal](https://sakolakembara.org/tips/persiapan-snbp-2026-mulai-sekarang-supaya-tidak-menyesal/)
+Baca juga : [Persiapan SNBP 2026 Mulai Sekarang Supaya Tidak Menyesal](/blog/persiapan-snbp-2026-mulai-sekarang-supaya-tidak-menyesal)
 
 Sakola Kembara hadir sebagai ruang belajar yang mendampingi siswa untuk mengenal diri terhadap potensi menentukan arah masa depan dengan mempersiapkan langkah menuju perguruan tinggi yang dapat membantu siswa kelas 12 memahami pilihan jurusan dengan strategi menghadapi SNBP untuk membangun percaya diri dan keterampilan hidup untuk memasuki dunia perkuliahan. Ayo daftarkan diri melalui Sakola Kembara dan temukan jurusan yang sesuai pilihanmu melalui [pendaftaran sakola kembara 2025/2026](https://s.id/DaftarSakemGen4Batch2?fbclid=PAT01DUAPYeSZleHRuA2FlbQIxMABzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAadUuzOrhIf4Mks4m_iXIB17JGqWIGBWoHzlinQCm3GAIKZS2PT22Z-4WA8YXg_aem_4sBKwVh5Cp8SDRMilKFIRw).

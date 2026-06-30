@@ -38,7 +38,7 @@ Pengabdian untuk pendidikan yang dilakukan Zul jauh melampaui sekadar transfer i
 
 Tantangan terbesarnya bukan pada materi pelajaran, melainkan membangun mental dan kepercayaan diri siswa. “Seringkali, rasa minder karena latar belakang ekonomi membuat mereka merasa ‘kalah sebelum bertanding’,” jelasnya. Di sinilah peran seorang mentor sejati dibutuhkan, bukan hanya mengajar dengan kepala, tetapi juga dengan hati.
 
-Zul menjalankan berbagai tupoksi dalam pengabdiannya, mentoring karir untuk pemilihan [jurusan](https://sakolakembara.org/tips/universitas-negeri-vs-universitas-swasta-kenali-perbedaannya-sebelum-memilih/), pendampingan motivasi, hingga monitoring dan evaluasi perkembangan belajar siswa secara rutin.
+Zul menjalankan berbagai tupoksi dalam pengabdiannya, mentoring karir untuk pemilihan [jurusan](/blog/universitas-negeri-vs-universitas-swasta-kenali-perbedaannya-sebelum-memilih), pendampingan motivasi, hingga monitoring dan evaluasi perkembangan belajar siswa secara rutin.
 
 ## **Momen Bercermin yang Bermakna**
 

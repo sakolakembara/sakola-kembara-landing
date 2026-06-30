@@ -51,7 +51,7 @@ Selama mengikuti bimbel gratis di Sakola Kembara, Vira mengaku jadi punya tujuan
 
 Sakola Kembara memberikan harapan baru bagi siswa-siswi yang ingin berkuliah di Universitas Negeri atau punya mimpi jadi sarjana, seperti Vira. Dengan program bimbel gratisnya, Sakola Kembara mendukung siswa untuk belajar intensif persiapan SNBT/SPMB/Mandiri bersama para mentor berpengalaman. 
 
-**Baca Juga:** [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](https://sakolakembara.org/news/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung/)
+**Baca Juga:** [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](/blog/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung)
 
 Selain memiliki tujuan yang jelas setelah lulus SMK, ikut Sakola Kembara juga membuat Vira menjadi semangat belajar dan ingin bekerja di top company. Ia mengaku Sakola Kembara memberikan ia mentor dan koneksi baru. 
 
@@ -63,4 +63,4 @@ Vira juga mengaku bahwa mentor di Sakola Kembara banyak membantunya selama pembe
 
 Sakola Kembara bukan sekadar lembaga pendidikan yang membantu siswa meraih mimpi. Kami membuka jalan untuk para pemangku kepentingan, swasta, dan masyarakat yang ingin berperan dalam kemajuan pendidikan Indonesia. 
 
-Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](https://sakolakembara.org). Bersama Sakola Kembara wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!
+Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](/). Bersama Sakola Kembara wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!

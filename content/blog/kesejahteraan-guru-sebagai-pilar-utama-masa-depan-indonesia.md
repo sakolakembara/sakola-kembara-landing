@@ -42,7 +42,7 @@ Meskipun secara teori, dan penelitian peran guru menjadi hal yang krusial, di du
 
 Selain itu, keterbatasan kondisi non-finansial juga tampak pada guru di daerah terpencil yang menghadapi lingkungan kerja dan tempat tinggal yang tidak layak. Banyak yang harus menempati rumah dinas yang rusak atau bahkan terpaksa menumpang di rumah warga karena tidak adanya tempat tinggal bagi mereka. Terlebih karakteristik kondisi di daerah pelosok yang masih sulit dalam mendapatkan akses kebutuhan hidup, seperti akses jalan, Listrik, dan sarana pendidikan yang menambah tantangan menjadi guru di sana.
 
-**Baca Juga:** [**Perjalanan Seorang Founder: Rommi Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif/)
+**Baca Juga:** [**Perjalanan Seorang Founder: Rommi Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif)
 
 Meskipun kondisi di lapangan mencekik, mereka tetap bertahan karena pekerjaan itu bukan sekadar profesi, melainkan panggilan hati dan rasa pengabdian yang tak tergantikan.
 
@@ -62,7 +62,7 @@ Melihat beratnya tantangan yang dihadapi oleh guru di daerah pelosok, pemerintah
 
 ### **Dukungan Masyarakat**
 
-Selain pemerintah, masyarakat juga memiliki peran dalam mendukung terwujudnya pendidikan yang berkualitas. Pemerintah, sektor swasta, dan komunitas lokal perlu berkolaborasi dalam mewujudkan tujuan tersebut dengan mendukung kesejahteraan guru di daerah pelosok. Salah satu bentuk nyata kontribusi kolektif telah dilakukan oleh [Sakola Kembara.](https://sakolakembara.org/tentang-kami/) 
+Selain pemerintah, masyarakat juga memiliki peran dalam mendukung terwujudnya pendidikan yang berkualitas. Pemerintah, sektor swasta, dan komunitas lokal perlu berkolaborasi dalam mewujudkan tujuan tersebut dengan mendukung kesejahteraan guru di daerah pelosok. Salah satu bentuk nyata kontribusi kolektif telah dilakukan oleh [Sakola Kembara.](/tim) 
 
 ## **Temukan_Value_ Terbesar: Waktunya Menjadi Bagian dari Kebermanfaatan!**
 

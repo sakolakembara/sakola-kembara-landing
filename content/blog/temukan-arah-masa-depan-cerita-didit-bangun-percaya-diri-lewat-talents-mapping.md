@@ -24,7 +24,7 @@ modifiedISO: '2026-01-15'
 ---
 ![](/blog/images/2026/01/Temukan-Arah-Masa-Depan-Cerita-Didit-Bangun-Percaya-Diri-Lewat-Talents-Mapping-1-1024x640.jpeg)
 
-Menentukan jurusan kuliah seringkali menjadi tantangan besar bagi banyak siswa. Perasaan ragu dan bingung kerap muncul saat harus memilih jalur masa depan yang tepat. Hal inilah yang dirasakan oleh Didit, salah satu siswa [Sakola Kembara](https://sakolakembara.org/), sebelum akhirnya dia menemukan rasa percaya diri melalui program kolaborasi [Talents Mapping](https://talentsmapping.id/) bersama Sakola Kembara sebagai wujud nyata misi **#PendidikanUntukSemua.**
+Menentukan jurusan kuliah seringkali menjadi tantangan besar bagi banyak siswa. Perasaan ragu dan bingung kerap muncul saat harus memilih jalur masa depan yang tepat. Hal inilah yang dirasakan oleh Didit, salah satu siswa [Sakola Kembara](/), sebelum akhirnya dia menemukan rasa percaya diri melalui program kolaborasi [Talents Mapping](https://talentsmapping.id/) bersama Sakola Kembara sebagai wujud nyata misi **#PendidikanUntukSemua.**
 
 Talents Mapping adalah layanan psikologi yang mengandalkan konsep _Strengths Approach_ untuk menganalisis bakat seseorang. Konsep tersebut mengutamakan kelebihan seseorang yang dapat memperbaiki kelemahan mereka. Dalam lingkup pendidikan, Talents Mapping dapat digunakan sebagai alat dalam menentukan jurusan kuliah yang tepat bagi siswa agar mereka percaya diri terhadap keputusannya untuk masa depan.
 
@@ -40,7 +40,7 @@ _“…karena kalau menilai diri sendiri itu belum tentu sesuai ya. Jadi dari as
 
 Momen yang paling berkesan bagi Didit adalah saat sesi konsultasi dengan praktisi TM. Hasil asesmen menunjukkan bahwa bakat-bakat yang menonjol dalam dirinya ternyata sesuai dengan ekspektasi pribadinya selama ini. Mentor yang mendampingi pun memberikan rekomendasi jurusan kuliah yang sangat spesifik, berdasarkan urutan minat dan bakat tertinggi yang muncul dalam hasil asesmen tersebut. Keselarasan antara hasil tes dan bimbingan mentor membuat Didit merasa divalidasi. 
 
-**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](https://sakolakembara.org/testimonials/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya/)
+**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](/blog/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya)
 
 _“Dari itu aku jadi lebih yakin buat menekuni jurusan tersebut,”_ ungkapnya. Proses ini bukan sekadar tes biasa, melainkan perjalanan menemukan jati diri yang membantunya memahami karakter personal secara lebih utuh.
 

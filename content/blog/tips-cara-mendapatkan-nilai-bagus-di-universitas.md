@@ -39,7 +39,7 @@ Dengan memahami sistem ini, mahasiswa dapat menentukan strategi belajar yang tep
 
 **Baca Juga:** 
 
--    [**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
+-    [**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
 
 Menghadiri perkuliahan secara rutin adalah salah satu faktor utama keberhasilan. Dosen sering memberikan penjelasan tambahan yang tidak terdapat di buku atau slide.
 
@@ -137,4 +137,4 @@ Kesuksesan tidak datang secara tiba-tiba, tetapi melalui usaha yang terus-meneru
 
 ## **Dukung Perjalanan Kami** 
 
-Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](https://sakolakembara.org). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!
+Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](/). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!

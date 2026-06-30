@@ -44,7 +44,7 @@ Harapan utama dari Xav Wife, semoga bantuan ini dapat membantu anak-anak muda me
 
 Donasi dipandang sebagai bentuk dukungan moral sekaligus material agar anak-anak muda tidak berhenti bermimpi hanya karena kondisi ekonomi.
 
-**Baca Juga:** [Digitalisasi dan Ketimpangan Akses Belajar Online di Indonesia](https://sakolakembara.org/education/digitalisasi-dan-ketimpangan-akses-belajar-online-di-indonesia/) 
+**Baca Juga:** [Digitalisasi dan Ketimpangan Akses Belajar Online di Indonesia](/blog/digitalisasi-dan-ketimpangan-akses-belajar-online-di-indonesia) 
 
 ### **Pentingnya Transparansi dalam Donasi**
 
@@ -68,6 +68,6 @@ Cerita ini menunjukkan bahwa donasi tidak selalu harus dalam bentuk biaya yang f
 
 Ketertarikan pada program yang tepat, kepercayaan terhadap pengelola, dan harapan sederhana agar anak muda bisa kuliah sudah cukup untuk melahirkan kontribusi yang bermakna. Dengan semakin banyak donatur yang peduli, donasi dapat menjadi kekuatan kolektif untuk membuka akses pendidikan yang lebih adil dan merata.
 
-Jika Sahabat Kembara ingin ikut mendukung anak muda agar tetap punya kesempatan melanjutkan pendidikan, bisa berkontribusi melalui program donasi pendidikan Sakola Kembara di [http://sakolakembara.org/donasi](http://sakolakembara.org/donasi).
+Jika Sahabat Kembara ingin ikut mendukung anak muda agar tetap punya kesempatan melanjutkan pendidikan, bisa berkontribusi melalui program donasi pendidikan Sakola Kembara di [/donasi](/donasi).
 
 Dukungan sederhana ini diharapkan bisa membantu membuka jalan bagi mereka yang terkendala biaya dan fasilitas.

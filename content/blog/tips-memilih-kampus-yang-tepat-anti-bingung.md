@@ -32,7 +32,7 @@ Dari setiap kegiatan yang kamu ikuti, pastikan kamu perhatikan mana yang paling 
 
 Saat kamu sudah mengetahui minat bakat, kedepannya dapat lebih mudah dalam memilih kampus. Sebab, minat bakat ini berkaitan dengan jurusan kampus yang akan kamu pilih nantinya. Kamu bisa langsung _listing_ kampus yang menyediakan jurusan sesuai minat bakat kamu tanpa perlu bingung.
 
-**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](https://sakolakembara.org/testimonials/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya/)
+**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](/blog/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya)
 
 ## **Mapping Rencana Pendidikan**
 
@@ -50,7 +50,7 @@ Dalam memetakan rencana pendidikan, kamu juga perlu untuk menentukan jenis kampu
 
 Memilih apakah PTN atau PTS harus didasari dengan kemampuan diri, kemampuan biaya, dan juga langkah karir. Umumnya PTN memiliki persaingan yang ketat dalam proses masuknya dan biaya pendidikan yang bervariasi (uang kuliah tunggal per golongan), sedangkan PTS memiliki fleksibilitas dalam proses masuk dan biaya yang cenderung lebih mahal (uang kuliah tunggal, uang gedung, dan biaya penunjang lainnya). Selain itu, ada perguruan tinggi khusus untuk karir tertentu.
 
-**Baca Juga:** [**Mau Masuk PTN? Ini Tips Persiapan Kuliah Negeri Anti Gagal!**](https://sakolakembara.org/tips/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal/)
+**Baca Juga:** [**Mau Masuk PTN? Ini Tips Persiapan Kuliah Negeri Anti Gagal!**](/blog/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal)
 
 ### **Karir yang mau ditempuh**
 
@@ -88,6 +88,6 @@ Kalau sudah memetakan rencana pendidikan, saatnya riset kampus impian. Tadi kan 
 
 Tips memilih kampus yang terakhir adalah konsultasikan semua dengan pakarnya. Kalau kamu sudah cukup pusing, ada baiknya buat meminta bantuan guru Bimbingan Konseling di sekolahmu. Atau kamu juga bisa menggunakan layanan _coaching_ karir yang tersedia di banyak lembaga pendidikan. Umumnya lembaga kursus menyediakan layanan tersebut, kamu bisa coba konsultasikan di sana jika dirasa saran yang diberikan guru BK belum cukup.
 
-**Baca Juga:** [**Tentukan Jurusan Kuliah Tanpa Ragu: Cerita Kak Nisrina Dampingi Siswa Sakola Kembara Lewat Talents Mapping**](https://sakolakembara.org/testimonials/tentukan-jurusan-kuliah-tanpa-ragu-cerita-kak-nisrina-dampingi-siswa-sakola-kembara-lewat-talents-mapping/)  
+**Baca Juga:** [**Tentukan Jurusan Kuliah Tanpa Ragu: Cerita Kak Nisrina Dampingi Siswa Sakola Kembara Lewat Talents Mapping**](/blog/tentukan-jurusan-kuliah-tanpa-ragu-cerita-kak-nisrina-dampingi-siswa-sakola-kembara-lewat-talents-mapping)  
 
 _Nah_, itu dia beberapa tips memilih kampus yang bisa kamu terapkan dalam proses rencana pendidikan jangka panjang. Kalau mau menambah persiapan masuk kuliah, kamu bisa ikut kelas yang diadakan Sakola Kembara, _loh_. _Yuk_, [daftar jadi siswa](https://s.id/DaftarSakemGen4Batch2?fbclid=PAT01DUAPYeSZleHRuA2FlbQIxMABzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAadUuzOrhIf4Mks4m_iXIB17JGqWIGBWoHzlinQCm3GAIKZS2PT22Z-4WA8YXg_aem_4sBKwVh5Cp8SDRMilKFIRw) Sakola Kembara.

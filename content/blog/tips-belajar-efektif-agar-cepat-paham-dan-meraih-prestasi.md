@@ -29,7 +29,7 @@ Sebelum mulai belajar, tentukan tujuan yang ingin dicapai. Tujuan yang jelas aka
 
 **Baca Juga:** 
 
-[**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
+[**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
 
 ## **2\. Buat Jadwal Belajar yang Teratur**
 

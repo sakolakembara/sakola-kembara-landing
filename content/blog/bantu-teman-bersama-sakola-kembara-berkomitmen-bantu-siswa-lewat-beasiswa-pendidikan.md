@@ -45,7 +45,7 @@ Teman Pendidikan, sebagai salah satu program atau divisi dari Bantu Teman Indone
 
 Tak tanggung – tanggung lebih dari 38 Juta Rupiah, telah diberikan kepada para siswa yang telah melalui tahapan seleksi. Hal ini adalah komitmen dan wujud nyata Bantu Teman Indonesia dalam memberikan akses pendidikan yang merata di Indonesia, juga sebagai wadah untuk membantu anak-anak di Indonesia yang memiliki keterbatasan ekonomi. 
 
-**Baca Juga:**  [**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
+**Baca Juga:**  [**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
 
 > “Saya berharap dengan adanya beasiswa ini, bisa membuat pendidikan di Indonesia lebih maju, kepada teman – teman yang mendapatkan program ini bisa semangat, masuk Perguruan Tinggi, dan bisa membantu ekonomi keluarga.” Ujar Priyo Puji Laksono, sebagai CEO dan Founder Bantu Teman Indonesia. 
 

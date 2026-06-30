@@ -41,7 +41,7 @@ Sisi lain dari permasalahan ini datang dari kondisi sosial ekonomi masyarakat pe
 
 Dalam beberapa studi kesejahteraan keluarga 2023, ditemukan bahwa rendahnya tingkat pendidikan orang tua turut memengaruhi keputusan anak untuk melanjutkan sekolah. Ketika pendidikan dianggap tidak mendesak, anak-anak kehilangan kesempatan untuk mengembangkan kemampuan mereka secara maksimal.
 
-**Baca Juga:** [Digitalisasi dan Ketimpangan Akses Belajar Online di Indonesia](https://sakolakembara.org/education/digitalisasi-dan-ketimpangan-akses-belajar-online-di-indonesia/) 
+**Baca Juga:** [Digitalisasi dan Ketimpangan Akses Belajar Online di Indonesia](/blog/digitalisasi-dan-ketimpangan-akses-belajar-online-di-indonesia) 
 
 **Saatnya Terlibat dalam Gerakan Kebaikan Pendidikan**
 

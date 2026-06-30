@@ -46,7 +46,7 @@ Melalui sapaan yang kerap dipanggil Sobat Kembara, yayasan ini berupaya menjawab
 
 Menutup lubang pemahaman materi dasar yang tertinggal dari standar sekolah perkotaan. Materi pembelajaran yang diberikan di sekolah pelosok terkadang tidak setara dengan pembelajaran yang ada di perkotaan. Akibatnya, terjadi ketimpangan akademik antara siswa perkotaan dan perdesaan. 
 
-Baca Juga: [Pembelajaran dan Perjalanan Sarah Menembus Tembok Keterbatasan Desa](https://sakolakembara.org/cerita/pembelajaran-dan-perjalanan-sarah-menembus-tembok-keterbatasan-desa/)
+Baca Juga: [Pembelajaran dan Perjalanan Sarah Menembus Tembok Keterbatasan Desa](/blog/pembelajaran-dan-perjalanan-sarah-menembus-tembok-keterbatasan-desa)
 
 ### Keterbatasan Akses Informasi
 
@@ -74,10 +74,10 @@ Lokasi awal pendirian awal Sakola Kembara adalah di Cililin, Kabupaten Bandung B
 
 Hingga saat ini, Sakola Kembara hadir di delapan cabang _offline_ yang tersebar di tiga provinsi, serta satu cabang _online_ yang menjangkau lintas daerah. Setiap cabang _offline_ memiliki “Rumah Belajar” yang menjadi pusat kegiatan belajar-mengajar, dengan total lebih dari 700 jam belajar.
 
-Baca Juga: [Takut Salah Jurusan? Ini Kunci Rahasia Temukan Karier Impian](https://sakolakembara.org/education/takut-salah-jurusan-ini-kunci-rahasia-temukan-karier-impian/)
+Baca Juga: [Takut Salah Jurusan? Ini Kunci Rahasia Temukan Karier Impian](/blog/takut-salah-jurusan-ini-kunci-rahasia-temukan-karier-impian)
 
 ## **Menjadi Bagian dari Perubahan Pendidikan di Indonesia**
 
-Menutup kisah inspiratif ini, Sobat Kembara juga berkesempatan untuk menjadi bagian dari perjalanan [Sakola Kembara](https://sakolakembara.org/) yang membawa perubahan nyata bagi pendidikan di Indonesia. Mari bergabung dan bertumbuh bersama dengan mendaftarkan diri sebagai volunteer. Melalui kontribusi ini, kita bisa bersama-sama memastikan bahwa setiap anak, terlepas dari latar belakangnya, memiliki jembatan untuk meraih masa depan yang setara.
+Menutup kisah inspiratif ini, Sobat Kembara juga berkesempatan untuk menjadi bagian dari perjalanan [Sakola Kembara](/) yang membawa perubahan nyata bagi pendidikan di Indonesia. Mari bergabung dan bertumbuh bersama dengan mendaftarkan diri sebagai volunteer. Melalui kontribusi ini, kita bisa bersama-sama memastikan bahwa setiap anak, terlepas dari latar belakangnya, memiliki jembatan untuk meraih masa depan yang setara.
 
 Segera ambil peranmu dan daftar melalui tautan berikut: [Daftar Volunteer Sakola Kembara](https://www.instagram.com/p/DXG1KcNCU1h/?igsh=ZWUydmt1NGJwdXJx). Karena pada akhirnya, kebaikan yang dilakukan bersama akan terasa lebih kuat dan bermakna.

@@ -24,7 +24,7 @@ modifiedISO: '2026-05-19'
 ---
 ![](/blog/images/2026/03/image-7-768x1024.jpeg)
 
-Sakola Kembara – Belajar bersama [Sakola Kembara](https://sakolakembara.org/) menjadi langkah penting bagi Keyza, siswi kelas 12 asal Lembang yang memiliki mimpi besar menjadi seorang dokter. Untuk meraih mimpinya, Keyza rela menempuh perjalanan sejauh 10 kilometer untuk belajar setiap harinya. Perjalanan sejauh 10 kilometer yang harus ditempuh setiap hari tidak membuat Keyza menyerah. Justru perjalanan tersebut menjadi pengingat akan mimpi besarnya untuk melanjutkan pendidikan dan menjadi seorang dokter.
+Sakola Kembara – Belajar bersama [Sakola Kembara](/) menjadi langkah penting bagi Keyza, siswi kelas 12 asal Lembang yang memiliki mimpi besar menjadi seorang dokter. Untuk meraih mimpinya, Keyza rela menempuh perjalanan sejauh 10 kilometer untuk belajar setiap harinya. Perjalanan sejauh 10 kilometer yang harus ditempuh setiap hari tidak membuat Keyza menyerah. Justru perjalanan tersebut menjadi pengingat akan mimpi besarnya untuk melanjutkan pendidikan dan menjadi seorang dokter.
 
 Semangat belajarnya juga dipacu oleh keinginan yang kuat untuk membanggakan orang tuanya yang merupakan seorang perawat. Hal tersebut menjadi sumber kekuatan bagi Keyza untuk belajar dengan semangat yang tinggi dan tetap bertahan dalam menghadapi berbagai kondisi sulit. Impian Keyza untuk menjadi seorang dokter terasa lebih dekat ketika ia bergabung dan belajar bersama Sakola Kembara.
 
@@ -36,7 +36,7 @@ Di Sakola Kembara, Keyza tidak hanya mendapatkan banyak ilmu baru, tetapi juga b
 
 Melalui kesempatan belajar bersama Sakola Kembara, Keyza juga melihat bahwa pendidikan dapat membuka banyak harapan baru, tidak hanya bagi dirinya tetapi juga bagi banyak siswa lain yang memiliki mimpi besar untuk masa depan mereka.
 
-Baca Juga : [Usaha Meika Bangkit dari Kondisi Sulit](https://sakolakembara.org/cerita/usaha-meika-belajar-bangkit-dari-kondisi-sulit/)
+Baca Juga : [Usaha Meika Bangkit dari Kondisi Sulit](/blog/usaha-meika-belajar-bangkit-dari-kondisi-sulit)
 
 ## **Semangat Belajar Keyza Setelah Bergabung dengan Sakola Kembara**
 

@@ -34,7 +34,7 @@ Sebaliknya, universitas swasta umumnya menerapkan biaya yang lebih tinggi dan re
 
 ## **Sistem Seleksi Masuk**
 
-Proses penerimaan mahasiswa juga berbeda. Universitas negeri menerapkan seleksi yang ketat melalui jalur Seleksi Nasional Berbasis Prestasi ([SNBP](https://sakolakembara.org/tips/persiapan-snbp-2026-mulai-sekarang-supaya-tidak-menyesal/)), Seleksi Nasional Berbasis Tes (SNBT), serta jalur mandiri. Tingginya minat pendaftar membuat persaingan masuk universitas negeri, khususnya pada jurusan favorit, menjadi sangat kompetitif.
+Proses penerimaan mahasiswa juga berbeda. Universitas negeri menerapkan seleksi yang ketat melalui jalur Seleksi Nasional Berbasis Prestasi ([SNBP](/blog/persiapan-snbp-2026-mulai-sekarang-supaya-tidak-menyesal)), Seleksi Nasional Berbasis Tes (SNBT), serta jalur mandiri. Tingginya minat pendaftar membuat persaingan masuk universitas negeri, khususnya pada jurusan favorit, menjadi sangat kompetitif.
 
 Sementara itu, universitas swasta cenderung memiliki sistem seleksi yang lebih fleksibel. Beberapa kampus menggunakan tes sederhana, penilaian nilai rapor, atau bahkan pendaftaran langsung. Meski demikian, universitas swasta ternama tetap menjaga standar seleksi demi mempertahankan kualitas akademik.
 

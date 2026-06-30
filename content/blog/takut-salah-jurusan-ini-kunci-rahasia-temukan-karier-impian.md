@@ -32,7 +32,7 @@ Salah satu penyebab utama tingginya angka ketidaksesuaian ini adalah kurangnya s
 
 Pendidikan yang ideal seharusnya menjadi panduan bagi seseorang untuk menemukan peran serta misi hidup yang sejati. Tanpa minat yang jelas, ketidaktahuan akan jati diri membuat proses belajar menjadi beban dan menurunkan motivasi secara signifikan. Akibatnya, banyak lulusan terjebak dalam masalah salah jurusan dan akhirnya bekerja di bidang yang tidak linier karena sejak awal tidak memiliki kecocokan karakter dengan profesi tersebut. Ketidaksesuaian ini memicu fenomena bergonta-ganti pekerjaan, di mana individu terus merasa tidak nyaman dengan keseharian mereka karena tuntutan karier yang bertentangan dengan sifat alami atau _built-in_ dalam diri mereka.
 
-[**Baca Juga: Temukan Arah Masa Depan: Cerita Didit Bangun Percaya Diri Lewat Talents Mapping**](https://sakolakembara.org/testimonials/temukan-arah-masa-depan-cerita-didit-bangun-percaya-diri-lewat-talents-mapping/)
+[**Baca Juga: Temukan Arah Masa Depan: Cerita Didit Bangun Percaya Diri Lewat Talents Mapping**](/blog/temukan-arah-masa-depan-cerita-didit-bangun-percaya-diri-lewat-talents-mapping)
 
 Seharusnya, seseorang bisa menjadi sosok yang hebat jika mampu mensinergikan kemampuan alami dalam dirinya dengan latar belakang pendidikan yang tepat. Namun, tanpa mengenal potensi diri sejak dini, banyak orang justru menghabiskan waktu produktif mereka hanya untuk sibuk bergonta-ganti pekerjaan demi menemukan _passion_ yang tak kunjung pasti. 
 
@@ -60,7 +60,7 @@ Menghindari risiko _drop-out_ atau pindah jurusan yang merugikan secara finansia
 
 Membantu memproyeksikan jenis pekerjaan yang akan memberikan kebahagiaan sejati karena sesuai dengan misi hidup.
 
-[**Baca Juga: Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi**](https://sakolakembara.org/news/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi/)
+[**Baca Juga: Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi**](/blog/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi)
 
 ### **Kesehatan Mental**
 
@@ -70,7 +70,7 @@ Kesadaran untuk melakukan identifikasi potensi diri harus dimiliki oleh setiap c
 
 ## **Talents Mapping dan Sakola Kembara**
 
-Program Talents Mapping ini sudah membersamai banyak perusahaan dan lembaga pendidikan, salah satunya adalah dengan [Sakola Kembara](https://sakolakembara.org/). Kolaborasi antara keduanya memberikan banyak sekali manfaat, apresiasi baik dari berbagai pihak, dan terwujudnya misi bersama **#PendidikanUntukSemua** bagi seluruh anak di pelosok negeri. 
+Program Talents Mapping ini sudah membersamai banyak perusahaan dan lembaga pendidikan, salah satunya adalah dengan [Sakola Kembara](/). Kolaborasi antara keduanya memberikan banyak sekali manfaat, apresiasi baik dari berbagai pihak, dan terwujudnya misi bersama **#PendidikanUntukSemua** bagi seluruh anak di pelosok negeri. 
 
 Hasilnya tidak perlu diragukan lagi, Talents Mapping telah memberikan perubahan pola pikir siswa Kembara untuk semangat dan fokus pada tujuan hidup mereka. Kini, siswa Sakola Kembara telah memiliki harta karun potensi mereka masing-masing untuk kedepannya menjadi anak hebat Indonesia. 
 
