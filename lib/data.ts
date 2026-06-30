@@ -293,138 +293,12 @@ export const testimonials = [
   },
 ];
 
-export const stakeholders = [
-  {
-    id: 1,
-    title: "Untuk Donatur",
-    description:
-      "Laporan penggunaan dana yang transparan dan terperinci. Setiap rupiah Anda berkontribusi langsung untuk pendidikan anak Indonesia.",
-    link: "Lihat Laporan Donasi",
-    href: "#",
-  },
-  {
-    id: 2,
-    title: "Untuk Orang Tua",
-    description:
-      "Informasi lengkap tentang program, jadwal kegiatan, dan progress pembelajaran anak. Komunikasi terbuka setiap saat.",
-    link: "Portal Orang Tua",
-    href: "#",
-  },
-  {
-    id: 3,
-    title: "Untuk Partner",
-    description:
-      "Peluang kolaborasi dan kemitraan strategis untuk memperluas dampak pendidikan di Indonesia. Mari bergerak bersama.",
-    link: "Jadi Partner Kami",
-    href: "#",
-  },
-];
-
-export const reports = [
-  { id: 1, title: "Laporan Tahunan", size: "PDF • 2.4 MB" },
-  { id: 2, title: "Laporan Keuangan", size: "PDF • 1.8 MB" },
-  { id: 3, title: "Impact Report", size: "PDF • 3.1 MB" },
-];
-
 export const partners = [
   { id: 1, name: "Institut Teknologi Bandung (ITB)", logo: "https://upload.wikimedia.org/wikipedia/id/thumb/4/44/Logo_ITB_1920.svg/200px-Logo_ITB_1920.svg.png" },
   { id: 2, name: "Salam Setara", logo: null },
   { id: 3, name: "Talents Mapping", logo: null },
   { id: 4, name: "Universitas Padjadjaran", logo: null },
   { id: 5, name: "Universitas Gadjah Mada", logo: null },
-];
-
-export const newsArticles = [
-  {
-    id: 1,
-    category: "Pencapaian",
-    date: "15 Januari 2024",
-    title: "4 Alumni Sakola Kembara Diterima di 3 Universitas Terbaik Indonesia",
-    excerpt:
-      "Cerita inspiratif perjalanan empat siswa dari daerah terpencil yang berhasil menembus seleksi masuk universitas top Indonesia melalui program bimbingan intensif Sakola Kembara.",
-    featured: true,
-    image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&h=600&fit=crop",
-  },
-  {
-    id: 2,
-    category: "Kegiatan",
-    date: "10 Januari 2024",
-    title: "Roadshow Sakola Kembara di Cirebon: Menjangkau 200 Siswa",
-    excerpt:
-      "Tim kami mengunjungi 5 sekolah di Arjawinangun untuk memberikan motivasi dan informasi UTBK.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600&h=400&fit=crop",
-  },
-  {
-    id: 3,
-    category: "Partnership",
-    date: "5 Januari 2024",
-    title: "Kolaborasi Baru dengan Talents Mapping untuk Pengembangan Potensi Siswa",
-    excerpt:
-      "Kemitraan strategis untuk membantu siswa menemukan bakat dan jurusan yang tepat.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
-  },
-  {
-    id: 4,
-    category: "Pencapaian",
-    date: "28 Desember 2023",
-    title: "Wisuda Angkatan 2023: 45 Siswa Siap Menuju Perguruan Tinggi",
-    excerpt:
-      "Momen penuh haru saat 45 siswa Sakola Kembara menyelesaikan program pembinaan dan siap menghadapi UTBK 2024.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=400&fit=crop",
-  },
-  {
-    id: 5,
-    category: "Kegiatan",
-    date: "20 Desember 2023",
-    title: "Asrama Akhir Tahun: 2 Minggu Belajar Intensif di Bandung",
-    excerpt:
-      "Siswa dari berbagai cabang berkumpul di Bandung untuk mengikuti program asrama intensif selama libur semester.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=600&h=400&fit=crop",
-  },
-  {
-    id: 6,
-    category: "Cerita Alumni",
-    date: "15 Desember 2023",
-    title: "Dari Desa ke ITB: Perjalanan Inspiratif Daffa Najwan",
-    excerpt:
-      "Kisah Daffa, alumni Sakola Kembara yang kini berkuliah di Manajemen UGM dan aktif menjadi relawan pengajar.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=600&h=400&fit=crop",
-  },
-  {
-    id: 7,
-    category: "Kegiatan",
-    date: "5 Desember 2023",
-    title: "Pembukaan Cabang Baru Sakola Kembara Purbalingga",
-    excerpt:
-      "Memperluas jangkauan ke Jawa Tengah, cabang keenam Sakola Kembara resmi dibuka di Purbalingga.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=400&fit=crop",
-  },
-  {
-    id: 8,
-    category: "Partnership",
-    date: "25 November 2023",
-    title: "ITB Mendukung Program Beasiswa untuk Alumni Sakola Kembara",
-    excerpt:
-      "Kerjasama dengan Institut Teknologi Bandung untuk memberikan akses beasiswa bagi alumni yang diterima di ITB.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1562774053-701939374585?w=600&h=400&fit=crop",
-  },
-  {
-    id: 9,
-    category: "Cerita Alumni",
-    date: "15 November 2023",
-    title: "Natia: Belajar Mencintai Diri Sendiri di Sakola Kembara",
-    excerpt:
-      "Selain akademik, Sakola Kembara juga mengajarkan nilai-nilai kehidupan yang mengubah cara pandang Natia.",
-    featured: false,
-    image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&h=400&fit=crop",
-  },
 ];
 
 // Hero section images
@@ -442,27 +316,7 @@ export const donationTiers = [
 ];
 
 export const contactInfo = [
-  { icon: "📧", title: "Email", value: "hello@sakolakembara.org" },
-  { icon: "📱", title: "WhatsApp", value: "+62 812 3456 7890" },
-  { icon: "📍", title: "Lokasi", value: "Bandung, Jawa Barat, Indonesia" },
+  { title: "Email", value: "hello@sakolakembara.org" },
+  { title: "WhatsApp", value: "+62 812 3456 7890" },
+  { title: "Lokasi", value: "Bandung, Jawa Barat, Indonesia" },
 ];
-
-export const footerLinks = {
-  program: [
-    { label: "Pra Pembinaan", href: "/program/prapembinaan" },
-    { label: "Pembinaan", href: "/program/pembinaan" },
-    { label: "Pasca Pembinaan", href: "/program/pasca-pembinaan" },
-  ],
-  tentang: [
-    { label: "Misi Kami", href: "#" },
-    { label: "Tim", href: "#team" },
-    { label: "Partner", href: "#partners" },
-    { label: "Laporan", href: "#stakeholders" },
-  ],
-  terlibat: [
-    { label: "Donasi", href: "/donasi" },
-    { label: "Jadi Relawan", href: "#" },
-    { label: "Jadi Partner", href: "#" },
-    { label: "Kontak", href: "/kontak" },
-  ],
-};

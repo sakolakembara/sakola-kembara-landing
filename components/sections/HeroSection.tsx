@@ -7,7 +7,7 @@ import { heroStats, heroImages } from "@/lib/data";
 
 export default function HeroSection() {
   return (
-    <section className="pt-40 pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden" id="about">
+    <section className="pt-40 pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute -top-1/2 -right-1/5 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(30,136,229,0.08)_0%,transparent_70%)] rounded-full" />
 

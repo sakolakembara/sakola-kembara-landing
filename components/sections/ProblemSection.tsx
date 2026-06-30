@@ -11,7 +11,7 @@ export default function ProblemSection() {
   const [selectedStat, setSelectedStat] = useState<typeof problemStats[0] | null>(null);
 
   return (
-    <section id="about" className="py-24 bg-gray-900 text-white relative overflow-hidden">
+    <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
       {/* Pattern overlay */}
       <div
         className="absolute inset-0 opacity-30"

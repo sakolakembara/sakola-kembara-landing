@@ -52,7 +52,7 @@ export function EditorForm({
   const currentYear = new Date().getUTCFullYear();
 
   return (
-    <form action={formAction} encType="multipart/form-data">
+    <form action={formAction}>
       {report && <input type="hidden" name="id" value={report.id} />}
 
       <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
