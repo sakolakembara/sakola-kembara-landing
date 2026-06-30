@@ -129,57 +129,6 @@ export const programs = [
 // Keep for backward compatibility
 export const activities = programs;
 
-export const teamMembers = [
-  {
-    name: "Ahmad Fadillah",
-    role: "Ketua Umum",
-    university: "Institut Teknologi Bandung",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Siti Nurhaliza",
-    role: "Koordinator Program",
-    university: "Universitas Padjadjaran",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Rizky Pratama",
-    role: "Head of Marketing",
-    university: "Universitas Gadjah Mada",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Dewi Anggraini",
-    role: "Koordinator Relawan",
-    university: "Universitas Indonesia",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Budi Santoso",
-    role: "Pengajar Matematika",
-    university: "Institut Teknologi Bandung",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Anisa Putri",
-    role: "Pengajar Bahasa Inggris",
-    university: "Universitas Padjadjaran",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Farel Hidayat",
-    role: "Pengajar Sains",
-    university: "Institut Teknologi Bandung",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face",
-  },
-  {
-    name: "Maya Sari",
-    role: "Pengajar Penalaran",
-    university: "Universitas Gadjah Mada",
-    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face",
-  },
-];
-
 export const impactMetrics = [
   { number: "500+", label: "Total Siswa Terbantu", color: "blue" },
   { number: "75.88%", label: "Berkuliah (71.49% di PTN)", color: "yellow" },

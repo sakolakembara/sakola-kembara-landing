@@ -15,6 +15,13 @@
       "when": 1782807412120,
       "tag": "0001_bouncy_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782808615258,
+      "tag": "0002_narrow_mister_fear",
+      "breakpoints": true
     }
   ]
 }
