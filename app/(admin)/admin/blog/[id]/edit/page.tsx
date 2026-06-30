@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { auth } from "@/auth";
 import { getBlogArticleBySlug } from "@/lib/blog";
 import { EditorForm } from "../../_editor-form";
@@ -35,16 +35,12 @@ export default async function EditBlogPage({ params, searchParams }: PageProps) 
         <ArrowLeft size={14} /> Kembali ke daftar
       </Link>
       <header className="mb-6">
-        <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          Edit artikel
+        </p>
+        <h1 className="font-[var(--font-display)] text-3xl text-gray-900">
           {article.title}
         </h1>
-        <Link
-          href={`/blog/${article.id}`}
-          target="_blank"
-          className="inline-flex items-center gap-1 text-sm text-primary-blue hover:underline"
-        >
-          Lihat di publik <ExternalLink size={12} />
-        </Link>
       </header>
       <EditorForm
         mode="edit"

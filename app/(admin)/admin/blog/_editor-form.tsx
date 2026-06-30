@@ -1,14 +1,23 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Edit3, Eye, ImagePlus, Save, Upload, X } from "lucide-react";
+import Link from "next/link";
 import {
-  BLOG_CATEGORIES,
-  type BlogArticle,
-} from "@/lib/blog-types";
+  Edit3,
+  ExternalLink,
+  Eye,
+  FileText,
+  ImagePlus,
+  Link2,
+  Save,
+  Settings2,
+  Upload,
+  X,
+} from "lucide-react";
+import { BLOG_CATEGORIES, type BlogArticle } from "@/lib/blog-types";
 import {
   createBlogPost,
   updateBlogPost,
@@ -24,6 +33,16 @@ interface EditorFormProps {
   defaultAuthor: string;
   successMessage?: string;
 }
+
+type TopTab = "detail" | "konten";
+
+// Fields that live on the Detail tab — used to flag the tab when errors land
+// inside it, so users don't lose validation feedback when on the wrong tab.
+const DETAIL_FIELDS = ["title", "excerpt", "category", "date", "author", "image"] as const;
+const KONTEN_FIELDS = ["body"] as const;
+
+const TEXT_INPUT =
+  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -47,20 +66,44 @@ export function EditorForm({
 }: EditorFormProps) {
   const action = mode === "create" ? createBlogPost : updateBlogPost;
   const [state, formAction] = useActionState(action, initialState);
+
+  const [tab, setTab] = useState<TopTab>("detail");
+  const [bodyTab, setBodyTab] = useState<"edit" | "preview">("edit");
+
   const [body, setBody] = useState(article?.contentMarkdown ?? "");
-  const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [heroImage, setHeroImage] = useState(article?.image ?? "");
   const [heroUploading, setHeroUploading] = useState(false);
   const [bodyUploading, setBodyUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
   const heroInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLInputElement>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const inputClass =
-    "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
+  const detailHasError = useMemo(
+    () =>
+      DETAIL_FIELDS.some(
+        (f) => (state.fieldErrors as Record<string, string[]> | undefined)?.[f]?.length,
+      ),
+    [state.fieldErrors],
+  );
+  const kontenHasError = useMemo(
+    () =>
+      KONTEN_FIELDS.some(
+        (f) => (state.fieldErrors as Record<string, string[]> | undefined)?.[f]?.length,
+      ),
+    [state.fieldErrors],
+  );
+
+  // Auto-jump to the tab that has the first validation error, on submit error.
+  useMemo(() => {
+    if (state.status === "error") {
+      if (detailHasError) setTab("detail");
+      else if (kontenHasError) setTab("konten");
+    }
+  }, [state.status, detailHasError, kontenHasError]);
 
   async function uploadAndApply(
     file: File,
@@ -93,8 +136,7 @@ export function EditorForm({
     }
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
-    const next = body.slice(0, start) + text + body.slice(end);
-    setBody(next);
+    setBody(body.slice(0, start) + text + body.slice(end));
     requestAnimationFrame(() => {
       ta.focus();
       const cursor = start + text.length;
@@ -103,308 +145,439 @@ export function EditorForm({
   }
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="pb-24">
       {article && <input type="hidden" name="id" value={article.id} />}
 
-      {state.status === "error" && state.message && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-          {state.message}
-        </div>
-      )}
-      {state.status === "success" && state.message && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-          {state.message}
-        </div>
-      )}
-      {successMessage &&
-        state.status !== "error" &&
-        state.status !== "success" && (
-          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
-
-      <Field
-        label="Judul"
-        name="title"
-        required
-        errors={state.fieldErrors?.title}
-      >
-        <input
-          type="text"
-          id="title"
-          name="title"
-          required
-          defaultValue={article?.title ?? ""}
-          placeholder="Contoh: Cerita Lulusan Sakola Kembara di ITB"
-          className={inputClass}
-        />
-      </Field>
-
-      {mode === "edit" && (
-        <Field
-          label="URL"
-          name="slug-display"
-          hint="Slug tidak bisa diubah agar URL existing tidak rusak."
-        >
-          <input
-            type="text"
-            id="slug-display"
-            readOnly
-            value={`/blog/${article!.id}`}
-            className={`${inputClass} bg-gray-50 font-mono text-sm text-gray-600 cursor-not-allowed`}
-          />
-        </Field>
-      )}
-
-      <div className="grid md:grid-cols-2 gap-5">
-        <Field
-          label="Kategori"
-          name="category"
-          required
-          errors={state.fieldErrors?.category}
-        >
-          <select
-            id="category"
-            name="category"
-            required
-            defaultValue={article?.category ?? "Cerita"}
-            className={`${inputClass} bg-white`}
+      {/* Header strip: URL of the post (edit mode only) */}
+      {mode === "edit" && article && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
+          <Link2 size={14} className="text-gray-400" />
+          <span className="text-gray-500">URL:</span>
+          <code className="px-2 py-1 bg-gray-100 rounded text-gray-800 font-mono text-xs">
+            /blog/{article.id}
+          </code>
+          <Link
+            href={`/blog/${article.id}`}
+            target="_blank"
+            className="inline-flex items-center gap-1 text-xs text-primary-blue hover:underline"
           >
-            {BLOG_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field
-          label="Tanggal Publikasi"
-          name="date"
-          required
-          errors={state.fieldErrors?.date}
+            Lihat di publik <ExternalLink size={12} />
+          </Link>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {/* Top tabs */}
+        <nav
+          className="flex border-b border-gray-200 px-2"
+          role="tablist"
+          aria-label="Bagian editor"
         >
-          <input
-            type="date"
-            id="date"
-            name="date"
-            required
-            defaultValue={article?.dateISO ?? todayIso}
-            className={inputClass}
+          <TopTabButton
+            active={tab === "detail"}
+            onClick={() => setTab("detail")}
+            icon={<Settings2 size={14} />}
+            label="Detail"
+            hasError={detailHasError}
           />
-        </Field>
-      </div>
+          <TopTabButton
+            active={tab === "konten"}
+            onClick={() => setTab("konten")}
+            icon={<FileText size={14} />}
+            label="Konten"
+            hasError={kontenHasError}
+          />
+        </nav>
 
-      <Field
-        label="Excerpt"
-        name="excerpt"
-        required
-        errors={state.fieldErrors?.excerpt}
-        hint="Ringkasan singkat (20-500 karakter). Muncul di list dan SEO description."
-      >
-        <textarea
-          id="excerpt"
-          name="excerpt"
-          required
-          rows={3}
-          defaultValue={article?.excerpt ?? ""}
-          placeholder="Ringkasan artikel..."
-          className={`${inputClass} resize-none`}
-        />
-      </Field>
-
-      <Field
-        label="Gambar Hero"
-        name="image"
-        errors={state.fieldErrors?.image}
-        hint="Pilih file (≤ 5 MB) atau tempel path /blog/images/... yang sudah ada."
-      >
-        <div className="flex gap-2">
-          <input
-            type="text"
-            id="image"
-            name="image"
-            value={heroImage}
-            onChange={(e) => setHeroImage(e.target.value)}
-            placeholder="/blog/images/2026/01/cover.jpg"
-            className={inputClass}
-          />
-          <input
-            ref={heroInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadAndApply(f, setHeroUploading, setHeroImage);
-              e.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => heroInputRef.current?.click()}
-            disabled={heroUploading}
-            className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+        {/* ============ Tab: Detail ============ */}
+        <div
+          role="tabpanel"
+          className={tab === "detail" ? "p-6 md:p-8" : "hidden"}
+        >
+          <Section
+            title="Informasi Dasar"
+            description="Judul dan ringkasan yang muncul di list, hasil pencarian, dan SEO."
           >
-            <Upload size={14} />
-            {heroUploading ? "Mengupload..." : "Upload"}
-          </button>
-          {heroImage && (
-            <button
-              type="button"
-              onClick={() => setHeroImage("")}
-              className="shrink-0 inline-flex items-center justify-center w-10 h-10 text-gray-500 hover:text-red-600 border-2 border-gray-200 rounded-lg"
-              title="Hapus gambar"
+            <Field
+              label="Judul"
+              name="title"
+              required
+              errors={state.fieldErrors?.title}
             >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-        {heroImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={heroImage}
-            alt="Preview"
-            className="mt-3 max-h-48 rounded-lg border border-gray-200 object-cover"
-          />
-        )}
-      </Field>
+              <input
+                type="text"
+                id="title"
+                name="title"
+                required
+                defaultValue={article?.title ?? ""}
+                placeholder="Contoh: Cerita Lulusan Sakola Kembara di ITB"
+                className={TEXT_INPUT}
+              />
+            </Field>
 
-      <div className="grid md:grid-cols-2 gap-5">
-        <Field
-          label="Penulis"
-          name="author"
-          required
-          errors={state.fieldErrors?.author}
-        >
-          <input
-            type="text"
-            id="author"
-            name="author"
-            required
-            defaultValue={article?.author ?? defaultAuthor}
-            className={inputClass}
-          />
-        </Field>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Featured
-          </label>
-          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-lg cursor-pointer w-full">
-            <input
-              type="checkbox"
-              name="featured"
-              defaultChecked={article?.featured ?? false}
-              className="w-4 h-4 accent-primary-blue"
-            />
-            <span className="text-sm">Tampilkan sebagai artikel unggulan</span>
-          </label>
-        </div>
-      </div>
+            <Field
+              label="Excerpt"
+              name="excerpt"
+              required
+              errors={state.fieldErrors?.excerpt}
+              hint="20-500 karakter. Muncul di list artikel dan SEO description."
+            >
+              <textarea
+                id="excerpt"
+                name="excerpt"
+                required
+                rows={3}
+                defaultValue={article?.excerpt ?? ""}
+                placeholder="Ringkasan singkat artikel..."
+                className={`${TEXT_INPUT} resize-none`}
+              />
+            </Field>
+          </Section>
 
-      <div>
-        <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-          <label className="block text-sm font-medium text-gray-700">
-            Isi Artikel <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <div className="flex gap-2 items-center">
-            <input
-              ref={bodyInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  uploadAndApply(f, setBodyUploading, (p) => {
-                    const alt = f.name
-                      .replace(/\.[^.]+$/, "")
-                      .replace(/[-_]/g, " ");
-                    insertAtCursor(`\n![${alt}](${p})\n`);
-                  });
-                  setTab("edit");
-                }
-                e.target.value = "";
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => bodyInputRef.current?.click()}
-              disabled={bodyUploading}
-              className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-60"
-            >
-              <ImagePlus size={12} />
-              {bodyUploading ? "Mengupload..." : "Sisipkan Gambar"}
-            </button>
-            <div className="w-px h-5 bg-gray-200" />
-            <button
-              type="button"
-              onClick={() => setTab("edit")}
-              className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md transition-colors ${
-                tab === "edit"
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <Edit3 size={12} /> Tulis
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("preview")}
-              className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md transition-colors ${
-                tab === "preview"
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <Eye size={12} /> Preview
-            </button>
-          </div>
-        </div>
-        {uploadError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2 text-xs text-red-700">
-            {uploadError}
-          </div>
-        )}
-        {tab === "edit" ? (
-          <textarea
-            ref={bodyTextareaRef}
-            name="body"
-            required
-            rows={20}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Tulis isi artikel dalam markdown..."
-            className={`${inputClass} font-mono text-sm`}
-          />
-        ) : (
-          <>
-            <div className="min-h-[500px] px-5 py-4 bg-white border-2 border-gray-200 rounded-lg blog-content overflow-auto">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {body || "_Belum ada isi._"}
-              </ReactMarkdown>
+          <Section
+            title="Klasifikasi & Publikasi"
+            description="Bagaimana artikel ini dikelompokkan dan ditampilkan."
+          >
+            <div className="grid md:grid-cols-2 gap-5">
+              <Field
+                label="Kategori"
+                name="category"
+                required
+                errors={state.fieldErrors?.category}
+              >
+                <select
+                  id="category"
+                  name="category"
+                  required
+                  defaultValue={article?.category ?? "Cerita"}
+                  className={`${TEXT_INPUT} bg-white`}
+                >
+                  {BLOG_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field
+                label="Tanggal Publikasi"
+                name="date"
+                required
+                errors={state.fieldErrors?.date}
+              >
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  required
+                  defaultValue={article?.dateISO ?? todayIso}
+                  className={TEXT_INPUT}
+                />
+              </Field>
             </div>
-            {/* Keep the value submittable when previewing */}
-            <input type="hidden" name="body" value={body} />
-          </>
-        )}
-        {state.fieldErrors?.body?.[0] && (
-          <p className="text-xs text-red-600 mt-1">
-            {state.fieldErrors.body[0]}
-          </p>
-        )}
-        <p className="text-xs text-gray-500 mt-1">
-          Markdown lengkap dengan GFM (tabel, checklist). Referensi gambar dari{" "}
-          <span className="font-mono">/blog/images/...</span>
-        </p>
+
+            <div className="grid md:grid-cols-2 gap-5">
+              <Field
+                label="Penulis"
+                name="author"
+                required
+                errors={state.fieldErrors?.author}
+              >
+                <input
+                  type="text"
+                  id="author"
+                  name="author"
+                  required
+                  defaultValue={article?.author ?? defaultAuthor}
+                  className={TEXT_INPUT}
+                />
+              </Field>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Featured
+                </label>
+                <label className="flex items-center gap-3 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    name="featured"
+                    defaultChecked={article?.featured ?? false}
+                    className="w-4 h-4 accent-primary-blue"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Tampilkan sebagai artikel unggulan di blog index
+                  </span>
+                </label>
+              </div>
+            </div>
+          </Section>
+
+          <Section
+            title="Gambar Hero"
+            description="Gambar utama yang tampil di atas artikel dan sebagai thumbnail di list."
+            isLast
+          >
+            <div className="flex gap-2 flex-wrap">
+              <input
+                type="text"
+                id="image"
+                name="image"
+                value={heroImage}
+                onChange={(e) => setHeroImage(e.target.value)}
+                placeholder="/blog/images/2026/01/cover.jpg"
+                className={`${TEXT_INPUT} flex-1 min-w-[260px]`}
+              />
+              <input
+                ref={heroInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadAndApply(f, setHeroUploading, setHeroImage);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => heroInputRef.current?.click()}
+                disabled={heroUploading}
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              >
+                <Upload size={14} />
+                {heroUploading ? "Mengupload..." : "Upload"}
+              </button>
+              {heroImage && (
+                <button
+                  type="button"
+                  onClick={() => setHeroImage("")}
+                  className="shrink-0 inline-flex items-center justify-center w-10 h-10 text-gray-500 hover:text-red-600 border-2 border-gray-200 hover:border-red-200 rounded-lg transition-colors"
+                  title="Hapus gambar"
+                  aria-label="Hapus gambar hero"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Pilih file (≤ 5 MB) atau tempel path yang sudah ada (
+              <span className="font-mono">/blog/images/...</span>).
+            </p>
+            {heroImage && (
+              <div className="mt-4 inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={heroImage}
+                  alt="Preview"
+                  className="max-h-56 rounded-lg border border-gray-200 object-cover bg-gray-50"
+                />
+              </div>
+            )}
+            {state.fieldErrors?.image?.[0] && (
+              <p className="text-xs text-red-600 mt-1">
+                {state.fieldErrors.image[0]}
+              </p>
+            )}
+          </Section>
+        </div>
+
+        {/* ============ Tab: Konten ============ */}
+        <div
+          role="tabpanel"
+          className={tab === "konten" ? "p-6 md:p-8" : "hidden"}
+        >
+          <Section
+            title="Isi Artikel"
+            description="Tulis dalam Markdown (GFM: tabel, checklist, kode). Gunakan toolbar untuk menyisipkan gambar."
+            isLast
+          >
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 flex-wrap">
+                <div className="flex gap-1" role="tablist" aria-label="Mode editor">
+                  <button
+                    type="button"
+                    onClick={() => setBodyTab("edit")}
+                    className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md transition-colors ${
+                      bodyTab === "edit"
+                        ? "bg-gray-900 text-white"
+                        : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                    }`}
+                  >
+                    <Edit3 size={12} /> Tulis
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBodyTab("preview")}
+                    className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md transition-colors ${
+                      bodyTab === "preview"
+                        ? "bg-gray-900 text-white"
+                        : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                    }`}
+                  >
+                    <Eye size={12} /> Preview
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={bodyInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        uploadAndApply(f, setBodyUploading, (p) => {
+                          const alt = f.name
+                            .replace(/\.[^.]+$/, "")
+                            .replace(/[-_]/g, " ");
+                          insertAtCursor(`\n![${alt}](${p})\n`);
+                        });
+                        setBodyTab("edit");
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => bodyInputRef.current?.click()}
+                    disabled={bodyUploading}
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 disabled:opacity-60 transition-colors"
+                  >
+                    <ImagePlus size={12} />
+                    {bodyUploading ? "Mengupload..." : "Sisipkan Gambar"}
+                  </button>
+                </div>
+              </div>
+
+              {uploadError && (
+                <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-xs text-red-700">
+                  {uploadError}
+                </div>
+              )}
+
+              {bodyTab === "edit" ? (
+                <textarea
+                  ref={bodyTextareaRef}
+                  name="body"
+                  required
+                  rows={24}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="# Judul Sub Bagian&#10;&#10;Tulis paragraf di sini..."
+                  className="w-full px-4 py-3 font-mono text-sm focus:outline-none resize-y min-h-[400px]"
+                />
+              ) : (
+                <>
+                  <div className="px-5 py-4 bg-white blog-content overflow-auto min-h-[400px]">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {body || "_Belum ada isi._"}
+                    </ReactMarkdown>
+                  </div>
+                  {/* Keep value submittable while previewing */}
+                  <input type="hidden" name="body" value={body} />
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+              <span>{body.length.toLocaleString("id-ID")} karakter</span>
+              {state.fieldErrors?.body?.[0] && (
+                <span className="text-red-600">
+                  {state.fieldErrors.body[0]}
+                </span>
+              )}
+            </div>
+          </Section>
+        </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <SubmitButton
-          label={mode === "create" ? "Buat Artikel" : "Simpan Perubahan"}
-        />
+      {/* Sticky bottom action bar */}
+      <div className="sticky bottom-0 -mx-6 md:-mx-10 px-6 md:px-10 mt-6 py-4 bg-gray-50/95 backdrop-blur border-t border-gray-200">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            {state.status === "error" && state.message && (
+              <p className="text-sm text-red-700">{state.message}</p>
+            )}
+            {state.status === "success" && state.message && (
+              <p className="text-sm text-green-700">{state.message}</p>
+            )}
+            {successMessage &&
+              state.status !== "error" &&
+              state.status !== "success" && (
+                <p className="text-sm text-green-700">{successMessage}</p>
+              )}
+          </div>
+          <SubmitButton
+            label={mode === "create" ? "Buat Artikel" : "Simpan Perubahan"}
+          />
+        </div>
       </div>
     </form>
+  );
+}
+
+function TopTabButton({
+  active,
+  onClick,
+  icon,
+  label,
+  hasError,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  hasError: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+        active
+          ? "border-primary-blue text-primary-blue"
+          : "border-transparent text-gray-600 hover:text-gray-900"
+      }`}
+    >
+      {icon}
+      {label}
+      {hasError && (
+        <span
+          className="absolute top-2 right-1 w-2 h-2 rounded-full bg-red-500"
+          aria-label="Ada kesalahan"
+        />
+      )}
+    </button>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+  isLast,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  isLast?: boolean;
+}) {
+  return (
+    <section
+      className={`pb-6 ${isLast ? "" : "mb-6 border-b border-gray-100"}`}
+    >
+      <header className="mb-4">
+        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+          {title}
+        </h2>
+        {description && (
+          <p className="text-xs text-gray-500 mt-1">{description}</p>
+        )}
+      </header>
+      <div className="space-y-5">{children}</div>
+    </section>
   );
 }
 
