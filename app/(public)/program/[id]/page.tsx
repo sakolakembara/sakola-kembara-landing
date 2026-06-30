@@ -6,8 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Download } from "lucide-react";
 import { programs } from "@/lib/data";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 
 export default function ProgramDetailPage() {
   const params = useParams();
@@ -18,7 +16,6 @@ export default function ProgramDetailPage() {
   if (!program) {
     return (
       <>
-        <Navbar />
         <main className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
@@ -32,7 +29,6 @@ export default function ProgramDetailPage() {
             </Link>
           </div>
         </main>
-        <Footer />
       </>
     );
   }
@@ -44,7 +40,6 @@ export default function ProgramDetailPage() {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="relative h-[400px] md:h-[500px]">
@@ -247,7 +242,6 @@ export default function ProgramDetailPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

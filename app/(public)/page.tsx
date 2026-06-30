@@ -1,4 +1,3 @@
-import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/sections/HeroSection";
 import ProblemSection from "@/components/sections/ProblemSection";
 import ActivitiesSection from "@/components/sections/ActivitiesSection";
@@ -6,7 +5,6 @@ import ImpactSection from "@/components/sections/ImpactSection";
 import PartnersSection from "@/components/sections/PartnersSection";
 import NewsSection from "@/components/sections/NewsSection";
 import CTASection from "@/components/sections/CTASection";
-import Footer from "@/components/Footer";
 import { jsonLdScript, organizationJsonLd } from "@/lib/seo";
 
 export default function Home() {
@@ -16,7 +14,6 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationJsonLd()) }}
       />
-      <Navbar />
       <main>
         {/* Section 1: Hero - What We Provide */}
         <HeroSection />
@@ -39,7 +36,6 @@ export default function Home() {
         {/* Section 7: Blog */}
         <NewsSection />
       </main>
-      <Footer />
     </>
   );
 }

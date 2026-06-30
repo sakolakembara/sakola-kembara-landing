@@ -3,13 +3,10 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { teamMembers } from "@/lib/data";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 
 export default function TimPage() {
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
@@ -95,7 +92,6 @@ export default function TimPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

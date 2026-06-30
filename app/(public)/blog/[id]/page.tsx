@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, User, ArrowLeft } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import BlogPostContent from "@/components/blog/BlogPostContent";
 import {
   blogArticles,
@@ -44,7 +42,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
   if (!article) {
     return (
       <>
-        <Navbar />
         <main className="min-h-screen flex items-center justify-center bg-gray-50 pt-24">
           <div className="text-center px-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
@@ -55,7 +52,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
             </Link>
           </div>
         </main>
-        <Footer />
       </>
     );
   }
@@ -82,7 +78,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(articleJsonLd(article)) }}
       />
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
         <section className="relative h-[320px] md:h-[420px] pt-20">
           {article.image ? (
@@ -178,7 +173,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
           </section>
         )}
       </main>
-      <Footer />
     </>
   );
 }

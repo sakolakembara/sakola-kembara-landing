@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { getBlogArticlesSorted, cleanExcerpt } from "@/lib/blog";
 
 export default function BlogPage() {
@@ -15,7 +13,6 @@ export default function BlogPage() {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
@@ -144,7 +141,6 @@ export default function BlogPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

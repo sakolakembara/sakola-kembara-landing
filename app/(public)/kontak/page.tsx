@@ -3,8 +3,6 @@
 import { motion } from "framer-motion";
 import { Send, Mail, MessageCircle, MapPin } from "lucide-react";
 import { contactInfo } from "@/lib/data";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import SocialLinks from "@/components/SocialLinks";
 
 const contactIcons = [
@@ -16,7 +14,6 @@ const contactIcons = [
 export default function KontakPage() {
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
@@ -150,7 +147,6 @@ export default function KontakPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

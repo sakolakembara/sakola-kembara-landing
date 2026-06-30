@@ -2,8 +2,6 @@
 
 import { motion } from "framer-motion";
 import { GraduationCap, BookOpen, Users, Sparkles } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 
 const benefits = [
   {
@@ -35,7 +33,6 @@ const benefits = [
 export default function GabungSiswaPage() {
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
@@ -129,7 +126,6 @@ export default function GabungSiswaPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

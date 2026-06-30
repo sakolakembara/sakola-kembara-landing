@@ -4,8 +4,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Copy, Check, QrCode, ClipboardCheck, Users } from "lucide-react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import StakeholderSection from "@/components/sections/StakeholderSection";
 
 const bankDetails = [
@@ -43,7 +41,6 @@ export default function DonasiPage() {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
@@ -232,7 +229,6 @@ export default function DonasiPage() {
         {/* Stakeholder Relations - Transparansi & Akuntabilitas */}
         <StakeholderSection />
       </main>
-      <Footer />
     </>
   );
 }
