@@ -27,8 +27,18 @@ const getCachedReports = unstable_cache(
   { tags: ["reports"] },
 );
 
+// unstable_cache JSON-serializes the value, which turns Date columns into ISO
+// strings. Re-hydrate so callers can safely call .toLocaleDateString() etc.
+function hydrateReport(row: Report): Report {
+  return {
+    ...row,
+    uploadedAt: new Date(row.uploadedAt),
+  };
+}
+
 export async function getAllReports(): Promise<Report[]> {
-  return getCachedReports();
+  const rows = await getCachedReports();
+  return rows.map(hydrateReport);
 }
 
 /**
@@ -38,7 +48,7 @@ export async function getAllReports(): Promise<Report[]> {
 export async function getReportsByYear(): Promise<
   { year: number; reports: Report[] }[]
 > {
-  const all = await getCachedReports();
+  const all = await getAllReports();
   const byYear = new Map<number, Report[]>();
   for (const r of all) {
     if (!byYear.has(r.year)) byYear.set(r.year, []);
