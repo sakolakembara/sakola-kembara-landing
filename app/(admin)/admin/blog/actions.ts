@@ -1,5 +1,7 @@
 "use server";
 
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -174,6 +176,80 @@ export async function updateBlogPost(
   });
 
   return { status: "success", message: "Artikel berhasil disimpan." };
+}
+
+export type UploadResult =
+  | { ok: true; path: string }
+  | { ok: false; error: string };
+
+const ALLOWED_IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif"]);
+const MAX_IMAGE_BYTES = 5_000_000; // 5 MB
+
+/**
+ * Upload an image into public/blog/images/<year>/<month>/<basename>-<rand>.<ext>.
+ * Called directly from client components via the React server-action import.
+ * Validates the MIME prefix, byte size, and extension. Writes an audit entry.
+ */
+export async function uploadBlogImage(
+  formData: FormData,
+): Promise<UploadResult> {
+  const admin = await requireAdmin();
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { ok: false, error: "Tidak ada file." };
+  }
+  if (file.size === 0) {
+    return { ok: false, error: "File kosong." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "Hanya gambar yang diperbolehkan." };
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return { ok: false, error: "Ukuran maksimal 5 MB." };
+  }
+
+  const extMatch = file.name.match(/\.([a-z0-9]+)$/i);
+  const ext = extMatch?.[1].toLowerCase() ?? "";
+  if (!ALLOWED_IMAGE_EXTS.has(ext)) {
+    return {
+      ok: false,
+      error: `Tipe file tidak didukung. Gunakan: ${[...ALLOWED_IMAGE_EXTS].join(", ")}.`,
+    };
+  }
+
+  const baseName =
+    file.name
+      .replace(/\.[^.]+$/, "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 50) || "image";
+
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const stamp = Math.random().toString(36).slice(2, 8);
+  const filename = `${baseName}-${stamp}.${ext}`;
+  const relPath = `/blog/images/${year}/${month}/${filename}`;
+  const absPath = path.join(process.cwd(), "public", relPath);
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await mkdir(path.dirname(absPath), { recursive: true });
+  await writeFile(absPath, buffer);
+
+  await writeAudit({
+    actorEmail: admin.email,
+    actorId: admin.actorId,
+    action: "blog.upload_image",
+    resourceType: "blog_image",
+    resourceId: filename,
+    metadata: { path: relPath, size: file.size, type: file.type },
+  });
+
+  return { ok: true, path: relPath };
 }
 
 export async function deleteBlogPost(formData: FormData): Promise<void> {

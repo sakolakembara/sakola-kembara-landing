@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // Match the blog image upload cap in app/(admin)/admin/blog/actions.ts.
+      bodySizeLimit: "5mb",
+    },
+  },
   images: {
     remotePatterns: [
       // Legacy WordPress blog images (referenced from migrated markdown).

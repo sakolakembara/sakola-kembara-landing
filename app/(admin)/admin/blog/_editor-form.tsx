@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Edit3, Eye, Save } from "lucide-react";
+import { Edit3, Eye, ImagePlus, Save, Upload, X } from "lucide-react";
 import {
   BLOG_CATEGORIES,
   type BlogArticle,
@@ -12,6 +12,7 @@ import {
 import {
   createBlogPost,
   updateBlogPost,
+  uploadBlogImage,
   type BlogFormState,
 } from "./actions";
 
@@ -48,11 +49,58 @@ export function EditorForm({
   const [state, formAction] = useActionState(action, initialState);
   const [body, setBody] = useState(article?.contentMarkdown ?? "");
   const [tab, setTab] = useState<"edit" | "preview">("edit");
+  const [heroImage, setHeroImage] = useState(article?.image ?? "");
+  const [heroUploading, setHeroUploading] = useState(false);
+  const [bodyUploading, setBodyUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const heroInputRef = useRef<HTMLInputElement>(null);
+  const bodyInputRef = useRef<HTMLInputElement>(null);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
   const inputClass =
     "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
+
+  async function uploadAndApply(
+    file: File,
+    setBusy: (b: boolean) => void,
+    apply: (path: string) => void,
+  ) {
+    setUploadError(null);
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const result = await uploadBlogImage(fd);
+      if (!result.ok) {
+        setUploadError(result.error);
+        return;
+      }
+      apply(result.path);
+    } catch {
+      setUploadError("Upload gagal. Coba lagi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function insertAtCursor(text: string) {
+    const ta = bodyTextareaRef.current;
+    if (!ta) {
+      setBody((b) => (b.endsWith("\n") || b === "" ? b + text : `${b}\n${text}`));
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const next = body.slice(0, start) + text + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const cursor = start + text.length;
+      ta.selectionStart = ta.selectionEnd = cursor;
+    });
+  }
 
   return (
     <form action={formAction} className="space-y-5">
@@ -169,16 +217,57 @@ export function EditorForm({
         label="Gambar Hero"
         name="image"
         errors={state.fieldErrors?.image}
-        hint="Path relatif terhadap /public, contoh: /blog/images/2026/01/cover.jpg. Opsional. Upload manual via filesystem untuk sekarang."
+        hint="Pilih file (≤ 5 MB) atau tempel path /blog/images/... yang sudah ada."
       >
-        <input
-          type="text"
-          id="image"
-          name="image"
-          defaultValue={article?.image ?? ""}
-          placeholder="/blog/images/2026/01/cover.jpg"
-          className={inputClass}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            id="image"
+            name="image"
+            value={heroImage}
+            onChange={(e) => setHeroImage(e.target.value)}
+            placeholder="/blog/images/2026/01/cover.jpg"
+            className={inputClass}
+          />
+          <input
+            ref={heroInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) uploadAndApply(f, setHeroUploading, setHeroImage);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => heroInputRef.current?.click()}
+            disabled={heroUploading}
+            className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <Upload size={14} />
+            {heroUploading ? "Mengupload..." : "Upload"}
+          </button>
+          {heroImage && (
+            <button
+              type="button"
+              onClick={() => setHeroImage("")}
+              className="shrink-0 inline-flex items-center justify-center w-10 h-10 text-gray-500 hover:text-red-600 border-2 border-gray-200 rounded-lg"
+              title="Hapus gambar"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {heroImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={heroImage}
+            alt="Preview"
+            className="mt-3 max-h-48 rounded-lg border border-gray-200 object-cover"
+          />
+        )}
       </Field>
 
       <div className="grid md:grid-cols-2 gap-5">
@@ -214,11 +303,40 @@ export function EditorForm({
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
           <label className="block text-sm font-medium text-gray-700">
             Isi Artikel <span className="text-red-500 ml-0.5">*</span>
           </label>
-          <div className="flex gap-1" role="tablist">
+          <div className="flex gap-2 items-center">
+            <input
+              ref={bodyInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  uploadAndApply(f, setBodyUploading, (p) => {
+                    const alt = f.name
+                      .replace(/\.[^.]+$/, "")
+                      .replace(/[-_]/g, " ");
+                    insertAtCursor(`\n![${alt}](${p})\n`);
+                  });
+                  setTab("edit");
+                }
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => bodyInputRef.current?.click()}
+              disabled={bodyUploading}
+              className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-60"
+            >
+              <ImagePlus size={12} />
+              {bodyUploading ? "Mengupload..." : "Sisipkan Gambar"}
+            </button>
+            <div className="w-px h-5 bg-gray-200" />
             <button
               type="button"
               onClick={() => setTab("edit")}
@@ -243,8 +361,14 @@ export function EditorForm({
             </button>
           </div>
         </div>
+        {uploadError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2 text-xs text-red-700">
+            {uploadError}
+          </div>
+        )}
         {tab === "edit" ? (
           <textarea
+            ref={bodyTextareaRef}
             name="body"
             required
             rows={20}

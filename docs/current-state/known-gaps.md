@@ -59,6 +59,7 @@ These are not bugs — they're known gaps waiting on real data from the org team
 - **No sitemap / robots.txt / JSON-LD** — add when SEO matters.
 - **No error monitoring** (Sentry, etc.).
 - **Unsplash placeholder photography is still everywhere** in `lib/data.ts` (hero badges, team avatars, testimonials, programs, news). Image optimization is wired up now (Next proxies + resizes them via `/_next/image`), but the real fix is replacing the placeholders with real photography — Phase 8 work in [`../roadmap/mvp-roadmap.md`](../roadmap/mvp-roadmap.md).
+- **`middleware.ts` deprecation warning** — Next 16 logs that the `middleware` file convention is deprecated in favor of `proxy`. Auth still works; rename the file (and the matcher config) when we next touch the auth wiring.
 - **4 accepted `npm audit` advisories** — all moderate, all the same `esbuild` CVE (GHSA-67mh-4wv8-2f99) surfacing through `drizzle-kit → @esbuild-kit/esm-loader → @esbuild-kit/core-utils → esbuild`. The CVE applies to `esbuild --serve` (dev server); drizzle-kit only uses esbuild as a TS-config bundler at migration generation, so the issue is not exploitable in our usage. The only available "fix" downgrades drizzle-kit to 0.18.1 (~3 years old). Re-check after each drizzle-kit upgrade. The transitive `postcss` advisory is already pinned via `overrides` in `package.json`.
 
 ## Skipped for now (per discussion)
