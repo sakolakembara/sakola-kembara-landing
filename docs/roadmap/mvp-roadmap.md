@@ -207,6 +207,8 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 
 ## Phase 5 — Public announcement strip (MVP priority #7)
 
+> **Status (2026-06-30):** shipped. Admin CRUD at `/admin/announcements` (list with severity pill + live "Tampil"/"Aktif, di luar jadwal"/"Tidak aktif" status, create, edit, delete with confirm). Every action writes `announcement.{create,update,delete}` to `audit_log`. Form has three sections — Konten (title, body), Tampilan (severity radio cards, optional CTA label + URL with paired-validation refine), Jadwal (active toggle + optional `datetime-local` startsAt + endsAt with end≥start refine). Public render via `<AnnouncementStrip />` mounted inside `<Navbar>` so it shows above the nav row across every public page (not just the homepage — relocating below a fixed Navbar without a portal would have been ugly, and a small strip is acceptable everywhere). Reader cached behind the `"announcements"` tag; admin writes call `revalidateTag("announcements", "max")` + `revalidatePath()` for instant refresh.
+
 **Goal**: admins publish a one-line homepage announcement; it shows up between Navbar and Hero when active, disappears otherwise.
 
 **Deliverables**
