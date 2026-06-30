@@ -51,7 +51,6 @@ export default function TeamSection() {
                   alt={member.name}
                   fill
                   className="object-cover"
-                  unoptimized
                 />
               </div>
 

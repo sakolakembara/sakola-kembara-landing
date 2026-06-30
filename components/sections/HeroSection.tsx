@@ -93,7 +93,6 @@ export default function HeroSection() {
                 fill
                 className="object-cover"
                 priority
-                unoptimized
               />
             </div>
 
@@ -104,7 +103,6 @@ export default function HeroSection() {
                 alt="Kegiatan belajar kelompok"
                 fill
                 className="object-cover"
-                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-secondary-yellow/80 to-transparent flex items-end justify-center pb-3">
                 <span className="text-white text-xs font-semibold">
@@ -119,7 +117,6 @@ export default function HeroSection() {
                 alt="Siswa merayakan kelulusan"
                 fill
                 className="object-cover"
-                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-secondary-green/80 to-transparent flex items-end justify-center pb-3">
                 <span className="text-white text-xs font-semibold">

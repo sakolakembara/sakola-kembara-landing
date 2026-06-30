@@ -49,7 +49,6 @@ export default function TimPage() {
                       alt={member.name}
                       fill
                       className="object-cover"
-                      unoptimized
                     />
                   </div>
 

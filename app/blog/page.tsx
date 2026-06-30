@@ -59,7 +59,6 @@ export default function BlogPage() {
                         alt={featuredArticle.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        unoptimized
                       />
                       <span className="absolute top-4 left-4 text-xs font-semibold text-white bg-primary-blue px-3 py-1.5 rounded-full">
                         {featuredArticle.category}
@@ -114,7 +113,6 @@ export default function BlogPage() {
                         alt={article.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        unoptimized
                       />
                       <span className="absolute top-3 left-3 text-[11px] font-semibold text-white bg-primary-blue/90 px-2.5 py-1 rounded-full">
                         {article.category}

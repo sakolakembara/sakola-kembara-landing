@@ -91,7 +91,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
               alt={article.title}
               fill
               className="object-cover"
-              unoptimized
               priority
             />
           ) : (
@@ -158,7 +157,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
                           alt={item.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          unoptimized
                         />
                       ) : (
                         <div className="absolute inset-0 bg-primary-blue/10" />

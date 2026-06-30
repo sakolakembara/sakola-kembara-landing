@@ -58,7 +58,7 @@ These are not bugs — they're known gaps waiting on real data from the org team
 - **No staging environment** (dev → directly to prod once VPS is provisioned).
 - **No sitemap / robots.txt / JSON-LD** — add when SEO matters.
 - **No error monitoring** (Sentry, etc.).
-- **Mixed image strategy** — the legitimate external hosts (`images.unsplash.com`, `upload.wikimedia.org`, `sakolakembara.org/wp-content`) are now allowlisted in `next.config.ts.images.remotePatterns`, but every `<Image>` that points at one still passes `unoptimized`. Drop the prop in a follow-up pass so Next can resize/cache them; biggest wins are the hero badges, program images, and testimonial portraits.
+- **Unsplash placeholder photography is still everywhere** in `lib/data.ts` (hero badges, team avatars, testimonials, programs, news). Image optimization is wired up now (Next proxies + resizes them via `/_next/image`), but the real fix is replacing the placeholders with real photography — Phase 8 work in [`../roadmap/mvp-roadmap.md`](../roadmap/mvp-roadmap.md).
 - **4 accepted `npm audit` advisories** — all moderate, all the same `esbuild` CVE (GHSA-67mh-4wv8-2f99) surfacing through `drizzle-kit → @esbuild-kit/esm-loader → @esbuild-kit/core-utils → esbuild`. The CVE applies to `esbuild --serve` (dev server); drizzle-kit only uses esbuild as a TS-config bundler at migration generation, so the issue is not exploitable in our usage. The only available "fix" downgrades drizzle-kit to 0.18.1 (~3 years old). Re-check after each drizzle-kit upgrade. The transitive `postcss` advisory is already pinned via `overrides` in `package.json`.
 
 ## Skipped for now (per discussion)

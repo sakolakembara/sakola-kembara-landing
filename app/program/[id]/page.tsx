@@ -53,7 +53,6 @@ export default function ProgramDetailPage() {
             alt={program.title}
             fill
             className="object-cover"
-            unoptimized
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
