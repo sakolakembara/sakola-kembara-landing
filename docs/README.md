@@ -4,6 +4,8 @@ This folder is the single source of truth for non-code knowledge about the Sakol
 
 > **Hard rule.** The current Indonesian language tone and the current visual style are not up for redesign. Documents here describe those guardrails. New work should extend, not replace.
 
+> :compass: **Just landed here? Start with [`mvp-status.md`](mvp-status.md).** It's a one-page snapshot of what the repo can do today — public site, admin dashboard, tech stack, what's deferred, what's blocking launch.
+
 ## Contents
 
 ### 1. `context/` — Why the site exists
