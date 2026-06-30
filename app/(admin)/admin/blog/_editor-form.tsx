@@ -148,11 +148,12 @@ export function EditorForm({
     <form action={formAction}>
       {article && <input type="hidden" name="id" value={article.id} />}
 
-      {/* Sticky page header — escapes the layout's p-10 so it spans the full
-          width of <main> regardless of the form's max-width below. Holds
-          navigation, mode/url context, and the primary save action so the
-          admin never has to scroll to apply changes. */}
-      <header className="sticky top-0 z-20 -mt-10 -mx-10 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
+      {/* Sticky page header. Now that <main> in the admin layout has no
+          padding (each page handles its own), this pins honestly to top: 0
+          and spans the full width of <main>. Holds navigation, mode/url
+          context, and the primary save action so the admin never has to
+          scroll to apply changes. */}
+      <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap min-w-0">
             <Link
@@ -190,7 +191,7 @@ export function EditorForm({
         </div>
       </header>
 
-      <div className="max-w-6xl pt-6">
+      <div className="max-w-6xl px-6 md:px-10 pt-6 pb-12">
         {/* Form-level banners — sit at the top of the content area so a
             scroll-to-top after an error always reveals them. */}
         {(state.status === "error" && state.message) ||

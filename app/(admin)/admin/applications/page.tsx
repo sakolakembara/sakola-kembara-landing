@@ -70,7 +70,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
     .limit(50);
 
   return (
-    <div>
+    <div className="p-6 md:p-10">
       <header className="mb-6">
         <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
           Pendaftar

@@ -56,7 +56,7 @@ export default async function ApplicationDetailPage({
   if (!application) notFound();
 
   return (
-    <div className="max-w-6xl">
+    <div className="p-6 md:p-10 max-w-6xl">
       <Link
         href="/admin/applications"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"

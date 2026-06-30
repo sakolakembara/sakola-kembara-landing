@@ -31,7 +31,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="h-dvh flex bg-gray-50 overflow-hidden">
       <aside className="w-60 shrink-0 bg-gray-900 text-white p-6 flex flex-col">
         <div className="font-[var(--font-display)] text-xl mb-8">SK Admin</div>
         <nav className="flex flex-col gap-1 text-sm">
@@ -63,7 +63,9 @@ export default async function AdminLayout({
           </button>
         </form>
       </aside>
-      <main className="flex-1 p-10 overflow-auto">{children}</main>
+      {/* main is the scroll container. Padding is delegated to each page so
+          editor pages can have a sticky header that truly pins to top: 0. */}
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
 }

@@ -64,7 +64,7 @@ export default async function AdminHomePage() {
   const stats = await getStats();
 
   return (
-    <div>
+    <div className="p-6 md:p-10">
       <header className="mb-8">
         <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
           Dashboard

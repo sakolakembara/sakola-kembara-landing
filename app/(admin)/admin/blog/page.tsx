@@ -39,7 +39,7 @@ export default async function BlogAdminPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div>
+    <div className="p-6 md:p-10">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
