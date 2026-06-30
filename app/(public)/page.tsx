@@ -5,9 +5,12 @@ import ImpactSection from "@/components/sections/ImpactSection";
 import PartnersSection from "@/components/sections/PartnersSection";
 import NewsSection from "@/components/sections/NewsSection";
 import CTASection from "@/components/sections/CTASection";
+import { getBlogArticlesSorted } from "@/lib/blog";
 import { jsonLdScript, organizationJsonLd } from "@/lib/seo";
 
-export default function Home() {
+export default async function Home() {
+  const latestArticles = (await getBlogArticlesSorted()).slice(0, 3);
+
   return (
     <>
       <script
@@ -15,26 +18,13 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationJsonLd()) }}
       />
       <main>
-        {/* Section 1: Hero - What We Provide */}
         <HeroSection />
-
-        {/* Section 2: Problem Statement */}
         <ProblemSection />
-
-        {/* Section 3: Activities */}
         <ActivitiesSection />
-
-        {/* Section 4: Our Impact (with GIS Map) */}
         <ImpactSection />
-
-        {/* Section 5: Partners */}
         <PartnersSection />
-
-        {/* Section 6: CTA - Gabung Bersama Kami */}
         <CTASection />
-
-        {/* Section 7: Blog */}
-        <NewsSection />
+        <NewsSection articles={latestArticles} />
       </main>
     </>
   );

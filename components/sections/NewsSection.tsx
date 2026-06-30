@@ -6,13 +6,17 @@ import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import { getBlogArticlesSorted } from "@/lib/blog";
+import type { BlogArticle } from "@/lib/blog-types";
 
-export default function NewsSection() {
+interface NewsSectionProps {
+  articles: BlogArticle[];
+}
+
+export default function NewsSection({ articles }: NewsSectionProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
-  const displayArticles = getBlogArticlesSorted().slice(0, 3);
+  const displayArticles = articles;
 
   return (
     <section className="py-16 bg-white" id="blog">

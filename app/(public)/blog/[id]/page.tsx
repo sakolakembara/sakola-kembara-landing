@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Calendar, User, ArrowLeft } from "lucide-react";
 import BlogPostContent from "@/components/blog/BlogPostContent";
 import {
-  blogArticles,
+  getAllArticles,
   getBlogArticleBySlug,
   getBlogArticlesSorted,
   cleanExcerpt,
@@ -15,15 +15,18 @@ interface BlogDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
-  return blogArticles.map((article) => ({ id: article.id }));
+  const all = await getAllArticles();
+  return all.map((article) => ({ id: article.id }));
 }
 
 export async function generateMetadata({
   params,
 }: BlogDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const article = getBlogArticleBySlug(id);
+  const article = await getBlogArticleBySlug(id);
   if (!article) {
     return { title: "Artikel tidak ditemukan" };
   }
@@ -37,7 +40,7 @@ export async function generateMetadata({
 
 export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
   const { id } = await params;
-  const article = getBlogArticleBySlug(id);
+  const article = await getBlogArticleBySlug(id);
 
   if (!article) {
     return (
@@ -56,7 +59,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
     );
   }
 
-  const sorted = getBlogArticlesSorted();
+  const sorted = await getBlogArticlesSorted();
   const related = sorted
     .filter((a) => a.id !== article.id)
     .filter(
@@ -124,10 +127,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
         <article className="py-12 pb-16">
           <div className="max-w-[800px] mx-auto px-6">
             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-10 -mt-8 relative z-10">
-              <BlogPostContent
-                markdown={article.contentMarkdown}
-                html={article.content}
-              />
+              <BlogPostContent markdown={article.contentMarkdown} />
             </div>
           </div>
         </article>
