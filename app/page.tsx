@@ -7,10 +7,15 @@ import PartnersSection from "@/components/sections/PartnersSection";
 import NewsSection from "@/components/sections/NewsSection";
 import CTASection from "@/components/sections/CTASection";
 import Footer from "@/components/Footer";
+import { jsonLdScript, organizationJsonLd } from "@/lib/seo";
 
 export default function Home() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationJsonLd()) }}
+      />
       <Navbar />
       <main>
         {/* Section 1: Hero - What We Provide */}

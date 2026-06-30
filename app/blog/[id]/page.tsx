@@ -11,6 +11,7 @@ import {
   getBlogArticlesSorted,
   cleanExcerpt,
 } from "@/lib/blog";
+import { articleJsonLd, buildPageMetadata, jsonLdScript } from "@/lib/seo";
 
 interface BlogDetailPageProps {
   params: Promise<{ id: string }>;
@@ -28,15 +29,12 @@ export async function generateMetadata({
   if (!article) {
     return { title: "Artikel tidak ditemukan" };
   }
-  return {
-    title: `${article.title} | Sakola Kembara`,
+  return buildPageMetadata({
+    title: article.title,
     description: cleanExcerpt(article.excerpt),
-    openGraph: {
-      title: article.title,
-      description: cleanExcerpt(article.excerpt),
-      images: article.image ? [{ url: article.image }] : undefined,
-    },
-  };
+    path: `/blog/${id}`,
+    ogImage: article.image,
+  });
 }
 
 export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
@@ -80,6 +78,10 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(articleJsonLd(article)) }}
+      />
       <Navbar />
       <main className="min-h-screen bg-gray-50">
         <section className="relative h-[320px] md:h-[420px] pt-20">
