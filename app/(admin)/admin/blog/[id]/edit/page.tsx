@@ -27,7 +27,7 @@ export default async function EditBlogPage({ params, searchParams }: PageProps) 
     "Sakola Kembara";
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-6xl">
       <Link
         href="/admin/blog"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4"
