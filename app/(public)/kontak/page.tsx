@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Send, Mail, MessageCircle, MapPin } from "lucide-react";
+import { Mail, MessageCircle, MapPin } from "lucide-react";
 import { contactInfo } from "@/lib/data";
 import SocialLinks from "@/components/SocialLinks";
+import { ContactForm } from "./_contact-form";
 
 const contactIcons = [
   { Icon: Mail, iconBg: "bg-gray-200", iconColor: "text-gray-600" },
@@ -48,61 +49,7 @@ export default function KontakPage() {
                   Kirim Pesan
                 </h2>
 
-                <form className="space-y-5">
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nama Lengkap
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Masukkan nama Anda"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="email@example.com"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subjek
-                    </label>
-                    <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none bg-white">
-                      <option value="">Pilih subjek</option>
-                      <option value="partnership">Kerjasama/Partnership</option>
-                      <option value="donation">Seputar Donasi</option>
-                      <option value="other">Lainnya</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pesan
-                    </label>
-                    <textarea
-                      placeholder="Tulis pesan Anda di sini..."
-                      rows={5}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-2 px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
-                  >
-                    <Send size={18} />
-                    Kirim Pesan
-                  </button>
-                </form>
+                <ContactForm />
               </motion.div>
 
               {/* Contact Info */}

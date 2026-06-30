@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/applications", label: "Pendaftar" },
+  { href: "/admin/messages", label: "Pesan" },
   { href: "/admin/announcements", label: "Pengumuman" },
   { href: "/admin/reports", label: "Laporan" },
   { href: "/admin/blog", label: "Blog" },

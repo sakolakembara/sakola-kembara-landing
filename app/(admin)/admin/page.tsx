@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
-  adminUsers,
   announcements,
   auditLog,
+  contactMessages,
   reports,
   studentApplications,
 } from "@/lib/db/schema";
@@ -15,27 +15,32 @@ export const metadata: Metadata = {
 
 async function getStats() {
   const now = new Date();
-  const [pendingApps, activeAnnouncements, totalReports, totalAdmins] =
-    await Promise.all([
-      db
-        .select({ value: count() })
-        .from(studentApplications)
-        .where(eq(studentApplications.status, "pending"))
-        .then((r) => r[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(announcements)
-        .where(eq(announcements.active, true))
-        .then((r) => r[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(reports)
-        .then((r) => r[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(adminUsers)
-        .then((r) => r[0]?.value ?? 0),
-    ]);
+  const [
+    pendingApps,
+    unreadMessages,
+    activeAnnouncements,
+    totalReports,
+  ] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(studentApplications)
+      .where(eq(studentApplications.status, "pending"))
+      .then((r) => r[0]?.value ?? 0),
+    db
+      .select({ value: count() })
+      .from(contactMessages)
+      .where(isNull(contactMessages.readAt))
+      .then((r) => r[0]?.value ?? 0),
+    db
+      .select({ value: count() })
+      .from(announcements)
+      .where(eq(announcements.active, true))
+      .then((r) => r[0]?.value ?? 0),
+    db
+      .select({ value: count() })
+      .from(reports)
+      .then((r) => r[0]?.value ?? 0),
+  ]);
 
   const recent = await db
     .select({
@@ -50,14 +55,21 @@ async function getStats() {
     .orderBy(desc(auditLog.createdAt))
     .limit(10);
 
-  return { pendingApps, activeAnnouncements, totalReports, totalAdmins, recent, now };
+  return {
+    pendingApps,
+    unreadMessages,
+    activeAnnouncements,
+    totalReports,
+    recent,
+    now,
+  };
 }
 
 const STAT_CARDS = [
   { key: "pendingApps", label: "Pendaftar pending" },
+  { key: "unreadMessages", label: "Pesan belum dibaca" },
   { key: "activeAnnouncements", label: "Pengumuman aktif" },
   { key: "totalReports", label: "Total laporan" },
-  { key: "totalAdmins", label: "Admin terdaftar" },
 ] as const;
 
 export default async function AdminHomePage() {

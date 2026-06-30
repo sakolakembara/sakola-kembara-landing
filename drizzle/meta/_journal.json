@@ -8,6 +8,13 @@
       "when": 1782795311093,
       "tag": "0000_soft_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782807412120,
+      "tag": "0001_bouncy_nova",
+      "breakpoints": true
     }
   ]
 }
