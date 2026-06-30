@@ -232,6 +232,8 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 
 ## Phase 6 — Impact & Reports page + uploader (MVP priority #8-9)
 
+> **Status (2026-06-30):** shipped. Admin upload at `/admin/reports/new` accepts PDFs up to 20 MB (validated server-side: MIME = `application/pdf`, size cap, plus title/category/year via Zod). Files are written to `public/reports/<year>/<category>/<slug>-<stamp>.pdf`; the row stores `filePath` + `fileSize` + uploader + auto timestamp. `/admin/reports` list shows title with file-path mono subline, category pill, year, size, upload date, plus "Lihat" (opens PDF), "Edit" (metadata only — no file swap to keep the URL stable), "Hapus" (deletes row first, then unlinks the file). Edit page displays current file path + size as a read-only block. Every action writes `report.{create,update,delete}` to `audit_log` with file metadata. Public `/impact-reports` is a new route: hero with the locked "Impact & Reports" title, year-grouped sections (descending), per-report card with category badge + size + "Unduh Laporan" button. Empty state when no reports yet. `next.config.ts` server-action `bodySizeLimit` bumped from 5 MB → 21 MB (accommodates the largest upload path; smaller actions cap themselves in code). Nav: `lib/data.ts` gets a new `Impact & Reports` link between Donasi and Blog. **`StakeholderSection` (Transparansi & Akuntabilitas with placeholder report cards) removed from `/donasi`** — its purpose is now served by the real `/impact-reports` page, keeping `/donasi` focused on the give-now CTA. Sitemap includes `/impact-reports` with priority 0.85.
+
 **Goal**: admins upload PDFs; the public `/impact-reports` page lists them by year and category.
 
 **Deliverables**

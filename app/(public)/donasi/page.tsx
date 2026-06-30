@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Copy, Check, QrCode, ClipboardCheck, Users } from "lucide-react";
 import Link from "next/link";
-import StakeholderSection from "@/components/sections/StakeholderSection";
 
 const bankDetails = [
   { label: "Bank", value: "Bank Muamalat" },
@@ -226,8 +225,6 @@ export default function DonasiPage() {
           </div>
         </section>
 
-        {/* Stakeholder Relations - Transparansi & Akuntabilitas */}
-        <StakeholderSection />
       </main>
     </>
   );
