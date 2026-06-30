@@ -6,12 +6,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import {
+  ArrowLeft,
   Edit3,
   ExternalLink,
   Eye,
   FileText,
   ImagePlus,
-  Link2,
   Save,
   Settings2,
   Upload,
@@ -145,28 +145,79 @@ export function EditorForm({
   }
 
   return (
-    <form action={formAction} className="pb-24">
+    <form action={formAction}>
       {article && <input type="hidden" name="id" value={article.id} />}
 
-      {/* Header strip: URL of the post (edit mode only) */}
-      {mode === "edit" && article && (
-        <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
-          <Link2 size={14} className="text-gray-400" />
-          <span className="text-gray-500">URL:</span>
-          <code className="px-2 py-1 bg-gray-100 rounded text-gray-800 font-mono text-xs">
-            /blog/{article.id}
-          </code>
-          <Link
-            href={`/blog/${article.id}`}
-            target="_blank"
-            className="inline-flex items-center gap-1 text-xs text-primary-blue hover:underline"
-          >
-            Lihat di publik <ExternalLink size={12} />
-          </Link>
+      {/* Sticky page header — escapes the layout's p-10 so it spans the full
+          width of <main> regardless of the form's max-width below. Holds
+          navigation, mode/url context, and the primary save action so the
+          admin never has to scroll to apply changes. */}
+      <header className="sticky top-0 z-20 -mt-10 -mx-10 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            <Link
+              href="/admin/blog"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft size={14} /> Kembali
+            </Link>
+            <span className="text-gray-300 select-none">·</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+              {mode === "create" ? "Tulis Artikel" : "Edit Artikel"}
+            </span>
+            {mode === "edit" && article && (
+              <>
+                <span className="text-gray-300 select-none">·</span>
+                <code
+                  className="px-2 py-1 bg-gray-100 rounded text-gray-800 font-mono text-xs truncate max-w-[260px]"
+                  title={`/blog/${article.id}`}
+                >
+                  /blog/{article.id}
+                </code>
+                <Link
+                  href={`/blog/${article.id}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 text-xs text-primary-blue hover:underline whitespace-nowrap"
+                >
+                  Lihat di publik <ExternalLink size={12} />
+                </Link>
+              </>
+            )}
+          </div>
+          <SubmitButton
+            label={mode === "create" ? "Buat Artikel" : "Simpan Perubahan"}
+          />
         </div>
-      )}
+      </header>
 
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="max-w-6xl pt-6">
+        {/* Form-level banners — sit at the top of the content area so a
+            scroll-to-top after an error always reveals them. */}
+        {(state.status === "error" && state.message) ||
+        (state.status === "success" && state.message) ||
+        (successMessage && state.status !== "error" && state.status !== "success") ? (
+          <div className="mb-5">
+            {state.status === "error" && state.message && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                {state.message}
+              </div>
+            )}
+            {state.status === "success" && state.message && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
+                {state.message}
+              </div>
+            )}
+            {successMessage &&
+              state.status !== "error" &&
+              state.status !== "success" && (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
+                  {successMessage}
+                </div>
+              )}
+          </div>
+        ) : null}
+
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         {/* Top tabs */}
         <nav
           className="flex border-b border-gray-200 px-2"
@@ -489,27 +540,6 @@ export function EditorForm({
             </div>
           </Section>
         </div>
-      </div>
-
-      {/* Sticky bottom action bar */}
-      <div className="sticky bottom-0 -mx-6 md:-mx-10 px-6 md:px-10 mt-6 py-4 bg-gray-50/95 backdrop-blur border-t border-gray-200">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
-            {state.status === "error" && state.message && (
-              <p className="text-sm text-red-700">{state.message}</p>
-            )}
-            {state.status === "success" && state.message && (
-              <p className="text-sm text-green-700">{state.message}</p>
-            )}
-            {successMessage &&
-              state.status !== "error" &&
-              state.status !== "success" && (
-                <p className="text-sm text-green-700">{successMessage}</p>
-              )}
-          </div>
-          <SubmitButton
-            label={mode === "create" ? "Buat Artikel" : "Simpan Perubahan"}
-          />
         </div>
       </div>
     </form>
