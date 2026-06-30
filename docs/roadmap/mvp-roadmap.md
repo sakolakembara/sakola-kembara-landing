@@ -323,8 +323,8 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 **Deliverables**
 
 1. **Cutover plan**
-   - Inventory existing WordPress URLs vs new URLs; write Caddy redirects for any drift.
-   - Especially: WordPress `/?p=NNN` permalinks → new `/blog/<slug>` (we have the WP IDs in `blog-posts.json.articles[].wpId`).
+   - WordPress permalink redirects are wired in `next.config.ts → redirects()` (308): legacy category prefixes (`/cerita/*`, `/education/*`, `/news/*`, `/tips/*`, `/testimonials/*`, `/career/*`, `/kiat-kiat/*`) → `/blog/*`; old CTA targets (`/daftar`, `/apply`) → `/gabung-siswa`; `/tentang-kami` and `/about` → `/tim`; `/impact-reports*` → `/laporan`; `/feed`, `/index.php`, `/blog/page/N` → sensible new targets. Source of truth for the category list mirrors `scripts/lib/blog-pipeline.mjs → mapSakemPath()`.
+   - Not yet covered: WordPress `/?p=NNN` permalinks. We have `wpId` per article in `blog-posts.json.articles[]`; if Search Console reveals incoming `?p=` traffic post-launch, wire a small dynamic redirect handler (Next.js redirects can't match query strings declaratively).
    - DNS final cutover with a 24h TTL drop the day before.
 
 2. **Final SEO sweep**
