@@ -82,7 +82,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
         dangerouslySetInnerHTML={{ __html: jsonLdScript(articleJsonLd(article)) }}
       />
       <main className="min-h-screen bg-gray-50">
-        <section className="relative h-[320px] md:h-[420px] pt-20">
+        <section className="relative overflow-hidden">
           {article.image ? (
             <Image
               src={article.image}
@@ -95,31 +95,33 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
             <div className="absolute inset-0 bg-gradient-to-br from-primary-blue to-accent-navy" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/20" />
-          <div className="absolute inset-0 flex items-end">
-            <div className="max-w-[800px] mx-auto px-6 pb-10 w-full">
-              <Link
-                href="/blog"
-                className="inline-flex items-center gap-2 text-white/90 text-sm font-medium mb-4 hover:text-white transition-colors"
-              >
-                <ArrowLeft size={16} />
-                Kembali ke Blog
-              </Link>
-              <span className="inline-block text-xs font-semibold text-white bg-primary-blue px-3 py-1 rounded-full mb-3">
-                {article.category}
+          {/* pt-[120px] reserves a safe top buffer for the fixed navbar so a
+              tall content stack (back link + category + multi-line title +
+              meta) cannot bleed into the navbar zone. min-h ensures the hero
+              keeps its visual weight when the title is short. */}
+          <div className="relative max-w-[800px] mx-auto px-6 pb-10 min-h-[420px] md:min-h-[500px] flex flex-col justify-end pt-[var(--hero-top,8rem)]">
+            <Link
+              href="/blog"
+              className="inline-flex items-center gap-2 text-white/90 text-sm font-medium mb-4 hover:text-white transition-colors w-fit"
+            >
+              <ArrowLeft size={16} />
+              Kembali ke Blog
+            </Link>
+            <span className="inline-block w-fit text-xs font-semibold text-white bg-primary-blue px-3 py-1 rounded-full mb-3">
+              {article.category}
+            </span>
+            <h1 className="font-[var(--font-display)] text-3xl md:text-4xl lg:text-5xl text-white leading-tight">
+              {article.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/85">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar size={14} />
+                {article.date}
               </span>
-              <h1 className="font-[var(--font-display)] text-3xl md:text-4xl lg:text-5xl text-white leading-tight">
-                {article.title}
-              </h1>
-              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/85">
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar size={14} />
-                  {article.date}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <User size={14} />
-                  {article.author}
-                </span>
-              </div>
+              <span className="inline-flex items-center gap-1.5">
+                <User size={14} />
+                {article.author}
+              </span>
             </div>
           </div>
         </section>

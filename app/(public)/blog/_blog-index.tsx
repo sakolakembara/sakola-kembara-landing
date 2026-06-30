@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cleanExcerpt, type BlogArticle } from "@/lib/blog-types";
@@ -9,12 +9,19 @@ import { cleanExcerpt, type BlogArticle } from "@/lib/blog-types";
 interface BlogIndexProps {
   featured: BlogArticle | null;
   others: BlogArticle[];
+  currentPage: number;
+  totalPages: number;
 }
 
-export function BlogIndex({ featured, others }: BlogIndexProps) {
+export function BlogIndex({
+  featured,
+  others,
+  currentPage,
+  totalPages,
+}: BlogIndexProps) {
   return (
     <main className="min-h-screen bg-gray-50">
-      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
+      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-20 pt-[var(--hero-top,8rem)]">
         <div className="max-w-[1200px] mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -91,9 +98,16 @@ export function BlogIndex({ featured, others }: BlogIndexProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <h2 className="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">
-              Semua Artikel
-            </h2>
+            <div className="flex items-baseline justify-between mb-6 gap-4 flex-wrap">
+              <h2 className="text-sm font-semibold text-primary-blue uppercase tracking-wider">
+                Semua Artikel
+              </h2>
+              {totalPages > 1 && (
+                <span className="text-xs text-gray-500">
+                  Halaman {currentPage} dari {totalPages}
+                </span>
+              )}
+            </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {others.map((article, index) => (
                 <motion.article
@@ -141,9 +155,105 @@ export function BlogIndex({ featured, others }: BlogIndexProps) {
                 </motion.article>
               ))}
             </div>
+            {totalPages > 1 && (
+              <Pagination currentPage={currentPage} totalPages={totalPages} />
+            )}
           </motion.div>
         </div>
       </section>
     </main>
   );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+}: {
+  currentPage: number;
+  totalPages: number;
+}) {
+  const pages = pageNumbers(currentPage, totalPages);
+  const prevHref = currentPage > 1 ? hrefFor(currentPage - 1) : null;
+  const nextHref = currentPage < totalPages ? hrefFor(currentPage + 1) : null;
+
+  return (
+    <nav
+      aria-label="Pagination"
+      className="flex items-center justify-center gap-2 mt-12 flex-wrap"
+    >
+      {prevHref ? (
+        <Link
+          href={prevHref}
+          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
+        >
+          <ChevronLeft size={16} /> Sebelumnya
+        </Link>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
+          <ChevronLeft size={16} /> Sebelumnya
+        </span>
+      )}
+      <div className="flex items-center gap-1">
+        {pages.map((p, i) =>
+          p === "…" ? (
+            <span
+              key={`gap-${i}`}
+              className="px-2 text-sm text-gray-400 select-none"
+            >
+              …
+            </span>
+          ) : p === currentPage ? (
+            <span
+              key={p}
+              aria-current="page"
+              className="min-w-[36px] px-2 py-2 text-sm font-semibold text-white bg-primary-blue rounded-lg text-center"
+            >
+              {p}
+            </span>
+          ) : (
+            <Link
+              key={p}
+              href={hrefFor(p)}
+              className="min-w-[36px] px-2 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue text-center transition-colors"
+            >
+              {p}
+            </Link>
+          ),
+        )}
+      </div>
+      {nextHref ? (
+        <Link
+          href={nextHref}
+          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
+        >
+          Berikutnya <ChevronRight size={16} />
+        </Link>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
+          Berikutnya <ChevronRight size={16} />
+        </span>
+      )}
+    </nav>
+  );
+}
+
+function hrefFor(page: number) {
+  return page === 1 ? "/blog" : `/blog?page=${page}`;
+}
+
+function pageNumbers(
+  current: number,
+  total: number,
+): (number | "…")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const out: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push("…");
+  for (let p = start; p <= end; p++) out.push(p);
+  if (end < total - 1) out.push("…");
+  out.push(total);
+  return out;
 }
