@@ -10,7 +10,7 @@ Captured from product discussion. Order is intentional — items higher in the l
    The homepage is already donor/partner-led: hero → problem → programs → impact (with GIS map) → partners → 4-way CTA → blog. Copy and visual treatment match the donor-credibility direction. Future tweaks are content updates, not restructures.
 
 2. **Dedicated donation page** (`/donasi`) — ✅ shipped.
-   `app/donasi/page.tsx` covers QRIS, bank transfer (Bank Muamalat 1010 141 940), copy-to-clipboard, downloadable QR, and Google-Form confirmation. The `StakeholderSection` (Transparansi & Akuntabilitas) is currently embedded here; once `/impact-reports` exists, move that block off `/donasi`.
+   `app/donasi/page.tsx` covers QRIS, bank transfer (Bank Muamalat 1010 141 940), copy-to-clipboard, downloadable QR, and Google-Form confirmation. The `StakeholderSection` (Transparansi & Akuntabilitas) is currently embedded here; once `/laporan` exists, move that block off `/donasi`.
 
 3. **Student information and registration form** (`/gabung-siswa`) — ◐ partial.
    The info page exists with benefits + CTA. The on-site form is **not** built — the CTA still links to external `https://sakolakembara.org/daftar`. Build the on-site form next.
@@ -30,8 +30,8 @@ Captured from product discussion. Order is intentional — items higher in the l
 8. **Report upload dashboard** — ❌ not built.
    Admins upload PDFs for yearly / financial / impact / donation reports.
 
-9. **Public report page for PDFs** (`/impact-reports`) — ❌ not built.
-   The "Impact & Reports" page that auto-lists uploaded PDFs by year/category. Header label is locked to **"Impact & Reports"**. When this ships, the StakeholderSection embed currently on `/donasi` should move here.
+9. **Public report page for PDFs** (`/laporan`) — ✅ shipped (Phase 6).
+   Auto-lists uploaded PDFs grouped by year. Header label is **"Laporan"** (originally proposed as "Impact & Reports" but relaxed to Indonesian for consistency with the rest of the nav). StakeholderSection has been removed from `/donasi`.
 
 10. **Basic team page** (`/tim`) — ✅ shipped (with placeholders).
     The page exists; replace 8 placeholder team members in `lib/data.ts → teamMembers` with real C-level & core leadership.

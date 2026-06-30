@@ -1,14 +1,20 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Download, FileText } from "lucide-react";
+import type { Report } from "@/lib/db/schema";
 import {
   formatBytes,
-  getReportsByYear,
   REPORT_CATEGORY_LABEL,
   REPORT_CATEGORY_PILL,
-} from "@/lib/reports";
+} from "@/lib/report-types";
 
-export default async function ImpactReportsPage() {
-  const grouped = await getReportsByYear();
+interface LaporanContentProps {
+  grouped: { year: number; reports: Report[] }[];
+}
+
+export function LaporanContent({ grouped }: LaporanContentProps) {
   const totalReports = grouped.reduce((sum, g) => sum + g.reports.length, 0);
 
   return (
@@ -16,14 +22,20 @@ export default async function ImpactReportsPage() {
       {/* Hero */}
       <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-32 pb-20">
         <div className="max-w-[1200px] mx-auto px-6">
-          <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-4">
-            Impact &amp; Reports
-          </h1>
-          <p className="text-lg md:text-xl text-white/90 max-w-[700px]">
-            Komitmen kami untuk transparansi. Laporan tahunan, keuangan,
-            dampak, dan donasi tersedia untuk diunduh dan dipelajari oleh
-            donor, mitra, dan publik.
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-4">
+              Laporan
+            </h1>
+            <p className="text-lg md:text-xl text-white/90 max-w-[700px]">
+              Komitmen kami untuk transparansi. Laporan tahunan, keuangan,
+              dampak, dan donasi tersedia untuk diunduh dan dipelajari oleh
+              donor, mitra, dan publik.
+            </p>
+          </motion.div>
         </div>
       </section>
 
@@ -31,7 +43,12 @@ export default async function ImpactReportsPage() {
       <section className="py-16 md:py-20">
         <div className="max-w-[1100px] mx-auto px-6">
           {totalReports === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-white rounded-2xl border border-gray-200 p-12 text-center"
+            >
               <FileText size={32} className="mx-auto text-gray-300 mb-4" />
               <h2 className="text-xl font-bold text-gray-900 mb-2">
                 Laporan akan segera tersedia
@@ -40,11 +57,16 @@ export default async function ImpactReportsPage() {
                 Tim kami sedang menyiapkan laporan publik. Periksa kembali
                 halaman ini dalam waktu dekat.
               </p>
-            </div>
+            </motion.div>
           ) : (
             <div className="space-y-12">
-              {grouped.map(({ year, reports }) => (
-                <section key={year}>
+              {grouped.map(({ year, reports }, yearIdx) => (
+                <motion.section
+                  key={year}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 + yearIdx * 0.1 }}
+                >
                   <header className="mb-5 flex items-baseline gap-3">
                     <h2 className="font-[var(--font-display)] text-3xl text-gray-900">
                       {year}
@@ -88,7 +110,7 @@ export default async function ImpactReportsPage() {
                       </article>
                     ))}
                   </div>
-                </section>
+                </motion.section>
               ))}
             </div>
           )}
@@ -98,19 +120,26 @@ export default async function ImpactReportsPage() {
       {/* Trust footer */}
       <section className="py-16 bg-white border-t border-gray-100">
         <div className="max-w-[800px] mx-auto px-6 text-center">
-          <h2 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3">
-            Punya pertanyaan tentang laporan kami?
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Tim kami senang membantu menjelaskan angka-angka di balik laporan
-            ini. Hubungi kami untuk diskusi lebih lanjut.
-          </p>
-          <Link
-            href="/kontak"
-            className="inline-flex items-center px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
           >
-            Hubungi Tim Kami
-          </Link>
+            <h2 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3">
+              Punya pertanyaan tentang laporan kami?
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Tim kami senang membantu menjelaskan angka-angka di balik
+              laporan ini. Hubungi kami untuk diskusi lebih lanjut.
+            </p>
+            <Link
+              href="/kontak"
+              className="inline-flex items-center px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
+            >
+              Hubungi Tim Kami
+            </Link>
+          </motion.div>
         </div>
       </section>
     </main>

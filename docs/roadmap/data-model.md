@@ -206,7 +206,7 @@ export type NewReport = typeof reports.$inferInsert;
 **File handling**
 - Upload writes the PDF to `public/reports/<year>/<category>/<slug>.pdf` inside the `app_public` Docker volume, then inserts the row.
 - Delete removes both the file and the row in a transaction-ish pattern (file first; if the DB delete fails, log it — the orphan is cheap to clean up).
-- The public `/impact-reports` page (future) queries `reports` ordered by `year desc, category` and links directly to `filePath`.
+- The public `/laporan` page (future) queries `reports` ordered by `year desc, category` and links directly to `filePath`.
 
 ## `audit_log`
 

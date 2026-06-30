@@ -40,7 +40,7 @@ app/
 │       │   ├── page.tsx
 │       │   └── [id]/page.tsx
 │       ├── reports/
-│       │   └── page.tsx               # PDF uploader → /impact-reports listing
+│       │   └── page.tsx               # PDF uploader → /laporan listing
 │       ├── applications/              # student registrations
 │       │   ├── page.tsx
 │       │   └── [id]/page.tsx          # review + accept/reject

@@ -110,7 +110,7 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
    - All static routes (`/`, `/blog`, `/donasi`, `/gabung-siswa`, `/kontak`, `/tim`).
    - Every program: `/program/prapembinaan`, `/program/pembinaan`, `/program/pasca-pembinaan`.
    - Every blog post (loop `blogArticles`), with `lastModified` from `modifiedISO`.
-   - The future `/impact-reports` page once Phase 6 ships.
+   - The future `/laporan` page once Phase 6 ships.
 
 5. **`app/robots.ts`** — allow all crawlers, point to sitemap, disallow `/admin/*` and `/api/*`.
 
@@ -230,11 +230,11 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 - Unpublishing or expiring an announcement makes it disappear.
 - Audit entries on every publish/unpublish.
 
-## Phase 6 — Impact & Reports page + uploader (MVP priority #8-9)
+## Phase 6 — Laporan page + uploader (MVP priority #8-9)
 
-> **Status (2026-06-30):** shipped. Admin upload at `/admin/reports/new` accepts PDFs up to 20 MB (validated server-side: MIME = `application/pdf`, size cap, plus title/category/year via Zod). Files are written to `public/reports/<year>/<category>/<slug>-<stamp>.pdf`; the row stores `filePath` + `fileSize` + uploader + auto timestamp. `/admin/reports` list shows title with file-path mono subline, category pill, year, size, upload date, plus "Lihat" (opens PDF), "Edit" (metadata only — no file swap to keep the URL stable), "Hapus" (deletes row first, then unlinks the file). Edit page displays current file path + size as a read-only block. Every action writes `report.{create,update,delete}` to `audit_log` with file metadata. Public `/impact-reports` is a new route: hero with the locked "Impact & Reports" title, year-grouped sections (descending), per-report card with category badge + size + "Unduh Laporan" button. Empty state when no reports yet. `next.config.ts` server-action `bodySizeLimit` bumped from 5 MB → 21 MB (accommodates the largest upload path; smaller actions cap themselves in code). Nav: `lib/data.ts` gets a new `Impact & Reports` link between Donasi and Blog. **`StakeholderSection` (Transparansi & Akuntabilitas with placeholder report cards) removed from `/donasi`** — its purpose is now served by the real `/impact-reports` page, keeping `/donasi` focused on the give-now CTA. Sitemap includes `/impact-reports` with priority 0.85.
+> **Status (2026-06-30):** shipped. Admin upload at `/admin/reports/new` accepts PDFs up to 20 MB (validated server-side: MIME = `application/pdf`, size cap, plus title/category/year via Zod). Files are written to `public/reports/<year>/<category>/<slug>-<stamp>.pdf`; the row stores `filePath` + `fileSize` + uploader + auto timestamp. `/admin/reports` list shows title with file-path mono subline, category pill, year, size, upload date, plus "Lihat" (opens PDF), "Edit" (metadata only — no file swap to keep the URL stable), "Hapus" (deletes row first, then unlinks the file). Edit page displays current file path + size as a read-only block. Every action writes `report.{create,update,delete}` to `audit_log` with file metadata. Public `/laporan` is a new route: hero titled "Laporan" with framer-motion fade-in (matching the other public sub-pages), year-grouped sections (descending), per-report card with category badge + size + "Unduh Laporan" button. Empty state when no reports yet. `next.config.ts` server-action `bodySizeLimit` bumped from 5 MB → 21 MB (accommodates the largest upload path; smaller actions cap themselves in code). Nav: `lib/data.ts` gets a new `Laporan` link between Donasi and Blog. **`StakeholderSection` (Transparansi & Akuntabilitas with placeholder report cards) removed from `/donasi`** — its purpose is now served by the real `/laporan` page, keeping `/donasi` focused on the give-now CTA. Sitemap includes `/laporan` with priority 0.85.
 
-**Goal**: admins upload PDFs; the public `/impact-reports` page lists them by year and category.
+**Goal**: admins upload PDFs; the public `/laporan` page lists them by year and category.
 
 **Deliverables**
 
@@ -244,23 +244,23 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
    - Server action: streams the file to `public/reports/<year>/<category>/<slug>.pdf` inside the `app_public` Docker volume, inserts the row.
    - Delete action: removes file then row (best-effort transaction).
 
-2. **Public listing `/impact-reports`**
+2. **Public listing `/laporan`**
    - New route under `app/(public)/`.
    - Hero matching the other sub-pages.
    - Two-axis layout: years descending, categories as tabs or grouped sections.
    - Each report card: title, category badge, file size, "Download PDF" link.
 
-3. **Header item: "Impact & Reports"** (label locked in `docs/context/audience-and-direction.md`)
+3. **Header item: "Laporan"** (originally "Impact & Reports" — see updated note in `docs/context/audience-and-direction.md`)
    - Add to `navLinks` in `lib/data.ts`.
    - Order: between Donasi and Blog.
 
 4. **Move transparency content off `/donasi`**
    - Currently `app/donasi/page.tsx` embeds `<StakeholderSection />` (Transparansi & Akuntabilitas).
-   - Move that conceptual block to `/impact-reports`, replace the report placeholders with real DB-backed report cards.
+   - Move that conceptual block to `/laporan`, replace the report placeholders with real DB-backed report cards.
    - Keep `/donasi` focused on the single donate-now CTA.
 
 **Exit criteria**
-- Uploading a 5 MB PDF from `/admin/reports` makes it downloadable from `/impact-reports` within seconds.
+- Uploading a 5 MB PDF from `/admin/reports` makes it downloadable from `/laporan` within seconds.
 - Persistent volume survives a `docker compose up -d app` redeploy (verify by uploading then redeploying).
 - The Navbar shows the new item.
 

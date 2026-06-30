@@ -15,7 +15,7 @@ Defined under `app/` (Next.js App Router):
 | `/program/[id]` | `app/program/[id]/page.tsx` | Per-phase program detail (Pra/Pembinaan/Pasca) — client component |
 | `/tim` | `app/tim/page.tsx` | Team grid + volunteer CTA |
 
-There is **no** `/tentang-kami`, `/siswa`, `/impact-reports`, or `/team`.
+There is **no** `/tentang-kami`, `/siswa`, `/laporan`, or `/team`.
 
 ## Header
 
@@ -109,7 +109,7 @@ Smooth scrolling is enabled globally via `html { scroll-behavior: smooth; }` (`a
 
 When these ship, update this doc:
 
-- **`/impact-reports`** — dedicated public report listing (PDFs by year/category). Labeled **"Impact & Reports"** in the nav. Splits the transparency content currently embedded inside `/donasi` (`StakeholderSection`) into its own page.
+- ~~Future~~ **`/laporan`** — shipped in Phase 6. Public report listing (PDFs by year). Labeled **"Laporan"** in the nav. The transparency content previously embedded inside `/donasi` (`StakeholderSection`) has been removed; its purpose is served by this page.
 - **Public announcement strip** — admin-published, between Navbar and Hero, conditional render.
 - **On-site student registration form** — replaces the external `https://sakolakembara.org/daftar` link from `/gabung-siswa`.
 - **Working contact form submit** — wire `/kontak` to a backend (email or DB).

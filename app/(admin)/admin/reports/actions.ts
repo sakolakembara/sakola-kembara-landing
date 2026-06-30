@@ -65,7 +65,7 @@ async function requireAdmin(): Promise<{ email: string; actorId: string | null }
 
 function invalidate() {
   revalidateTag("reports", "max");
-  revalidatePath("/impact-reports");
+  revalidatePath("/laporan");
   revalidatePath("/admin");
   revalidatePath("/admin/reports");
 }

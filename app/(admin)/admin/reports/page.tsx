@@ -30,11 +30,11 @@ export default async function ReportsAdminPage({ searchParams }: PageProps) {
           <p className="text-gray-600">
             {all.length} total laporan. Tampil di publik di{" "}
             <Link
-              href="/impact-reports"
+              href="/laporan"
               target="_blank"
               className="text-primary-blue hover:underline"
             >
-              /impact-reports
+              /laporan
             </Link>
             .
           </p>

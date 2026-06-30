@@ -5,7 +5,7 @@ export const navLinks = [
   { href: "/tim", label: "Team" },
   { href: "/gabung-siswa", label: "Siswa" },
   { href: "/donasi", label: "Donasi" },
-  { href: "/impact-reports", label: "Impact & Reports" },
+  { href: "/laporan", label: "Laporan" },
   { href: "/blog", label: "Blog" },
   { href: "/kontak", label: "Kontak" },
 ];

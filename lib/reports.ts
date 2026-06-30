@@ -10,7 +10,7 @@ export {
   REPORT_CATEGORY_PILL,
 } from "@/lib/report-types";
 
-// Report reader — used by the public /impact-reports page + the admin list.
+// Report reader — used by the public /laporan page + the admin list.
 // The actual PDFs live under public/reports/<year>/<category>/<slug>.pdf;
 // this module only deals with the row metadata.
 

@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Impact & Reports",
+  title: "Laporan",
   description:
     "Laporan tahunan, keuangan, dampak, dan donasi Sakola Kembara. Komitmen kami untuk transparansi dan akuntabilitas kepada donor, mitra, dan publik.",
-  path: "/impact-reports",
+  path: "/laporan",
 });
 
-export default function ImpactReportsLayout({
+export default function LaporanLayout({
   children,
 }: {
   children: React.ReactNode;
