@@ -33,7 +33,8 @@ Guardrails for any future UI work. Treat these as the design system contract.
 - [`design/copy-style.md`](design/copy-style.md) — Headline structure, button verbs, microcopy conventions.
 
 ### 4. `roadmap/` — Where we're going
-- [`roadmap/mvp-priorities.md`](roadmap/mvp-priorities.md) — Ordered MVP scope agreed with leadership, reconciled against what has already shipped.
+- [`roadmap/mvp-roadmap.md`](roadmap/mvp-roadmap.md) — **Start here.** Master sequenced execution plan (Phases 0–9) covering production deploy + auth, SEO baseline, admin dashboard from scratch, student-application flow, announcements, reports, blog dashboard, content replacement, and launch.
+- [`roadmap/mvp-priorities.md`](roadmap/mvp-priorities.md) — Flat list of in/out MVP scope with ✅ / ◐ / ❌ status. Companion to the sequenced roadmap.
 - [`roadmap/admin-dashboard.md`](roadmap/admin-dashboard.md) — Route-group + Microsoft Entra ID auth structure for the upcoming `/admin` dashboard. Locked decisions: same repo, single-tenant Entra, `@sakolakembara.org` domain gate.
 - [`roadmap/infrastructure.md`](roadmap/infrastructure.md) — Infra picks for dynamic features. Locked: VPS + Docker Compose, Postgres 16 + Drizzle, Caddy auto-TLS, GitHub Actions → GHCR → SSH, persistent `public/` volume, Sentry, Zod env validation. Markdown blog stays as-is.
 - [`roadmap/data-model.md`](roadmap/data-model.md) — Drizzle schemas for the 5 MVP tables (`admin_users`, `student_applications`, `announcements`, `reports`, `audit_log`). Mirrors `lib/db/schema/*`.

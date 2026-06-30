@@ -2,6 +2,8 @@
 
 Captured from product discussion. Order is intentional — items higher in the list block items below them when scoping a sprint. Status indicates whether the item has already shipped in this repo.
 
+> **For the sequenced execution plan, see [`mvp-roadmap.md`](mvp-roadmap.md).** This doc is the flat priority list; the roadmap turns it into Phases 0–9 with dependencies, deliverables, and exit criteria.
+
 ## Priority order
 
 1. **Formal homepage for donors, partners, and volunteers** — ✅ shipped.
