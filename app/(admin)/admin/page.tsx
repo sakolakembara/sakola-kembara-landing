@@ -31,6 +31,7 @@ import {
   CONTACT_SUBJECT_LABEL,
   CONTACT_SUBJECT_PILL,
 } from "@/lib/messages";
+import { AUDIT_LABEL, auditHref } from "@/lib/audit-labels";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -49,66 +50,6 @@ const APP_STATUS_PILL: Record<string, string> = {
   accepted: "bg-emerald-50 text-emerald-700 border-emerald-200",
   rejected: "bg-red-50 text-red-700 border-red-200",
 };
-
-// Human-friendly labels for audit log entries. Anything missing here falls
-// through to the raw action key so new mutations are still visible while the
-// label catches up.
-const AUDIT_LABEL: Record<string, string> = {
-  "application.submit": "Pendaftar baru",
-  "application.review": "Pendaftar ditinjau",
-  "announcement.create": "Pengumuman dibuat",
-  "announcement.update": "Pengumuman diubah",
-  "announcement.delete": "Pengumuman dihapus",
-  "report.create": "Laporan ditambahkan",
-  "report.update": "Laporan diubah",
-  "report.delete": "Laporan dihapus",
-  "report.upload": "File laporan diunggah",
-  "blog.create": "Artikel dibuat",
-  "blog.update": "Artikel diubah",
-  "blog.delete": "Artikel dihapus",
-  "blog.upload_image": "Gambar blog diunggah",
-  "team.create": "Anggota tim ditambahkan",
-  "team.update": "Anggota tim diubah",
-  "team.delete": "Anggota tim dihapus",
-  "team.upload_photo": "Foto anggota diunggah",
-  "contact.read": "Pesan dibaca",
-  "contact.archive": "Pesan diarsipkan",
-  "admin.create": "Admin ditambahkan",
-  "admin.update": "Admin diubah",
-  "admin.delete": "Admin dihapus",
-};
-
-// Resource → admin route. Used to deep-link audit entries back to the page
-// where the change is most viewable. Skipped for *.delete actions and rows
-// without a resourceId — the target would 404.
-function auditHref(
-  action: string,
-  resourceType: string | null,
-  resourceId: string | null,
-): string | null {
-  if (!resourceType || !resourceId) return null;
-  if (action.endsWith(".delete")) return null;
-  switch (resourceType) {
-    case "announcement":
-      return `/admin/announcements/${resourceId}/edit`;
-    case "report":
-      return `/admin/reports/${resourceId}/edit`;
-    case "blog":
-    case "blog_post":
-      return `/admin/blog/${resourceId}/edit`;
-    case "team_member":
-      return `/admin/team/${resourceId}/edit`;
-    case "student_application":
-    case "application":
-      return `/admin/applications/${resourceId}`;
-    case "contact_message":
-      return `/admin/messages/${resourceId}`;
-    case "admin_user":
-      return `/admin/settings/${resourceId}/edit`;
-    default:
-      return null;
-  }
-}
 
 async function getStats() {
   const [

@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/admin/reports", label: "Laporan" },
   { href: "/admin/blog", label: "Blog" },
   { href: "/admin/team", label: "Tim" },
+  { href: "/admin/audit", label: "Aktivitas" },
   { href: "/admin/settings", label: "Pengaturan" },
 ];
 
