@@ -9,7 +9,7 @@ Five tables for the MVP admin dashboard. **Auth.js sessions stay JWT-only** — 
 | `admin_users` | Who can use the dashboard | Email, role, last login |
 | `student_applications` | On-site student registration submissions | Applicant profile, status, reviewer notes |
 | `announcements` | Homepage announcement strip | Title, body, severity, active window, FK → admin_users |
-| `reports` | PDF report metadata (the PDF lives at `public/reports/...`) | Title, category, year, file path, uploader |
+| `reports` | PDF report metadata (the PDF lives at `public/reports/...`) | Title, description, category, year (text — supports `2025` or academic `2025/2026`), file path, uploader |
 | `audit_log` | Append-only record of admin actions | Actor, action, resource, JSONB metadata |
 
 Foreign-key ordering on migrate: `admin_users` first; everything else after.
@@ -183,10 +183,14 @@ export const reports = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     title: text("title").notNull(),
+    description: text("description"),
     category: text("category", { enum: reportCategory }).notNull(),
-    year: integer("year").notNull(),
+    // Text, so we can carry either single years ("2025") or Indonesian
+    // academic-year strings ("2025/2026"). Sorted lexicographically desc.
+    year: text("year").notNull(),
 
-    // Path under public/. Example: /reports/2025/impact/laporan-dampak-2025.pdf
+    // Path under public/. Slash in the year is normalized to a dash:
+    //   "2025/2026" → /reports/2025-2026/impact/laporan-dampak.pdf
     filePath: text("file_path").notNull(),
     fileSize: integer("file_size").notNull(), // bytes
 
@@ -204,7 +208,7 @@ export type NewReport = typeof reports.$inferInsert;
 ```
 
 **File handling**
-- Upload writes the PDF to `public/reports/<year>/<category>/<slug>.pdf` inside the `app_public` Docker volume, then inserts the row.
+- Upload writes the PDF to `public/reports/<year-segment>/<category>/<slug>.pdf` inside the `app_public` Docker volume, then inserts the row. `<year-segment>` normalizes the academic-year slash to a dash (`2025/2026` → `2025-2026`) since path segments can't contain `/`.
 - Delete removes both the file and the row in a transaction-ish pattern (file first; if the DB delete fails, log it — the orphan is cheap to clean up).
 - The public `/laporan` page (future) queries `reports` ordered by `year desc, category` and links directly to `filePath`.
 

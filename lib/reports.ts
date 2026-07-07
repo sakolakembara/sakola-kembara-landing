@@ -8,6 +8,7 @@ export {
   formatBytes,
   REPORT_CATEGORY_LABEL,
   REPORT_CATEGORY_PILL,
+  formatAcademicYear,
 } from "@/lib/report-types";
 
 // Report reader — used by the public /laporan page + the admin list.
@@ -46,16 +47,19 @@ export async function getAllReports(): Promise<Report[]> {
  * the DB query, so the newest-uploaded report appears first within each year.
  */
 export async function getReportsByYear(): Promise<
-  { year: number; reports: Report[] }[]
+  { year: string; reports: Report[] }[]
 > {
   const all = await getAllReports();
-  const byYear = new Map<number, Report[]>();
+  const byYear = new Map<string, Report[]>();
   for (const r of all) {
     if (!byYear.has(r.year)) byYear.set(r.year, []);
     byYear.get(r.year)!.push(r);
   }
+  // Sort descending as strings — works because we require years to be
+  // 4-digit ("2025") or "YYYY/YYYY" ("2025/2026"), so lexicographic order
+  // matches chronological order.
   return [...byYear.entries()]
-    .sort((a, b) => b[0] - a[0])
+    .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
     .map(([year, list]) => ({ year, reports: list }));
 }
 

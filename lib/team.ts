@@ -12,7 +12,11 @@ async function readAllTeam(): Promise<TeamMember[]> {
   return db
     .select()
     .from(teamMembers)
-    .orderBy(asc(teamMembers.displayOrder), asc(teamMembers.createdAt));
+    .orderBy(
+      asc(teamMembers.category),
+      asc(teamMembers.displayOrder),
+      asc(teamMembers.createdAt),
+    );
 }
 
 const getCachedTeam = unstable_cache(

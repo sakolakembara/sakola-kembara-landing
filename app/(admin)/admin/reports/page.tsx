@@ -91,7 +91,12 @@ export default async function ReportsAdminPage({ searchParams }: PageProps) {
                       >
                         {row.title}
                       </Link>
-                      <p className="text-xs text-gray-500 mt-1 font-mono truncate">
+                      {row.description && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          {row.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1 font-mono truncate">
                         {row.filePath}
                       </p>
                     </td>
@@ -102,8 +107,11 @@ export default async function ReportsAdminPage({ searchParams }: PageProps) {
                         {REPORT_CATEGORY_LABEL[row.category]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 align-top text-gray-700 font-medium">
+                    <td className="px-4 py-3 align-top text-gray-700 font-medium whitespace-nowrap">
                       {row.year}
+                      <div className="text-xs text-gray-400 font-normal">
+                        {row.year.includes("/") ? "Tahun Ajaran" : "Tahun"}
+                      </div>
                     </td>
                     <td className="px-4 py-3 align-top text-gray-500 text-xs">
                       {formatBytes(row.fileSize)}

@@ -12,10 +12,12 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - `/` — homepage with announcement strip (when active), hero, programs, impact metrics, testimonials, latest blog
 - `/blog` — paginated index (15/page), featured card on page 1
 - `/blog/[slug]` — markdown-backed article render with author, related articles, OG metadata
-- `/tim` — team grid sourced from `team_members` (admin-managed)
+- `/tim` — three sections (Dewan Pembina / Dewan Pengawas / Pengurus) sourced from `team_members`; click a card to open a profile drawer with bio, education, and work history
 - `/laporan` — annual / financial / impact / donation report library, PDF downloads
 - `/donasi` — donation page with QRIS, bank details
-- `/gabung-siswa` — student application form, writes to `student_applications`
+- `/gabung-siswa` — landing info page with "Daftar Sekarang" CTA + Pusat Dokumen link
+- `/gabung-siswa/form` — multi-step recruitment wizard (identitas → keluarga & ekonomi → tempat tinggal → organisasi → berkas → berkas marketing → interview → review), sidebar nav, localStorage persistence; writes rich `form_data` blob to `student_applications`
+- `/gabung-siswa/docs` — public docs catalog rendered from `site_resources`, grouped into 5 categories with anchor links (`#panduan`, `#berkas-pendaftaran`, `#berkas-marketing`, `#tutorial`, `#lainnya`); text-type entries render with a Salin button
 - `/kontak` — contact form, writes to `contact_messages`
 - `/program/[id]` — program detail (static; admin CRUD deferred)
 - `/login` — Auth.js sign-in (Microsoft Entra + dev provider)
@@ -26,10 +28,11 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - `/admin/applications` — list + filterable, detail page with review notes + status workflow
 - `/admin/messages` — inbox with unread indicator, detail page (marks read on open)
 - `/admin/announcements` — CRUD, severity (info/warning/urgent), schedule window, active toggle
-- `/admin/reports` — CRUD, PDF upload with size cap, category + year metadata
+- `/admin/reports` — CRUD, PDF upload with size cap, category + description + year (single `2025` or academic `2025/2026`)
 - `/admin/blog` — two-tab editor (Content + Meta), sticky save header, in-form hero + body image upload, writes to `content/blog/<slug>.md`
 - `/admin/team` — CRUD, photo upload, display order
 - `/admin/settings` — admin user management (super_admin only mutates; guards on self-delete + last-super demotion)
+- `/admin/resources` — CRUD for the dynamic docs catalog. Each entry has title, description, category (panduan / berkas-pendaftaran / berkas-marketing / tutorial / lainnya), display order, and a content type of `file` (uploaded to `public/resources/`), `url` (external), or `text` (copy-able snippet). Renders publicly at `/gabung-siswa/docs`.
 - `/admin/audit` — paginated viewer with filters (action / resource / actor email substring / date range)
 - Responsive sidebar: hamburger drawer on mobile, fixed sidebar on desktop, active-link highlight
 
@@ -61,6 +64,7 @@ Five Postgres tables hold all dynamic state. Blog stays in markdown (`content/bl
 | `reports` | `/admin/reports` | PDF metadata (file lives in `public/reports/`) |
 | `team_members` | `/admin/team` | Team grid for `/tim` |
 | `contact_messages` | `/kontak` (public) → `/admin/messages` (read) | Contact form submissions |
+| `site_resources` | `/admin/resources` | Dynamic docs catalog rendered at `/gabung-siswa/docs` (files, external links, and copy-able text snippets) |
 | `audit_log` | every action | Append-only log of admin mutations |
 
 Schemas live in `lib/db/schema/*` and are documented in [`roadmap/data-model.md`](roadmap/data-model.md).

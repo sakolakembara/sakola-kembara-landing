@@ -3,12 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
+  Briefcase,
   Calendar,
+  ExternalLink,
+  FileText,
   GraduationCap,
-  MapPin,
+  Home,
+  Instagram,
   MessageCircle,
   Settings2,
   User,
+  Users,
 } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -16,7 +21,9 @@ import {
   applicationStatus,
   studentApplications,
   type ApplicationStatus,
+  type StudentApplicationFormData,
 } from "@/lib/db/schema";
+import { formatRupiah } from "@/lib/student-form-types";
 import { updateApplicationStatus } from "./actions";
 
 export const metadata: Metadata = {
@@ -55,6 +62,8 @@ export default async function ApplicationDetailPage({
 
   if (!application) notFound();
 
+  const fd = application.formData as StudentApplicationFormData | null;
+
   return (
     <div className="p-6 md:p-10 max-w-6xl">
       <Link
@@ -73,7 +82,19 @@ export default async function ApplicationDetailPage({
           <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
             {application.fullName}
           </h1>
-          <p className="text-gray-600">{application.email}</p>
+          <p className="text-gray-600">
+            {application.email ?? (
+              <a
+                href={`https://wa.me/${application.whatsapp.replace(/[^\d]/g, "")}`}
+                className="inline-flex items-center gap-1 text-primary-blue hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle size={12} />
+                {application.whatsapp}
+              </a>
+            )}
+          </p>
         </div>
         <span
           className={`inline-flex items-center text-sm font-medium px-3 py-1.5 rounded-full border ${STATUS_PILL[application.status]}`}
@@ -89,11 +110,24 @@ export default async function ApplicationDetailPage({
             title="Identitas"
             icon={<User size={14} />}
             rows={[
-              {
-                label: "Nama Lengkap",
-                value: application.fullName,
-              },
-              { label: "Email", value: application.email },
+              { label: "Nama Lengkap", value: application.fullName },
+              ...(fd?.identity.nickname
+                ? [{ label: "Panggilan", value: fd.identity.nickname }]
+                : []),
+              ...(fd?.identity.gender
+                ? [
+                    {
+                      label: "Jenis Kelamin",
+                      value: fd.identity.gender === "laki-laki" ? "Laki-laki" : "Perempuan",
+                    },
+                  ]
+                : []),
+              ...(fd?.identity.religion
+                ? [{ label: "Agama", value: fd.identity.religion }]
+                : []),
+              ...(application.email
+                ? [{ label: "Email", value: application.email }]
+                : []),
               {
                 label: "WhatsApp",
                 value: (
@@ -108,57 +142,13 @@ export default async function ApplicationDetailPage({
                   </a>
                 ),
               },
-            ]}
-          />
-          <ProfileSection
-            title="Pendidikan"
-            icon={<GraduationCap size={14} />}
-            rows={[
-              {
-                label: "Asal Sekolah",
-                value: application.schoolName,
-              },
-              {
-                label: "Tahun Lulus",
-                value: application.graduationYear,
-              },
-              {
-                label: "Cabang Pilihan",
-                value: (
-                  <span className="inline-flex items-center gap-1">
-                    {application.branchPreference ? (
-                      <>
-                        <MapPin size={12} className="text-gray-400" />
-                        {application.branchPreference}
-                      </>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </span>
-                ),
-              },
-            ]}
-          />
-          <ProfileSection
-            title="Cerita"
-            icon={<User size={14} />}
-            rows={[
-              {
-                label: "Motivasi",
-                value: (
-                  <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                    {application.motivation}
-                  </p>
-                ),
-                stack: true,
-              },
-              ...(application.economicBackground
+              ...(fd?.identity.homeAddress
                 ? [
                     {
-                      label: "Latar Belakang Ekonomi",
+                      label: "Alamat Rumah",
                       value: (
                         <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                          {application.economicBackground}
+                          {fd.identity.homeAddress}
                         </p>
                       ),
                       stack: true,
@@ -167,6 +157,242 @@ export default async function ApplicationDetailPage({
                 : []),
             ]}
           />
+          <ProfileSection
+            title="Pendidikan"
+            icon={<GraduationCap size={14} />}
+            rows={[
+              { label: "Asal Sekolah", value: application.schoolName },
+              { label: "Tahun Angkatan", value: application.graduationYear },
+              {
+                label: "Cabang",
+                value: application.branchPreference ?? "—",
+              },
+            ]}
+          />
+
+          {fd?.household && (
+            <ProfileSection
+              title="Keluarga & Ekonomi"
+              icon={<Users size={14} />}
+              rows={[
+                {
+                  label: "Tinggal Bersama",
+                  value: fd.household.livingWith.join(", ") || "—",
+                },
+                {
+                  label: "Ayah",
+                  value: `${fd.household.father.name} · ${fd.household.father.occupation}`,
+                },
+                {
+                  label: "Penghasilan Ayah",
+                  value: formatRupiah(fd.household.father.income),
+                },
+                {
+                  label: "Ibu",
+                  value: `${fd.household.mother.name} · ${fd.household.mother.occupation}`,
+                },
+                {
+                  label: "Penghasilan Ibu",
+                  value: formatRupiah(fd.household.mother.income),
+                },
+                ...fd.household.otherEarners.map((e, i) => ({
+                  label: `Anggota Lain ${i + 1}`,
+                  value: `${e.relation} · ${formatRupiah(e.income)}`,
+                })),
+                {
+                  label: "Jumlah Anggota Keluarga",
+                  value: `${fd.household.familySize} orang`,
+                },
+              ]}
+            />
+          )}
+
+          {fd?.housing && (
+            <ProfileSection
+              title="Tempat Tinggal"
+              icon={<Home size={14} />}
+              rows={[
+                {
+                  label: "Status Tempat Tinggal",
+                  value: fd.housing.residenceStatus,
+                },
+                {
+                  label: "Luas Bangunan",
+                  value: `${fd.housing.buildingArea} m²`,
+                },
+                {
+                  label: "Kendaraan",
+                  value: `${fd.housing.motorcycles} motor · ${fd.housing.cars} mobil`,
+                },
+                fd.housing.debt
+                  ? {
+                      label: "Hutang",
+                      value: (
+                        <div className="text-gray-700 leading-relaxed">
+                          <div>
+                            <b>{fd.housing.debt.type}</b> —{" "}
+                            {formatRupiah(fd.housing.debt.amount)}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {fd.housing.debt.installmentMonths} bulan ·{" "}
+                            {fd.housing.debt.description}
+                          </div>
+                        </div>
+                      ),
+                      stack: true,
+                    }
+                  : { label: "Hutang", value: "Tidak ada" },
+              ]}
+            />
+          )}
+
+          {fd?.organizations && (
+            <ProfileSection
+              title="Organisasi"
+              icon={<Briefcase size={14} />}
+              rows={
+                fd.organizations.length === 0
+                  ? [{ label: "Pengalaman", value: "Belum pernah" }]
+                  : fd.organizations.map((o, i) => ({
+                      label: `Organisasi ${i + 1}`,
+                      value: `${o.name} — ${o.position}`,
+                    }))
+              }
+            />
+          )}
+
+          {fd?.documents && (
+            <ProfileSection
+              title="Berkas Pendaftaran"
+              icon={<FileText size={14} />}
+              rows={[
+                {
+                  label: "Folder Google Drive",
+                  value: (
+                    <a
+                      href={fd.documents.folderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary-blue hover:underline break-all"
+                    >
+                      <ExternalLink size={12} />
+                      {fd.documents.folderUrl}
+                    </a>
+                  ),
+                  stack: true,
+                },
+                {
+                  label: "Terdaftar DTKS",
+                  value: fd.documents.dtksRegistered ? "Ya" : "Tidak",
+                },
+              ]}
+            />
+          )}
+
+          {fd?.marketing && (
+            <ProfileSection
+              title="Berkas Marketing"
+              icon={<Instagram size={14} />}
+              rows={[
+                {
+                  label: "Instagram",
+                  value: (
+                    <a
+                      href={`https://instagram.com/${fd.marketing.instagramUsername.replace(/^@/, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary-blue hover:underline"
+                    >
+                      <Instagram size={12} />@{fd.marketing.instagramUsername}
+                    </a>
+                  ),
+                },
+                {
+                  label: "Folder Google Drive",
+                  value: (
+                    <a
+                      href={fd.marketing.folderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary-blue hover:underline break-all"
+                    >
+                      <ExternalLink size={12} />
+                      {fd.marketing.folderUrl}
+                    </a>
+                  ),
+                  stack: true,
+                },
+              ]}
+            />
+          )}
+
+          {fd?.interview && (
+            <ProfileSection
+              title="Interview Tertulis"
+              icon={<User size={14} />}
+              rows={[
+                {
+                  label: "Motivasi Pendidikan Tinggi",
+                  value: <LongText text={fd.interview.motivationHigherEducation} />,
+                  stack: true,
+                },
+                {
+                  label: "Motivasi Sakola Kembara",
+                  value: <LongText text={fd.interview.motivationSakem} />,
+                  stack: true,
+                },
+                {
+                  label: "Rencana Konsistensi",
+                  value: <LongText text={fd.interview.consistencyPlan} />,
+                  stack: true,
+                },
+                {
+                  label: "Komitmen Kehadiran",
+                  value: <LongText text={fd.interview.attendanceCommitment} />,
+                  stack: true,
+                },
+                {
+                  label: "Tanggapan Orang Tua",
+                  value: <LongText text={fd.interview.parentResponse} />,
+                  stack: true,
+                },
+                {
+                  label: "Jika Orang Tua Berubah Pikiran",
+                  value: <LongText text={fd.interview.ifParentChangesMind} />,
+                  stack: true,
+                },
+                {
+                  label: "Siap Materai",
+                  value: fd.interview.agreedToSignedStatement ? "Ya" : "Tidak",
+                },
+              ]}
+            />
+          )}
+
+          {/* Legacy motivation/economic-background fallback (old form rows) */}
+          {!fd && application.motivation && (
+            <ProfileSection
+              title="Cerita (Legacy)"
+              icon={<User size={14} />}
+              rows={[
+                {
+                  label: "Motivasi",
+                  value: <LongText text={application.motivation} />,
+                  stack: true,
+                },
+                ...(application.economicBackground
+                  ? [
+                      {
+                        label: "Latar Belakang Ekonomi",
+                        value: <LongText text={application.economicBackground} />,
+                        stack: true,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          )}
+
           <ProfileSection
             title="Pengajuan"
             icon={<Calendar size={14} />}
@@ -192,11 +418,7 @@ export default async function ApplicationDetailPage({
                 ? [
                     {
                       label: "Catatan Review Terakhir",
-                      value: (
-                        <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                          {application.reviewNotes}
-                        </p>
-                      ),
+                      value: <LongText text={application.reviewNotes} />,
                       stack: true,
                     },
                   ]
@@ -282,6 +504,12 @@ export default async function ApplicationDetailPage({
   );
 }
 
+function LongText({ text }: { text: string }) {
+  return (
+    <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{text}</p>
+  );
+}
+
 interface ProfileRow {
   label: string;
   value: React.ReactNode;
@@ -308,9 +536,9 @@ function ProfileSection({
         </h2>
       </header>
       <div className="px-6 pb-5 space-y-3">
-        {rows.map((row) => (
+        {rows.map((row, i) => (
           <div
-            key={row.label}
+            key={`${row.label}-${i}`}
             className={
               row.stack
                 ? "space-y-1.5"

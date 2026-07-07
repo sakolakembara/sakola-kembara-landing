@@ -9,10 +9,14 @@ export const reports = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     title: text("title").notNull(),
+    description: text("description"),
     category: text("category", { enum: reportCategory }).notNull(),
-    year: integer("year").notNull(),
+    // Free-form string so we can express Indonesian academic years like
+    // "2025/2026" as well as single-year civic reports ("2025"). Sorted
+    // lexicographically desc — works because we always pad to 4 digits.
+    year: text("year").notNull(),
 
-    // Path under public/. Example: /reports/2025/impact/laporan-dampak-2025.pdf
+    // Path under public/. Example: /reports/2025-2026/impact/laporan-dampak.pdf
     filePath: text("file_path").notNull(),
     fileSize: integer("file_size").notNull(), // bytes
 

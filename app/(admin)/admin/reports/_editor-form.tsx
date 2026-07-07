@@ -50,6 +50,7 @@ export function EditorForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const currentYear = new Date().getUTCFullYear();
+  const defaultYear = report?.year ?? `${currentYear}/${currentYear + 1}`;
 
   return (
     <form action={formAction}>
@@ -119,8 +120,23 @@ export function EditorForm({
                 name="title"
                 required
                 defaultValue={report?.title ?? ""}
-                placeholder="Contoh: Laporan Tahunan Sakola Kembara 2025"
+                placeholder="Contoh: Laporan Tahunan Sakola Kembara 2025/2026"
                 className={TEXT_INPUT}
+              />
+            </Field>
+            <Field
+              label="Deskripsi"
+              name="description"
+              errors={state.fieldErrors?.description}
+              hint="Ringkasan isi laporan. Muncul di kartu laporan publik."
+            >
+              <textarea
+                id="description"
+                name="description"
+                rows={3}
+                defaultValue={report?.description ?? ""}
+                placeholder="Contoh: Ringkasan kegiatan, pencapaian, dan tantangan sepanjang tahun ajaran 2025/2026."
+                className={`${TEXT_INPUT} resize-y min-h-[80px]`}
               />
             </Field>
             <div className="grid md:grid-cols-2 gap-5">
@@ -149,17 +165,17 @@ export function EditorForm({
                 name="year"
                 required
                 errors={state.fieldErrors?.year}
-                hint="Tahun yang laporan ini cakup, bukan tanggal upload."
+                hint={`Tahun laporan. Gunakan format tahun ajaran (${currentYear}/${currentYear + 1}) atau tahun tunggal (${currentYear}).`}
               >
                 <input
-                  type="number"
+                  type="text"
                   id="year"
                   name="year"
                   required
-                  min={2018}
-                  max={currentYear + 1}
-                  defaultValue={report?.year ?? currentYear}
-                  placeholder={String(currentYear)}
+                  inputMode="numeric"
+                  pattern="\d{4}(/\d{4})?"
+                  defaultValue={defaultYear}
+                  placeholder={`${currentYear}/${currentYear + 1}`}
                   className={TEXT_INPUT}
                 />
               </Field>

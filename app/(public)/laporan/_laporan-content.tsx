@@ -6,12 +6,13 @@ import { Download, FileText } from "lucide-react";
 import type { Report } from "@/lib/db/schema";
 import {
   formatBytes,
+  formatAcademicYear,
   REPORT_CATEGORY_LABEL,
   REPORT_CATEGORY_PILL,
 } from "@/lib/report-types";
 
 interface LaporanContentProps {
-  grouped: { year: number; reports: Report[] }[];
+  grouped: { year: string; reports: Report[] }[];
 }
 
 export function LaporanContent({ grouped }: LaporanContentProps) {
@@ -67,9 +68,9 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 + yearIdx * 0.1 }}
                 >
-                  <header className="mb-5 flex items-baseline gap-3">
+                  <header className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <h2 className="font-[var(--font-display)] text-3xl text-gray-900">
-                      {year}
+                      {formatAcademicYear(year)}
                     </h2>
                     <span className="text-sm text-gray-500">
                       {reports.length} laporan
@@ -95,6 +96,11 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
                         <h3 className="text-lg font-bold text-gray-900 mb-2 leading-snug">
                           {r.title}
                         </h3>
+                        {r.description && (
+                          <p className="text-sm text-gray-600 mb-3 leading-relaxed line-clamp-3">
+                            {r.description}
+                          </p>
+                        )}
                         <div className="text-xs text-gray-500 mb-4">
                           PDF · {formatBytes(r.fileSize)}
                         </div>

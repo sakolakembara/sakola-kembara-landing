@@ -5,3 +5,4 @@ export * from "./reports";
 export * from "./team-members";
 export * from "./contact-messages";
 export * from "./audit-log";
+export * from "./site-resources";

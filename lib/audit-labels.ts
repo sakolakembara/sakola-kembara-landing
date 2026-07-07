@@ -25,6 +25,9 @@ export const AUDIT_LABEL: Record<string, string> = {
   "admin.create": "Admin ditambahkan",
   "admin.update": "Admin diubah",
   "admin.delete": "Admin dihapus",
+  "resource.create": "Resource dibuat",
+  "resource.update": "Resource diubah",
+  "resource.delete": "Resource dihapus",
 };
 
 export const KNOWN_ACTIONS = Object.keys(AUDIT_LABEL).sort();
@@ -38,6 +41,7 @@ export const KNOWN_RESOURCE_TYPES = [
   "student_application",
   "contact_message",
   "admin_user",
+  "site_resource",
 ] as const;
 
 export const RESOURCE_TYPE_LABEL: Record<string, string> = {
@@ -51,6 +55,7 @@ export const RESOURCE_TYPE_LABEL: Record<string, string> = {
   application: "Pendaftar",
   contact_message: "Pesan",
   admin_user: "Admin",
+  site_resource: "Resource",
 };
 
 /**
@@ -83,6 +88,8 @@ export function auditHref(
       return `/admin/messages/${resourceId}`;
     case "admin_user":
       return `/admin/settings/${resourceId}/edit`;
+    case "site_resource":
+      return `/admin/resources`;
     default:
       return null;
   }

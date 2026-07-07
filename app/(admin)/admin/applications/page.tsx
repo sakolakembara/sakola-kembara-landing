@@ -58,6 +58,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
       id: studentApplications.id,
       fullName: studentApplications.fullName,
       email: studentApplications.email,
+      whatsapp: studentApplications.whatsapp,
       schoolName: studentApplications.schoolName,
       graduationYear: studentApplications.graduationYear,
       branchPreference: studentApplications.branchPreference,
@@ -116,7 +117,9 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                     <Td>
                       <div className="font-medium text-gray-900">{row.fullName}</div>
-                      <div className="text-xs text-gray-500">{row.email}</div>
+                      <div className="text-xs text-gray-500">
+                        {row.email ?? row.whatsapp}
+                      </div>
                     </Td>
                     <Td>{row.schoolName}</Td>
                     <Td className="text-gray-600">

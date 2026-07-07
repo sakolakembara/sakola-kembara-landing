@@ -10,6 +10,7 @@ import { ALLOWED_DOMAIN, auth } from "@/auth";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { adminUsers, reportCategory, reports } from "@/lib/db/schema";
+import { isValidReportYear } from "@/lib/report-types";
 
 const MAX_PDF_BYTES = 20_000_000; // 20 MB
 
@@ -28,16 +29,21 @@ function slugify(input: string): string {
   );
 }
 
-const NOW_YEAR = new Date().getUTCFullYear();
-
 const baseSchema = z.object({
   title: z.string().trim().min(3, "Judul minimal 3 karakter").max(200),
+  description: z
+    .string()
+    .trim()
+    .max(1000, "Deskripsi maksimal 1000 karakter")
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
   category: z.enum(reportCategory),
-  year: z.coerce
-    .number({ invalid_type_error: "Wajib diisi" })
-    .int()
-    .min(2018, "Tahun terlalu lama")
-    .max(NOW_YEAR + 1, "Tahun tidak valid"),
+  year: z
+    .string()
+    .trim()
+    .refine(isValidReportYear, {
+      message: "Format tahun tidak valid. Contoh: 2025 atau 2025/2026",
+    }),
 });
 
 const updateSchema = baseSchema.extend({
@@ -77,6 +83,7 @@ export async function createReport(
   const admin = await requireAdmin();
   const parsed = baseSchema.safeParse({
     title: formData.get("title"),
+    description: formData.get("description"),
     category: formData.get("category"),
     year: formData.get("year"),
   });
@@ -115,7 +122,9 @@ export async function createReport(
   const slug = slugify(data.title);
   const stamp = Math.random().toString(36).slice(2, 8);
   const filename = `${slug}-${stamp}.pdf`;
-  const relPath = `/reports/${data.year}/${data.category}/${filename}`;
+  // Path segments can't contain "/", so map "2025/2026" → "2025-2026".
+  const yearSeg = data.year.replace(/\//g, "-");
+  const relPath = `/reports/${yearSeg}/${data.category}/${filename}`;
   const absPath = path.join(process.cwd(), "public", relPath);
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -126,6 +135,7 @@ export async function createReport(
     .insert(reports)
     .values({
       title: data.title,
+      description: data.description ?? null,
       category: data.category,
       year: data.year,
       filePath: relPath,
@@ -153,6 +163,8 @@ export async function createReport(
   redirect("/admin/reports?created=1");
 }
 
+
+
 export async function updateReport(
   _prev: ReportFormState,
   formData: FormData,
@@ -161,6 +173,7 @@ export async function updateReport(
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
     title: formData.get("title"),
+    description: formData.get("description"),
     category: formData.get("category"),
     year: formData.get("year"),
   });
@@ -177,6 +190,7 @@ export async function updateReport(
     .update(reports)
     .set({
       title: data.title,
+      description: data.description ?? null,
       category: data.category,
       year: data.year,
     })

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Edit, Plus, User } from "lucide-react";
 import { getAllTeamMembers } from "@/lib/team";
+import { TEAM_CATEGORY_LABEL, TEAM_CATEGORY_PILL } from "@/lib/team-types";
 import { DeleteButton } from "./_delete-button";
 
 export const metadata: Metadata = {
@@ -32,7 +33,7 @@ export default async function TeamAdminPage({ searchParams }: PageProps) {
             >
               /tim
             </Link>{" "}
-            (diurutkan berdasarkan urutan tampil).
+            (dikelompokkan per kategori, lalu diurutkan berdasarkan urutan tampil).
           </p>
         </div>
         <Link
@@ -72,7 +73,7 @@ export default async function TeamAdminPage({ searchParams }: PageProps) {
                   <Th>Foto</Th>
                   <Th>Nama</Th>
                   <Th>Peran</Th>
-                  <Th>Asal</Th>
+                  <Th>Kategori</Th>
                   <Th>Urutan</Th>
                   <Th />
                 </tr>
@@ -105,8 +106,12 @@ export default async function TeamAdminPage({ searchParams }: PageProps) {
                     <td className="px-4 py-3 align-middle text-gray-700">
                       {m.role}
                     </td>
-                    <td className="px-4 py-3 align-middle text-gray-500 text-xs">
-                      {m.university ?? "—"}
+                    <td className="px-4 py-3 align-middle">
+                      <span
+                        className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${TEAM_CATEGORY_PILL[m.category]}`}
+                      >
+                        {TEAM_CATEGORY_LABEL[m.category]}
+                      </span>
                     </td>
                     <td className="px-4 py-3 align-middle text-gray-500 text-xs font-mono">
                       {m.displayOrder}

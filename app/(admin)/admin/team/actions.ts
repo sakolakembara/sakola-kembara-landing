@@ -9,7 +9,13 @@ import { z } from "zod";
 import { ALLOWED_DOMAIN, auth } from "@/auth";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { adminUsers, teamMembers } from "@/lib/db/schema";
+import {
+  adminUsers,
+  teamCategory,
+  teamMembers,
+  type EducationEntry,
+  type WorkEntry,
+} from "@/lib/db/schema";
 
 const MAX_IMAGE_BYTES = 5_000_000; // 5 MB
 const ALLOWED_IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp", "avif"]);
@@ -29,17 +35,80 @@ function slugify(input: string): string {
   );
 }
 
+const educationEntrySchema = z.object({
+  institution: z.string().trim().min(1, "Institusi wajib diisi").max(200),
+  degree: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+  year: z
+    .string()
+    .trim()
+    .max(50)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+});
+
+const workEntrySchema = z.object({
+  organization: z.string().trim().min(1, "Organisasi wajib diisi").max(200),
+  role: z.string().trim().min(1, "Peran wajib diisi").max(200),
+  period: z
+    .string()
+    .trim()
+    .max(50)
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+});
+
 const baseSchema = z.object({
   name: z.string().trim().min(2, "Nama minimal 2 karakter").max(120),
   role: z.string().trim().min(2, "Peran minimal 2 karakter").max(120),
-  university: z.string().trim().max(200).optional().or(z.literal("")),
+  category: z.enum(teamCategory),
   image: z.string().trim().max(500).optional().or(z.literal("")),
+  bio: z
+    .string()
+    .trim()
+    .max(4000, "Bio maksimal 4000 karakter")
+    .optional()
+    .or(z.literal("")),
+  educationHistory: z.array(educationEntrySchema).max(20, "Maksimal 20 entri"),
+  workHistory: z.array(workEntrySchema).max(20, "Maksimal 20 entri"),
   displayOrder: z.coerce
     .number({ invalid_type_error: "Wajib diisi" })
     .int()
     .min(0, "Tidak boleh negatif")
     .max(9999, "Maksimal 9999"),
 });
+
+/**
+ * Read `education[0][institution]`, `education[0][degree]`, … out of FormData
+ * and return a compact array. Empty rows (blank institution) are dropped so
+ * the admin can leave trailing blank rows without triggering validation.
+ */
+function readEntries<T extends Record<string, string | null>>(
+  formData: FormData,
+  prefix: string,
+  keys: readonly (keyof T & string)[],
+  requiredKey: keyof T & string,
+): T[] {
+  const rows: Record<number, Record<string, string>> = {};
+  for (const [rawKey, value] of formData.entries()) {
+    const match = rawKey.match(new RegExp(`^${prefix}\\[(\\d+)\\]\\[([a-zA-Z]+)\\]$`));
+    if (!match) continue;
+    const idx = Number(match[1]);
+    const field = match[2];
+    if (!keys.includes(field as keyof T & string)) continue;
+    rows[idx] ??= {};
+    rows[idx][field] = String(value);
+  }
+  return Object.keys(rows)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((i) => rows[i] as unknown as T)
+    .filter((row) => (row[requiredKey] ?? "").toString().trim().length > 0);
+}
 
 const updateSchema = baseSchema.extend({ id: z.string().uuid() });
 
@@ -68,18 +137,33 @@ function invalidate() {
   revalidatePath("/admin/team");
 }
 
+function parsePayload(formData: FormData) {
+  return {
+    name: formData.get("name"),
+    role: formData.get("role"),
+    category: formData.get("category"),
+    image: formData.get("image"),
+    bio: formData.get("bio"),
+    displayOrder: formData.get("displayOrder"),
+    educationHistory: readEntries<{
+      institution: string;
+      degree?: string | null;
+      year?: string | null;
+    }>(formData, "education", ["institution", "degree", "year"], "institution"),
+    workHistory: readEntries<{
+      organization: string;
+      role: string;
+      period?: string | null;
+    }>(formData, "work", ["organization", "role", "period"], "organization"),
+  };
+}
+
 export async function createTeamMember(
   _prev: TeamFormState,
   formData: FormData,
 ): Promise<TeamFormState> {
   const admin = await requireAdmin();
-  const parsed = baseSchema.safeParse({
-    name: formData.get("name"),
-    role: formData.get("role"),
-    university: formData.get("university"),
-    image: formData.get("image"),
-    displayOrder: formData.get("displayOrder"),
-  });
+  const parsed = baseSchema.safeParse(parsePayload(formData));
   if (!parsed.success) {
     return {
       status: "error",
@@ -94,8 +178,11 @@ export async function createTeamMember(
     .values({
       name: data.name,
       role: data.role,
-      university: data.university || null,
+      category: data.category,
       image: data.image || null,
+      bio: data.bio || null,
+      educationHistory: data.educationHistory as EducationEntry[],
+      workHistory: data.workHistory as WorkEntry[],
       displayOrder: data.displayOrder,
     })
     .returning({ id: teamMembers.id });
@@ -106,7 +193,7 @@ export async function createTeamMember(
     action: "team.create",
     resourceType: "team_member",
     resourceId: inserted.id,
-    metadata: { name: data.name, role: data.role },
+    metadata: { name: data.name, role: data.role, category: data.category },
   });
 
   invalidate();
@@ -120,11 +207,7 @@ export async function updateTeamMember(
   const admin = await requireAdmin();
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
-    name: formData.get("name"),
-    role: formData.get("role"),
-    university: formData.get("university"),
-    image: formData.get("image"),
-    displayOrder: formData.get("displayOrder"),
+    ...parsePayload(formData),
   });
   if (!parsed.success) {
     return {
@@ -140,8 +223,11 @@ export async function updateTeamMember(
     .set({
       name: data.name,
       role: data.role,
-      university: data.university || null,
+      category: data.category,
       image: data.image || null,
+      bio: data.bio || null,
+      educationHistory: data.educationHistory as EducationEntry[],
+      workHistory: data.workHistory as WorkEntry[],
       displayOrder: data.displayOrder,
       updatedAt: new Date(),
     })
@@ -153,7 +239,7 @@ export async function updateTeamMember(
     action: "team.update",
     resourceType: "team_member",
     resourceId: data.id,
-    metadata: { name: data.name, role: data.role },
+    metadata: { name: data.name, role: data.role, category: data.category },
   });
 
   invalidate();

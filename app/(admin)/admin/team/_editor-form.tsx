@@ -3,8 +3,13 @@
 import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { ArrowLeft, Save, Upload, User, X } from "lucide-react";
-import type { TeamMember } from "@/lib/db/schema";
+import { ArrowLeft, Plus, Save, Trash2, Upload, User, X } from "lucide-react";
+import {
+  type EducationEntry,
+  type TeamMember,
+  type WorkEntry,
+} from "@/lib/db/schema";
+import { TEAM_CATEGORY_LABEL, TEAM_CATEGORY_ORDER } from "@/lib/team-types";
 import {
   createTeamMember,
   updateTeamMember,
@@ -23,6 +28,9 @@ interface EditorFormProps {
 const TEXT_INPUT =
   "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
 
+const SMALL_INPUT =
+  "w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-primary-blue focus:outline-none";
+
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
@@ -37,6 +45,12 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
+type EduRow = { key: string; value: EducationEntry };
+type WorkRow = { key: string; value: WorkEntry };
+
+let rowKeyCounter = 0;
+const nextKey = () => `${Date.now()}-${++rowKeyCounter}`;
+
 export function EditorForm({
   mode,
   member,
@@ -48,6 +62,17 @@ export function EditorForm({
   const [photoUploading, setPhotoUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [education, setEducation] = useState<EduRow[]>(() =>
+    (member?.educationHistory ?? []).length > 0
+      ? member!.educationHistory.map((e) => ({ key: nextKey(), value: e }))
+      : [{ key: nextKey(), value: { institution: "", degree: "", year: "" } }],
+  );
+  const [work, setWork] = useState<WorkRow[]>(() =>
+    (member?.workHistory ?? []).length > 0
+      ? member!.workHistory.map((w) => ({ key: nextKey(), value: w }))
+      : [{ key: nextKey(), value: { organization: "", role: "", period: "" } }],
+  );
 
   async function handleUpload(file: File) {
     setUploadError(null);
@@ -66,6 +91,21 @@ export function EditorForm({
     } finally {
       setPhotoUploading(false);
     }
+  }
+
+  function updateEducation(key: string, patch: Partial<EducationEntry>) {
+    setEducation((rows) =>
+      rows.map((r) =>
+        r.key === key ? { ...r, value: { ...r.value, ...patch } } : r,
+      ),
+    );
+  }
+  function updateWork(key: string, patch: Partial<WorkEntry>) {
+    setWork((rows) =>
+      rows.map((r) =>
+        r.key === key ? { ...r, value: { ...r.value, ...patch } } : r,
+      ),
+    );
   }
 
   return (
@@ -148,39 +188,47 @@ export function EditorForm({
                 />
               </Field>
             </div>
-            <Field
-              label="Asal Universitas / Institusi"
-              name="university"
-              errors={state.fieldErrors?.university}
-              hint="Opsional. Tampil di bawah peran di kartu publik."
-            >
-              <input
-                type="text"
-                id="university"
-                name="university"
-                defaultValue={member?.university ?? ""}
-                placeholder="Contoh: Institut Teknologi Bandung"
-                className={TEXT_INPUT}
-              />
-            </Field>
-            <Field
-              label="Urutan Tampil"
-              name="displayOrder"
-              required
-              errors={state.fieldErrors?.displayOrder}
-              hint="Angka lebih kecil tampil lebih dulu. Disarankan kelipatan 10 (10, 20, 30…) agar mudah disisipkan."
-            >
-              <input
-                type="number"
-                id="displayOrder"
+            <div className="grid md:grid-cols-2 gap-5">
+              <Field
+                label="Kategori"
+                name="category"
+                required
+                errors={state.fieldErrors?.category}
+                hint="Menentukan section di /tim tempat kartu ini tampil."
+              >
+                <select
+                  id="category"
+                  name="category"
+                  required
+                  defaultValue={member?.category ?? "pengurus"}
+                  className={`${TEXT_INPUT} bg-white`}
+                >
+                  {TEAM_CATEGORY_ORDER.map((c) => (
+                    <option key={c} value={c}>
+                      {TEAM_CATEGORY_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field
+                label="Urutan Tampil"
                 name="displayOrder"
                 required
-                min={0}
-                max={9999}
-                defaultValue={member?.displayOrder ?? 100}
-                className={`${TEXT_INPUT} max-w-[160px]`}
-              />
-            </Field>
+                errors={state.fieldErrors?.displayOrder}
+                hint="Lebih kecil = lebih dulu (dalam kategori yang sama). Kelipatan 10 dianjurkan."
+              >
+                <input
+                  type="number"
+                  id="displayOrder"
+                  name="displayOrder"
+                  required
+                  min={0}
+                  max={9999}
+                  defaultValue={member?.displayOrder ?? 100}
+                  className={TEXT_INPUT}
+                />
+              </Field>
+            </div>
           </Section>
 
           <Section
@@ -250,6 +298,144 @@ export function EditorForm({
                   <p className="text-xs text-red-600 mt-2">{uploadError}</p>
                 )}
               </div>
+            </div>
+          </Section>
+
+          <Section
+            title="Bio"
+            description="Deskripsi panjang yang muncul di drawer profil publik."
+          >
+            <Field label="Bio" name="bio" errors={state.fieldErrors?.bio}>
+              <textarea
+                id="bio"
+                name="bio"
+                rows={5}
+                defaultValue={member?.bio ?? ""}
+                placeholder="Latar belakang singkat, fokus kerja, dan minat pribadi."
+                className={`${TEXT_INPUT} resize-y min-h-[120px]`}
+              />
+            </Field>
+          </Section>
+
+          <Section
+            title="Riwayat Pendidikan"
+            description="Kosongkan institusi untuk menghapus baris saat disimpan."
+          >
+            <div className="space-y-3">
+              {education.map((row, idx) => (
+                <div
+                  key={row.key}
+                  className="rounded-lg border border-gray-200 p-3 grid md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_auto] gap-2 items-start"
+                >
+                  <input
+                    type="text"
+                    name={`education[${idx}][institution]`}
+                    value={row.value.institution ?? ""}
+                    onChange={(e) => updateEducation(row.key, { institution: e.target.value })}
+                    placeholder="Institusi (mis. Universitas Indonesia)"
+                    className={SMALL_INPUT}
+                  />
+                  <input
+                    type="text"
+                    name={`education[${idx}][degree]`}
+                    value={row.value.degree ?? ""}
+                    onChange={(e) => updateEducation(row.key, { degree: e.target.value })}
+                    placeholder="Gelar / jurusan (mis. S1 Pendidikan)"
+                    className={SMALL_INPUT}
+                  />
+                  <input
+                    type="text"
+                    name={`education[${idx}][year]`}
+                    value={row.value.year ?? ""}
+                    onChange={(e) => updateEducation(row.key, { year: e.target.value })}
+                    placeholder="Tahun (mis. 2018)"
+                    className={SMALL_INPUT}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEducation((rows) => rows.filter((r) => r.key !== row.key))
+                    }
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    aria-label="Hapus baris"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setEducation((rows) => [
+                    ...rows,
+                    { key: nextKey(), value: { institution: "", degree: "", year: "" } },
+                  ])
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary-blue hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Plus size={14} /> Tambah Pendidikan
+              </button>
+            </div>
+          </Section>
+
+          <Section
+            title="Riwayat Pekerjaan"
+            description="Kosongkan organisasi untuk menghapus baris saat disimpan."
+          >
+            <div className="space-y-3">
+              {work.map((row, idx) => (
+                <div
+                  key={row.key}
+                  className="rounded-lg border border-gray-200 p-3 grid md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_auto] gap-2 items-start"
+                >
+                  <input
+                    type="text"
+                    name={`work[${idx}][organization]`}
+                    value={row.value.organization ?? ""}
+                    onChange={(e) => updateWork(row.key, { organization: e.target.value })}
+                    placeholder="Organisasi (mis. Kemendikbud)"
+                    className={SMALL_INPUT}
+                  />
+                  <input
+                    type="text"
+                    name={`work[${idx}][role]`}
+                    value={row.value.role ?? ""}
+                    onChange={(e) => updateWork(row.key, { role: e.target.value })}
+                    placeholder="Peran (mis. Analis Program)"
+                    className={SMALL_INPUT}
+                  />
+                  <input
+                    type="text"
+                    name={`work[${idx}][period]`}
+                    value={row.value.period ?? ""}
+                    onChange={(e) => updateWork(row.key, { period: e.target.value })}
+                    placeholder="Periode (mis. 2019–2022)"
+                    className={SMALL_INPUT}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setWork((rows) => rows.filter((r) => r.key !== row.key))
+                    }
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    aria-label="Hapus baris"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setWork((rows) => [
+                    ...rows,
+                    { key: nextKey(), value: { organization: "", role: "", period: "" } },
+                  ])
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary-blue hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Plus size={14} /> Tambah Pekerjaan
+              </button>
             </div>
           </Section>
         </div>
