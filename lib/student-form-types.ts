@@ -486,6 +486,7 @@ export const emptyFormValues: FormValues = {
 // ─── Step wiring ──────────────────────────────────────────────────────
 
 export const STEPS = [
+  { id: "intro", label: "Sebelum Mulai" },
   { id: "identity", label: "Identitas Pribadi" },
   { id: "household", label: "Keluarga & Ekonomi" },
   { id: "housing", label: "Tempat Tinggal & Hutang" },

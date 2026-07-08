@@ -2,14 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  Check,
-  CircleDot,
-  Lock,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleDot, Lock } from "lucide-react";
 import { z } from "zod";
 import {
   STEPS,
@@ -25,6 +18,7 @@ import {
   type StepId,
 } from "@/lib/student-form-types";
 import { submitStudentApplication } from "./actions";
+import { IntroStep } from "./_steps/intro";
 import { IdentityStep } from "./_steps/identity";
 import { HouseholdStep } from "./_steps/household";
 import { HousingStep } from "./_steps/housing";
@@ -61,9 +55,14 @@ export function Wizard() {
   const [values, setValues] = useState<FormValues>(emptyFormValues);
   const [stepIdx, setStepIdx] = useState(0);
   const [visited, setVisited] = useState<Set<StepId>>(
-    () => new Set(["identity"]),
+    () => new Set(["intro"]),
   );
+  // Gate the persist effect until localStorage has been read once, so the
+  // initial empty state doesn't clobber a saved payload before React commits
+  // the loaded values.
+  const [hydrated, setHydrated] = useState(false);
   const [errors, setErrors] = useState<Record<StepId, FieldErrors>>({
+    intro: {},
     identity: {},
     household: {},
     housing: {},
@@ -99,11 +98,14 @@ export function Wizard() {
       }
     } catch {
       // Ignore — bad payload just means fresh form.
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
-  // Persist on every meaningful change.
+  // Persist on every meaningful change, but only after hydration.
   useEffect(() => {
+    if (!hydrated) return;
     if (submitState.status === "success") return;
     try {
       localStorage.setItem(
@@ -113,7 +115,7 @@ export function Wizard() {
     } catch {
       // Storage full / disabled — silently drop.
     }
-  }, [values, stepIdx, visited, submitState.status]);
+  }, [hydrated, values, stepIdx, visited, submitState.status]);
 
   const currentStep = STEPS[stepIdx];
 
@@ -140,7 +142,7 @@ export function Wizard() {
 
   const validateStep = useCallback(
     (step: StepId): boolean => {
-      if (step === "review") return true;
+      if (step === "intro" || step === "review") return true;
       const schema = STEP_SCHEMAS[step];
       const result = schema.safeParse(values[step]);
       if (result.success) {
@@ -199,6 +201,7 @@ export function Wizard() {
     // Final full-form validation.
     let firstBad: StepId | null = null;
     const nextErrors: Record<StepId, FieldErrors> = {
+      intro: {},
       identity: {},
       household: {},
       housing: {},
@@ -209,7 +212,7 @@ export function Wizard() {
       review: {},
     };
     for (const step of STEPS) {
-      if (step.id === "review") continue;
+      if (step.id === "intro" || step.id === "review") continue;
       const schema = STEP_SCHEMAS[step.id];
       const result = schema.safeParse(values[step.id]);
       if (!result.success) {
@@ -282,14 +285,6 @@ export function Wizard() {
             akan dijaga kerahasiaannya dan hanya digunakan untuk seleksi.
             Progres kamu tersimpan otomatis di browser ini.
           </p>
-          <Link
-            href="/gabung-siswa/docs"
-            target="_blank"
-            className="inline-flex items-center gap-2 mt-4 px-4 py-2 border-2 border-primary-blue/20 hover:border-primary-blue/60 text-primary-blue text-sm font-semibold rounded-lg bg-primary-blue/5 hover:bg-primary-blue/10 transition-colors"
-          >
-            <BookOpen size={14} />
-            Buka Pusat Dokumen &amp; Berkas
-          </Link>
         </header>
 
         <div className="grid lg:grid-cols-[280px_1fr] gap-6">
@@ -365,6 +360,7 @@ export function Wizard() {
           {/* Main step */}
           <div>
             <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8">
+              {currentStep.id === "intro" && <IntroStep />}
               {currentStep.id === "identity" && <IdentityStep {...stepProps} />}
               {currentStep.id === "household" && (
                 <HouseholdStep {...stepProps} />
