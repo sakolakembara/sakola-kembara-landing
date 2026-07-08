@@ -25,9 +25,9 @@ export const AUDIT_LABEL: Record<string, string> = {
   "admin.create": "Admin ditambahkan",
   "admin.update": "Admin diubah",
   "admin.delete": "Admin dihapus",
-  "resource.create": "Resource dibuat",
-  "resource.update": "Resource diubah",
-  "resource.delete": "Resource dihapus",
+  "resource.create": "Berkas pendaftaran dibuat",
+  "resource.update": "Berkas pendaftaran diubah",
+  "resource.delete": "Berkas pendaftaran dihapus",
 };
 
 export const KNOWN_ACTIONS = Object.keys(AUDIT_LABEL).sort();
@@ -55,7 +55,7 @@ export const RESOURCE_TYPE_LABEL: Record<string, string> = {
   application: "Pendaftar",
   contact_message: "Pesan",
   admin_user: "Admin",
-  site_resource: "Resource",
+  site_resource: "Berkas Pendaftaran",
 };
 
 /**

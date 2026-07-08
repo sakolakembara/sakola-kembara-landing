@@ -6,7 +6,7 @@ import { siteResources } from "@/lib/db/schema";
 import { EditorForm } from "../../_editor-form";
 
 export const metadata: Metadata = {
-  title: "Edit Resource",
+  title: "Edit Berkas",
 };
 
 interface PageProps {

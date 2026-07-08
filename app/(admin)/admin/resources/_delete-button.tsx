@@ -8,7 +8,7 @@ export function DeleteButton({ id, title }: { id: string; title: string }) {
     <form
       action={deleteResource}
       onSubmit={(e) => {
-        if (!confirm(`Hapus resource "${title}"? File uploadnya juga akan dihapus.`)) {
+        if (!confirm(`Hapus berkas "${title}"? File uploadnya juga akan dihapus.`)) {
           e.preventDefault();
         }
       }}

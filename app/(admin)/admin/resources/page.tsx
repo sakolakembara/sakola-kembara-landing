@@ -17,7 +17,7 @@ import { formatBytes } from "@/lib/report-types";
 import { DeleteButton } from "./_delete-button";
 
 export const metadata: Metadata = {
-  title: "Resource Publik",
+  title: "Berkas Pendaftaran",
 };
 
 interface PageProps {
@@ -37,7 +37,7 @@ export default async function ResourcesAdminPage({ searchParams }: PageProps) {
       <header className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
-            Resource Publik
+            Berkas Pendaftaran
           </h1>
           <p className="text-gray-600 max-w-[720px]">
             Kelola file, link, dan teks yang muncul di{" "}
@@ -56,18 +56,18 @@ export default async function ResourcesAdminPage({ searchParams }: PageProps) {
           href="/admin/resources/new"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors whitespace-nowrap"
         >
-          <Plus size={16} /> Tambah Resource
+          <Plus size={16} /> Tambah Berkas
         </Link>
       </header>
 
       {created && (
         <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 mb-4 text-sm text-green-700">
-          Resource berhasil dibuat.
+          Berkas berhasil dibuat.
         </div>
       )}
       {deleted && (
         <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 mb-4 text-sm text-green-700">
-          Resource berhasil dihapus.
+          Berkas berhasil dihapus.
         </div>
       )}
       {error && (
@@ -79,7 +79,7 @@ export default async function ResourcesAdminPage({ searchParams }: PageProps) {
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {all.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
-            Belum ada resource. Klik &quot;Tambah Resource&quot; untuk membuat
+            Belum ada berkas. Klik &quot;Tambah Berkas&quot; untuk membuat
             entry pertama.
           </div>
         ) : (

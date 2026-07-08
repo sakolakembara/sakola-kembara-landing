@@ -106,11 +106,11 @@ export function EditorForm({
             </Link>
             <span className="text-gray-300 select-none">·</span>
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-              {mode === "create" ? "Resource Baru" : "Edit Resource"}
+              {mode === "create" ? "Berkas Baru" : "Edit Berkas"}
             </span>
           </div>
           <SubmitButton
-            label={mode === "create" ? "Buat Resource" : "Simpan Perubahan"}
+            label={mode === "create" ? "Buat Berkas" : "Simpan Perubahan"}
           />
         </div>
       </header>
@@ -157,7 +157,7 @@ export function EditorForm({
                 name="description"
                 rows={3}
                 defaultValue={resource?.description ?? ""}
-                placeholder="Ringkas isi atau instruksi penggunaan resource ini."
+                placeholder="Ringkas isi atau instruksi penggunaan berkas ini."
                 className={`${TEXT_INPUT} resize-y min-h-[80px]`}
               />
             </Field>
@@ -207,7 +207,7 @@ export function EditorForm({
 
           <Section
             title="Tipe Konten"
-            description="Setiap resource hanya salah satu tipe: file, link, atau teks."
+            description="Setiap berkas hanya salah satu tipe: file, link, atau teks."
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {resourceContentType.map((t) => {

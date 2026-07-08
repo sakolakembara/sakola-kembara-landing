@@ -255,7 +255,7 @@ export async function updateResource(
     where: eq(siteResources.id, data.id),
   });
   if (!existing) {
-    return { status: "error", message: "Resource tidak ditemukan." };
+    return { status: "error", message: "Berkas tidak ditemukan." };
   }
 
   // Handle file swap / removal based on content type.
