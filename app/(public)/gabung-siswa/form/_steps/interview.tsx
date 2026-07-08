@@ -1,9 +1,10 @@
 "use client";
 
-import type {
-  FormValues,
-  InterviewValues,
-  StepId,
+import {
+  INTERVIEW_MAX_CHARS,
+  type FormValues,
+  type InterviewValues,
+  type StepId,
 } from "@/lib/student-form-types";
 import { Field, RadioGroup, TEXTAREA, type FieldErrors } from "../_shared";
 import { StepHeader } from "./identity";
@@ -149,13 +150,22 @@ function LongField({
       <textarea
         id={id}
         rows={5}
+        maxLength={INTERVIEW_MAX_CHARS}
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
         className={TEXTAREA}
         data-error={!!error}
       />
-      <p className="text-xs text-gray-400 mt-1 text-right">
-        {value.length} karakter
+      <p
+        className={`text-xs mt-1 text-right ${
+          value.length >= INTERVIEW_MAX_CHARS
+            ? "text-red-600 font-medium"
+            : value.length >= INTERVIEW_MAX_CHARS * 0.9
+              ? "text-amber-600"
+              : "text-gray-400"
+        }`}
+      >
+        {value.length} / {INTERVIEW_MAX_CHARS} karakter
       </p>
     </Field>
   );

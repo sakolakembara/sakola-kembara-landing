@@ -424,8 +424,14 @@ export const marketingSchema = z.object({
   storyUploadUrl: googleDriveUrlSchema,
 });
 
-const longAnswer = (max = 4000) =>
-  z.string().trim().min(20, "Tulis minimal 20 karakter").max(max);
+export const INTERVIEW_MAX_CHARS = 2000;
+
+const longAnswer = (max = INTERVIEW_MAX_CHARS) =>
+  z
+    .string()
+    .trim()
+    .min(20, "Tulis minimal 20 karakter")
+    .max(max, `Maksimal ${max} karakter`);
 
 export const interviewSchema = z.object({
   motivationHigherEducation: longAnswer(),
