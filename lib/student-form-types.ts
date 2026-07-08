@@ -142,8 +142,28 @@ const googleDriveUrlSchema = z
   .url("Link tidak valid")
   .refine(
     (v) => /drive\.google\.com|s\.id|bit\.ly|drive\.usercontent/i.test(v),
-    "Gunakan link Google Drive folder (drive.google.com/…)",
+    "Gunakan link Google Drive (drive.google.com/…)",
   );
+
+/**
+ * Same as googleDriveUrlSchema, but empty string is allowed (returned as "").
+ * Used for optional document uploads (e.g. surat penghasilan ibu when tidak ada).
+ */
+const optionalGoogleDriveUrlSchema = z
+  .string()
+  .trim()
+  .transform((v, ctx) => {
+    if (v === "") return "";
+    const parsed = googleDriveUrlSchema.safeParse(v);
+    if (!parsed.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: parsed.error.issues[0]?.message ?? "Link tidak valid",
+      });
+      return z.NEVER;
+    }
+    return parsed.data;
+  });
 
 /** Instagram username without leading `@`. */
 const instagramUsernameSchema = z
@@ -367,16 +387,41 @@ export const organizationsSchema = z
     });
   });
 
-export const documentsSchema = z.object({
-  folderUrl: googleDriveUrlSchema,
-  dtksRegistered: z.enum(["ya", "tidak"], {
-    errorMap: () => ({ message: "Pilih Ya atau Tidak" }),
-  }),
-});
+export const documentsSchema = z
+  .object({
+    fatherIncomeUrl: optionalGoogleDriveUrlSchema,
+    motherIncomeUrl: optionalGoogleDriveUrlSchema,
+    otherEarner1IncomeUrl: optionalGoogleDriveUrlSchema,
+    otherEarner2IncomeUrl: optionalGoogleDriveUrlSchema,
+    debtProofUrl: optionalGoogleDriveUrlSchema,
+    electricityBillUrl: googleDriveUrlSchema,
+    familyCardUrl: googleDriveUrlSchema,
+    parentPermissionUrl: googleDriveUrlSchema,
+    selfPhotoUrl: googleDriveUrlSchema,
+    dtksRegistered: z.enum(["ya", "tidak"], {
+      errorMap: () => ({ message: "Pilih Ya atau Tidak" }),
+    }),
+    dtksUrl: optionalGoogleDriveUrlSchema,
+    houseImagesUrl: googleDriveUrlSchema,
+    vehicleImagesUrl: googleDriveUrlSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (data.dtksRegistered === "ya" && !data.dtksUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Wajib diisi karena kamu terdaftar DTKS. Unggah SKTM DTKS-mu.",
+        path: ["dtksUrl"],
+      });
+    }
+  });
 
 export const marketingSchema = z.object({
   instagramUsername: instagramUsernameSchema,
-  folderUrl: googleDriveUrlSchema,
+  instagramFollowProofUrl: googleDriveUrlSchema,
+  broadcastProofUrl: googleDriveUrlSchema,
+  twibbonUploadUrl: googleDriveUrlSchema,
+  storyUploadUrl: googleDriveUrlSchema,
 });
 
 const longAnswer = (max = 4000) =>
@@ -465,12 +510,26 @@ export const emptyFormValues: FormValues = {
     entries: [{ name: "", position: "" }],
   },
   documents: {
-    folderUrl: "",
+    fatherIncomeUrl: "",
+    motherIncomeUrl: "",
+    otherEarner1IncomeUrl: "",
+    otherEarner2IncomeUrl: "",
+    debtProofUrl: "",
+    electricityBillUrl: "",
+    familyCardUrl: "",
+    parentPermissionUrl: "",
+    selfPhotoUrl: "",
     dtksRegistered: "" as DocumentsValues["dtksRegistered"],
+    dtksUrl: "",
+    houseImagesUrl: "",
+    vehicleImagesUrl: "",
   },
   marketing: {
     instagramUsername: "",
-    folderUrl: "",
+    instagramFollowProofUrl: "",
+    broadcastProofUrl: "",
+    twibbonUploadUrl: "",
+    storyUploadUrl: "",
   },
   interview: {
     motivationHigherEducation: "",
@@ -491,13 +550,14 @@ export const STEPS = [
   { id: "household", label: "Keluarga & Ekonomi" },
   { id: "housing", label: "Tempat Tinggal & Hutang" },
   { id: "organizations", label: "Organisasi" },
-  { id: "documents", label: "Berkas Pendaftaran" },
-  { id: "marketing", label: "Berkas Marketing" },
   { id: "interview", label: "Interview Tertulis" },
+  { id: "documents", label: "Pengumpulan Berkas" },
   { id: "review", label: "Tinjau & Kirim" },
 ] as const;
 
-export type StepId = (typeof STEPS)[number]["id"];
+// `marketing` is validated + stored as its own bucket but rendered inside the
+// `documents` step (see wizard.tsx), so it doesn't appear in STEPS.
+export type StepId = (typeof STEPS)[number]["id"] | "marketing";
 
 /** Format 1200000 → "1.200.000" for previewing / recap. */
 export function formatRupiah(n: number): string {

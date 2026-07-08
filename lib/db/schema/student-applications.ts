@@ -37,12 +37,27 @@ export type StudentApplicationFormData = {
   };
   organizations: { name: string; position: string }[];
   documents: {
-    folderUrl: string;
+    fatherIncomeUrl: string | null;
+    motherIncomeUrl: string | null;
+    otherEarner1IncomeUrl: string | null;
+    otherEarner2IncomeUrl: string | null;
+    debtProofUrl: string | null;
+    electricityBillUrl: string;
+    familyCardUrl: string;
+    parentPermissionUrl: string;
+    selfPhotoUrl: string;
     dtksRegistered: boolean;
+    /** Only set when dtksRegistered is true. */
+    dtksUrl: string | null;
+    houseImagesUrl: string;
+    vehicleImagesUrl: string;
   };
   marketing: {
     instagramUsername: string;
-    folderUrl: string;
+    instagramFollowProofUrl: string;
+    broadcastProofUrl: string;
+    twibbonUploadUrl: string;
+    storyUploadUrl: string;
   };
   interview: {
     motivationHigherEducation: string;

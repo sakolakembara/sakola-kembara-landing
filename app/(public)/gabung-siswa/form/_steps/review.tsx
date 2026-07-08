@@ -112,36 +112,6 @@ export function ReviewStep({ values, onEditStep }: Props) {
       />
 
       <ReviewSection
-        title="Berkas Pendaftaran"
-        onEdit={() => onEditStep("documents")}
-        rows={[
-          ["Link Folder Berkas", docs.folderUrl || "—"],
-          [
-            "Terdaftar DTKS",
-            docs.dtksRegistered === "ya"
-              ? "Ya"
-              : docs.dtksRegistered === "tidak"
-                ? "Tidak"
-                : "—",
-          ],
-        ]}
-      />
-
-      <ReviewSection
-        title="Berkas Marketing"
-        onEdit={() => onEditStep("marketing")}
-        rows={[
-          [
-            "Instagram",
-            marketing.instagramUsername
-              ? `@${marketing.instagramUsername.replace(/^@/, "")}`
-              : "—",
-          ],
-          ["Link Folder Marketing", marketing.folderUrl || "—"],
-        ]}
-      />
-
-      <ReviewSection
         title="Interview Tertulis"
         onEdit={() => onEditStep("interview")}
         rows={[
@@ -155,6 +125,52 @@ export function ReviewStep({ values, onEditStep }: Props) {
             "Siap Tanda Tangan Materai",
             interview.agreedToSignedStatement === "ya" ? "Ya" : "Tidak",
           ],
+        ]}
+      />
+
+      <ReviewSection
+        title="Berkas Pendaftaran"
+        onEdit={() => onEditStep("documents")}
+        rows={[
+          ["Surat Penghasilan Ayah", docs.fatherIncomeUrl || "—"],
+          ["Surat Penghasilan Ibu", docs.motherIncomeUrl || "—"],
+          ["Surat Penghasilan Anggota Lain 1", docs.otherEarner1IncomeUrl || "—"],
+          ["Surat Penghasilan Anggota Lain 2", docs.otherEarner2IncomeUrl || "—"],
+          ["Bukti Hutang", docs.debtProofUrl || "—"],
+          ["Tagihan/Token Listrik", docs.electricityBillUrl || "—"],
+          ["Kartu Keluarga", docs.familyCardUrl || "—"],
+          ["Surat Izin Orang Tua", docs.parentPermissionUrl || "—"],
+          ["Foto Diri", docs.selfPhotoUrl || "—"],
+          ["Foto Rumah", docs.houseImagesUrl || "—"],
+          ["Foto Kendaraan", docs.vehicleImagesUrl || "—"],
+          [
+            "Terdaftar DTKS",
+            docs.dtksRegistered === "ya"
+              ? "Ya"
+              : docs.dtksRegistered === "tidak"
+                ? "Tidak"
+                : "—",
+          ],
+          ...(docs.dtksRegistered === "ya"
+            ? ([["SKTM DTKS", docs.dtksUrl || "—"]] as [string, string][])
+            : []),
+        ]}
+      />
+
+      <ReviewSection
+        title="Berkas Marketing"
+        onEdit={() => onEditStep("documents")}
+        rows={[
+          [
+            "Instagram",
+            marketing.instagramUsername
+              ? `@${marketing.instagramUsername.replace(/^@/, "")}`
+              : "—",
+          ],
+          ["Bukti Follow @sakolakembara", marketing.instagramFollowProofUrl || "—"],
+          ["Bukti Share Broadcast WA", marketing.broadcastProofUrl || "—"],
+          ["Bukti Upload Twibbon", marketing.twibbonUploadUrl || "—"],
+          ["Bukti Share Story Instagram", marketing.storyUploadUrl || "—"],
         ]}
       />
 

@@ -17,6 +17,91 @@ type Props = {
   clearFieldError: (step: StepId, path: string) => void;
 };
 
+type MarketingUrlKey =
+  | "instagramFollowProofUrl"
+  | "broadcastProofUrl"
+  | "twibbonUploadUrl"
+  | "storyUploadUrl";
+
+type ProofSpec = {
+  key: MarketingUrlKey;
+  label: string;
+  note: React.ReactNode;
+};
+
+const PROOFS: ProofSpec[] = [
+  {
+    key: "instagramFollowProofUrl",
+    label: "Bukti Follow Instagram @sakolakembara",
+    note: (
+      <>
+        Screenshot bukti follow akun{" "}
+        <a
+          href="https://instagram.com/sakolakembara"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline font-semibold text-primary-blue hover:text-primary-blue-dark"
+        >
+          @sakolakembara
+        </a>
+        , unggah ke Drive-mu, lalu tempel link-nya di sini.
+      </>
+    ),
+  },
+  {
+    key: "broadcastProofUrl",
+    label: "Bukti Share Poster + Broadcast ke 3 Grup WhatsApp",
+    note: (
+      <>
+        Jadikan 1 file kalau lebih dari satu screenshot. Poster + template
+        broadcast bisa diambil dari{" "}
+        <Link
+          href="/gabung-siswa/docs#berkas-marketing"
+          target="_blank"
+          className="underline font-semibold text-primary-blue hover:text-primary-blue-dark"
+        >
+          Pusat Dokumen
+        </Link>
+        .
+      </>
+    ),
+  },
+  {
+    key: "twibbonUploadUrl",
+    label: "Bukti Upload Twibbon di Feed Instagram",
+    note: (
+      <>
+        Wajib tag <b>@sakolakembara</b>. Twibbon + caption bisa diambil dari{" "}
+        <Link
+          href="/gabung-siswa/docs#berkas-marketing"
+          target="_blank"
+          className="underline font-semibold text-primary-blue hover:text-primary-blue-dark"
+        >
+          Pusat Dokumen
+        </Link>
+        .
+      </>
+    ),
+  },
+  {
+    key: "storyUploadUrl",
+    label: "Bukti Share Poster di Story Instagram",
+    note: (
+      <>
+        Wajib tag <b>@sakolakembara</b>. Poster story bisa diambil dari{" "}
+        <Link
+          href="/gabung-siswa/docs#berkas-marketing"
+          target="_blank"
+          className="underline font-semibold text-primary-blue hover:text-primary-blue-dark"
+        >
+          Pusat Dokumen
+        </Link>
+        .
+      </>
+    ),
+  },
+];
+
 export function MarketingStep({
   values,
   updateStep,
@@ -65,90 +150,28 @@ export function MarketingStep({
         </div>
       </Field>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900 leading-relaxed">
-        <p className="font-semibold mb-2">
-          Kumpulkan bukti berikut di satu folder Google Drive:
-        </p>
-        <ul className="list-disc pl-4 space-y-1.5">
-          <li>
-            Screenshot bukti <b>follow</b> akun{" "}
-            <a
-              href="https://instagram.com/sakolakembara"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline font-semibold hover:text-blue-700"
-            >
-              @sakolakembara
-            </a>
-            .
-          </li>
-          <li>
-            Screenshot bukti <b>share poster + broadcast</b> ke minimal 3 grup
-            WhatsApp (jadikan 1 file kalau lebih dari satu foto).{" "}
-            <Link
-              href="/gabung-siswa/docs#berkas-marketing"
-              target="_blank"
-              className="underline font-semibold hover:text-blue-700"
-            >
-              Unduh poster di sini
-            </Link>
-            .
-          </li>
-          <li>
-            Screenshot bukti <b>upload twibbon</b> di feed Instagram (wajib tag{" "}
-            <b>@sakolakembara</b>).{" "}
-            <Link
-              href="/gabung-siswa/docs#berkas-marketing"
-              target="_blank"
-              className="underline font-semibold hover:text-blue-700"
-            >
-              Ambil twibbon di sini
-            </Link>
-            .
-          </li>
-          <li>
-            Screenshot bukti <b>share poster di story</b> Instagram (wajib tag{" "}
-            <b>@sakolakembara</b>).{" "}
-            <Link
-              href="/gabung-siswa/docs#berkas-marketing"
-              target="_blank"
-              className="underline font-semibold hover:text-blue-700"
-            >
-              Unduh poster story di sini
-            </Link>
-            .
-          </li>
-          <li>
-            Caption Instagram dan template broadcast bisa disalin dari{" "}
-            <Link
-              href="/gabung-siswa/docs#berkas-marketing"
-              target="_blank"
-              className="underline font-semibold hover:text-blue-700"
-            >
-              Pusat Dokumen
-            </Link>
-            .
-          </li>
-        </ul>
+      <div className="space-y-5">
+        {PROOFS.map((proof) => (
+          <Field
+            key={proof.key}
+            label={proof.label}
+            htmlFor={proof.key}
+            required
+            hint={proof.note}
+            error={e[proof.key]}
+          >
+            <input
+              id={proof.key}
+              type="url"
+              value={v[proof.key]}
+              onChange={(ev) => bind(proof.key)(ev.target.value)}
+              className={TEXT_INPUT}
+              placeholder="https://drive.google.com/…"
+              data-error={!!e[proof.key]}
+            />
+          </Field>
+        ))}
       </div>
-
-      <Field
-        label="Link Folder Google Drive Berkas Marketing"
-        htmlFor="marketingFolderUrl"
-        required
-        hint="Folder terpisah dari folder berkas pendaftaran. Pastikan akses 'Siapa saja yang memiliki link'."
-        error={e.folderUrl}
-      >
-        <input
-          id="marketingFolderUrl"
-          type="url"
-          value={v.folderUrl}
-          onChange={(ev) => bind("folderUrl")(ev.target.value)}
-          className={TEXT_INPUT}
-          placeholder="https://drive.google.com/drive/folders/…"
-          data-error={!!e.folderUrl}
-        />
-      </Field>
     </div>
   );
 }

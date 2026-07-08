@@ -143,6 +143,18 @@ export function Wizard() {
   const validateStep = useCallback(
     (step: StepId): boolean => {
       if (step === "intro" || step === "review") return true;
+      // The "documents" step visually contains both documents + marketing,
+      // so advancing past it must validate both buckets.
+      if (step === "documents") {
+        const docResult = documentsSchema.safeParse(values.documents);
+        const mktResult = marketingSchema.safeParse(values.marketing);
+        setErrors((prev) => ({
+          ...prev,
+          documents: docResult.success ? {} : flattenErrors(docResult.error),
+          marketing: mktResult.success ? {} : flattenErrors(mktResult.error),
+        }));
+        return docResult.success && mktResult.success;
+      }
       const schema = STEP_SCHEMAS[step];
       const result = schema.safeParse(values[step]);
       if (result.success) {
@@ -220,6 +232,13 @@ export function Wizard() {
         if (!firstBad) firstBad = step.id;
       }
     }
+    // Marketing lives inside the documents step visually but is validated as
+    // its own bucket. Failures navigate the user back to the documents step.
+    const mktResult = marketingSchema.safeParse(values.marketing);
+    if (!mktResult.success) {
+      nextErrors.marketing = flattenErrors(mktResult.error);
+      if (!firstBad) firstBad = "documents";
+    }
     setErrors(nextErrors);
     if (firstBad) {
       const idx = STEPS.findIndex((s) => s.id === firstBad);
@@ -245,7 +264,9 @@ export function Wizard() {
     } else {
       setSubmitState({ status: "error", message: result.message });
       if (result.step) {
-        const idx = STEPS.findIndex((s) => s.id === result.step);
+        // Marketing is rendered inside the documents step panel.
+        const targetStep = result.step === "marketing" ? "documents" : result.step;
+        const idx = STEPS.findIndex((s) => s.id === targetStep);
         if (idx >= 0) setStepIdx(idx);
       }
     }
@@ -369,14 +390,16 @@ export function Wizard() {
               {currentStep.id === "organizations" && (
                 <OrganizationsStep {...stepProps} />
               )}
-              {currentStep.id === "documents" && (
-                <DocumentsStep {...stepProps} />
-              )}
-              {currentStep.id === "marketing" && (
-                <MarketingStep {...stepProps} />
-              )}
               {currentStep.id === "interview" && (
                 <InterviewStep {...stepProps} />
+              )}
+              {currentStep.id === "documents" && (
+                <div className="space-y-10">
+                  <DocumentsStep {...stepProps} />
+                  <div className="border-t border-gray-100 pt-8">
+                    <MarketingStep {...stepProps} />
+                  </div>
+                </div>
               )}
               {currentStep.id === "review" && (
                 <ReviewStep

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertCircle, FileText } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type {
   DocumentsValues,
   FormValues,
@@ -22,54 +22,124 @@ type Props = {
   clearFieldError: (step: StepId, path: string) => void;
 };
 
-const REQUIRED_FILES: { label: string; filename: string; note?: string }[] = [
+type UrlKey =
+  | "fatherIncomeUrl"
+  | "motherIncomeUrl"
+  | "otherEarner1IncomeUrl"
+  | "otherEarner2IncomeUrl"
+  | "debtProofUrl"
+  | "electricityBillUrl"
+  | "familyCardUrl"
+  | "parentPermissionUrl"
+  | "selfPhotoUrl"
+  | "dtksUrl"
+  | "houseImagesUrl"
+  | "vehicleImagesUrl";
+
+type DocSpec = {
+  key: UrlKey;
+  label: string;
+  filename: string;
+  required: boolean;
+  note?: React.ReactNode;
+};
+
+const DOCS: DocSpec[] = [
   {
+    key: "fatherIncomeUrl",
     label: "Surat Keterangan Penghasilan Ayah",
     filename: "NamaLengkap_Cabang_Surat Penghasilan Ayah",
-    note: "Kosongkan jika tidak ada.",
+    required: false,
+    note: (
+      <>
+        Kosongkan jika tidak ada. Template surat bisa diunduh di{" "}
+        <DocsLink hash="berkas-pendaftaran">Pusat Dokumen</DocsLink>.
+      </>
+    ),
   },
   {
+    key: "motherIncomeUrl",
     label: "Surat Keterangan Penghasilan Ibu",
     filename: "NamaLengkap_Cabang_Surat Penghasilan Ibu",
-    note: "Kosongkan jika tidak ada.",
+    required: false,
+    note: (
+      <>
+        Kosongkan jika tidak ada. Template surat bisa diunduh di{" "}
+        <DocsLink hash="berkas-pendaftaran">Pusat Dokumen</DocsLink>.
+      </>
+    ),
   },
   {
-    label: "Surat Penghasilan Anggota Keluarga Lain (jika ada)",
-    filename: "NamaLengkap_Cabang_Surat Penghasilan Anggota Lain 1/2",
+    key: "otherEarner1IncomeUrl",
+    label: "Surat Penghasilan Anggota Keluarga Lain (1)",
+    filename: "NamaLengkap_Cabang_Surat Penghasilan Anggota Lain 1",
+    required: false,
+    note: "Isi jika ada anggota keluarga lain (selain Ayah/Ibu) yang bekerja.",
   },
   {
-    label: "Bukti Hutang (jika ada)",
+    key: "otherEarner2IncomeUrl",
+    label: "Surat Penghasilan Anggota Keluarga Lain (2)",
+    filename: "NamaLengkap_Cabang_Surat Penghasilan Anggota Lain 2",
+    required: false,
+    note: "Isi jika ada anggota keluarga lain kedua yang bekerja.",
+  },
+  {
+    key: "debtProofUrl",
+    label: "Bukti Hutang",
     filename: "NamaLengkap_Cabang_Bukti Hutang",
-    note: "Harus memuat total hutang dan lama cicilan. Bukan struk cicilan bulanan.",
+    required: false,
+    note: "Wajib memuat total hutang dan lama cicilan. Bukan struk cicilan bulanan. Kosongkan jika tidak memiliki hutang.",
   },
   {
-    label: "Tagihan/Token Listrik 3 Bulan Terakhir (1 file PDF)",
+    key: "electricityBillUrl",
+    label: "Tagihan/Token Listrik 3 Bulan Terakhir",
     filename: "NamaLengkap_Cabang_Listrik",
+    required: true,
+    note: (
+      <>
+        Jadikan 1 file PDF. Cara melihat pembelian token di PLN Mobile ada di{" "}
+        <DocsLink hash="tutorial">tutorial ini</DocsLink>.
+      </>
+    ),
   },
   {
+    key: "familyCardUrl",
     label: "Scan Kartu Keluarga",
     filename: "NamaLengkap_Cabang_KK",
+    required: true,
   },
   {
+    key: "parentPermissionUrl",
     label: "Surat Izin Orang Tua (bermaterai)",
     filename: "NamaLengkap_Cabang_Surat Izin Ortu",
+    required: true,
+    note: (
+      <>
+        Template surat bisa diunduh di{" "}
+        <DocsLink hash="berkas-pendaftaran">Pusat Dokumen</DocsLink>.
+      </>
+    ),
   },
   {
-    label: "Foto Diri (wajah terlihat jelas)",
+    key: "selfPhotoUrl",
+    label: "Foto Diri",
     filename: "NamaLengkap_Cabang_Foto Diri",
+    required: true,
+    note: "Wajah wajib terlihat jelas.",
   },
   {
-    label: "SKTM Terdaftar DTKS (opsional)",
-    filename: "NamaLengkap_Cabang_DTKS",
-    note: "SKTM tanpa keterangan DTKS tidak dianggap sah.",
-  },
-  {
-    label: "Foto Rumah — depan, ruang tamu, kamar mandi (1 PDF)",
+    key: "houseImagesUrl",
+    label: "Foto Rumah — depan, ruang tamu, kamar mandi",
     filename: "NamaLengkap_Cabang_Foto Rumah",
+    required: true,
+    note: "Jadikan 1 file PDF.",
   },
   {
-    label: "Foto Kendaraan yang ada di rumah (1 PDF)",
+    key: "vehicleImagesUrl",
+    label: "Foto Kendaraan yang ada di rumah",
     filename: "NamaLengkap_Cabang_Foto Kendaraan",
+    required: true,
+    note: "Kalau lebih dari satu kendaraan, jadikan 1 file PDF. Kalau tidak memiliki kendaraan sama sekali, tetap upload surat pernyataan tidak memiliki kendaraan.",
   },
 ];
 
@@ -92,7 +162,7 @@ export function DocumentsStep({
     <div className="space-y-6">
       <StepHeader
         title="Berkas Pendaftaran"
-        subtitle="Kumpulkan semua berkas berikut ke satu folder Google Drive, lalu bagikan link folder tersebut di sini. Pastikan setiap file diberi nama sesuai format yang tertera."
+        subtitle="Unggah setiap berkas ke Google Drive-mu, lalu tempel link masing-masing di kolom yang sesuai. Pastikan setiap link diatur ke 'Siapa saja yang memiliki link dapat melihat'. Setelah bagian ini, kamu akan mengumpulkan berkas marketing di bagian bawah."
       />
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
@@ -105,12 +175,11 @@ export function DocumentsStep({
           <p className="font-semibold mb-1">Sebelum lanjut:</p>
           <ul className="list-disc pl-4 space-y-1">
             <li>
-              Buat satu folder Google Drive baru dan upload semua berkas di
-              bawah ke sana.
+              Setiap file diberi nama sesuai format yang tertera di kolomnya.
             </li>
             <li>
-              Pastikan akses folder <b>&quot;Siapa saja yang memiliki link
-              dapat melihat&quot;</b>.
+              Setiap link Google Drive harus bisa diakses siapa saja (bukan
+              &quot;hanya orang tertentu&quot;).
             </li>
             <li>
               Template surat izin, surat penghasilan, dan SKTM bisa{" "}
@@ -124,18 +193,6 @@ export function DocumentsStep({
               .
             </li>
             <li>
-              Cara melihat pembelian token listrik di aplikasi PLN Mobile
-              dijelaskan di{" "}
-              <Link
-                href="/gabung-siswa/docs#tutorial"
-                target="_blank"
-                className="underline font-semibold hover:text-amber-700"
-              >
-                tutorial ini
-              </Link>
-              .
-            </li>
-            <li>
               Dilarang memalsukan atau memanipulasi isi berkas — dapat menjadi
               alasan diskualifikasi.
             </li>
@@ -143,52 +200,26 @@ export function DocumentsStep({
         </div>
       </div>
 
-      <div className="border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-          <FileText size={16} className="text-gray-500" />
-          <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-            Checklist Isi Folder
-          </h3>
-        </div>
-        <ul className="divide-y divide-gray-100">
-          {REQUIRED_FILES.map((file) => (
-            <li key={file.label} className="px-4 py-3 text-sm">
-              <div className="font-semibold text-gray-900">{file.label}</div>
-              <div className="text-xs text-gray-500 mt-1 font-mono">
-                {file.filename}
-              </div>
-              {file.note && (
-                <div className="text-xs text-gray-500 mt-1 italic">
-                  {file.note}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+      <div className="space-y-5">
+        {DOCS.map((doc) => (
+          <DocLinkField
+            key={doc.key}
+            id={doc.key}
+            label={doc.label}
+            filename={doc.filename}
+            required={doc.required}
+            note={doc.note}
+            value={v[doc.key]}
+            onChange={(val) => bind(doc.key)(val)}
+            error={e[doc.key]}
+          />
+        ))}
       </div>
-
-      <Field
-        label="Link Folder Google Drive Berkas Pendaftaran"
-        htmlFor="folderUrl"
-        required
-        hint="Contoh: https://drive.google.com/drive/folders/xxxxxxx"
-        error={e.folderUrl}
-      >
-        <input
-          id="folderUrl"
-          type="url"
-          value={v.folderUrl}
-          onChange={(ev) => bind("folderUrl")(ev.target.value)}
-          className={TEXT_INPUT}
-          placeholder="https://drive.google.com/drive/folders/…"
-          data-error={!!e.folderUrl}
-        />
-      </Field>
 
       <Field
         label="Apakah kamu terdaftar dalam DTKS?"
         required
-        hint="DTKS = Data Terpadu Kesejahteraan Sosial. Jika ya, unggah SKTM DTKS di folder di atas."
+        hint="DTKS = Data Terpadu Kesejahteraan Sosial. Jika Ya, wajib unggah SKTM DTKS di kolom di bawah."
         error={e.dtksRegistered}
       >
         <div data-error={!!e.dtksRegistered}>
@@ -203,6 +234,87 @@ export function DocumentsStep({
           />
         </div>
       </Field>
+
+      {v.dtksRegistered === "ya" && (
+        <DocLinkField
+          id="dtksUrl"
+          label="Surat Keterangan Tidak Mampu (SKTM) terdaftar DTKS"
+          filename="NamaLengkap_Cabang_DTKS"
+          required
+          note="SKTM tanpa keterangan DTKS tidak dianggap sah."
+          value={v.dtksUrl}
+          onChange={(val) => bind("dtksUrl")(val)}
+          error={e.dtksUrl}
+        />
+      )}
     </div>
+  );
+}
+
+function DocsLink({
+  hash,
+  children,
+}: {
+  hash: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={`/gabung-siswa/docs#${hash}`}
+      target="_blank"
+      className="underline font-semibold text-primary-blue hover:text-primary-blue-dark"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function DocLinkField({
+  id,
+  label,
+  filename,
+  required,
+  note,
+  value,
+  onChange,
+  error,
+}: {
+  id: string;
+  label: string;
+  filename: string;
+  required: boolean;
+  note?: React.ReactNode;
+  value: string;
+  onChange: (val: string) => void;
+  error?: string;
+}) {
+  return (
+    <Field
+      label={label}
+      htmlFor={id}
+      required={required}
+      hint={
+        <div className="space-y-1">
+          <div>
+            Format nama file:{" "}
+            <span className="font-mono text-xs bg-gray-100 rounded px-1.5 py-0.5 text-gray-700">
+              {filename}
+            </span>
+          </div>
+          {note && <div className="text-gray-500">{note}</div>}
+        </div>
+      }
+      error={error}
+    >
+      <input
+        id={id}
+        type="url"
+        value={value}
+        onChange={(ev) => onChange(ev.target.value)}
+        className={TEXT_INPUT}
+        placeholder="https://drive.google.com/…"
+        data-error={!!error}
+      />
+    </Field>
   );
 }

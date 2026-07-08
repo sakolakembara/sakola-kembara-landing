@@ -266,25 +266,36 @@ export default async function ApplicationDetailPage({
               title="Berkas Pendaftaran"
               icon={<FileText size={14} />}
               rows={[
-                {
-                  label: "Folder Google Drive",
-                  value: (
-                    <a
-                      href={fd.documents.folderUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary-blue hover:underline break-all"
-                    >
-                      <ExternalLink size={12} />
-                      {fd.documents.folderUrl}
-                    </a>
-                  ),
-                  stack: true,
-                },
+                docRow("Surat Penghasilan Ayah", fd.documents.fatherIncomeUrl),
+                docRow("Surat Penghasilan Ibu", fd.documents.motherIncomeUrl),
+                docRow(
+                  "Surat Penghasilan Anggota Lain 1",
+                  fd.documents.otherEarner1IncomeUrl,
+                ),
+                docRow(
+                  "Surat Penghasilan Anggota Lain 2",
+                  fd.documents.otherEarner2IncomeUrl,
+                ),
+                docRow("Bukti Hutang", fd.documents.debtProofUrl),
+                docRow(
+                  "Tagihan/Token Listrik",
+                  fd.documents.electricityBillUrl,
+                ),
+                docRow("Kartu Keluarga", fd.documents.familyCardUrl),
+                docRow(
+                  "Surat Izin Orang Tua",
+                  fd.documents.parentPermissionUrl,
+                ),
+                docRow("Foto Diri", fd.documents.selfPhotoUrl),
+                docRow("Foto Rumah", fd.documents.houseImagesUrl),
+                docRow("Foto Kendaraan", fd.documents.vehicleImagesUrl),
                 {
                   label: "Terdaftar DTKS",
                   value: fd.documents.dtksRegistered ? "Ya" : "Tidak",
                 },
+                ...(fd.documents.dtksRegistered
+                  ? [docRow("SKTM DTKS", fd.documents.dtksUrl)]
+                  : []),
               ]}
             />
           )}
@@ -307,21 +318,19 @@ export default async function ApplicationDetailPage({
                     </a>
                   ),
                 },
-                {
-                  label: "Folder Google Drive",
-                  value: (
-                    <a
-                      href={fd.marketing.folderUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary-blue hover:underline break-all"
-                    >
-                      <ExternalLink size={12} />
-                      {fd.marketing.folderUrl}
-                    </a>
-                  ),
-                  stack: true,
-                },
+                docRow(
+                  "Bukti Follow @sakolakembara",
+                  fd.marketing.instagramFollowProofUrl,
+                ),
+                docRow(
+                  "Bukti Share Broadcast WA",
+                  fd.marketing.broadcastProofUrl,
+                ),
+                docRow("Bukti Upload Twibbon", fd.marketing.twibbonUploadUrl),
+                docRow(
+                  "Bukti Share Story Instagram",
+                  fd.marketing.storyUploadUrl,
+                ),
               ]}
             />
           )}
@@ -508,6 +517,26 @@ function LongText({ text }: { text: string }) {
   return (
     <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{text}</p>
   );
+}
+
+function docRow(label: string, url: string | null): ProfileRow {
+  return {
+    label,
+    value: url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-primary-blue hover:underline break-all"
+      >
+        <ExternalLink size={12} />
+        {url}
+      </a>
+    ) : (
+      <span className="text-gray-400">—</span>
+    ),
+    stack: true,
+  };
 }
 
 interface ProfileRow {
