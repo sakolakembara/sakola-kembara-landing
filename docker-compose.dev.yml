@@ -1,0 +1,25 @@
+# Local dev: Postgres only. Next.js runs on the host via `npm run dev`.
+# Start with:  npm run db:up    (or: docker compose -f docker-compose.dev.yml up -d)
+# Stop with:   npm run db:down
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sakem-postgres-dev
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sakola_kembara
+      POSTGRES_USER: sakem
+      POSTGRES_PASSWORD: sakem_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sakem -d sakola_kembara"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:

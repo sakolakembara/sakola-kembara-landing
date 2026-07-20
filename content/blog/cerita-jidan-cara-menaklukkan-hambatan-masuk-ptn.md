@@ -38,7 +38,7 @@ _“Aku tidak memiliki teman seperjuangan yang sama-sama berusaha untuk masuk PT
 
 Cara Jidan menaklukkan hambatan masuk PTN, yaitu dengan ikut serta Program dari Sakola Kembara. Ia rutin mengikuti KBM pekanan, Asrama Akhir Tahun, dan Asrama Intensif, dimana para siswa di Sakola Kembara mendapatkan pembelajaran persiapan masuk PTN selama  lebih dari satu bulan. 
 
-**Baca Juga:** [**Mau Masuk PTN? Ini Tips Persiapan Kuliah Negeri Anti Gagal!**](https://sakolakembara.org/tips/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal/) 
+**Baca Juga:** [**Mau Masuk PTN? Ini Tips Persiapan Kuliah Negeri Anti Gagal!**](/blog/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal) 
 
 ## **Dapat Apa dari Sakola Kembara?**
 
@@ -54,7 +54,7 @@ Menjadi siswa di Sakola Kembara memang seru, Sahabat Kembara. Jidan saja mengaku
 
 _“Aku jadi lebih semangat sekolah dan punya tujuan jelas setelah lulus. Aku jadi percaya diri untuk kuliah, padahal dulu nggak kepikiran sama sekali. Sekarang, aku punya teman-teman yang juga semangat belajar, jadi saling dukung. Selain itu, para pengurus juga selalu mendorong untuk terus berjuang mencapai mimpi. Mereka selalu membantu dalam belajar dan selalu memotivasi aku untuk terus berjuang mendapatkan kehidupan yang lebih baik.”_ Katanya.
 
-**Baca Juga:**  [**Tips Belajar Efektif untuk Masuk Perguruan Tinggi**](https://sakolakembara.org/tips/tips-belajar-efektif-untuk-masuk-perguruan-tinggi/) 
+**Baca Juga:**  [**Tips Belajar Efektif untuk Masuk Perguruan Tinggi**](/blog/tips-belajar-efektif-untuk-masuk-perguruan-tinggi) 
 
 Hal seru lainnya yaitu program yang diikutinya di Sakola Kembara. Asmara Intensif yang diadakan di Tahun 2025 jadi hal paling seru menurut Jidan selama dirinya menjadi siswa di Sakola Kembara. 
 

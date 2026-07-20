@@ -1,0 +1,92 @@
+# Production stack — runs on the VPS at /opt/sakem/.
+# Deploys via GitHub Actions: image is pushed to GHCR, then `docker compose pull && up -d` over SSH.
+#
+# Required: .env.production sitting next to this file (mode 600, owned by deploy user).
+# See docs/current-state/deployment.md for ops cheat sheet.
+
+services:
+  app:
+    image: ghcr.io/sakolakembara/sakola-kembara-landing:latest
+    container_name: sakem-app
+    restart: unless-stopped
+    env_file: .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # public/ is a persistent volume so dashboard-uploaded PDFs and images
+      # survive container rebuilds. Image-baked files (logo, hero) seed the
+      # volume on first start and are not clobbered by subsequent deploys.
+      - app_public:/app/public
+    networks:
+      - sakem
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: sakem-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sakem
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: sakem-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - sakem
+
+  backup:
+    image: postgres:16-alpine
+    container_name: sakem-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backups:/backups
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Daily pg_dump; prune dumps older than 14 days. A host cron rsyncs
+    # /var/lib/sakem/backups/ to offsite storage (B2 / R2) once a day.
+    entrypoint: >
+      sh -c "while true; do
+        PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -h postgres -U $$POSTGRES_USER $$POSTGRES_DB
+          | gzip > /backups/sakem-$$(date +%Y%m%d-%H%M).sql.gz;
+        find /backups -name 'sakem-*.sql.gz' -mtime +14 -delete;
+        sleep 86400;
+      done"
+    networks:
+      - sakem
+
+volumes:
+  app_public:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  backups:
+
+networks:
+  sakem:
+    driver: bridge

@@ -7,7 +7,7 @@ import { heroStats, heroImages } from "@/lib/data";
 
 export default function HeroSection() {
   return (
-    <section className="pt-40 pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden" id="about">
+    <section className="pt-40 pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute -top-1/2 -right-1/5 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(30,136,229,0.08)_0%,transparent_70%)] rounded-full" />
 
@@ -93,7 +93,6 @@ export default function HeroSection() {
                 fill
                 className="object-cover"
                 priority
-                unoptimized
               />
             </div>
 
@@ -104,7 +103,6 @@ export default function HeroSection() {
                 alt="Kegiatan belajar kelompok"
                 fill
                 className="object-cover"
-                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-secondary-yellow/80 to-transparent flex items-end justify-center pb-3">
                 <span className="text-white text-xs font-semibold">
@@ -119,7 +117,6 @@ export default function HeroSection() {
                 alt="Siswa merayakan kelulusan"
                 fill
                 className="object-cover"
-                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-secondary-green/80 to-transparent flex items-end justify-center pb-3">
                 <span className="text-white text-xs font-semibold">

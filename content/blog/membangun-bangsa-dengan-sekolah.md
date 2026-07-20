@@ -54,10 +54,10 @@ Hal ini menunjukkan masih banyak orang di Indonesia Timur yang belum bisa membac
 
 Sakola Kembara berkomitmen memberikan pendidikan untuk anak di Indonesia secara gratis. Kami membuka jalan untuk para pemangku kepentingan, swasta, dan masyarakat yang ingin berperan dalam kemajuan pendidikan Indonesia. 
 
-Bantu kami, dengan memberikan [**donasi terbaikmu**](https://sakolakembara.org). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia! 
+Bantu kami, dengan memberikan [**donasi terbaikmu**](/). Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia! 
 
 **Baca Juga:** 
 
--   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](https://sakolakembara.org/news/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung/)
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
--   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif/)
+-   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](/blog/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
+-   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif)

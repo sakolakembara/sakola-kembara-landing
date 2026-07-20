@@ -39,7 +39,7 @@ Selain alasan sosial, pengajaran juga menjadi ruang bagi Ilham untuk mengembangk
 
 Sakola Kembara menjadi ruang awal yang aman untuk belajar mengajar secara langsung. Dari pengalaman ini, Ilham mengasah cara menyampaikan materi, mengelola kelas, hingga menyesuaikan pendekatan pengajaran dengan karakter siswa yang beragam.
 
-**Baca Juga:** [**Tidak Cukup Belajar Keras: Ini Cara Persiapan TKA Tanpa Tekanan Berlebihan – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](https://sakolakembara.org/education/tidak-cukup-belajar-keras-ini-cara-persiapan-tka-tanpa-tekanan-berlebihan/)
+**Baca Juga:** [**Tidak Cukup Belajar Keras: Ini Cara Persiapan TKA Tanpa Tekanan Berlebihan – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](/blog/tidak-cukup-belajar-keras-ini-cara-persiapan-tka-tanpa-tekanan-berlebihan)
 
 ## **Semangat Siswa Sebagai Motivasi Pengajar**
 

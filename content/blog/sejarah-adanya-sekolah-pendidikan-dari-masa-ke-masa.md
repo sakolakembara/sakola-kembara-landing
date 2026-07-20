@@ -71,4 +71,4 @@ Sakola Kembara telah membuktikan komitmennya untuk membantu para siswa yang memi
 
 Sakola Kembara adalah bukti sekolah online yang berhasil menumpaskan kebodohan, dengan cara memberikan bimbingan gratis, yang bisa diakses oleh siapapun.
 
-Mari bersama kita bangun pendidikan yang mumpuni dengan ikut berkontribusi menjadi [**Donatur**](https://sakolakembara.org) dan  [Volunteer](https://www.instagram.com/p/DSypUr0iTiR/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==)  Sakola Kembara.
+Mari bersama kita bangun pendidikan yang mumpuni dengan ikut berkontribusi menjadi [**Donatur**](/) dan  [Volunteer](https://www.instagram.com/p/DSypUr0iTiR/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==)  Sakola Kembara.

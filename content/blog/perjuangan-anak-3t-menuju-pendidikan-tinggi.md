@@ -35,7 +35,7 @@ Berangkat dari pengalaman dan data tersebut, Nur Ainah meyakini bahwa persoalan 
 
 Selama kuliah, ia aktif dalam kompetisi, penelitian, dan berbagai kegiatan ilmiah hingga meraih lebih dari 80 prestasi. Pengalaman ini membuktikan bahwa ketika akses terbuka, potensi anak desa mampu berkembang dan bersaing secara nasional.
 
-Kesadaran inilah yang mendorongnya bergabung sebagai mentor di [Sakola Kembara](https://sakolakembara.org). Baginya, menjadi mentor bukan sekadar mengajar materi, tetapi mendampingi siswa secara utuh. Ia ingin menjadi sistem pendukung bagi adik-adik yang memiliki latar belakang serupa dengannya. Ia membagikan pengalaman, strategi belajar, serta menanamkan keyakinan bahwa keterbatasan bukan alasan untuk berhenti bermimpi.
+Kesadaran inilah yang mendorongnya bergabung sebagai mentor di [Sakola Kembara](/). Baginya, menjadi mentor bukan sekadar mengajar materi, tetapi mendampingi siswa secara utuh. Ia ingin menjadi sistem pendukung bagi adik-adik yang memiliki latar belakang serupa dengannya. Ia membagikan pengalaman, strategi belajar, serta menanamkan keyakinan bahwa keterbatasan bukan alasan untuk berhenti bermimpi.
 
 **Perjalanan Akademik dan Prestasi Nur Ainah**
 

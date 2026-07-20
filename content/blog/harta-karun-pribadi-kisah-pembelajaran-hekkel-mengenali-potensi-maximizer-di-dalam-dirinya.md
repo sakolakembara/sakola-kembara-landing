@@ -31,7 +31,7 @@ Talents Mapping atau pemetaan bakat adalah metode untuk mengenali sifat alami at
 
 Hekkel adalah salah satu siswa Sakola Kembara yang sedang berjuang menembus perguruan tinggi impian. Awalnya, dia mengaku merasa bingung dengan pilihan jurusan yang akan dipilihnya. Meski di dalam hatinya dia yakin memiliki keunggulan, dia tidak mengerti pasti apa bentuk keunggulan tersebut. Kebingungan ini diperumit dengan perbedaan pandangan dengan keluarga; saat Hekkel ingin masuk jurusan Teknik, keluarga justru menyarankannya mengambil jurusan Manajemen.
 
-**Baca Juga:**  [**Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi**](https://sakolakembara.org/news/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi/)
+**Baca Juga:**  [**Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi**](/blog/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi)
 
 Selain itu, Hekkel juga berjuang dengan rasa percaya diri. Sebelum mengenal pemetaan bakat, ia cenderung terlalu fokus pada kelemahannya dan merasa khawatir karena tidak bisa mahir dalam segala hal.
 
@@ -47,7 +47,7 @@ _“Aku merasa unik ketika Kakak Mentor menjelaskan bahwa sifat aku yang selalu 
 
 Selain menemukan jurusan dan potensi yang cocok untuk dirinya, Hekkel juga menemukan strategi belajar yang efektif dan bidang karier yang paling bisa memaksimalkan bakat alaminya.
 
-**Baca Juga:** [**Ironi Aksara: Membongkar Kesenjangan Pendidikan Indonesia**](https://sakolakembara.org/education/ironi-aksara-membongkar-kesenjangan-pendidikan-indonesia/)
+**Baca Juga:** [**Ironi Aksara: Membongkar Kesenjangan Pendidikan Indonesia**](/blog/ironi-aksara-membongkar-kesenjangan-pendidikan-indonesia)
 
 Siswa asal Bandung itu juga mengaku, mentor berhasil menciptakan suasana yang suportif. Hekkel menganggap mentor benar-benar bisa menghubungkan hasil tes dengan pengalaman hidupnya. Lebih dari itu, dia juga mendapatkan arahan langkah kedepan dalam memilih jurusan kuliahnya secara spesifik sesuai hasil asesmen miliknya.
 
@@ -55,7 +55,7 @@ Siswa asal Bandung itu juga mengaku, mentor berhasil menciptakan suasana yang su
 
 Setelah mengetahui potensi dan jurusan yang menjadi peluang karier Hekkel, dia menjadi lebih fokus mengembangkan kekuatan utamanya sambil tetap mengelola kelemahan agar tidak menghambatnya. Hekkel pun mantap mengejar jurusan Teknik Industri dan mulai membangun kedisiplinan harian untuk mencapainya.
 
-Kolaborasi [Sakola Kembara](http://sakolakembara.org/) dan Talents Mapping berhasil menjadi jembatan antara Hekkel dengan masa depan yang dia impikan. 
+Kolaborasi [Sakola Kembara](/) dan Talents Mapping berhasil menjadi jembatan antara Hekkel dengan masa depan yang dia impikan. 
 
 Di akhir testomoninya, Hekkel menitipkan pesan bagi sobat Kembara lainnya tentang jati diri yang tidak perlu dicari dari luar, karena ia sudah ada di dalam diri, tetapi perlu dipetakan agar terlihat jelas. Talents Mapping dapat menjadi solusi sekaligus investasi bagi sobat Kembara dalam menemukan jati diri dan menentukan pilihan masa depan. Menurutnya, tes ini adalah harta karun pribadi yang membimbing kita untuk melangkah tanpa rasa takut ke masa depan.
 

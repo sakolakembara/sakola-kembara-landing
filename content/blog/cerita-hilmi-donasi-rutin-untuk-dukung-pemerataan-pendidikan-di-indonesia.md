@@ -40,7 +40,7 @@ Awal mula Hilmi mengenal Sakola Kembara cukup unik. Tidak seperti donatur kebany
 
 Melihat Founder yang memiliki passion dan berdedikasi dalam memajukan pendidikan. Hal tersebut memberikan dirinya sebuah kepercayaan. Kepercayaannya terhadap Sakola Kembara, membuat Hilmi memutuskan untuk berdonasi rutin di Sakola Kembara demi membantu anak-anak mendapatkan akses pendidikan.
 
-**Baca Juga: [Membanggakan, Founder Sakola Kembara Kembali Tuai Prestasi](https://sakolakembara.org/news/membanggakan-founder-sakola-kembara-kembali-tuai-prestasi/)**
+**Baca Juga: [Membanggakan, Founder Sakola Kembara Kembali Tuai Prestasi](/blog/membanggakan-founder-sakola-kembara-kembali-tuai-prestasi)**
 
 ## Alasan Berdonasi Rutin di Sakola Kembara
 
@@ -58,4 +58,4 @@ Hilmi mengaku bahwa Sakola Kembara cukup akuntabel sebagai lembaga yang dipercay
 
 Konsistensi lembaga dalam transparansi ini bisa menjadi modal untuk meningkatkan kepercayaan donatur selanjutnya. Harapannya, Sakola Kembara dapat terus berkembang, bisa memperluas rekrutmen mentornya, dan memperluas jangkauannya.
 
-Sahabat Kembara juga mau berperan dalam pemerataan pendidikan di Indonesia? Langsung saja [**daftar jadi donatur tetap**](https://sakolakembara.org/donasi) di Sakola Kembara, seperti Hilmi.
+Sahabat Kembara juga mau berperan dalam pemerataan pendidikan di Indonesia? Langsung saja [**daftar jadi donatur tetap**](/donasi) di Sakola Kembara, seperti Hilmi.

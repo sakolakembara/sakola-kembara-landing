@@ -32,8 +32,8 @@ Nilai-nilai moral, kepercayaan, dan tradisi juga diwariskan melalui cerita lisan
 
 **Baca Juga:** 
 
--    [**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
+-    [**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
 
 ### **Pendidikan pada Manusia di Zaman Kuno**
 
@@ -73,4 +73,4 @@ Ini semua tidak terlepas dari bantuan para _volunteer,_ donatur, dan setiap piha
 
 ## **Dukung Perjalanan Kami** 
 
-Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](https://sakolakembara.org). Ikuti terus keseruan dan perjalanan kami di akun [Instagram](https://www.instagram.com/p/DSypUr0iTiR/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==) kami.Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!
+Dukung operasional kami, dengan memberikan [**donasi terbaikmu**](/). Ikuti terus keseruan dan perjalanan kami di akun [Instagram](https://www.instagram.com/p/DSypUr0iTiR/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==) kami.Bersama Sakola Kembara  wujudkan mimpi anak lainnya, berikan pendidikan untuk semua, dan majukan pendidikan di Indonesia!

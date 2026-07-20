@@ -16,11 +16,9 @@
 # next.js
 /.next/
 /out/
-.deploy/
 
 # production
 /build
-deploy.zip
 
 # misc
 .DS_Store
@@ -32,11 +30,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — never commit real ones; .env.example is the only tracked variant
 .env*
+!.env.example
 
 # vercel
 .vercel
+
+# drizzle-kit migration metadata (the SQL files in drizzle/ are committed;
+# only the cache + journal artifacts that change per-developer are ignored)
+/drizzle/meta/_journal.json.bak
 
 # typescript
 *.tsbuildinfo
@@ -44,7 +47,3 @@ next-env.d.ts
 
 # claude code local settings
 .claude/settings.local.json
-
-# deploy SSH keys (scripts/generate-ssh-key.sh)
-scripts/credentials/*
-!scripts/credentials/.gitkeep

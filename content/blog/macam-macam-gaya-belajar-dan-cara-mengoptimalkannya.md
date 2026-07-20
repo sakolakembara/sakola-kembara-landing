@@ -42,7 +42,7 @@ Orang dengan gaya visual biasanya memiliki kemampuan mengingat yang kuat terhada
 
 **Baca Juga:** 
 
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
 
 ### **Strategi optimal:**
 
@@ -189,4 +189,4 @@ Pada akhirnya, belajar bukan hanya tentang seberapa lama waktu yang dihabiskan, 
 
 Sakola Kembara telah memiliki komitmen untuk memberikan bimbingan belajar gratis kepada anak-anak di Indonesia yang mempunyai keterbatasan dalam hal ekonomi, namun hal itu tentu memerlukan dukungan dari banyak pihak untuk bisa menjaga kelangsungan dan memberikan dampak yang lebih luas dari program ini.
 
-Oleh karena itu Sakola Kembara mengajak teman-teman untuk dapat berpartisipasi dalam program mulia ini, dengan cara menjadi volunteer atau relawan Sakola Kembara dengan tautan berikut: [Menjadi Relawan Mulia](https://sakolakembara.org/cerita/perjalanan-seorang-founder/), atau teman-teman dapat memberikan sumbangsih seikhlasnya untuk kelancaran proses belajar-mengajar kita di [**Menjadi Donatur Mulia**](https://sakolakembara.org)
+Oleh karena itu Sakola Kembara mengajak teman-teman untuk dapat berpartisipasi dalam program mulia ini, dengan cara menjadi volunteer atau relawan Sakola Kembara dengan tautan berikut: [Menjadi Relawan Mulia](/blog/perjalanan-seorang-founder), atau teman-teman dapat memberikan sumbangsih seikhlasnya untuk kelancaran proses belajar-mengajar kita di [**Menjadi Donatur Mulia**](/)

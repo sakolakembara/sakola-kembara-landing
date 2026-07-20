@@ -41,7 +41,7 @@ _“…terus aku ikut Sakola Kembara jadi bikin aku berani lagi untuk bermimpi, 
 
 Bagi Sarah, Sakola Kembara adalah tempat yang sangat suportif untuk meraih impian. Bahkan tidak hanya soal pendidikan, Sarah mengatakan Sakola Kembara juga hadir sebagai agen perubahan yang memutar cara pandang dan karakternya menjadi lebih baik lagi.
 
-**Baca Juga:** [**Mengajar dan Menginspirasi Bersama Nur Febriyati di Sakola Kembara**](https://sakolakembara.org/cerita/mengajar-dan-menginspirasi-bersama-nur-febriyati-di-sakola-kembara/)
+**Baca Juga:** [**Mengajar dan Menginspirasi Bersama Nur Febriyati di Sakola Kembara**](/blog/mengajar-dan-menginspirasi-bersama-nur-febriyati-di-sakola-kembara)
 
 ## **Pengalaman Paling Berarti**
 

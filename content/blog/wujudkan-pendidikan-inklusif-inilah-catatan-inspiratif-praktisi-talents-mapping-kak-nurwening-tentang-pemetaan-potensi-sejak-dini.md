@@ -31,7 +31,7 @@ Rangkaian kegiatan utama program ini dimulai dengan sesi Sosialisasi dan Asesmen
 
 Terselenggaranya kolaborasi ini menghasilkan banyak kesan pesan dan pengalaman positif dari berbagai pihak, khususnya bagi para praktisi yang berinteraksi langsung dengan siswa. Salah satu testimoni inspiratif datang dari Kak Nurwening Indah Wulan Utami yang berperan sebagai mentor dalam sesi konsultasi. Menurutnya, seluruh proses kolaborasi berjalan dengan sangat rapi dan profesional. Dia juga mengapresiasi pihak Sakola Kembara yang sangat responsif dalam mengkoordinasikan jadwal. 
 
-**Baca Juga:** [Kesejahteraan Guru sebagai Pilar Utama Masa Depan Indonesia](https://sakolakembara.org/education/kesejahteraan-guru-sebagai-pilar-utama-masa-depan-indonesia/)
+**Baca Juga:** [Kesejahteraan Guru sebagai Pilar Utama Masa Depan Indonesia](/blog/kesejahteraan-guru-sebagai-pilar-utama-masa-depan-indonesia)
 
 _“Seluruh proses dari asesmen sampai sesi feedback bersama praktisi dimanajemen dengan rapi dan baik sehingga semua berjalan lancar, pihak Sakola Kembara sebagai penyelenggara pun sangat responsif dan membantu saat saya mengalami kendala dalam sesi feedback atau perlu menyesuaikan ulang jadwal,”_ kata Kak Nurwening dalam penyampaian testimoninya.
 
@@ -49,7 +49,7 @@ Dalam pelaksanaan konsultasi Talents Mapping yang diadakan secara online, prakti
 
 Sebagai praktisi profesional Talents Mapping, Kak Nurwening menegaskan bahwa urgensi memetakan potensi sejak dini terletak pada kemampuan anak untuk mengenali pola dan keunikan autentik mereka. Dengan pemahaman diri yang matang, siswa tidak lagi terjebak dalam kebingungan saat harus merancang rencana pendidikan dan menentukan arah masa depan mereka.
 
-**Baca Juga:**  [Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi](https://sakolakembara.org/news/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi/)
+**Baca Juga:**  [Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi](/blog/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi)
 
 Lebih lanjut, konsep pemetaan diri ini akan membantu memetakan kekuatan siswa sehingga mereka bisa melihat pada peran apa saja yang kemungkinan mereka bisa unggul jika menekuninya. Hal ini tentunya juga akan menentukan arah siswa memahami diri dan menentukan jurusan kuliahnya. 
 
@@ -63,6 +63,6 @@ Menutup testimoninya, Kak Nurwening menyematkan harapan besar agar siswa Sakola 
 
 Nantinya, program Talents Mapping juga perlu lebih disebarluaskan agar semua orang memahami bahwa keunggulan diri mencakup banyak aspek bukan hanya di bidang akademik saja.
 
-Talents Mapping merupakan layanan psikologi yang disediakan oleh Pathfinder Consulting. Kali ini mereka membersamai [Sakola Kembara](https://sakolakembara.org/) untuk membantu anak-anak dari pelosok menemukan potensi kelebihannya dan mewujudkan pendidikan inklusif di Indonesia. 
+Talents Mapping merupakan layanan psikologi yang disediakan oleh Pathfinder Consulting. Kali ini mereka membersamai [Sakola Kembara](/) untuk membantu anak-anak dari pelosok menemukan potensi kelebihannya dan mewujudkan pendidikan inklusif di Indonesia. 
 
 Bagi sobat Kembara yang ingin mengetahui potensi diri atau masing bingung dengan pilihan jurusan kuliah setelah lulus bisa mencoba mengetahui lebih jauh asesmen Talents Mapping ini, melalui laman [talentsmapping.id](http://talentsmapping.id).

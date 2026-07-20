@@ -38,7 +38,7 @@ Menjalani peran sebagai _volunteer_ dari luar negeri tentu bukan hal yang mudah 
 
 Muttaqin percaya bahwa tulisan punya peran penting. Setiap artikel yang dibuat adalah upaya kecil untuk membantu anak-anak Indonesia meraih masa depan yang lebih baik. Semangat itu yang membuatnya bertahan, bahkan ketika jadwalnya sedang tidak bersahabat.
 
-**Baca Juga:** [Digitalisasi dan Ketimpangan Akses Belajar Online di Indonesia](https://sakolakembara.org/education/digitalisasi-dan-ketimpangan-akses-belajar-online-di-indonesia/) 
+**Baca Juga:** [Digitalisasi dan Ketimpangan Akses Belajar Online di Indonesia](/blog/digitalisasi-dan-ketimpangan-akses-belajar-online-di-indonesia) 
 
 **Harapan Muttaqin untuk Sakola Kembara**
 

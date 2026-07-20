@@ -58,7 +58,6 @@ export default function ActivitiesSection() {
                     alt={program.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    unoptimized
                   />
                   <span className="absolute top-4 left-4 bg-primary-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold z-10">
                     {program.tag}

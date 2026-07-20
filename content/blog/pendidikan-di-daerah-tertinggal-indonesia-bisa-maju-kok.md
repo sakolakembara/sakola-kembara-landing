@@ -54,12 +54,12 @@ Berbagai tantangan dalam pendidikan di daerah tertinggal bisa diselesaikan denga
 
 Cara paling ampuh meningkatkan pendidikan di daerah tertinggal adalah dengan kolaborasi. Penyelenggara negara, pihak swasta, dan masyarakat perlu terlibat demi terwujudnya pendidikan adil dan merata. Kolaborasi nyata yang dilakukan oleh tiap pemangku kepentingan ini dapat membuat pendidikan di daerah tertinggal Indonesia lebih maju. 
 
-Sebagai warga negara pun, kita bukan hanya berhak menerima layanan, tetapi juga berkewajiban untuk memanfaatkan layanan sebaik mungkin, Sahabat Kembara. Bagi kalian yang berada di daerah dengan akses pendidikan mudah, perlu untuk bersyukur. Namun, untuk adik-adik yang masih sulit mengakses pendidikan, bisa tinjau [SakolaKembara.Org](https://sakolakembara.org "SakolaKembara.Org").
+Sebagai warga negara pun, kita bukan hanya berhak menerima layanan, tetapi juga berkewajiban untuk memanfaatkan layanan sebaik mungkin, Sahabat Kembara. Bagi kalian yang berada di daerah dengan akses pendidikan mudah, perlu untuk bersyukur. Namun, untuk adik-adik yang masih sulit mengakses pendidikan, bisa tinjau [SakolaKembara.Org](/ "SakolaKembara.Org").
 
-Sakola Kembara sebagai organisasi pendidikan non-formal [masuk PTN](https://sakolakembara.org/tips/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal/), terbuka untuk menerima siswa baru dan berkolaborasi dengan _stakeholders_. [Hubungi kami](https://instagram.com/sakolakembara) untuk meningkatkan pendidikan di daerah tertinggal.
+Sakola Kembara sebagai organisasi pendidikan non-formal [masuk PTN](/blog/mau-masuk-ptn-ini-tips-persiapan-kuliah-negeri-anti-gagal), terbuka untuk menerima siswa baru dan berkolaborasi dengan _stakeholders_. [Hubungi kami](https://instagram.com/sakolakembara) untuk meningkatkan pendidikan di daerah tertinggal.
 
 **Baca Juga:** 
 
--   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](https://sakolakembara.org/news/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung/)
--   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](https://sakolakembara.org/news/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua/)
--   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif/)
+-   [**Sakola Kembara Resmi Menjadi Yayasan: Penandatanganan Akta Anggaran Dasar di Bandung**](/blog/sakola-kembara-resmi-menjadi-yayasan-penandatanganan-akta-anggaran-dasar-di-bandung)
+-   [**Sakola Kembara Hadir di Jambore Talenta Indonesia 2025: Menghadirkan Pendidikan untuk Semua**](/blog/sakola-kembara-hadir-di-jambore-talenta-indonesia-2025-menghadirkan-pendidikan-untuk-semua)
+-   [**Perjalanan Seorang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif)

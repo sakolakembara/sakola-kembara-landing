@@ -21,7 +21,7 @@ modifiedISO: '2026-03-16'
 ---
 ![](/blog/images/2026/03/Mengenal-Talents-Mapping-1-1024x640.png)
 
-**[SAKOLA KEMBARA](https://sakolakembara.org)** – Pendidikan dan arah hidup bukan sekadar dua konsep yang berdampingan, melainkan dua hal yang secara struktural saling memengaruhi. UNESCO dalam laporan _Education 2030 Framework for Action_ menegaskan bahwa pendidikan harus berkontribusi pada pengembangan potensi manusia secara penuh, bukan hanya pencapaian akademik.  
+**[SAKOLA KEMBARA](/)** – Pendidikan dan arah hidup bukan sekadar dua konsep yang berdampingan, melainkan dua hal yang secara struktural saling memengaruhi. UNESCO dalam laporan _Education 2030 Framework for Action_ menegaskan bahwa pendidikan harus berkontribusi pada pengembangan potensi manusia secara penuh, bukan hanya pencapaian akademik.  
   
 Di Indonesia sendiri, [Undang-Undang Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional](https://kumparan.com/sejarah-dan-sosial/tujuan-pendidikan-nasional-indonesia-menurut-uu-no-20-tahun-2003-22eKKyQeP6f) menyebutkan bahwa pendidikan bertujuan mengembangkan potensi peserta didik agar menjadi manusia yang beriman, berilmu, kreatif, mandiri, dan bertanggung jawab. Artinya, secara normatif, pendidikan memang dirancang untuk membentuk arah hidup, bukan hanya menghasilkan lulusan.  
   

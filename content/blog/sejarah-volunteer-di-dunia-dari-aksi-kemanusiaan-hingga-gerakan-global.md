@@ -47,7 +47,7 @@ Memasuki paruh kedua abad ke-20 hingga sekarang, _volunteer_ berkembang menjadi 
 
 _Volunteer_ tidak lagi terbatas pada kerja fisik. Di era digital, relawan juga berkontribusi sebagai analis data, pendidik daring, peneliti, pengelola media, hingga advokat isu sosial. Kerelawanan menjadi sarana pengembangan diri sekaligus jalan untuk memberikan dampak nyata bagi masyarakat.
 
-**Baca Juga:** [**Membangun Bangsa Dengan Sekolah**](https://sakolakembara.org/education/membangun-bangsa-dengan-sekolah/)
+**Baca Juga:** [**Membangun Bangsa Dengan Sekolah**](/blog/membangun-bangsa-dengan-sekolah)
 
 ### **Makna _Volunteer_ di Era Kontemporer**
 

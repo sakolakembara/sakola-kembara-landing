@@ -21,7 +21,7 @@ modifiedISO: '2026-02-25'
 ---
 ![](/blog/images/2026/02/WhatsApp-Image-2026-02-23-at-1.21.08-PM-1024x640.jpeg)
 
-**[SAKOLA KEMBARA](https://sakolakembara.org)** – Di era ketika pilihan karier semakin beragam, paradoks justru muncul semakin banyak opsi, semakin banyak pula kebingungan. Tidak sedikit anak muda yang merasa tertekan untuk segera “menjadi sesuatu”, tanpa benar-benar memahami apa yang membuat dirinya bertumbuh. Dalam konteks inilah, Talents Mapping menjadi relevan sebagai pendekatan untuk membantu memahami potensi diri secara lebih terarah.
+**[SAKOLA KEMBARA](/)** – Di era ketika pilihan karier semakin beragam, paradoks justru muncul semakin banyak opsi, semakin banyak pula kebingungan. Tidak sedikit anak muda yang merasa tertekan untuk segera “menjadi sesuatu”, tanpa benar-benar memahami apa yang membuat dirinya bertumbuh. Dalam konteks inilah, Talents Mapping menjadi relevan sebagai pendekatan untuk membantu memahami potensi diri secara lebih terarah.
 
 **Quarter Life Crisis dan Kebingungan Karier**
 
@@ -51,7 +51,7 @@ Di Indonesia, kesenjangan akses terhadap informasi pendidikan dan bimbingan kari
 
 **Saatnya Memetakan Potensimu Bersama Sakola Kembara**
 
-Berangkat dari kesadaran akan ketimpangan akses pendidikan, [**Sakola Kembara**](https://sakolakembara.org) hadir sejak 2021 sebagai yayasan pendidikan nonformal dengan misi mewujudkan pendidikan yang lebih setara bagi anak Indonesia. Namun kesetaraan bukan hanya soal membuka pintu perguruan tinggi. Kesetaraan juga berarti memberi ruang bagi setiap individu untuk memahami kekuatannya sendiri.
+Berangkat dari kesadaran akan ketimpangan akses pendidikan, [**Sakola Kembara**](/) hadir sejak 2021 sebagai yayasan pendidikan nonformal dengan misi mewujudkan pendidikan yang lebih setara bagi anak Indonesia. Namun kesetaraan bukan hanya soal membuka pintu perguruan tinggi. Kesetaraan juga berarti memberi ruang bagi setiap individu untuk memahami kekuatannya sendiri.
 
 Melalui pendekatan seperti Talents Mapping dan pendampingan yang terstruktur, Sakola Kembara tidak sekadar membantu menentukan pilihan studi. Ia membantu membangun kesadaran diri sebagai fondasi perencanaan karier yang berkelanjutan. Karena pada akhirnya, arah yang jelas tidak lahir dari tekanan. Arah lahir dari pemahaman.
 

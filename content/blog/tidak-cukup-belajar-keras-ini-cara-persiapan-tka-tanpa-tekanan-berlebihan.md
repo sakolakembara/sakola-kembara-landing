@@ -55,7 +55,7 @@ Jangan ragu juga untuk mencari pendamping belajar. Diskusi dengan teman atau men
 
 Terakhir, ingat bahwa kondisi mental sama pentingnya dengan kemampuan akademik. Tidur cukup, makan teratur, dan memberi ruang untuk istirahat bukan tanda malas, tapi bagian dari strategi belajar yang sehat. Persiapan TKA yang baik adalah yang bisa kamu jalani sampai akhir, bukan yang membuatmu kelelahan di tengah jalan.
 
-**Baca Juga:** [**Dari Cerita Teman hingga Berdonasi untuk Mendukung Anak Muda Melanjutkan Pendidikan – Sakola Kembara – Yayasan Intelektual Muda Madani**](https://sakolakembara.org/cerita/dari-cerita-teman-hingga-berdonasi-untuk-mendukung-anak-muda-melanjutkan-pendidikan/)
+**Baca Juga:** [**Dari Cerita Teman hingga Berdonasi untuk Mendukung Anak Muda Melanjutkan Pendidikan – Sakola Kembara – Yayasan Intelektual Muda Madani**](/blog/dari-cerita-teman-hingga-berdonasi-untuk-mendukung-anak-muda-melanjutkan-pendidikan)
 
 Sahabat Kembara, menghadirkan persiapan TKA yang lebih tenang dan berpihak ke siswa tentu tidak bisa dilakukan sendirian. Dibutuhkan orang-orang yang mau hadir, mau mendengar, dan mau menemani proses belajar dengan sabar.
 

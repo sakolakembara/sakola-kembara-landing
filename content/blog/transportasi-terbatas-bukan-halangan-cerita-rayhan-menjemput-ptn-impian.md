@@ -34,7 +34,7 @@ _“Tantangan terbesarku dalam belajar adalah aku tidak punya kendaraan pribadi,
 
 Kondisi tersebut membuktikan bahwa, akses transportasi menjadi hal yang penting untuk mendukung pendidikan anak Indonesia. Sayangnya, transportasi umum tidak sepenuhnya akan menyelesaikan masalah, terutama bagi keluarga yang jauh dari akses transportasi publik.
 
-**Baca Juga:** [Kesejahteraan Guru sebagai Pilar Utama Masa Depan Indonesia](https://sakolakembara.org/education/kesejahteraan-guru-sebagai-pilar-utama-masa-depan-indonesia/ "Kesejahteraan Guru sebagai Pilar Utama Masa Depan Indonesia")
+**Baca Juga:** [Kesejahteraan Guru sebagai Pilar Utama Masa Depan Indonesia](/blog/kesejahteraan-guru-sebagai-pilar-utama-masa-depan-indonesia "Kesejahteraan Guru sebagai Pilar Utama Masa Depan Indonesia")
 
 ## **Sakola Kembara Jadi Jembatan Harapan yang Berharga**
 

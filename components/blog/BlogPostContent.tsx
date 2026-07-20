@@ -29,7 +29,6 @@ const markdownComponents: Components = {
             width={1024}
             height={768}
             className="rounded-xl w-full h-auto"
-            unoptimized
             sizes="(max-width: 800px) 100vw, 800px"
           />
         </span>

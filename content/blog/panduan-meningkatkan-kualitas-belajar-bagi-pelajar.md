@@ -118,7 +118,7 @@ Motivasi bisa naik turun, tetapi konsistensi lebih menentukan hasil. Cara memban
 
 Kebiasaan kecil yang dilakukan terus-menerus lebih efektif daripada belajar keras secara sporadis.
 
-**Baca Juga:**  [Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi](https://sakolakembara.org/news/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi/)
+**Baca Juga:**  [Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi](/blog/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi)
 
 ### **7\. Evaluasi dan Refleksi Rutin**
 

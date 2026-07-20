@@ -37,7 +37,7 @@ Salah satu pengalaman paling berdampak adalah ketika Syifaa mendengarkan impian 
 
 “Ketika mendengarkan impian teman-teman siswa dalam sesi refleksi. Banyak mimpi hebat yang dimiliki oleh mereka, semangat mereka dalam meraih impiannya. Sedikit banyak menampar aku yang tengah _overwhelmed_ dan kehilangan motivasi saat kuliah.” Tutur Syifa.
 
-Dari para siswa, Syifa justru mendapatkan energi positif dan semangat hidup. Interaksi sederhana ini membuktikan bahwa dampak [pendidikan](https://sakolakembara.org/education/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan/) tidak selalu datang dari ruang kelas formal.
+Dari para siswa, Syifa justru mendapatkan energi positif dan semangat hidup. Interaksi sederhana ini membuktikan bahwa dampak [pendidikan](/blog/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan) tidak selalu datang dari ruang kelas formal.
 
 ## **Dampak Personal dan Sosial Selama Menjadi Volunteer**
 

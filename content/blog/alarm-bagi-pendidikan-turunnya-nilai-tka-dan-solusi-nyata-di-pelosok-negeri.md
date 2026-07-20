@@ -61,4 +61,4 @@ Ketidakmerataan tersebut dapat ditanggulangi dengan upaya memberikan pendidikan 
 
 Bagi Sobat Kembara yang ingin ikut menjadi bagian dari solusi. Mari bantu adik-adik di pelosok mendapatkan kesetaraan pendidikan melalui [_Volunteer_ Sakola Kembara.](https://www.instagram.com/p/DSypUr0iTiR/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==) 
 
-Bersama [Sakola Kembara](https://sakolakembara.org/), kita ubah tantangan menjadi kesempatan bagi mereka yang membutuhkan!
+Bersama [Sakola Kembara](/), kita ubah tantangan menjadi kesempatan bagi mereka yang membutuhkan!

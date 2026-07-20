@@ -1,0 +1,32 @@
+# Caddy reverse proxy for sakolakembara.org.
+# Auto-issues + renews TLS via Let's Encrypt; nothing to configure.
+# Mount this file at /etc/caddy/Caddyfile inside the caddy container.
+
+sakolakembara.org, www.sakolakembara.org {
+	# Redirect apex/www to one canonical host. Comment this out if you want both
+	# to resolve directly; the redirect is just cleaner for SEO + cookies.
+	@www host www.sakolakembara.org
+	redir @www https://sakolakembara.org{uri} permanent
+
+	reverse_proxy app:3000
+
+	encode gzip zstd
+
+	# Security headers. Adjust CSP separately when the dashboard ships and you
+	# know which inline scripts / external origins it needs.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options    "nosniff"
+		X-Frame-Options           "DENY"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		Permissions-Policy        "camera=(), microphone=(), geolocation=()"
+		# Caddy adds Server: by default; hide it.
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+		level  INFO
+	}
+}

@@ -35,7 +35,7 @@ Sejak SMA, Cindy sudah memiliki mimpi yang tidak kecil. Ia ingin menempuh pendid
 
 Alih-alih memaksakan diri, Cindy memilih jalur yang realistis. Ia tetap mengambil jurusan keperawatan sebagai fondasi awal, dengan harapan suatu hari bisa melanjutkan ke jenjang S2 keperawatan internasional. Pilihan ini bukan tanda menyerah, tetapi strategi bertahan.
 
-**Baca Juga:** [**Tidak Cukup Belajar Keras: Ini Cara Persiapan TKA Tanpa Tekanan Berlebihan – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](https://sakolakembara.org/education/tidak-cukup-belajar-keras-ini-cara-persiapan-tka-tanpa-tekanan-berlebihan/)
+**Baca Juga:** [**Tidak Cukup Belajar Keras: Ini Cara Persiapan TKA Tanpa Tekanan Berlebihan – Sakola Kembara – Yayasan Sakola Kembara Indonesia**](/blog/tidak-cukup-belajar-keras-ini-cara-persiapan-tka-tanpa-tekanan-berlebihan)
 
 ## **Sakola Kembara dan Arti Kedermawanan Bagi Cindy**
 

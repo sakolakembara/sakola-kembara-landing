@@ -24,7 +24,7 @@ Sejarah Sakola Kembara juga membuktikan bahwa siswa dari keluarga kurang mampu d
 
 ## Awal Pendirian
 
-Sakola Kembara didirikan pada tahun 2021 oleh Rommy Adany Putra Afauly bersama tiga temannya. [Rommi](https://sakolakembara.org/cerita/perjalanan-seorang-founder/) adalah lulusan Teknik Mesin ITB yang berasal dari keluarga berpendapatan rendah. Ketika masih SD, guru-gurunya patungan untuk membiayai pendidikannya di SMP dan SMA terbaik di Jakarta. Setelah lulus ITB, ia bekerja sebagai manajer di perusahaan.
+Sakola Kembara didirikan pada tahun 2021 oleh Rommy Adany Putra Afauly bersama tiga temannya. [Rommi](/blog/perjalanan-seorang-founder) adalah lulusan Teknik Mesin ITB yang berasal dari keluarga berpendapatan rendah. Ketika masih SD, guru-gurunya patungan untuk membiayai pendidikannya di SMP dan SMA terbaik di Jakarta. Setelah lulus ITB, ia bekerja sebagai manajer di perusahaan.
 
 Ide mendirikan Sakola Kembara muncul saat Rommi mengunjungi pelosok Bandung Barat. Disana, ia menemukan siswa-siswi SMA dari keluarga miskin yang tidak tahu ada jenjang pendidikan kuliah. Cita-cita tertinggi mereka hanya menjadi kasir supermarket. Bahkan guru-guru di sekolah mereka melarang siswa untuk kuliah karena dianggap tidak realistis.
 
@@ -105,4 +105,4 @@ Sejarah Sakola Kembara dari 2021 hingga 2025 menunjukkan pertumbuhan yang konsis
 
 Total lebih dari 400 siswa telah menjadi bagian dari program ini, dengan tingkat kelulusan PTN yang stabil di kisaran 50-70% setiap tahunnya. Program ini membuktikan bahwa dengan metode yang tepat, siswa dari keluarga prasejahtera dan daerah pelosok bisa bersaing masuk PTN terbaik di Indonesia.
 
-Dukung perjalanan pendidikan anak-anak pelosok bersama Sakola Kembara melalui [donasi](https://sakolakembara.org/donasi).
+Dukung perjalanan pendidikan anak-anak pelosok bersama Sakola Kembara melalui [donasi](/donasi).

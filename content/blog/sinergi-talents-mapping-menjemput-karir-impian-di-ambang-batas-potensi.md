@@ -41,7 +41,7 @@ Sistem kerja Talents Mapping adalah dengan mengidentifikasi potensi kekuatan ses
 
 Pathfinder Consulting adalah konsultan pengembangan Sumber Daya Manusia (SDM) yang didirikan pada tahun 2012 di Bandung, Jawa Barat. Organisasi ini telah mempunyai badan hukum yakni, PT Pandu Potensi Indonesia dan berkantor di Sleman, Yogyakarta. 
 
-**Baca Juga:** [Pendidikan untuk Semua: Tantangan dan Solusi dalam Pemerataan Akses Pendidikan](https://sakolakembara.org/education/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan/)
+**Baca Juga:** [Pendidikan untuk Semua: Tantangan dan Solusi dalam Pemerataan Akses Pendidikan](/blog/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan)
 
 Layanan Pathfinder Consulting berfokus pada _strength-based approach._ Pathfinder telah mengembangkan layanan asesmen Talents Mapping ke seluruh wilayah Indonesia. Pathfinder telah berpengalaman lebih dari 10 tahun dalam praktisi Talents Mapping serta memiliki lebih dari ratusan alumni program pelatihan. 
 

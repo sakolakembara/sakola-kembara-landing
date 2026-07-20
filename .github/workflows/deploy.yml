@@ -1,0 +1,78 @@
+# Build in CI, deploy to VPS. Server only pulls the image + rolls the container.
+#
+# Trigger: push a `v*` tag (e.g. `git tag v1.0.0 && git push --tags`).
+# Registry: Docker Hub, shared repo faishalrachman/ipat-app, tag `sakem-landing`.
+# Secrets/vars live in the `production` environment of this repo.
+
+name: Build & Deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: docker.io/faishalrachman/ipat-app:sakem-landing
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-sakem-landing
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & push image
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -eu
+          echo "$DOCKERHUB_TOKEN" | docker login -u faishalrachman --password-stdin
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      # Migrations run from the runner against the DB's PUBLIC endpoint
+      # (62.72.46.54:51112) — drizzle-kit is a devDependency and isn't in the
+      # runtime image, so it can't run inside the container on the server.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_CI }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run db:migrate
+
+      - name: Deploy to VPS
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ vars.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_DIR: /opt/app/sakola-kembara-landing
+          # .env.local written on the server. App reaches Postgres over the
+          # internal ipat-bridge network at postgres_16:5432.
+          ENV_FILE_CONTENT: |
+            NODE_ENV=production
+            NEXTAUTH_URL=${{ vars.NEXTAUTH_URL }}
+            AUTH_URL=${{ vars.AUTH_URL }}
+            AUTH_TRUST_HOST=true
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            AUTH_MICROSOFT_ENTRA_ID_ID=${{ vars.AUTH_MICROSOFT_ENTRA_ID_ID }}
+            AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=${{ vars.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID }}
+            AUTH_MICROSOFT_ENTRA_ID_SECRET=${{ secrets.AUTH_MICROSOFT_ENTRA_ID_SECRET }}
+            AUTH_DEV_PROVIDER_ENABLED=
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            PORT=3000
+            SHAREPOINT_SITE_ID=${{ vars.SHAREPOINT_SITE_ID }}
+            SHAREPOINT_DRIVE_ID=${{ vars.SHAREPOINT_DRIVE_ID }}
+            SHAREPOINT_FOLDER_PATH=${{ vars.SHAREPOINT_FOLDER_PATH }}
+        run: bash .github/scripts/deploy.sh

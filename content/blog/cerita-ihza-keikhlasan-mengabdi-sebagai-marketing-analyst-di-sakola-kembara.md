@@ -71,5 +71,5 @@ Kalau kamu mau jadi seperti Ihza, kurang lebih kamu harus bisa mengemban tanggun
 
 **Baca Juga:** 
 
--   [**Perjalanan Serang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](https://sakolakembara.org/cerita/perjalanan-seorang-founder/)
--   [**Jarak Jauh Bukan Penghalang untuk Berdampak: Cerita Muttaqin**](https://sakolakembara.org/cerita/jarak-jauh-bukan-penghalang-untuk-berdampak-cerita-muttaqin-sebagai-volunteer-sakola-kembara/)
+-   [**Perjalanan Serang Founder: Rommy Mendirikan Sakola Kembara untuk Pendidikan Inklusif**](/blog/perjalanan-seorang-founder)
+-   [**Jarak Jauh Bukan Penghalang untuk Berdampak: Cerita Muttaqin**](/blog/jarak-jauh-bukan-penghalang-untuk-berdampak-cerita-muttaqin-sebagai-volunteer-sakola-kembara)

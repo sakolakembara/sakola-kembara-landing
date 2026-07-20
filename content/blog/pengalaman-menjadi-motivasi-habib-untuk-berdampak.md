@@ -42,7 +42,7 @@ Habib memutuskan bergabung di Sakola Kembara sebagai volunteer pada tahun 2025, 
 
 Sebelumnya, Habib pernah menempuh sekolah di MTSN 1 Pandeglang, kemudian Ia melanjutkan pendidikan di luar kota, yakni di MAN IC Serpong. Disini Habib mendapatkan  keuntungan atau _Privilege_ luar biasa, yaitu  sekolah beliau berhasil menjadi Sekolah yang mendapatkan skor UTBK tertinggi. Torehan tersebutlah yang membuatnya termotivasi, dan pada akhirnya berhasil menjadi Mahasiswa di salah satu Universitas terbaik di Indonesia, yaitu Institut Teknologi Bandung (ITB).
 
-**Baca Juga:**  [Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi](https://sakolakembara.org/news/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi/)
+**Baca Juga:**  [Sinergi Talents Mapping: Menjemput Karir Impian di Ambang Batas Potensi](/blog/sinergi-talents-mapping-menjemput-karir-impian-di-ambang-batas-potensi)
 
 Dari latar belakang yang luar biasa ini, Habib menjadi termotivasi untuk bisa membantu anak – anak yang memiliki keterbatasan, agar bisa meraih pendidikan untuk membangun masa depan yang lebih cerah. Habib memulai langkah mulianya dengan bergabung bersama Sakola Kembara.
 

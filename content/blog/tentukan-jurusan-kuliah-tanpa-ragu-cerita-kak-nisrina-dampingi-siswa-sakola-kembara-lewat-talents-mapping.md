@@ -23,7 +23,7 @@ sourceUrl: >-
   https://sakolakembara.org/testimonials/tentukan-jurusan-kuliah-tanpa-ragu-cerita-kak-nisrina-dampingi-siswa-sakola-kembara-lewat-talents-mapping/
 modifiedISO: '2026-01-15'
 ---
-Kali ini apresiasi positif datang dari Kak Nisrina Rizkia, Praktisi Talents Mapping yang terjun langsung ke lapangan sebagai konsultan. Kak Nisrina berperan sebagai konsultan dalam agenda konsultasi secara online hasil asesmen [Talents Mapping](https://talentsmapping.id/). Agenda ini dihadiri oleh siswa, orang tua, dan juga didampingi oleh salah satu tim [Sakola Kembara](https://sakolakembara.org/). 
+Kali ini apresiasi positif datang dari Kak Nisrina Rizkia, Praktisi Talents Mapping yang terjun langsung ke lapangan sebagai konsultan. Kak Nisrina berperan sebagai konsultan dalam agenda konsultasi secara online hasil asesmen [Talents Mapping](https://talentsmapping.id/). Agenda ini dihadiri oleh siswa, orang tua, dan juga didampingi oleh salah satu tim [Sakola Kembara](/). 
 
 Seperti yang sudah diinformasikan sebelumnya, Talents Mapping adalah program kolaborasi yang diselenggarakan Sakola Kembara dengan Pathfinder Consulting. Program ini merupakan upaya memaksimalkan dukungan sekolah dalam aspek potensi dan penataan karier di masa depan bagi siswa Kembara. Sejalan dengan misi **#PendidikanUntukSemua**, Sakola Kembara bersama Pathfinder Consulting membantu memaksimalkan bantuan pendidikan bagi seluruh anak-anak di pelosok Indonesia untuk meraih impiannya masuk perguruan tinggi. Nantinya program ini akan dijadikan sebagai jalan dalam menentukan jurusan kuliah mereka. 
 
@@ -39,7 +39,7 @@ Kak Nisrina mengungkapkan siswa Kembara memberikan respon yang sangat positif da
 
 _“Siswa sangat antusias menyimak dan juga bertanya ketika sesi konsultasi berlangsung. Bahkan, ada yang sudah memiliki kejelasan dalam pemilihan jurusan, sehingga tinggal dipertegas saja,”_ ucap Kak Nisrina. 
 
-**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](https://sakolakembara.org/testimonials/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya/)
+**Baca Juga:** [**Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi ‘Maximizer’ di Dalam Dirinya**](/blog/harta-karun-pribadi-kisah-pembelajaran-hekkel-mengenali-potensi-maximizer-di-dalam-dirinya)
 
 Menurut Kak Nisrina, sebenarnya banyak siswa yang sudah mulai memahami potensi diri mereka, tetapi mereka masih memerlukan bimbingan intensif untuk menyelaraskan kepribadian tersebut dengan pilihan jurusan kuliah yang tepat. Bimbingan tersebut salah satunya dapat diupayakan dengan mengikuti pemetaan bakat dan pendampingan akademik lewat pembelajaran di Sakola Kembara. 
 
