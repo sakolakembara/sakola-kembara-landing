@@ -38,11 +38,18 @@ const schema = z.object({
 
 const parsed = schema.safeParse(process.env);
 
-if (!parsed.success) {
+// During `next build` env vars aren't present (the container gets them at
+// runtime via .env.local), so page-data collection would crash on the throw.
+// Skip the hard fail in the build phase; validation still runs at runtime.
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+if (!parsed.success && !isBuildPhase) {
   console.error("Invalid environment variables:");
   console.error(JSON.stringify(parsed.error.flatten().fieldErrors, null, 2));
   throw new Error("Invalid environment variables — see logs above and check .env.local against .env.example.");
 }
 
-export const env = parsed.data;
+// In the build phase parsed.data is undefined; fall back to the raw env so
+// type-shape holds. Real validation happens on the first runtime import.
+export const env = (parsed.success ? parsed.data : process.env) as z.infer<typeof schema>;
 export type Env = typeof env;

@@ -4,7 +4,7 @@
 # ----------------------------------------------------------------------------
 # 1. deps — install production + dev dependencies for the build
 # ----------------------------------------------------------------------------
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 
 # Install OS deps that node-gyp / sharp / pg might need on Alpine.
@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 # ----------------------------------------------------------------------------
 # 2. builder — build the Next standalone bundle
 # ----------------------------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -31,7 +31,7 @@ RUN corepack enable && pnpm run build
 # ----------------------------------------------------------------------------
 # 3. runner — minimal runtime image
 # ----------------------------------------------------------------------------
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
