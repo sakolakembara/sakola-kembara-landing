@@ -1,18 +1,16 @@
 import type { CSSProperties } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { getCurrentAnnouncement } from "@/lib/announcements";
 
-export default async function PublicLayout({
+export default function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const announcement = await getCurrentAnnouncement();
-  // Hero sections read --hero-top for their top padding so they always clear
-  // the fixed navbar regardless of whether the announcement strip is present.
-  const heroTop = announcement ? "11rem" : "8rem";
-  const style = { "--hero-top": heroTop } as CSSProperties;
+  // Hero sections read --hero-top for their top padding so they clear the fixed
+  // navbar. The announcement strip is fetched client-side (DB is server-only),
+  // so we default to the no-strip padding and Navbar lifts it if a strip loads.
+  const style = { "--hero-top": "8rem" } as CSSProperties;
   return (
     <div style={style}>
       <a
@@ -21,7 +19,7 @@ export default async function PublicLayout({
       >
         Lewat ke konten utama
       </a>
-      <Navbar announcement={announcement} />
+      <Navbar />
       <div id="konten-utama">{children}</div>
       <Footer />
     </div>

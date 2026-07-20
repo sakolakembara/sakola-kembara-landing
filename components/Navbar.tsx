@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
@@ -8,12 +8,28 @@ import { navLinks } from "@/lib/data";
 import { AnnouncementStrip } from "@/components/AnnouncementStrip";
 import type { Announcement } from "@/lib/db/schema";
 
-export default function Navbar({
-  announcement,
-}: {
-  announcement?: Announcement | null;
-}) {
+export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+
+  // Fetched at runtime (not build) — the DB is only reachable from the server.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/announcements/current")
+      .then((res) => (res.ok ? res.json() : { announcement: null }))
+      .then((data) => {
+        if (cancelled) return;
+        setAnnouncement(data.announcement ?? null);
+        // Lift hero padding to clear the strip once it's known to be present.
+        if (data.announcement) {
+          document.documentElement.style.setProperty("--hero-top", "11rem");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100">
