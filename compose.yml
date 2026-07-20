@@ -1,0 +1,37 @@
+# Production stack — app-only. Runs on the VPS at /opt/app/sakola-kembara-landing/.
+# Deploys via GitHub Actions on a `v*` tag: image built + pushed to Docker Hub,
+# then `docker compose up -d --pull always app` over SSH.
+#
+# Postgres is NOT here — it's the shared `postgres_16` container on the external
+# `ipat-bridge` network. The app joins that network and reaches it at
+# `postgres_16:5432` (see DATABASE_URL in .env.local).
+#
+# No host ports: nginx-app-1 (also on ipat-bridge) reverse-proxies this app by
+# container name — proxy_pass http://sakola-kembara-landing:3000.
+#
+# Required: .env.local next to this file (written by CI from gh vars/secrets).
+
+services:
+  app:
+    image: docker.io/faishalrachman/ipat-app:sakem-landing
+    container_name: sakola-kembara-landing
+    restart: unless-stopped
+    env_file: .env.local
+    volumes:
+      # public/ is bind-mounted from the deploy dir so dashboard-uploaded PDFs
+      # and images live on the host and survive container rebuilds. CI ships the
+      # repo's public/ (baked assets) into ./public on each deploy; uploads land
+      # there too and persist.
+      - ./public:/app/public
+    networks:
+      - ipat-bridge
+    # Cap resources: 256 MB RAM, ~0.3 CPU (never above 30% of one core).
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.3"
+
+networks:
+  ipat-bridge:
+    external: true

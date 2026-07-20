@@ -9,9 +9,10 @@ WORKDIR /app
 
 # Install OS deps that node-gyp / sharp / pg might need on Alpine.
 RUN apk add --no-cache libc6-compat
+RUN corepack enable
 
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # ----------------------------------------------------------------------------
 # 2. builder — build the Next standalone bundle
@@ -25,7 +26,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN npm run build
+RUN corepack enable && pnpm run build
 
 # ----------------------------------------------------------------------------
 # 3. runner — minimal runtime image
