@@ -17,20 +17,17 @@ const schema = z.object({
   // ----- Database -----
   DATABASE_URL: z.string().url(),
 
-  // ----- Auth (Microsoft Entra ID) -----
+  // ----- Auth (unified: Google OAuth + Credentials for admins) -----
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 chars (openssl rand -base64 32)"),
-  // Entra credentials are optional in dev — the dev credentials provider
-  // (see AUTH_DEV_PROVIDER_ENABLED) lets us run /admin without Entra wired up.
-  // For production, set all three.
-  AUTH_MICROSOFT_ENTRA_ID_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
-  AUTH_MICROSOFT_ENTRA_ID_SECRET: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
-  AUTH_MICROSOFT_ENTRA_ID_TENANT_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
-  // Dev-only escape hatch — enables a simple email-only sign-in flow against
-  // existing rows in admin_users. NEVER enable in production.
-  AUTH_DEV_PROVIDER_ENABLED: z
-    .string()
-    .optional()
-    .transform((v) => v === "true" || v === "1"),
+  // Google OAuth — used by both students and admins. Optional in local dev if
+  // you only intend to sign in as an admin via email + password.
+  AUTH_GOOGLE_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  AUTH_GOOGLE_SECRET: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+
+  // ----- Seed super-admin (used by `npm run seed:super-admin`) -----
+  SEED_SUPER_ADMIN_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+  SEED_SUPER_ADMIN_PASSWORD: z.preprocess(emptyToUndefined, z.string().min(8).optional()),
+  SEED_SUPER_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
 
   // ----- Observability -----
   SENTRY_DSN: z.preprocess(emptyToUndefined, z.string().url().optional()),

@@ -1,50 +1,55 @@
 import type { NextAuthConfig } from "next-auth";
-import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import Google from "next-auth/providers/google";
 import { env } from "@/lib/env";
 
-export const ALLOWED_DOMAIN = "sakolakembara.org";
-
 // Edge-safe NextAuth config — anything that needs Node APIs (DB queries,
-// fs, pg) lives in auth.ts instead. Middleware (which runs on the Edge
+// bcrypt, pg) lives in auth.ts instead. Middleware (which runs on the Edge
 // runtime by default) imports this file directly.
+//
+// This file registers the Google provider only. The Credentials-based admin
+// login (email + password) is registered in auth.ts so we can call into
+// Postgres / bcrypt there.
 
-const entraConfigured = Boolean(
-  env.AUTH_MICROSOFT_ENTRA_ID_ID &&
-    env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
-    env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID,
-);
+const googleConfigured = Boolean(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET);
 
-const entraProvider = entraConfigured
+const googleProvider = googleConfigured
   ? [
-      MicrosoftEntraID({
-        clientId: env.AUTH_MICROSOFT_ENTRA_ID_ID!,
-        clientSecret: env.AUTH_MICROSOFT_ENTRA_ID_SECRET!,
-        issuer: `https://login.microsoftonline.com/${env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID}/v2.0`,
+      Google({
+        clientId: env.AUTH_GOOGLE_ID!,
+        clientSecret: env.AUTH_GOOGLE_SECRET!,
+        // Allow re-selecting the account each time — students may share a
+        // device with a sibling; asking every time avoids the wrong account
+        // being reused silently.
+        authorization: { params: { prompt: "select_account" } },
       }),
     ]
   : [];
 
 export const authConfig: NextAuthConfig = {
-  providers: entraProvider,
+  providers: googleProvider,
   session: { strategy: "jwt" },
   pages: { signIn: "/login", error: "/login" },
   trustHost: env.AUTH_TRUST_HOST || env.NODE_ENV === "development",
   callbacks: {
-    async signIn({ profile, user }) {
-      const email = String(profile?.email ?? user?.email ?? "").toLowerCase();
-      return email.endsWith(`@${ALLOWED_DOMAIN}`);
-    },
-    async jwt({ token, profile, user }) {
-      const email =
-        profile?.email ?? user?.email ?? (token.email as string | undefined);
-      if (email) token.email = String(email).toLowerCase();
+    // JWT is the source of truth for role + userId — the middleware runs on
+    // Edge and reads the JWT directly (see proxy.ts). Actual role resolution
+    // happens in auth.ts (Node runtime, DB access).
+    async jwt({ token }) {
       return token;
     },
     async session({ session, token }) {
-      if (token.email) session.user.email = String(token.email);
+      if (session.user) {
+        if (token.email) session.user.email = String(token.email).toLowerCase();
+        if (typeof token.role === "string") {
+          (session.user as { role?: string }).role = token.role;
+        }
+        if (typeof token.sub === "string") {
+          (session.user as { id?: string }).id = token.sub;
+        }
+      }
       return session;
     },
   },
 };
 
-export const entraConfiguredFlag = entraConfigured;
+export const googleConfiguredFlag = googleConfigured;
