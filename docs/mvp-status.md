@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has dynamic content (announcements, team, reports, paginated blog, on-site forms for applications and contact), and `/admin` is a full dashboard gated by Microsoft Entra ID + `@sakolakembara.org` domain check. WordPress cutover redirects are wired. What's left for launch is operational: real content from the team, VPS provisioning, DNS flip.
+The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has dynamic content (announcements, team, reports, paginated blog, on-site forms for applications and contact). Auth is Google OAuth (for students and admins) with an email + password fallback for admins; `/admin` is a role-gated dashboard and `/portal` is the signed-in student area. WordPress cutover redirects are wired. What's left for launch is operational: real content from the team, VPS provisioning, DNS flip.
 
 ## What ships in the MVP
 
@@ -20,7 +20,8 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - `/gabung-siswa/docs` — public docs catalog rendered from `site_resources`, grouped into 5 categories with anchor links (`#panduan`, `#berkas-pendaftaran`, `#berkas-marketing`, `#tutorial`, `#lainnya`); text-type entries render with a Salin button
 - `/kontak` — contact form, writes to `contact_messages`
 - `/program/[id]` — program detail (static; admin CRUD deferred)
-- `/login` — Auth.js sign-in (Microsoft Entra + dev provider)
+- `/login` — unified Auth.js sign-in (Google button + collapsible admin email/password form)
+- `/portal`, `/portal/status` — signed-in student area: current-batch CTA + registration history + per-application result view (see [`architecture/student-portal.md`](architecture/student-portal.md))
 - `/robots.txt`, `/sitemap.xml`, every page has metadata + OG
 
 ### Admin dashboard (`/admin`)
@@ -34,10 +35,12 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - `/admin/settings` — admin user management (super_admin only mutates; guards on self-delete + last-super demotion)
 - `/admin/resources` — CRUD for the dynamic docs catalog. Each entry has title, description, category (panduan / berkas-pendaftaran / berkas-marketing / tutorial / lainnya), display order, and a content type of `file` (uploaded to `public/resources/`), `url` (external), or `text` (copy-able snippet). Renders publicly at `/gabung-siswa/docs`.
 - `/admin/audit` — paginated viewer with filters (action / resource / actor email substring / date range)
+- `/admin/batches`, `/admin/batches/new`, `/admin/batches/[id]` — admission-batch CRUD + `Publikasikan Hasil` action (guarded: no `pending` / `under_review` rows allowed). See [`architecture/admission-batches.md`](architecture/admission-batches.md).
 - Responsive sidebar: hamburger drawer on mobile, fixed sidebar on desktop, active-link highlight
 
 ### Cross-cutting
-- **Auth.js v5** — Microsoft Entra ID (single-tenant) in production, email-only dev provider gated by `NODE_ENV=development + AUTH_DEV_PROVIDER_ENABLED=true`. Domain check on `@sakolakembara.org` at the IdP, in the proxy middleware, AND in every server action.
+- **Auth.js v5** — Google OAuth (students + admins) side-by-side with a Credentials provider (email + bcrypt) restricted to admin roles. Sessions are JWT-only with role stamped into the token in the `jwt` callback; middleware (`proxy.ts`) reads it without a DB hit. `/admin/*` requires an admin role, `/portal/*` requires any signed-in user, students hitting `/admin` are bounced to `/portal?error=admin-only`. Details in [`architecture/authentication.md`](architecture/authentication.md).
+- **Unified login + student portal + yearly batches** — sign-in lives at `/login` regardless of role. Students land on `/portal`, where they can only register while an `admission_batches` row is currently open (`opens_at ≤ now < closes_at`) and can only see verdicts after that batch's `results_published_at` is set. See [`architecture/student-portal.md`](architecture/student-portal.md) and [`architecture/admission-batches.md`](architecture/admission-batches.md).
 - **WordPress cutover** — `next.config.ts → redirects()` 308s for `/cerita/*`, `/education/*`, `/news/*`, `/tips/*`, `/testimonials/*`, `/career/*`, `/kiat-kiat/*` → `/blog/*`; `/daftar`, `/apply` → `/gabung-siswa`; `/tentang-kami`, `/about` → `/tim`; `/impact-reports*` → `/laporan`; `/feed`, `/index.php`, `/blog/page/N` to sensible targets. Smoke-tested against dev.
 - **SEO baseline** — `lib/seo.ts` (OG, Twitter, canonical URL, JSON-LD for articles), per-page metadata, `robots.txt`, dynamic `sitemap.xml`, viewport export with brand `themeColor`, skip-to-content link, `html lang="id"`.
 - **Audit log** — every admin mutation appends a row via `writeAudit()`; viewable in `/admin/audit` and on the dashboard recent activity widget.
@@ -58,8 +61,10 @@ Five Postgres tables hold all dynamic state. Blog stays in markdown (`content/bl
 
 | Table | Owner | Purpose |
 |---|---|---|
-| `admin_users` | `/admin/settings` | Email + role (super_admin / editor / viewer) + last_login |
-| `student_applications` | `/gabung-siswa` (public) → `/admin/applications` (review) | Form submissions, review notes, status |
+| `users` | `/admin/settings` (admins) + Google sign-in (students) | Email + role enum (`student` / `viewer` / `editor` / `super_admin`) + optional bcrypt `password_hash` + `image` + `last_login_at`. Renamed from `admin_users`. |
+| `accounts` | Auth.js Google sign-in | OAuth linkage: `(provider, providerAccountId)` → `users.id`. NextAuth-adapter-compatible shape. |
+| `admission_batches` | `/admin/batches` | Yearly batch (year unique) with `opens_at`, `closes_at`, and `results_published_at` (the batch-level publish trigger). |
+| `student_applications` | `/gabung-siswa` (auth-gated form) → `/admin/applications` (review) | Form submissions with `user_id` + `batch_id` (unique together) + status + reviewer notes |
 | `announcements` | `/admin/announcements` | Homepage strip content + schedule |
 | `reports` | `/admin/reports` | PDF metadata (file lives in `public/reports/`) |
 | `team_members` | `/admin/team` | Team grid for `/tim` |
@@ -85,7 +90,7 @@ Deferred features, all judged not worth the dev time at launch:
 Operational, not code. Tracked in [`runbook/launch.md`](runbook/launch.md) Phase 0:
 
 1. **Real content swap** — final team photos + bios, real `impactMetrics` numbers, program photos + copy, real testimonials, QRIS image file. See [`current-state/known-gaps.md`](current-state/known-gaps.md) for the placeholder inventory.
-2. **VPS + infra** — provider account + budget approval (~€5/mo Hetzner / DO basic), Microsoft Entra app registration (~15 min by an IT admin), DNS access to flip apex + `www`, Backblaze B2 or Cloudflare R2 for offsite backups.
+2. **VPS + infra** — provider account + budget approval (~€5/mo Hetzner / DO basic), a **Google Cloud OAuth client** (Web application; production callback `https://sakolakembara.org/api/auth/callback/google`), a **super-admin bootstrap** (`SEED_SUPER_ADMIN_*` values ready to seed once the container is up so someone can sign in), DNS access to flip apex + `www`, Backblaze B2 or Cloudflare R2 for offsite backups.
 3. **Pre-launch QA** — Lighthouse on every public route (must hit ≥ 90 on perf / a11y / best-practices / SEO), real-device QA on iPhone + Android + 1366×768 desktop, redirect spot-check.
 
 ## Where to go for detail
@@ -93,7 +98,9 @@ Operational, not code. Tracked in [`runbook/launch.md`](runbook/launch.md) Phase
 - **Launch a fresh VPS**: [`runbook/launch.md`](runbook/launch.md)
 - **Day-to-day ops** (deploy, restart, restore): [`current-state/deployment.md`](current-state/deployment.md)
 - **Why we picked the stack we did**: [`roadmap/infrastructure.md`](roadmap/infrastructure.md)
-- **How auth works**: [`roadmap/admin-dashboard.md`](roadmap/admin-dashboard.md)
+- **How auth works**: [`architecture/authentication.md`](architecture/authentication.md)
+- **How the student portal works**: [`architecture/student-portal.md`](architecture/student-portal.md)
+- **How admission batches work**: [`architecture/admission-batches.md`](architecture/admission-batches.md)
 - **What's still placeholder**: [`current-state/known-gaps.md`](current-state/known-gaps.md)
 - **Visual guardrails**: [`design/visual-identity.md`](design/visual-identity.md), [`design/color-and-typography.md`](design/color-and-typography.md)
 - **Indonesian tone-of-voice**: [`context/tone-of-voice.md`](context/tone-of-voice.md)

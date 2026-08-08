@@ -1,0 +1,80 @@
+# Student Portal
+
+The signed-in student area at `/portal/*`. Home for Sakemers-to-be: register when a batch is open, watch the result appear when the batch is announced.
+
+## Purpose
+
+Give prospective students a stable, personal URL that survives across batches and always shows the same two things:
+
+1. **Can I register right now?** — the current open `admission_batches` row, with a CTA to the multi-step wizard.
+2. **What happened to my previous submissions?** — a chronological list, plus a detail page that reveals the verdict only after the batch is officially published.
+
+The portal replaces the earlier public "check status by email" pattern. Every student now signs in with Google (see [`authentication.md`](authentication.md)) and their history is attached to their `users` row.
+
+## Route map
+
+| Path | File | Purpose |
+| --- | --- | --- |
+| `/portal` | `app/(portal)/portal/page.tsx` | Home. Current-batch CTA + application history. |
+| `/portal/status` | `app/(portal)/portal/status/page.tsx` | Per-application detail view — one card per past submission. |
+
+Both routes are guarded by `requireStudent(fromPath)` from `lib/auth-helpers.ts`, which redirects to `/login?from=<path>` when unauthenticated. Any signed-in role (`student`, `viewer`, `editor`, `super_admin`) can reach `/portal` — the middleware also permits admins so they can inspect what students see.
+
+## `/portal` — home
+
+Three sections, top to bottom:
+
+- **Greeting** — "Selamat datang, {first name} 👋" pulled from `student.name`, falling back to "calon Sakemers".
+- **Pendaftaran saat ini** — reads `getCurrentOpenBatch()` (`lib/admission-batches.ts`). Three states:
+  - No open batch → warm placeholder copy ("Pendaftaran Sakola Kembara dibuka sekali dalam setahun. Pantau akun ini…").
+  - Open batch, no submission yet → shows batch year + name + `closesAt` deadline + description, plus a "Mulai daftar" CTA to `/gabung-siswa/form`.
+  - Open batch, already submitted → green check, "Pendaftaran kamu untuk {name} sudah terkirim." with a link to `/portal/status`.
+- **Riwayat pendaftaran** — reads `getApplicationsForUser(student.userId)`. One line per application: `{year} · {batch name}` on the left, one of "Menunggu hasil" or the status label ("Diterima" / "Belum lolos") on the right. The verdict only shows when `batch.resultsPublishedAt !== null` **and** status is `accepted` or `rejected`.
+
+The `error=admin-only` query param renders a friendly banner ("Halaman admin hanya untuk pengurus yayasan.") when the middleware bounced a student off `/admin`.
+
+## `/portal/status` — per-application detail
+
+One card per row from `getApplicationsForUser`. `statusView(status, batchPublishedAt, reviewNotes)` derives what to show:
+
+- **Batch not published yet** — always render "Pendaftaran kamu sedang diproses" regardless of internal status. Amber clock icon. Copy: *"Terima kasih sudah mendaftar. Panitia akan mengabari hasilnya di halaman ini setelah semua pendaftar batch ini selesai dinilai."*
+- **Batch published + `accepted`** — emerald check. Headline: "Selamat! Kamu diterima 🎉". Body: reviewer notes if present, otherwise a default acceptance message.
+- **Batch published + `rejected`** — gray heart-handshake icon. Headline: "Belum lolos tahun ini". Body: reviewer notes if present, otherwise warm decline copy. Adds a "Lihat batch pendaftaran berikutnya →" link back to `/portal`.
+- **Batch published but decision still `pending` / `under_review`** — should not happen (the publish guard prevents it) but rendered as a fallback: "Sedang diproses" + "hubungi panitia via WhatsApp jika kondisi ini tidak berubah dalam 1×24 jam."
+
+## The privacy contract
+
+> Students only see a verdict after `admission_batches.results_published_at` is set — even if the admin already flipped the internal `student_applications.status`.
+
+This is deliberate and load-bearing. Admins review applications continuously through the review window; publishing them one by one would create anxiety (why did she hear back before me? did I fail already?) and leak the pace of the review to the outside world. The `resultsPublishedAt` timestamp is the single moment when every verdict becomes visible at once.
+
+The two guarantees on top of that:
+
+- **Admin publish guard** — `publishBatchResults()` in `app/(admin)/admin/batches/actions.ts` refuses to publish while any row is still `pending` or `under_review`. See [`admission-batches.md`](admission-batches.md).
+- **Portal-side guard** — `statusView()` in `app/(portal)/portal/status/page.tsx` treats missing `resultsPublishedAt` as pending regardless of what the DB says. Even if the publish guard is bypassed (manual DB write, migration bug), the student surface stays honest.
+
+Any new UI that surfaces application state to students **must** honor this contract.
+
+## Copy conventions
+
+Match the formal-warm Indonesian tone. See [`../context/tone-of-voice.md`](../context/tone-of-voice.md) for the full vocabulary. Portal-specific consistency notes:
+
+- **"Menunggu hasil"** — the state label while the batch isn't published. Not "Pending", not "Diproses".
+- **"Diterima"** — verdict for `accepted`.
+- **"Belum lolos"** — verdict for `rejected`. Chosen over "Ditolak" — warmer, encourages reapplication.
+- **"Sakemers"** — students of Sakola Kembara. Used sparingly; "calon Sakemers" for prospective applicants.
+- **"kamu"** — always the second-person address, never "Anda". The portal is a personal space.
+- **Emoji** — one confetti 🎉 on acceptance, one hand-wave 👋 on the greeting, one 👋 on the empty-history state. Nowhere else.
+
+## Future: LMS SSO handoff
+
+The `users` table is the anchor for the future admissions → LMS flow. A future LMS service, running in its own repo / database, is expected to:
+
+1. Read (or subscribe to changes on) `users` filtered by `role='student'` and applications where `status='accepted'` and the corresponding batch is published.
+2. Provision an LMS row keyed on `users.id`.
+3. Sign the student in via a shared token (JWT signed with a per-integration secret, or a full OIDC handshake — decision deferred).
+
+Design notes for that future work:
+- Do not fork the `users` table into two systems. LMS-specific fields (cohort, enrollment date, grades) live in the LMS DB, joined by `users.id`.
+- Preserve `users.id` when a student is promoted from `student` to any admin role — the LMS should keep working for a student who later volunteers.
+- Sign-out from Sakola should sign out from LMS (single logout). Whether we implement that end-to-end depends on the LMS choice.

@@ -89,7 +89,8 @@ docker system df -v
 Live in `/opt/sakem/.env.production` on the VPS (mode 600, owned by `deploy`). Same shape as `.env.example` at the repo root. Includes:
 
 - `DATABASE_URL` → `postgres://sakem:<password>@postgres:5432/sakola_kembara` (note the hostname is the Compose service name).
-- `AUTH_SECRET`, `AUTH_MICROSOFT_ENTRA_ID_*`, `AUTH_TRUST_HOST=true`, `NEXTAUTH_URL=https://sakolakembara.org` — see [`../roadmap/admin-dashboard.md`](../roadmap/admin-dashboard.md).
+- `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_TRUST_HOST=true`, `NEXTAUTH_URL=https://sakolakembara.org` — see [`../architecture/authentication.md`](../architecture/authentication.md).
+- `SEED_SUPER_ADMIN_EMAIL`, `SEED_SUPER_ADMIN_PASSWORD`, `SEED_SUPER_ADMIN_NAME` — only needed while bootstrapping the first admin (`npm run seed:super-admin`). Safe to remove from the file after Phase 6 of the launch runbook.
 - `SENTRY_DSN`.
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` for the `postgres` + `backup` services.
 

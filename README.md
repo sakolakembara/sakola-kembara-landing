@@ -13,9 +13,9 @@ Live: <https://sakolakembara.org>
 - **Lora** serif headings + **Plus Jakarta Sans** body via `next/font`
 - **framer-motion** for animation, **react-leaflet** for the branches map
 - File-based blog: `content/blog/*.md` → `lib/blog-posts.json`
-- **PostgreSQL 16 + Drizzle ORM** for the admin dashboard
-- **Auth.js v5** — Microsoft Entra ID for production, a dev credentials provider for local. Both gated to `@sakolakembara.org`.
-- Public site under `app/(public)/`, dashboard under `app/(admin)/admin/`
+- **PostgreSQL 16 + Drizzle ORM** for the admin dashboard and the student portal
+- **Auth.js v5** — Google OAuth for everyone (students and admins) + email/password (bcryptjs) fallback for admin roles. See [`docs/architecture/authentication.md`](docs/architecture/authentication.md).
+- Public site under `app/(public)/`, admin dashboard under `app/(admin)/admin/`, student portal under `app/(portal)/portal/`, unified login at `app/(auth)/login/`
 - Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
 
 ## Prerequisites
@@ -37,8 +37,8 @@ npm install
 # 3. Copy the env template and fill in at least DATABASE_URL + AUTH_SECRET
 cp .env.example .env.local
 #    Generate AUTH_SECRET with:  openssl rand -base64 32
-#    Microsoft Entra ID vars stay blank in dev — see "Admin sign-in" below
-#    for the dev credentials provider.
+#    AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET are optional in dev — leave blank
+#    if you only intend to log in as an admin via email + password.
 
 # 4. Start the local Postgres container
 npm run db:up
@@ -54,7 +54,9 @@ Open <http://localhost:3000>.
 
 Public routes: `/`, `/blog`, `/donasi`, `/gabung-siswa`, `/kontak`, `/tim`, `/program/pembinaan`.
 
-The admin dashboard at `/admin` redirects unauthenticated visitors to `/login`. See **Admin sign-in (local dev)** below for the seed + dev-login flow.
+Signed-in student routes: `/portal` (home + application history) and `/portal/status` (per-application result view).
+
+The admin dashboard at `/admin` and the portal at `/portal` both redirect unauthenticated visitors to `/login`. See **Admin sign-in (local dev)** below for the seed + first-login flow.
 
 ## Commands
 
@@ -84,7 +86,7 @@ The local DB is a Postgres 16 container defined in `docker-compose.dev.yml`. Dri
 
 | Command | What it does |
 | --- | --- |
-| `npm run seed:admin -- <email>` | Upsert a row in `admin_users` so you can sign in. Email must end with `@sakolakembara.org`. Optional 2nd arg = display name, 3rd arg = role (`super_admin` / `editor` / `viewer`, default `super_admin`). |
+| `npm run seed:super-admin` | Upsert a `users` row with `role=super_admin` and a bcrypt password hash so a fresh deployment has someone who can sign in. Reads `SEED_SUPER_ADMIN_EMAIL`, `SEED_SUPER_ADMIN_PASSWORD` (min 8 chars), and optional `SEED_SUPER_ADMIN_NAME` from env. Safe to re-run — upserts by email and refreshes the hash. |
 
 ### Blog content
 
@@ -99,33 +101,40 @@ Commit both the markdown and the regenerated `lib/blog-posts.json` together. Ful
 
 ## Admin sign-in (local dev)
 
-`/admin` is gated by Auth.js v5. In production, the Microsoft Entra ID provider handles sign-in. In local dev — where we don't want to block on IT registering the Entra app — there's a **dev-only credentials provider** that authenticates an email against existing rows in `admin_users`. It's silently disabled outside `NODE_ENV=development`.
+Auth is Auth.js v5 with two providers side-by-side (see [`docs/architecture/authentication.md`](docs/architecture/authentication.md) for the full model):
 
-Once-per-machine setup:
+- **Google OAuth** — for students and any admin who wants to sign in with Google.
+- **Credentials (email + bcrypt password)** — admin roles only. Every account is a row in the `users` table with role `student | viewer | editor | super_admin`.
+
+Local dev needs one admin row to exist before you can reach `/admin`. Seed yourself once:
 
 ```bash
-# 1. Seed yourself as an admin (run this once; safe to re-run)
-npm run seed:admin -- you@sakolakembara.org "Your Name" super_admin
+# 1. Put your bootstrap credentials in .env.local
+cat >> .env.local <<'EOF'
+SEED_SUPER_ADMIN_EMAIL=you@example.com
+SEED_SUPER_ADMIN_PASSWORD=change-me-min-8-chars
+SEED_SUPER_ADMIN_NAME=Your Name
+EOF
 
-# 2. Turn the dev provider on
-echo "AUTH_DEV_PROVIDER_ENABLED=true" >> .env.local
+# 2. Upsert the super_admin row (safe to re-run)
+npm run db:up && npm run seed:super-admin
 ```
 
 Day-to-day sign-in:
 
 1. `npm run db:up && npm run dev`
 2. Visit <http://localhost:3000/admin> → you're redirected to `/login?from=/admin`.
-3. On `/login`, the dev form appears under the (currently empty) Microsoft button. Enter your `@sakolakembara.org` email.
-4. The Auth.js Credentials provider looks you up in `admin_users` and signs you in with a JWT session. You land back on `/admin`.
-5. Sign out via "Keluar" in the sidebar at any time.
+3. Expand **"Masuk sebagai admin (email + password)"** and enter the email + password you seeded. The Credentials provider verifies the bcrypt hash and issues a JWT session, then bounces you to `/admin`.
+4. To test Google sign-in, set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (see `.env.example` for the redirect URI). A first Google login for a new email auto-creates a row with role `student` — promote yourself to `super_admin` from `/admin/settings` or by re-running the seed script against your Google email.
+5. Sign out via "Keluar" in the sidebar. Sign-out lands on `/`.
 
 A few notes:
 
-- Emails not ending `@sakolakembara.org` are rejected by both the `signIn` callback and the middleware — even with the dev provider on.
-- Sessions are JWT-only, so there's no `sessions` table to manage.
-- For production, set `AUTH_MICROSOFT_ENTRA_ID_ID`, `AUTH_MICROSOFT_ENTRA_ID_SECRET`, `AUTH_MICROSOFT_ENTRA_ID_TENANT_ID` in `.env.production`. The dev provider stays off automatically.
+- Sessions are JWT-only, so there's no `sessions` table. Role is stamped onto the token in the `jwt` callback and read by the middleware without a DB hit.
+- `/admin/*` requires an admin role; `/portal/*` requires any signed-in user. A student trying `/admin` is bounced to `/portal?error=admin-only`.
+- Production needs a Google Cloud OAuth client (Web application, callback `https://sakolakembara.org/api/auth/callback/google`) and the same seed step run once inside the app container.
 
-Architecture is documented in [`docs/roadmap/admin-dashboard.md`](docs/roadmap/admin-dashboard.md).
+Full architecture: [`docs/architecture/authentication.md`](docs/architecture/authentication.md), [`docs/architecture/student-portal.md`](docs/architecture/student-portal.md), [`docs/architecture/admission-batches.md`](docs/architecture/admission-batches.md).
 
 ## Repo tour
 
@@ -137,16 +146,20 @@ app/                       Next App Router
     layout.tsx             Navbar + Footer wrapper
     page.tsx               Homepage
     blog/, donasi/, kontak/, tim/, gabung-siswa/, program/[id]/
-  (admin)/                 Auth-gated dashboard
-    login/page.tsx         Sign-in page (MS button + dev form)
+  (auth)/                  Unified sign-in surface
+    login/page.tsx         Google button + collapsible admin email/password form
+  (portal)/                Signed-in student area
+    portal/                Home (open-batch CTA + history) + status/ (per-app result)
+  (admin)/                 Admin-role-gated dashboard
     admin/                 Dashboard pages
-      layout.tsx           Sidebar shell + server-side auth() guard
+      layout.tsx           Sidebar shell + server-side requireAdmin() guard
       page.tsx             Stat cards + recent audit_log
       applications/        Student-applicant list + detail
+      batches/             Admission-batch CRUD + publish action
   api/auth/[...nextauth]/  Auth.js handler
-auth.config.ts             Edge-safe Auth.js config (used by middleware)
-auth.ts                    Node Auth.js (adds dev Credentials provider)
-middleware.ts              Gates /admin/* and /api/admin/*
+auth.config.ts             Edge-safe Auth.js config (Google-only; used by proxy.ts)
+auth.ts                    Node Auth.js (adds admin Credentials provider)
+proxy.ts                   Middleware — gates /admin/* (admin roles) and /portal/* (any signed-in user)
 components/                React components
   Navbar.tsx, Footer.tsx, SocialLinks.tsx
   Map/GISMap.tsx           Leaflet, dynamically imported (ssr: false)
@@ -163,7 +176,7 @@ content/blog/              Markdown source for all blog posts
 public/                    Logo, hero photo, QRIS, blog images
 scripts/
   blog-sync-from-markdown.mjs, scrape-blog.mjs, lib/blog-pipeline.mjs
-  seed-admin.mjs           Seed/upsert an admin_users row
+  seed-super-admin.mjs     Bootstrap a super_admin row (email + bcrypt password)
 docs/                      Project knowledge center — read this folder
 .github/workflows/         GitHub Actions (build + deploy on push to main)
 Dockerfile                 Multi-stage production image
@@ -181,6 +194,7 @@ The `docs/` folder is organized so each role gets what they need first:
 - **Editing public copy?** [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md) — the Indonesian-formal voice is locked.
 - **Touching visuals?** [`docs/design/`](docs/design/) — color, typography, components, copy style. Brand is locked too.
 - **Adding a feature?** [`docs/current-state/tech-stack.md`](docs/current-state/tech-stack.md) for the lay of the land, then the matching `docs/current-state/*` file.
+- **How auth / portal / batches work?** [`docs/architecture/authentication.md`](docs/architecture/authentication.md), [`docs/architecture/student-portal.md`](docs/architecture/student-portal.md), [`docs/architecture/admission-batches.md`](docs/architecture/admission-batches.md).
 - **Curious what's coming?** [`docs/roadmap/mvp-priorities.md`](docs/roadmap/mvp-priorities.md), [`admin-dashboard.md`](docs/roadmap/admin-dashboard.md), [`infrastructure.md`](docs/roadmap/infrastructure.md), [`data-model.md`](docs/roadmap/data-model.md).
 - **Provisioning prod?** [`docs/current-state/deployment.md`](docs/current-state/deployment.md).
 

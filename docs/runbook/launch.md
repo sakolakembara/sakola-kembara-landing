@@ -14,7 +14,8 @@ Gather all of these before touching the VPS. Stopping halfway to chase a credent
 
 - [ ] **Domain registrar access** for `sakolakembara.org` (Niagahoster / Cloudflare / wherever). You will edit A and CNAME records.
 - [ ] **VPS provider account** with billing set up (Hetzner / DigitalOcean / Contabo). Target spec: ~€5/mo, 2 vCPU, 4 GB RAM, 40 GB SSD, Ubuntu 24.04 LTS. See [`../roadmap/infrastructure.md`](../roadmap/infrastructure.md#target-host).
-- [ ] **Microsoft 365 / Entra admin role** for the `sakolakembara.org` tenant. You need to register an app (Phase 2).
+- [ ] **Google Cloud project** where you can create an OAuth 2.0 client (Phase 2). Any Google account with owner/editor on a project works — no organizational Workspace required.
+- [ ] **Super-admin bootstrap credentials** — pick an email + a strong password (min 8 chars) for the very first admin. These go into `SEED_SUPER_ADMIN_EMAIL` / `SEED_SUPER_ADMIN_PASSWORD` and are used exactly once in Phase 6 to create the first sign-in-able account.
 - [ ] **GitHub admin access** to the `sakola-kembara-landing` repo. You need to add Actions secrets (Phase 3).
 - [ ] **SSH keypair** for the VPS deploy user. Generate with `ssh-keygen -t ed25519 -C deploy@sakem` and keep the private half safe.
 - [ ] **Backblaze B2 or Cloudflare R2 account** for offsite backups (optional but recommended). Create a bucket + an access key with write-only scope to that bucket.
@@ -104,25 +105,26 @@ You'll populate this directory in Phase 4.
 
 ---
 
-## Phase 2 — Microsoft Entra app registration
+## Phase 2 — Google OAuth client
 
-This is the one piece that *cannot* be automated by code. An Entra admin does it once, in the Azure Portal. The detailed walkthrough is in [`../roadmap/admin-dashboard.md`](../roadmap/admin-dashboard.md#azure--entra-setup-one-time-by-an-it-admin) — re-summarised here so you don't context-switch.
+This is the one piece that *cannot* be automated by code. Do it once in the Google Cloud Console. The detailed walkthrough is in [`../roadmap/admin-dashboard.md`](../roadmap/admin-dashboard.md) — re-summarised here so you don't context-switch.
 
-1. **Azure Portal → Microsoft Entra ID → App registrations → New registration**.
-2. **Name**: `Sakola Kembara Admin Dashboard`.
-3. **Supported account types**: "Accounts in this organizational directory only (Sakola Kembara — single tenant)". This is what blocks personal `@outlook.com` accounts.
-4. **Redirect URI** (Web): add **both** —
-   - `https://sakolakembara.org/api/auth/callback/microsoft-entra-id`
-   - `http://localhost:3000/api/auth/callback/microsoft-entra-id` (for dev)
-5. Register. Then on the **Overview** page, copy:
-   - **Application (client) ID** → keep for `AUTH_MICROSOFT_ENTRA_ID_ID`
-   - **Directory (tenant) ID** → keep for `AUTH_MICROSOFT_ENTRA_ID_TENANT_ID`
-6. **Certificates & secrets → New client secret** → description: `Production`, expires 24 months. Copy the **Value** (shown only once) → keep for `AUTH_MICROSOFT_ENTRA_ID_SECRET`. Calendar-reminder yourself for 22 months from now to rotate.
-7. **API permissions**: leave the default `User.Read` (Microsoft Graph). The OIDC scopes are auto-included by Auth.js.
+1. **Google Cloud Console → APIs & Services → Credentials → Create credentials → OAuth client ID**. Pick or create a Cloud project first (a bare project with no APIs enabled is fine).
+2. If prompted, configure the **OAuth consent screen**:
+   - User type: **External** (unless you have a Workspace org, then Internal).
+   - App name: `Sakola Kembara`.
+   - Support + developer contact: an address someone actually reads.
+   - Scopes: leave at the defaults (`openid`, `email`, `profile`) — Auth.js adds these automatically.
+   - **Publishing status**: while in `Testing`, only users added under "Test users" can sign in. Click **Publish app** before real students start signing up. Google may ask for verification; for a small non-profit with only the default scopes, verification is usually not required.
+3. Back on **Credentials → Create credentials → OAuth client ID**:
+   - Application type: **Web application**.
+   - Name: `Sakola Kembara Production`.
+   - **Authorized redirect URIs** (add both):
+     - `https://sakolakembara.org/api/auth/callback/google`
+     - `http://localhost:3000/api/auth/callback/google` (dev)
+4. Copy the **Client ID** and **Client secret** into a password manager. You will paste them into `.env.production` in Phase 4 as `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`.
 
-> If you want to limit even further to a named admin group inside the tenant, configure **Enterprise applications → \[the app\] → Properties → "Assignment required" = Yes**, then add only the admin group under **Users and groups**.
-
-Save those three values into a password manager. You will paste them into `.env.production` in Phase 4.
+> **If you're deploying to a staging subdomain first (Phase 5)**, also add `https://staging.sakolakembara.org/api/auth/callback/google` as a redirect URI now, or you'll bounce back to Phase 2 mid-way through the staging test.
 
 ---
 
@@ -185,10 +187,14 @@ POSTGRES_PASSWORD=CHANGE_ME_LONG_PASSWORD   # must match the password in DATABAS
 
 # Auth.js — rotate AUTH_SECRET to invalidate every session
 AUTH_SECRET=               # generate with: openssl rand -base64 32
-AUTH_MICROSOFT_ENTRA_ID_ID=          # from Phase 2 step 5
-AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=   # from Phase 2 step 5
-AUTH_MICROSOFT_ENTRA_ID_SECRET=      # from Phase 2 step 6
-AUTH_DEV_PROVIDER_ENABLED=           # must stay BLANK in production
+AUTH_GOOGLE_ID=            # from Phase 2 step 4 — OAuth client ID
+AUTH_GOOGLE_SECRET=        # from Phase 2 step 4 — OAuth client secret
+
+# Super-admin seed — used ONCE in Phase 6 to bootstrap the first admin row.
+# You can wipe these values from the file after Phase 6 succeeds.
+SEED_SUPER_ADMIN_EMAIL=     # e.g. admin@sakolakembara.org
+SEED_SUPER_ADMIN_PASSWORD=  # min 8 chars; will be bcrypt-hashed at seed time
+SEED_SUPER_ADMIN_NAME=      # display name; optional (defaults to email local-part)
 
 # Observability — leave SENTRY_DSN blank if not wiring Sentry yet
 SENTRY_DSN=
@@ -247,9 +253,9 @@ staging.sakolakembara.org {
 
 > Keep a copy of the original (apex) block — you'll restore it in Phase 9.
 
-You also need the **dev redirect URI** added in Entra (Phase 2 step 4) to NOT conflict. Add a third redirect URI now:
+If you didn't already add the staging redirect URI in Phase 2, add it to the Google OAuth client now:
 
-- `https://staging.sakolakembara.org/api/auth/callback/microsoft-entra-id`
+- `https://staging.sakolakembara.org/api/auth/callback/google`
 
 And update `.env.production`:
 
@@ -308,18 +314,30 @@ If Caddy fails to get a cert, check `docker compose logs caddy` — the most com
 
 ## Phase 6 — Seed the first super admin + smoke test admin
 
-`/admin` requires a row in `admin_users` even though Entra issued you a valid token. Seed yourself first.
+`/admin` requires a `users` row with an admin role. The seed script upserts one from the `SEED_SUPER_ADMIN_*` values you put in `.env.production`.
 
 ```bash
 cd /opt/sakem
-# Pass the env in so the script can reach postgres
-docker compose exec -T -e DATABASE_URL="postgres://sakem:$POSTGRES_PASSWORD@postgres:5432/sakola_kembara" \
-  app node /app/scripts/seed-admin.mjs your.name@sakolakembara.org "Your Name" super_admin
+# The app container has `pg` + `bcryptjs` and reads env from the compose file.
+docker compose exec app npm run seed:super-admin
 ```
 
-(`POSTGRES_PASSWORD` is in `.env.production`. Either `source` it first or paste the value inline.)
+Expected output:
 
-Open `https://staging.sakolakembara.org/login` → "Sign in with Microsoft" → Entra consent screen → you're back at `/admin`.
+```
+Super-admin ready:
+{ id: '...', email: '...', name: '...', role: 'super_admin', password_hash: '(bcrypt, redacted)' }
+
+Sign in at /login → 'Masuk sebagai admin' with this email + your password.
+```
+
+Now sign in. On `https://staging.sakolakembara.org/login`:
+
+1. Expand **"Masuk sebagai admin (email + password)"**.
+2. Enter the `SEED_SUPER_ADMIN_EMAIL` + `SEED_SUPER_ADMIN_PASSWORD` you just seeded.
+3. You land on `/admin`.
+
+You can also verify the Google flow: sign out, click the Google button, sign in with any Google account, and you should land on `/portal` (new sign-ins default to `role='student'`). Promote that account to `super_admin` from `/admin/settings` if you'd rather use Google going forward — then the password can be rotated or the seed values removed from `.env.production`.
 
 Walk every admin route. Do at least one of each:
 
@@ -446,7 +464,7 @@ Also restore `.env.production`:
 NEXTAUTH_URL=https://sakolakembara.org
 ```
 
-Add the **production** redirect URI in Entra if you haven't already (you did in Phase 2 step 4; double-check it's there alongside the localhost one).
+Double-check the **production** redirect URI is in the Google OAuth client (you added it in Phase 2 step 3): `https://sakolakembara.org/api/auth/callback/google`.
 
 Restart Caddy + app:
 
@@ -485,7 +503,7 @@ Open `https://sakolakembara.org/` in a private window. Check:
 
 - [ ] Padlock is green, cert is from Let's Encrypt, valid for `sakolakembara.org` + `www.sakolakembara.org`
 - [ ] Real content (Phase 7) — no Unsplash, no placeholder names
-- [ ] `/admin` is reachable, you can log in with Entra
+- [ ] `/admin` is reachable, you can log in with the super-admin credentials (or via Google if the account was promoted)
 - [ ] Submit a `/kontak` from your phone on cellular (not on the VPS network) → arrives in the admin
 
 If TLS doesn't issue, check `docker compose logs caddy`. Common: DNS hasn't propagated to the Let's Encrypt validator yet. Restart Caddy after another 5 min: `docker compose restart caddy`.
@@ -589,7 +607,7 @@ These already exist in the repo (don't recreate them):
 | `Caddyfile` | Reverse proxy + TLS for the apex. **Edit on cutover day.** |
 | `.env.example` | Template for `.env.production`. Hand-edit on the VPS, never commit. |
 | `.github/workflows/deploy.yml` | Build image → push to GHCR → SSH deploy. |
-| `scripts/seed-admin.mjs` | One-shot seed for the first super admin. |
+| `scripts/seed-super-admin.mjs` | One-shot seed for the first super admin. Reads `SEED_SUPER_ADMIN_*` env. |
 | `drizzle/*.sql` | Schema migrations. Run via `drizzle-kit migrate`. |
 | `next.config.ts → redirects()` | WP cutover 308s. |
 
@@ -597,5 +615,5 @@ Cross-references for deeper context:
 
 - **Steady-state ops** (commands, rollback, backups): [`../current-state/deployment.md`](../current-state/deployment.md)
 - **Infrastructure decisions** (why VPS, why Caddy, what's in the volumes): [`../roadmap/infrastructure.md`](../roadmap/infrastructure.md)
-- **Auth + Entra registration**: [`../roadmap/admin-dashboard.md`](../roadmap/admin-dashboard.md#azure--entra-setup-one-time-by-an-it-admin)
+- **Auth + Google OAuth setup**: [`../architecture/authentication.md`](../architecture/authentication.md) and [`../roadmap/admin-dashboard.md`](../roadmap/admin-dashboard.md)
 - **WP redirect mapping**: [`../../next.config.ts`](../../next.config.ts) and [`../../scripts/lib/blog-pipeline.mjs`](../../scripts/lib/blog-pipeline.mjs)

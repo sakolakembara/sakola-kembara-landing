@@ -24,7 +24,7 @@ A factual snapshot of the codebase. Update these as the system changes.
 - [`current-state/content-and-data.md`](current-state/content-and-data.md) — Where copy and data live, and what is hard-coded vs. generated.
 - [`current-state/blog-pipeline.md`](current-state/blog-pipeline.md) — How the markdown blog is scraped, synced, and rendered.
 - [`current-state/deployment.md`](current-state/deployment.md) — Steady-state ops cheat sheet: deploy commands, manual ops, rollback. Pair with the launch runbook for first-time provisioning.
-- [`runbook/launch.md`](runbook/launch.md) — **Sequential first-launch recipe.** Fresh VPS → Entra app registration → CI secrets → first deploy on a staging subdomain → content swap → DNS cutover → post-launch checklist → rollback paths.
+- [`runbook/launch.md`](runbook/launch.md) — **Sequential first-launch recipe.** Fresh VPS → Google OAuth client → CI secrets → super-admin seed → first deploy on a staging subdomain → content swap → DNS cutover → post-launch checklist → rollback paths.
 - [`current-state/known-gaps.md`](current-state/known-gaps.md) — Placeholder content, missing dashboard features, work the MVP still owes.
 
 ### 3. `design/` — The visual & UX brief
@@ -38,9 +38,16 @@ Guardrails for any future UI work. Treat these as the design system contract.
 ### 4. `roadmap/` — Where we're going
 - [`roadmap/mvp-roadmap.md`](roadmap/mvp-roadmap.md) — **Start here.** Master sequenced execution plan (Phases 0–9) covering production deploy + auth, SEO baseline, admin dashboard from scratch, student-application flow, announcements, reports, blog dashboard, content replacement, and launch.
 - [`roadmap/mvp-priorities.md`](roadmap/mvp-priorities.md) — Flat list of in/out MVP scope with ✅ / ◐ / ❌ status. Companion to the sequenced roadmap.
-- [`roadmap/admin-dashboard.md`](roadmap/admin-dashboard.md) — Route-group + Microsoft Entra ID auth structure for the upcoming `/admin` dashboard. Locked decisions: same repo, single-tenant Entra, `@sakolakembara.org` domain gate.
+- [`roadmap/admin-dashboard.md`](roadmap/admin-dashboard.md) — Route-group layout for the `/admin` dashboard. Locked decisions: same repo, unified auth (Google + admin credentials), role-based gating.
 - [`roadmap/infrastructure.md`](roadmap/infrastructure.md) — Infra picks for dynamic features. Locked: VPS + Docker Compose, Postgres 16 + Drizzle, Caddy auto-TLS, GitHub Actions → GHCR → SSH, persistent `public/` volume, Sentry, Zod env validation. Markdown blog stays as-is.
-- [`roadmap/data-model.md`](roadmap/data-model.md) — Drizzle schemas for the 5 MVP tables (`admin_users`, `student_applications`, `announcements`, `reports`, `audit_log`). Mirrors `lib/db/schema/*`.
+- [`roadmap/data-model.md`](roadmap/data-model.md) — Drizzle schemas mirroring `lib/db/schema/*`.
+
+### 5. `architecture/` — Deep dives
+Focused explainers for the load-bearing subsystems. Read the matching file before touching auth, the portal, or the batches flow.
+
+- [`architecture/authentication.md`](architecture/authentication.md) — Google + Credentials providers, `users` / `accounts` tables, JWT sessions with role stamped in the callback, `requireAdmin` / `requireStudent` helpers, middleware routing, super-admin seed bootstrap.
+- [`architecture/student-portal.md`](architecture/student-portal.md) — `/portal` route map, the privacy contract around `admission_batches.results_published_at`, copy conventions, future LMS SSO handoff.
+- [`architecture/admission-batches.md`](architecture/admission-batches.md) — Yearly batch lifecycle, the publish guard, admin UI paths, how registration and results tie back to `admission_batches`.
 
 ## How to use this folder
 
