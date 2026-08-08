@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  admissionBatches,
   applicationStatus,
   studentApplications,
   type ApplicationStatus,
 } from "@/lib/db/schema";
+import { getAllBatches } from "@/lib/admission-batches";
 
 export const metadata: Metadata = {
   title: "Pendaftar",
@@ -28,7 +30,7 @@ const STATUS_PILL: Record<ApplicationStatus, string> = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; batch?: string }>;
 }
 
 function isStatus(s: string | undefined): s is ApplicationStatus {
@@ -36,16 +38,32 @@ function isStatus(s: string | undefined): s is ApplicationStatus {
 }
 
 export default async function ApplicationsPage({ searchParams }: PageProps) {
-  const { status } = await searchParams;
-  const filter = isStatus(status) ? status : null;
+  const { status, batch } = await searchParams;
+  const statusFilter = isStatus(status) ? status : null;
+  const batches = await getAllBatches();
+  const batchFilter =
+    batch && batches.some((b) => b.id === batch) ? batch : null;
+  const currentBatch = batchFilter
+    ? batches.find((b) => b.id === batchFilter)!
+    : null;
 
-  // Counts per status — drives the filter pills.
+  const whereClauses: SQL[] = [];
+  if (statusFilter) whereClauses.push(eq(studentApplications.status, statusFilter));
+  if (batchFilter) whereClauses.push(eq(studentApplications.batchId, batchFilter));
+  const whereExpr =
+    whereClauses.length > 0
+      ? whereClauses.length === 1
+        ? whereClauses[0]
+        : and(...whereClauses)
+      : undefined;
+
   const counts = await db
     .select({
       status: studentApplications.status,
       value: count(),
     })
     .from(studentApplications)
+    .where(batchFilter ? eq(studentApplications.batchId, batchFilter) : sql`true`)
     .groupBy(studentApplications.status);
 
   const countByStatus = Object.fromEntries(
@@ -64,11 +82,24 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
       branchPreference: studentApplications.branchPreference,
       status: studentApplications.status,
       submittedAt: studentApplications.submittedAt,
+      batchName: admissionBatches.name,
+      batchYear: admissionBatches.year,
     })
     .from(studentApplications)
-    .where(filter ? eq(studentApplications.status, filter) : sql`true`)
+    .leftJoin(admissionBatches, eq(studentApplications.batchId, admissionBatches.id))
+    .where(whereExpr ?? sql`true`)
     .orderBy(desc(studentApplications.submittedAt))
     .limit(50);
+
+  function link(overrides: { status?: string | null; batch?: string | null }) {
+    const params = new URLSearchParams();
+    const nextStatus = "status" in overrides ? overrides.status : statusFilter;
+    const nextBatch = "batch" in overrides ? overrides.batch : batchFilter;
+    if (nextStatus) params.set("status", nextStatus);
+    if (nextBatch) params.set("batch", nextBatch);
+    const qs = params.toString();
+    return qs ? `/admin/applications?${qs}` : "/admin/applications";
+  }
 
   return (
     <div className="p-6 md:p-10">
@@ -77,18 +108,46 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
           Pendaftar
         </h1>
         <p className="text-gray-600">
-          Daftar pendaftar siswa Sakola Kembara. {total} total pendaftar.
+          {currentBatch ? (
+            <>
+              Batch <b>{currentBatch.name}</b>. {total} pendaftar.
+            </>
+          ) : (
+            <>Daftar pendaftar siswa Sakola Kembara. {total} pendaftar (filter aktif).</>
+          )}
         </p>
       </header>
 
+      {batches.length > 0 && (
+        <nav className="flex flex-wrap gap-2 mb-3">
+          <FilterPill
+            href={link({ batch: null })}
+            label="Semua batch"
+            active={!batchFilter}
+          />
+          {batches.map((b) => (
+            <FilterPill
+              key={b.id}
+              href={link({ batch: b.id })}
+              label={`${b.year} · ${b.name}`}
+              active={batchFilter === b.id}
+            />
+          ))}
+        </nav>
+      )}
+
       <nav className="flex flex-wrap gap-2 mb-6">
-        <FilterPill href="/admin/applications" label={`Semua (${total})`} active={!filter} />
+        <FilterPill
+          href={link({ status: null })}
+          label={`Semua (${total})`}
+          active={!statusFilter}
+        />
         {applicationStatus.map((s) => (
           <FilterPill
             key={s}
-            href={`/admin/applications?status=${s}`}
+            href={link({ status: s })}
             label={`${STATUS_LABEL[s]} (${countByStatus[s] ?? 0})`}
-            active={filter === s}
+            active={statusFilter === s}
           />
         ))}
       </nav>
@@ -96,7 +155,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {rows.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
-            Belum ada pendaftar{filter ? ` dengan status "${STATUS_LABEL[filter]}"` : ""}.
+            Belum ada pendaftar untuk filter ini.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -104,9 +163,9 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th>Nama</Th>
+                  <Th>Batch</Th>
                   <Th>Asal Sekolah</Th>
                   <Th>Cabang</Th>
-                  <Th>Tahun Lulus</Th>
                   <Th>Status</Th>
                   <Th>Dikirim</Th>
                   <Th />
@@ -121,11 +180,19 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
                         {row.email ?? row.whatsapp}
                       </div>
                     </Td>
+                    <Td className="text-gray-600 text-xs">
+                      {row.batchName ? (
+                        <>
+                          {row.batchYear} · {row.batchName}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </Td>
                     <Td>{row.schoolName}</Td>
                     <Td className="text-gray-600">
                       {row.branchPreference || "—"}
                     </Td>
-                    <Td className="text-gray-600">{row.graduationYear}</Td>
                     <Td>
                       <span
                         className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${STATUS_PILL[row.status]}`}

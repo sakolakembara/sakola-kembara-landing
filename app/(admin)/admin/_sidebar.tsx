@@ -8,6 +8,7 @@ import { adminSignOut } from "./_actions";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/batches", label: "Batch Pendaftaran" },
   { href: "/admin/applications", label: "Pendaftar" },
   { href: "/admin/messages", label: "Pesan" },
   { href: "/admin/announcements", label: "Pengumuman" },
