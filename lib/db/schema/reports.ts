@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, integer, timestamp, index } from "drizzle-orm/pg-core";
-import { adminUsers } from "./admin-users";
+import { users } from "./users";
 
 export const reportCategory = ["yearly", "financial", "impact", "donation"] as const;
 export type ReportCategory = (typeof reportCategory)[number];
@@ -20,7 +20,7 @@ export const reports = pgTable(
     filePath: text("file_path").notNull(),
     fileSize: integer("file_size").notNull(), // bytes
 
-    uploadedBy: uuid("uploaded_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
     uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

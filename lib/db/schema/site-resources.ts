@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, integer, timestamp, index } from "drizzle-orm/pg-core";
-import { adminUsers } from "./admin-users";
+import { users } from "./users";
 
 export const resourceCategory = [
   "panduan",
@@ -44,7 +44,7 @@ export const siteResources = pgTable(
     /** For contentType="text": the raw copy-able content. */
     bodyText: text("body_text"),
     notes: text("notes"),
-    updatedBy: uuid("updated_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
-import { adminUsers } from "./admin-users";
+import { users } from "./users";
 
 export const announcementSeverity = ["info", "warning", "urgent"] as const;
 export type AnnouncementSeverity = (typeof announcementSeverity)[number];
@@ -20,7 +20,7 @@ export const announcements = pgTable(
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
 
-    createdBy: uuid("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

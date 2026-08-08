@@ -57,6 +57,13 @@
       "when": 1783416500000,
       "tag": "0007_dynamic_docs_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785000000000,
+      "tag": "0008_unified_auth_and_batches",
+      "breakpoints": true
     }
   ]
 }

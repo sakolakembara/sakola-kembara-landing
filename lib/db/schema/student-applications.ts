@@ -1,5 +1,14 @@
-import { pgTable, uuid, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
-import { adminUsers } from "./admin-users";
+import {
+  pgTable,
+  uuid,
+  text,
+  jsonb,
+  timestamp,
+  index,
+  unique,
+} from "drizzle-orm/pg-core";
+import { users } from "./users";
+import { admissionBatches } from "./admission-batches";
 
 export const applicationStatus = ["pending", "under_review", "accepted", "rejected"] as const;
 export type ApplicationStatus = (typeof applicationStatus)[number];
@@ -75,8 +84,22 @@ export const studentApplications = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
 
+    /**
+     * The student user who owns this application. Nullable only to preserve
+     * historic rows that predate the auth-gated form; every new submission
+     * requires a signed-in student and writes this column.
+     */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    /**
+     * The admission batch this application belongs to. Nullable for the same
+     * historic-row reason as userId above. Enforced not-null in server action.
+     */
+    batchId: uuid("batch_id").references(() => admissionBatches.id, {
+      onDelete: "restrict",
+    }),
+
     fullName: text("full_name").notNull(),
-    /** Optional now — the new recruitment form doesn't collect email (org uses WhatsApp). */
+    /** Snapshot of the account email at submission time. */
     email: text("email"),
     whatsapp: text("whatsapp").notNull(),
 
@@ -100,7 +123,7 @@ export const studentApplications = pgTable(
 
     status: text("status", { enum: applicationStatus }).notNull().default("pending"),
     reviewNotes: text("review_notes"),
-    reviewedBy: uuid("reviewed_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
 
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
@@ -110,6 +133,13 @@ export const studentApplications = pgTable(
     statusIdx: index("student_applications_status_idx").on(t.status),
     submittedAtIdx: index("student_applications_submitted_at_idx").on(t.submittedAt),
     emailIdx: index("student_applications_email_idx").on(t.email),
+    userIdx: index("student_applications_user_id_idx").on(t.userId),
+    batchIdx: index("student_applications_batch_id_idx").on(t.batchId),
+    // A given user can only have one application per batch.
+    userBatchUnique: unique("student_applications_user_batch_unique").on(
+      t.userId,
+      t.batchId,
+    ),
   }),
 );
 

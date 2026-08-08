@@ -1,13 +1,13 @@
 import { pgTable, uuid, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
-import { adminUsers } from "./admin-users";
+import { users } from "./users";
 
 export const auditLog = pgTable(
   "audit_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
 
-    actorId: uuid("actor_id").references(() => adminUsers.id, { onDelete: "set null" }),
-    // Denormalized — survives admin deletion so we always know "who did this".
+    actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    // Denormalized — survives user deletion so we always know "who did this".
     actorEmail: text("actor_email").notNull(),
 
     // e.g. "report.create", "application.accept", "announcement.publish"
