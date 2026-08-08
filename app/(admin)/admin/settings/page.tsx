@@ -2,23 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Edit, Lock, Plus, ShieldCheck, User as UserIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { adminUsers, type AdminUserRole } from "@/lib/db/schema";
-import { countSuperAdmins, getAllAdminUsers } from "@/lib/admin-users";
+import { users, type AdminRole } from "@/lib/db/schema";
+import { countSuperAdmins, getAllAdmins } from "@/lib/users";
 import { DeleteButton } from "./_delete-button";
 
 export const metadata: Metadata = {
   title: "Pengaturan",
 };
 
-const ROLE_LABEL: Record<AdminUserRole, string> = {
+const ROLE_LABEL: Record<AdminRole, string> = {
   super_admin: "Super Admin",
   editor: "Editor",
   viewer: "Viewer",
 };
 
-const ROLE_PILL: Record<AdminUserRole, string> = {
+const ROLE_PILL: Record<AdminRole, string> = {
   super_admin: "bg-primary-blue/10 text-primary-blue",
   editor: "bg-emerald-50 text-emerald-700",
   viewer: "bg-gray-100 text-gray-600",
@@ -30,15 +30,15 @@ interface PageProps {
 
 export default async function SettingsPage({ searchParams }: PageProps) {
   const { deleted, created, error } = await searchParams;
-  const [session, users, superAdminCount] = await Promise.all([
+  const [session, admins, superAdminCount] = await Promise.all([
     auth(),
-    getAllAdminUsers(),
+    getAllAdmins(),
     countSuperAdmins(),
   ]);
   const currentEmail = session?.user?.email?.toLowerCase() ?? "";
   const currentRow = currentEmail
-    ? await db.query.adminUsers.findFirst({
-        where: eq(adminUsers.email, currentEmail),
+    ? await db.query.users.findFirst({
+        where: eq(users.email, currentEmail),
         columns: { id: true, role: true },
       })
     : null;
@@ -52,8 +52,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             Pengaturan
           </h1>
           <p className="text-gray-600">
-            Kelola admin yang dapat mengakses dashboard. Login admin
-            menggunakan akun Microsoft <code>@{ALLOWED_DOMAIN}</code>.
+            Kelola admin yang dapat mengakses dashboard.
           </p>
         </div>
         {isSuperAdmin && (
@@ -83,7 +82,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
       )}
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        {users.length === 0 ? (
+        {admins.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             Belum ada admin terdaftar.
           </div>
@@ -100,7 +99,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((u) => {
+                {admins.map((u) => {
                   const isSelf = u.id === currentRow?.id;
                   const isLastSuper =
                     u.role === "super_admin" && superAdminCount <= 1;
@@ -130,13 +129,13 @@ export default async function SettingsPage({ searchParams }: PageProps) {
                         </div>
                       </td>
                       <td className="px-4 py-3 align-middle text-gray-700">
-                        {u.displayName ?? "—"}
+                        {u.name ?? "—"}
                       </td>
                       <td className="px-4 py-3 align-middle">
                         <span
-                          className={`inline-block text-xs font-semibold px-2 py-1 rounded-full ${ROLE_PILL[u.role]}`}
+                          className={`inline-block text-xs font-semibold px-2 py-1 rounded-full ${ROLE_PILL[u.role as AdminRole]}`}
                         >
-                          {ROLE_LABEL[u.role]}
+                          {ROLE_LABEL[u.role as AdminRole]}
                         </span>
                       </td>
                       <td className="px-4 py-3 align-middle text-gray-500 text-xs">

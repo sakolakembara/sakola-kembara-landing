@@ -3,23 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { adminUsers, contactMessages } from "@/lib/db/schema";
-
-async function requireAdmin(): Promise<{ email: string; actorId: string | null }> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true },
-  });
-  return { email, actorId: actor?.id ?? null };
-}
+import { contactMessages } from "@/lib/db/schema";
 
 function invalidate() {
   revalidateTag("contact-messages", "max");
@@ -47,7 +34,7 @@ export async function markMessageAsRead(id: string): Promise<void> {
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "contact_message.read",
     resourceType: "contact_message",
     resourceId: id,
@@ -73,7 +60,7 @@ export async function toggleMessageRead(formData: FormData): Promise<void> {
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: nextReadAt ? "contact_message.read" : "contact_message.unread",
     resourceType: "contact_message",
     resourceId: id,
@@ -95,7 +82,7 @@ export async function deleteMessage(formData: FormData): Promise<void> {
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "contact_message.delete",
     resourceType: "contact_message",
     resourceId: id,

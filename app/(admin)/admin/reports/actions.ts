@@ -6,10 +6,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { adminUsers, reportCategory, reports } from "@/lib/db/schema";
+import { reportCategory, reports } from "@/lib/db/schema";
 import { isValidReportYear } from "@/lib/report-types";
 
 const MAX_PDF_BYTES = 20_000_000; // 20 MB
@@ -55,19 +55,6 @@ export type ReportFormState = {
   message?: string;
   fieldErrors?: Partial<Record<string, string[]>>;
 };
-
-async function requireAdmin(): Promise<{ email: string; actorId: string | null }> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true },
-  });
-  return { email, actorId: actor?.id ?? null };
-}
 
 function invalidate() {
   revalidateTag("reports", "max");
@@ -140,13 +127,13 @@ export async function createReport(
       year: data.year,
       filePath: relPath,
       fileSize: file.size,
-      uploadedBy: admin.actorId,
+      uploadedBy: admin.userId,
     })
     .returning({ id: reports.id });
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "report.create",
     resourceType: "report",
     resourceId: inserted.id,
@@ -198,7 +185,7 @@ export async function updateReport(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "report.update",
     resourceType: "report",
     resourceId: data.id,
@@ -237,7 +224,7 @@ export async function deleteReport(formData: FormData): Promise<void> {
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "report.delete",
     resourceType: "report",
     resourceId: id,

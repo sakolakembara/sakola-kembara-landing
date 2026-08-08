@@ -18,13 +18,13 @@ import {
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
-  adminUsers,
   announcements,
   auditLog,
   contactMessages,
   reports,
   studentApplications,
   teamMembers,
+  users,
 } from "@/lib/db/schema";
 import { getAllArticles } from "@/lib/blog";
 import {
@@ -141,12 +141,12 @@ export default async function AdminHomePage() {
   const [session, stats] = await Promise.all([auth(), getStats()]);
   const email = session?.user?.email?.toLowerCase() ?? "";
   const actor = email
-    ? await db.query.adminUsers.findFirst({
-        where: eq(adminUsers.email, email),
-        columns: { displayName: true },
+    ? await db.query.users.findFirst({
+        where: eq(users.email, email),
+        columns: { name: true },
       })
     : null;
-  const greeting = actor?.displayName ?? email.split("@")[0] ?? "Admin";
+  const greeting = actor?.name ?? email.split("@")[0] ?? "Admin";
 
   return (
     <div className="p-6 md:p-10">

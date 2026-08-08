@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
-import { db } from "@/lib/db";
-import { adminUsers } from "@/lib/db/schema";
-import { getAdminUserById } from "@/lib/admin-users";
+import { notFound } from "next/navigation";
+import { requireSuperAdmin } from "@/lib/auth-helpers";
+import { getUserById } from "@/lib/users";
 import { EditorForm } from "../../_editor-form";
 
 export const metadata: Metadata = {
@@ -23,20 +20,9 @@ export default async function EditAdminPage({
   const { id } = await params;
   const { created } = await searchParams;
 
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) redirect("/login");
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { role: true },
-  });
-  if (actor?.role !== "super_admin") {
-    redirect(
-      "/admin/settings?error=Hanya+super+admin+yang+dapat+mengubah+admin",
-    );
-  }
+  await requireSuperAdmin();
 
-  const user = await getAdminUserById(id);
+  const user = await getUserById(id);
   if (!user) notFound();
 
   return (

@@ -3,12 +3,13 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireSuperAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
-import { countSuperAdmins } from "@/lib/admin-users";
+import { countSuperAdmins } from "@/lib/users";
 import { db } from "@/lib/db";
-import { adminUsers, adminUserRole } from "@/lib/db/schema";
+import { users, adminRoles } from "@/lib/db/schema";
 
 const emailSchema = z
   .string()
@@ -16,19 +17,23 @@ const emailSchema = z
   .toLowerCase()
   .min(5, "Email terlalu pendek")
   .max(200, "Email terlalu panjang")
-  .email("Format email tidak valid")
-  .refine((v) => v.endsWith(`@${ALLOWED_DOMAIN}`), {
-    message: `Email harus berakhiran @${ALLOWED_DOMAIN}`,
-  });
+  .email("Format email tidak valid");
+
+const passwordSchema = z
+  .string()
+  .min(8, "Password minimal 8 karakter")
+  .optional()
+  .or(z.literal(""));
 
 const baseSchema = z.object({
-  displayName: z
+  name: z
     .string()
     .trim()
     .max(120, "Maksimal 120 karakter")
     .optional()
     .or(z.literal("")),
-  role: z.enum(adminUserRole),
+  role: z.enum(adminRoles),
+  password: passwordSchema,
 });
 
 const createSchema = baseSchema.extend({ email: emailSchema });
@@ -39,31 +44,6 @@ export type AdminFormState = {
   message?: string;
   fieldErrors?: Partial<Record<string, string[]>>;
 };
-
-async function requireAdmin(): Promise<{
-  email: string;
-  actorId: string | null;
-  role: (typeof adminUserRole)[number] | null;
-}> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true, role: true },
-  });
-  return { email, actorId: actor?.id ?? null, role: actor?.role ?? null };
-}
-
-async function requireSuperAdmin() {
-  const admin = await requireAdmin();
-  if (admin.role !== "super_admin") {
-    redirect("/admin/settings?error=Hanya+super+admin+yang+dapat+mengubah+pengaturan");
-  }
-  return admin;
-}
 
 function invalidate() {
   revalidatePath("/admin/settings");
@@ -76,8 +56,9 @@ export async function createAdminUser(
   const admin = await requireSuperAdmin();
   const parsed = createSchema.safeParse({
     email: formData.get("email"),
-    displayName: formData.get("displayName"),
+    name: formData.get("name"),
     role: formData.get("role"),
+    password: formData.get("password"),
   });
   if (!parsed.success) {
     return {
@@ -88,30 +69,36 @@ export async function createAdminUser(
   }
   const data = parsed.data;
 
-  const duplicate = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, data.email),
+  const duplicate = await db.query.users.findFirst({
+    where: eq(users.email, data.email),
     columns: { id: true },
   });
   if (duplicate) {
     return {
       status: "error",
-      message: "Email ini sudah terdaftar sebagai admin.",
+      message: "Email ini sudah terdaftar.",
       fieldErrors: { email: ["Email sudah digunakan"] },
     };
   }
 
+  const passwordHash =
+    data.password && data.password.length > 0
+      ? await bcrypt.hash(data.password, 10)
+      : null;
+
   const [inserted] = await db
-    .insert(adminUsers)
+    .insert(users)
     .values({
       email: data.email,
-      displayName: data.displayName || null,
+      name: data.name || null,
       role: data.role,
+      passwordHash,
     })
-    .returning({ id: adminUsers.id });
+    .returning({ id: users.id });
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "admin.create",
     resourceType: "admin_user",
     resourceId: inserted.id,
@@ -129,8 +116,9 @@ export async function updateAdminUser(
   const admin = await requireSuperAdmin();
   const parsed = updateSchema.safeParse({
     id: formData.get("id"),
-    displayName: formData.get("displayName"),
+    name: formData.get("name"),
     role: formData.get("role"),
+    password: formData.get("password"),
   });
   if (!parsed.success) {
     return {
@@ -141,8 +129,8 @@ export async function updateAdminUser(
   }
   const data = parsed.data;
 
-  const target = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.id, data.id),
+  const target = await db.query.users.findFirst({
+    where: eq(users.id, data.id),
     columns: { id: true, email: true, role: true },
   });
   if (!target) {
@@ -162,18 +150,25 @@ export async function updateAdminUser(
     }
   }
 
-  await db
-    .update(adminUsers)
-    .set({
-      displayName: data.displayName || null,
-      role: data.role,
-      updatedAt: new Date(),
-    })
-    .where(eq(adminUsers.id, data.id));
+  const updates: {
+    name: string | null;
+    role: (typeof adminRoles)[number];
+    updatedAt: Date;
+    passwordHash?: string;
+  } = {
+    name: data.name || null,
+    role: data.role,
+    updatedAt: new Date(),
+  };
+  if (data.password && data.password.length > 0) {
+    updates.passwordHash = await bcrypt.hash(data.password, 10);
+  }
+
+  await db.update(users).set(updates).where(eq(users.id, data.id));
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "admin.update",
     resourceType: "admin_user",
     resourceId: data.id,
@@ -181,6 +176,7 @@ export async function updateAdminUser(
       email: target.email,
       roleFrom: target.role,
       roleTo: data.role,
+      passwordChanged: Boolean(data.password && data.password.length > 0),
     },
   });
 
@@ -192,18 +188,18 @@ export async function deleteAdminUser(formData: FormData): Promise<void> {
   const admin = await requireSuperAdmin();
   const id = String(formData.get("id"));
 
-  const target = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.id, id),
+  const target = await db.query.users.findFirst({
+    where: eq(users.id, id),
     columns: { id: true, email: true, role: true },
   });
   if (!target) redirect("/admin/settings?error=Admin+tidak+ditemukan");
 
-  if (target.id === admin.actorId) {
+  if (target!.id === admin.userId) {
     redirect("/admin/settings?error=Tidak+dapat+menghapus+akun+sendiri");
   }
 
-  if (target.role === "super_admin") {
-    const remaining = await countSuperAdmins(target.id);
+  if (target!.role === "super_admin") {
+    const remaining = await countSuperAdmins(target!.id);
     if (remaining === 0) {
       redirect(
         "/admin/settings?error=Tidak+dapat+menghapus+super+admin+terakhir",
@@ -211,15 +207,15 @@ export async function deleteAdminUser(formData: FormData): Promise<void> {
     }
   }
 
-  await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  await db.delete(users).where(eq(users.id, id));
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "admin.delete",
     resourceType: "admin_user",
     resourceId: id,
-    metadata: { email: target.email, role: target.role },
+    metadata: { email: target!.email, role: target!.role },
   });
 
   invalidate();

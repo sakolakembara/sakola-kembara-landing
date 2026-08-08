@@ -3,9 +3,8 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { getBlogArticleBySlug } from "@/lib/blog";
 import { BLOG_CATEGORIES } from "@/lib/blog-types";
@@ -16,8 +15,6 @@ import {
   slugify,
   uniqueSlug,
 } from "@/lib/blog-writer";
-import { db } from "@/lib/db";
-import { adminUsers } from "@/lib/db/schema";
 
 const baseSchema = z.object({
   title: z.string().trim().min(3, "Judul minimal 3 karakter").max(200),
@@ -52,19 +49,6 @@ export type BlogFormState = {
   message?: string;
   fieldErrors?: Partial<Record<string, string[]>>;
 };
-
-async function requireAdmin(): Promise<{ email: string; actorId: string | null }> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true },
-  });
-  return { email, actorId: actor?.id ?? null };
-}
 
 export async function createBlogPost(
   _prev: BlogFormState,
@@ -110,7 +94,7 @@ export async function createBlogPost(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "blog.create",
     resourceType: "blog",
     resourceId: slug,
@@ -168,7 +152,7 @@ export async function updateBlogPost(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "blog.update",
     resourceType: "blog",
     resourceId: existing.id,
@@ -242,7 +226,7 @@ export async function uploadBlogImage(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "blog.upload_image",
     resourceType: "blog_image",
     resourceId: filename,
@@ -262,7 +246,7 @@ export async function deleteBlogPost(formData: FormData): Promise<void> {
   await deleteArticle(slug);
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "blog.delete",
     resourceType: "blog",
     resourceId: slug,

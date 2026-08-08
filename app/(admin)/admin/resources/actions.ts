@@ -6,11 +6,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
-  adminUsers,
   resourceCategory,
   resourceContentType,
   siteResources,
@@ -28,19 +27,6 @@ function slugSafe(input: string): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 40) || "resource"
   );
-}
-
-async function requireAdmin(): Promise<{ email: string; actorId: string | null }> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true },
-  });
-  return { email, actorId: actor?.id ?? null };
 }
 
 function invalidate() {
@@ -205,13 +191,13 @@ export async function createResource(
         data.contentType === "url" ? (data.externalUrl || null) : null,
       bodyText: data.contentType === "text" ? (data.bodyText || null) : null,
       notes: data.notes || null,
-      updatedBy: admin.actorId,
+      updatedBy: admin.userId,
     })
     .returning({ id: siteResources.id });
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "resource.create",
     resourceType: "site_resource",
     resourceId: inserted.id,
@@ -316,14 +302,14 @@ export async function updateResource(
         data.contentType === "url" ? (data.externalUrl || null) : null,
       bodyText: data.contentType === "text" ? (data.bodyText || null) : null,
       notes: data.notes || null,
-      updatedBy: admin.actorId,
+      updatedBy: admin.userId,
       updatedAt: new Date(),
     })
     .where(eq(siteResources.id, data.id));
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "resource.update",
     resourceType: "site_resource",
     resourceId: data.id,
@@ -354,7 +340,7 @@ export async function deleteResource(formData: FormData): Promise<void> {
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "resource.delete",
     resourceType: "site_resource",
     resourceId: id,

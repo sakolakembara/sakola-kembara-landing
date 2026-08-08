@@ -4,8 +4,8 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
-import type { AdminUser } from "@/lib/db/schema";
-import { adminUserRole } from "@/lib/db/schema";
+import type { User } from "@/lib/db/schema";
+import { adminRoles } from "@/lib/db/schema";
 import {
   createAdminUser,
   updateAdminUser,
@@ -17,13 +17,13 @@ const initialState: AdminFormState = { status: "idle" };
 const TEXT_INPUT =
   "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
 
-const ROLE_HINTS: Record<(typeof adminUserRole)[number], string> = {
+const ROLE_HINTS: Record<(typeof adminRoles)[number], string> = {
   super_admin: "Akses penuh, termasuk mengelola admin lain.",
   editor: "Dapat mengelola konten (blog, pengumuman, laporan, tim, dll).",
   viewer: "Hanya dapat membaca dashboard.",
 };
 
-const ROLE_LABEL: Record<(typeof adminUserRole)[number], string> = {
+const ROLE_LABEL: Record<(typeof adminRoles)[number], string> = {
   super_admin: "Super Admin",
   editor: "Editor",
   viewer: "Viewer",
@@ -31,7 +31,7 @@ const ROLE_LABEL: Record<(typeof adminUserRole)[number], string> = {
 
 interface EditorFormProps {
   mode: "create" | "edit";
-  user?: AdminUser;
+  user?: User;
   successMessage?: string;
 }
 
@@ -111,7 +111,7 @@ export function EditorForm({
         <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 space-y-6">
           <Section
             title="Identitas"
-            description="Email Microsoft (Entra ID) yang dipakai untuk login admin."
+            description="Email yang dipakai untuk login admin. Bisa dipakai untuk login Google atau email + password."
           >
             <Field
               label="Email"
@@ -121,7 +121,7 @@ export function EditorForm({
               hint={
                 mode === "edit"
                   ? "Email tidak dapat diubah setelah admin dibuat."
-                  : "Harus menggunakan domain @sakolakembara.org."
+                  : "Gunakan email yang aktif untuk login."
               }
             >
               <input
@@ -131,22 +131,45 @@ export function EditorForm({
                 required={mode === "create"}
                 readOnly={mode === "edit"}
                 defaultValue={user?.email ?? ""}
-                placeholder="nama@sakolakembara.org"
+                placeholder="nama@contoh.com"
                 className={`${TEXT_INPUT} ${mode === "edit" ? "bg-gray-50 cursor-not-allowed" : ""}`}
               />
             </Field>
             <Field
-              label="Nama Tampilan"
-              name="displayName"
-              errors={state.fieldErrors?.displayName}
+              label="Nama"
+              name="name"
+              errors={state.fieldErrors?.name}
               hint="Opsional. Muncul sebagai pengirim di log aktivitas."
             >
               <input
                 type="text"
-                id="displayName"
-                name="displayName"
-                defaultValue={user?.displayName ?? ""}
+                id="name"
+                name="name"
+                defaultValue={user?.name ?? ""}
                 placeholder="Contoh: Ahmad Fadillah"
+                className={TEXT_INPUT}
+              />
+            </Field>
+            <Field
+              label="Password"
+              name="password"
+              errors={state.fieldErrors?.password}
+              hint={
+                mode === "edit"
+                  ? "Kosongkan untuk tidak mengubah. Admin yang login lewat Google tidak perlu password."
+                  : "Opsional, hanya jika admin ingin login email + password. Admin Google bisa dikosongkan."
+              }
+            >
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autoComplete="new-password"
+                placeholder={
+                  mode === "edit"
+                    ? "Kosongkan untuk tidak mengubah"
+                    : "Password admin (opsional, hanya jika admin ingin login email + password)"
+                }
                 className={TEXT_INPUT}
               />
             </Field>
@@ -163,7 +186,7 @@ export function EditorForm({
               errors={state.fieldErrors?.role}
             >
               <div className="space-y-2">
-                {adminUserRole.map((role) => (
+                {adminRoles.map((role) => (
                   <label
                     key={role}
                     className="flex items-start gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-primary-blue transition-colors has-[:checked]:border-primary-blue has-[:checked]:bg-primary-blue/5"

@@ -6,11 +6,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
-  adminUsers,
   teamCategory,
   teamMembers,
   type EducationEntry,
@@ -118,19 +117,6 @@ export type TeamFormState = {
   fieldErrors?: Partial<Record<string, string[]>>;
 };
 
-async function requireAdmin(): Promise<{ email: string; actorId: string | null }> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true },
-  });
-  return { email, actorId: actor?.id ?? null };
-}
-
 function invalidate() {
   revalidateTag("team", "max");
   revalidatePath("/tim");
@@ -189,7 +175,7 @@ export async function createTeamMember(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "team.create",
     resourceType: "team_member",
     resourceId: inserted.id,
@@ -235,7 +221,7 @@ export async function updateTeamMember(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "team.update",
     resourceType: "team_member",
     resourceId: data.id,
@@ -268,7 +254,7 @@ export async function deleteTeamMember(formData: FormData): Promise<void> {
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "team.delete",
     resourceType: "team_member",
     resourceId: id,
@@ -320,7 +306,7 @@ export async function uploadTeamPhoto(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "team.upload_photo",
     resourceType: "team_photo",
     resourceId: filename,

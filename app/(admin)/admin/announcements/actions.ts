@@ -4,11 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
-  adminUsers,
   announcementSeverity,
   announcements,
 } from "@/lib/db/schema";
@@ -61,19 +60,6 @@ export type AnnouncementFormState = {
   fieldErrors?: Partial<Record<string, string[]>>;
 };
 
-async function requireAdmin(): Promise<{ email: string; actorId: string | null }> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email),
-    columns: { id: true },
-  });
-  return { email, actorId: actor?.id ?? null };
-}
-
 function invalidate() {
   revalidateTag("announcements", "max");
   revalidatePath("/");
@@ -121,13 +107,13 @@ export async function createAnnouncement(
       active: data.active,
       startsAt: data.startsAt,
       endsAt: data.endsAt,
-      createdBy: admin.actorId,
+      createdBy: admin.userId,
     })
     .returning({ id: announcements.id });
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "announcement.create",
     resourceType: "announcement",
     resourceId: inserted.id,
@@ -184,7 +170,7 @@ export async function updateAnnouncement(
 
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "announcement.update",
     resourceType: "announcement",
     resourceId: data.id,
@@ -212,7 +198,7 @@ export async function deleteAnnouncement(formData: FormData): Promise<void> {
   await db.delete(announcements).where(eq(announcements.id, id));
   await writeAudit({
     actorEmail: admin.email,
-    actorId: admin.actorId,
+    actorId: admin.userId,
     action: "announcement.delete",
     resourceType: "announcement",
     resourceId: id,

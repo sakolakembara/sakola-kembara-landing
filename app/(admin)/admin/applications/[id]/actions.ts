@@ -4,11 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { ALLOWED_DOMAIN, auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
-  adminUsers,
   applicationStatus,
   studentApplications,
 } from "@/lib/db/schema";
@@ -28,11 +27,7 @@ const schema = z
   );
 
 export async function updateApplicationStatus(formData: FormData) {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    redirect("/login");
-  }
+  const admin = await requireAdmin();
 
   const parsed = schema.safeParse({
     id: formData.get("id"),
@@ -53,25 +48,20 @@ export async function updateApplicationStatus(formData: FormData) {
 
   const data = parsed.data;
 
-  const actor = await db.query.adminUsers.findFirst({
-    where: eq(adminUsers.email, email!),
-    columns: { id: true },
-  });
-
   await db
     .update(studentApplications)
     .set({
       status: data.status,
       reviewNotes: data.reviewNotes || null,
-      reviewedBy: actor?.id ?? null,
+      reviewedBy: admin.userId,
       reviewedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(studentApplications.id, data.id));
 
   await writeAudit({
-    actorEmail: email!,
-    actorId: actor?.id ?? null,
+    actorEmail: admin.email,
+    actorId: admin.userId,
     action: `application.${data.status}`,
     resourceType: "application",
     resourceId: data.id,
