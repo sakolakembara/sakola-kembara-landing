@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, gte } from "drizzle-orm";
+import { requireStudent } from "@/lib/auth-helpers";
+import { getCurrentOpenBatch } from "@/lib/admission-batches";
+import { getUserApplicationForBatch } from "@/lib/student-applications";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
@@ -33,6 +36,28 @@ export type SubmitResult =
 export async function submitStudentApplication(
   values: FormValues,
 ): Promise<SubmitResult> {
+  // Every submission must be tied to an authenticated student *and* an open
+  // batch. Client wizard shouldn't render without both, but we re-check here
+  // so a rogue POST can't bypass the gate.
+  const student = await requireStudent();
+  const batch = await getCurrentOpenBatch();
+  if (!batch) {
+    return {
+      status: "error",
+      message:
+        "Belum ada batch pendaftaran yang dibuka. Silakan kembali saat pendaftaran berikutnya diumumkan.",
+    };
+  }
+
+  const alreadySubmitted = await getUserApplicationForBatch(student.userId, batch.id);
+  if (alreadySubmitted) {
+    return {
+      status: "error",
+      message:
+        "Kamu sudah mengirim pendaftaran untuk batch ini. Cek status di halaman Portal Siswa.",
+    };
+  }
+
   const identity = identitySchema.safeParse(values.identity);
   if (!identity.success) {
     return {
@@ -215,7 +240,10 @@ export async function submitStudentApplication(
   const [inserted] = await db
     .insert(studentApplications)
     .values({
+      userId: student.userId,
+      batchId: batch.id,
       fullName: identity.data.fullName,
+      email: student.email,
       whatsapp: identity.data.whatsapp,
       schoolName: identity.data.schoolName,
       graduationYear: identity.data.graduationBatch,
@@ -225,11 +253,14 @@ export async function submitStudentApplication(
     .returning({ id: studentApplications.id });
 
   await writeAudit({
-    actorEmail: `wa:${identity.data.whatsapp}`,
+    actorEmail: student.email,
+    actorId: student.userId,
     action: "application.submit",
     resourceType: "application",
     resourceId: inserted.id,
     metadata: {
+      batchId: batch.id,
+      batchYear: batch.year,
       schoolName: identity.data.schoolName,
       graduationBatch: identity.data.graduationBatch,
       branch: identity.data.branch,
@@ -238,6 +269,9 @@ export async function submitStudentApplication(
 
   revalidatePath("/admin");
   revalidatePath("/admin/applications");
+  revalidatePath(`/admin/batches/${batch.id}`);
+  revalidatePath("/portal");
+  revalidatePath("/portal/status");
 
   return { status: "success", applicationId: inserted.id };
 }

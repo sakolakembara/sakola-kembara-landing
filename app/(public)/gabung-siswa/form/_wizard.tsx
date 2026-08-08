@@ -30,7 +30,15 @@ import { ReviewStep } from "./_steps/review";
 import { SuccessScreen } from "./_success";
 import type { FieldErrors } from "./_shared";
 
-const STORAGE_KEY = "sakem-student-form-v1";
+// v2 = new schema (auth-gated, per-batch, prefills identity from user).
+// Bump the key when the wizard shape changes so we don't try to hydrate an
+// incompatible saved payload.
+const STORAGE_KEY_PREFIX = "sakem-student-form-v2";
+
+interface WizardProps {
+  batch: { id: string; year: number; name: string };
+  user: { email: string; name: string | null };
+}
 
 const STEP_SCHEMAS = {
   identity: identitySchema,
@@ -51,8 +59,25 @@ function flattenErrors(err: z.ZodError): FieldErrors {
   return out;
 }
 
-export function Wizard() {
-  const [values, setValues] = useState<FormValues>(emptyFormValues);
+export function Wizard({ batch, user }: WizardProps) {
+  // Per-user + per-batch storage key so a shared browser doesn't leak one
+  // student's answers to another, and so switching batches starts fresh.
+  // useMemo so hooks below can safely include this in their deps arrays.
+  const STORAGE_KEY = useMemo(
+    () => `${STORAGE_KEY_PREFIX}:${batch.id}:${user.email}`,
+    [batch.id, user.email],
+  );
+  const [values, setValues] = useState<FormValues>(() => {
+    // Seed the identity fullName from the Google-provided name — cheap win,
+    // students always want to correct or confirm it anyway.
+    return {
+      ...emptyFormValues,
+      identity: {
+        ...emptyFormValues.identity,
+        fullName: user.name ?? "",
+      },
+    };
+  });
   const [stepIdx, setStepIdx] = useState(0);
   const [visited, setVisited] = useState<Set<StepId>>(
     () => new Set(["intro"]),
@@ -101,7 +126,7 @@ export function Wizard() {
     } finally {
       setHydrated(true);
     }
-  }, []);
+  }, [STORAGE_KEY]);
 
   // Persist on every meaningful change, but only after hydration.
   useEffect(() => {
@@ -115,7 +140,7 @@ export function Wizard() {
     } catch {
       // Storage full / disabled — silently drop.
     }
-  }, [hydrated, values, stepIdx, visited, submitState.status]);
+  }, [STORAGE_KEY, hydrated, values, stepIdx, visited, submitState.status]);
 
   const currentStep = STEPS[stepIdx];
 
@@ -270,7 +295,7 @@ export function Wizard() {
         if (idx >= 0) setStepIdx(idx);
       }
     }
-  }, [values]);
+  }, [STORAGE_KEY, values]);
 
   const progress = useMemo(() => {
     const totalSteps = STEPS.length - 1; // exclude review
