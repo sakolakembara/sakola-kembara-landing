@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { authStatus, signIn } from "@/auth";
-import { AdminCredentialsForm } from "./_admin-form";
+import { CredentialsForm } from "./_credentials-form";
 import { GoogleButton } from "./_google-button";
 
 export const metadata: Metadata = {
   title: "Masuk",
   description:
-    "Masuk ke akun Sakola Kembara — untuk siswa yang ingin mendaftar dan mengecek status, dan admin yayasan.",
+    "Masuk ke akun Sakola Kembara untuk mendaftar dan mengecek status pendaftaran kamu.",
   robots: { index: false, follow: false },
 };
 
 const ERRORS: Record<string, string> = {
   domain: "Akun ini tidak diizinkan mengakses halaman tersebut.",
-  "admin-only": "Halaman admin hanya untuk pengurus yayasan.",
-  CredentialsSignin: "Email atau password admin salah.",
+  "admin-only": "Halaman itu hanya untuk pengurus yayasan.",
+  CredentialsSignin: "Email atau password salah.",
   RateLimited:
     "Terlalu banyak percobaan masuk. Silakan tunggu beberapa menit lalu coba lagi.",
   Configuration:
@@ -35,9 +35,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   async function signInWithGoogle() {
     "use server";
-    // Post-login redirect is decided in the callback of NextAuth — for
-    // students it lands them on /portal; for admins the middleware kicks in.
-    // Here we honor the `from` param when it points somewhere sensible.
     await signIn("google", {
       redirectTo: safeFrom ?? "/portal",
     });
@@ -54,18 +51,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Sakola Kembara
           </Link>
           <p className="text-sm text-gray-500 mt-1">
-            Masuk untuk mendaftar sebagai calon siswa atau mengelola dashboard.
+            Masuk untuk mendaftar sebagai calon siswa Sakola Kembara.
           </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
           <div>
             <h1 className="font-[var(--font-display)] text-xl text-gray-900 mb-1">
-              Selamat datang
+              Selamat datang kembali
             </h1>
             <p className="text-sm text-gray-600">
-              Gunakan akun Google untuk melanjutkan. Data pendaftaran kamu akan
-              tersimpan pada akun ini agar bisa dibuka kembali kapan saja.
+              Gunakan akun Google atau email + password kamu untuk melanjutkan.
             </p>
           </div>
 
@@ -75,51 +71,36 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </div>
           )}
 
-          {authStatus.googleConfigured ? (
+          {authStatus.googleConfigured && (
             <form action={signInWithGoogle}>
               <GoogleButton />
             </form>
-          ) : (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-sm text-amber-800">
-              <p className="font-semibold mb-1">
-                Login Google belum dikonfigurasi.
-              </p>
-              <p>
-                Set <span className="font-mono">AUTH_GOOGLE_ID</span> dan{" "}
-                <span className="font-mono">AUTH_GOOGLE_SECRET</span> di{" "}
-                <span className="font-mono">.env.local</span>. Sementara itu,
-                admin masih dapat masuk lewat form di bawah.
-              </p>
+          )}
+
+          {authStatus.googleConfigured && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
+                  atau
+                </span>
+              </div>
             </div>
           )}
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-                Admin
-              </span>
-            </div>
-          </div>
-
-          <details className="group">
-            <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900 list-none flex items-center justify-between">
-              <span>Masuk sebagai admin (email + password)</span>
-              <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">
-                ▾
-              </span>
-            </summary>
-            <div className="mt-4">
-              <AdminCredentialsForm from={safeFrom} />
-            </div>
-          </details>
+          <CredentialsForm from={safeFrom} />
         </div>
 
-        <p className="text-center text-xs text-gray-500 mt-6">
-          Belum punya akun? Cukup masuk dengan Google — akun baru akan otomatis
-          dibuat untuk kamu.
+        <p className="text-center text-sm text-gray-600 mt-6">
+          Belum punya akun?{" "}
+          <Link
+            href={safeFrom ? `/register?from=${encodeURIComponent(safeFrom)}` : "/register"}
+            className="text-primary-blue font-semibold hover:underline"
+          >
+            Daftar di sini
+          </Link>
         </p>
       </div>
     </main>
