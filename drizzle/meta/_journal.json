@@ -71,6 +71,13 @@
       "when": 1786522347422,
       "tag": "0009_normalize_fk_names",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786600000000,
+      "tag": "0010_rate_limit_hits",
+      "breakpoints": true
     }
   ]
 }

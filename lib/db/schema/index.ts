@@ -8,3 +8,4 @@ export * from "./team-members";
 export * from "./contact-messages";
 export * from "./audit-log";
 export * from "./site-resources";
+export * from "./rate-limit-hits";
