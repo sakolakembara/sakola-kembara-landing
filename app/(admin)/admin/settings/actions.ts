@@ -2,14 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { requireSuperAdmin } from "@/lib/auth-helpers";
 import { writeAudit } from "@/lib/audit";
-import { countSuperAdmins } from "@/lib/users";
-import { db } from "@/lib/db";
-import { users, adminRoles } from "@/lib/db/schema";
+import { adminRoles } from "@/lib/db/schema";
+import {
+  createAdmin,
+  deleteAdmin,
+  PASSWORD_MIN_LENGTH,
+  updateAdmin,
+} from "@/lib/admin-users-service";
 
 const emailSchema = z
   .string()
@@ -21,7 +23,7 @@ const emailSchema = z
 
 const passwordSchema = z
   .string()
-  .min(8, "Password minimal 8 karakter")
+  .min(PASSWORD_MIN_LENGTH, `Password minimal ${PASSWORD_MIN_LENGTH} karakter`)
   .optional()
   .or(z.literal(""));
 
@@ -67,13 +69,15 @@ export async function createAdminUser(
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
-  const data = parsed.data;
 
-  const duplicate = await db.query.users.findFirst({
-    where: eq(users.email, data.email),
-    columns: { id: true },
+  const result = await createAdmin({
+    email: parsed.data.email,
+    name: parsed.data.name || null,
+    role: parsed.data.role,
+    password: parsed.data.password || null,
   });
-  if (duplicate) {
+
+  if (!result.ok) {
     return {
       status: "error",
       message: "Email ini sudah terdaftar.",
@@ -81,32 +85,17 @@ export async function createAdminUser(
     };
   }
 
-  const passwordHash =
-    data.password && data.password.length > 0
-      ? await bcrypt.hash(data.password, 10)
-      : null;
-
-  const [inserted] = await db
-    .insert(users)
-    .values({
-      email: data.email,
-      name: data.name || null,
-      role: data.role,
-      passwordHash,
-    })
-    .returning({ id: users.id });
-
   await writeAudit({
     actorEmail: admin.email,
     actorId: admin.userId,
     action: "admin.create",
     resourceType: "admin_user",
-    resourceId: inserted.id,
-    metadata: { email: data.email, role: data.role },
+    resourceId: result.id,
+    metadata: { email: parsed.data.email, role: parsed.data.role },
   });
 
   invalidate();
-  redirect(`/admin/settings/${inserted.id}/edit?created=1`);
+  redirect(`/admin/settings/${result.id}/edit?created=1`);
 }
 
 export async function updateAdminUser(
@@ -127,56 +116,37 @@ export async function updateAdminUser(
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
-  const data = parsed.data;
 
-  const target = await db.query.users.findFirst({
-    where: eq(users.id, data.id),
-    columns: { id: true, email: true, role: true },
+  const result = await updateAdmin({
+    id: parsed.data.id,
+    name: parsed.data.name || null,
+    role: parsed.data.role,
+    password: parsed.data.password || null,
   });
-  if (!target) {
-    return { status: "error", message: "Admin tidak ditemukan." };
-  }
 
-  // Block demoting the last super_admin — would lock everyone out of /admin/settings.
-  if (target.role === "super_admin" && data.role !== "super_admin") {
-    const remaining = await countSuperAdmins(target.id);
-    if (remaining === 0) {
-      return {
-        status: "error",
-        message:
-          "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu.",
-        fieldErrors: { role: ["Minimal satu super admin harus tersedia"] },
-      };
+  if (!result.ok) {
+    if (result.reason === "not_found") {
+      return { status: "error", message: "Admin tidak ditemukan." };
     }
+    return {
+      status: "error",
+      message:
+        "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu.",
+      fieldErrors: { role: ["Minimal satu super admin harus tersedia"] },
+    };
   }
-
-  const updates: {
-    name: string | null;
-    role: (typeof adminRoles)[number];
-    updatedAt: Date;
-    passwordHash?: string;
-  } = {
-    name: data.name || null,
-    role: data.role,
-    updatedAt: new Date(),
-  };
-  if (data.password && data.password.length > 0) {
-    updates.passwordHash = await bcrypt.hash(data.password, 10);
-  }
-
-  await db.update(users).set(updates).where(eq(users.id, data.id));
 
   await writeAudit({
     actorEmail: admin.email,
     actorId: admin.userId,
     action: "admin.update",
     resourceType: "admin_user",
-    resourceId: data.id,
+    resourceId: parsed.data.id,
     metadata: {
-      email: target.email,
-      roleFrom: target.role,
-      roleTo: data.role,
-      passwordChanged: Boolean(data.password && data.password.length > 0),
+      email: result.email,
+      roleFrom: result.previousRole,
+      roleTo: parsed.data.role,
+      passwordChanged: result.passwordChanged,
     },
   });
 
@@ -188,26 +158,16 @@ export async function deleteAdminUser(formData: FormData): Promise<void> {
   const admin = await requireSuperAdmin();
   const id = String(formData.get("id"));
 
-  const target = await db.query.users.findFirst({
-    where: eq(users.id, id),
-    columns: { id: true, email: true, role: true },
-  });
-  if (!target) redirect("/admin/settings?error=Admin+tidak+ditemukan");
-
-  if (target!.id === admin.userId) {
-    redirect("/admin/settings?error=Tidak+dapat+menghapus+akun+sendiri");
+  const result = await deleteAdmin(id, admin.userId);
+  if (!result.ok) {
+    const message =
+      result.reason === "not_found"
+        ? "Admin+tidak+ditemukan"
+        : result.reason === "self"
+          ? "Tidak+dapat+menghapus+akun+sendiri"
+          : "Tidak+dapat+menghapus+super+admin+terakhir";
+    redirect(`/admin/settings?error=${message}`);
   }
-
-  if (target!.role === "super_admin") {
-    const remaining = await countSuperAdmins(target!.id);
-    if (remaining === 0) {
-      redirect(
-        "/admin/settings?error=Tidak+dapat+menghapus+super+admin+terakhir",
-      );
-    }
-  }
-
-  await db.delete(users).where(eq(users.id, id));
 
   await writeAudit({
     actorEmail: admin.email,
@@ -215,7 +175,7 @@ export async function deleteAdminUser(formData: FormData): Promise<void> {
     action: "admin.delete",
     resourceType: "admin_user",
     resourceId: id,
-    metadata: { email: target!.email, role: target!.role },
+    metadata: { email: result.email, role: result.role },
   });
 
   invalidate();
