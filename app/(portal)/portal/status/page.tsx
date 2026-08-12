@@ -129,7 +129,7 @@ export default async function StatusPage() {
         </div>
       </section>
 
-      <div className="max-w-[820px] mx-auto px-4 md:px-6 -mt-10 md:-mt-14 pb-16 md:pb-24 space-y-6">
+      <div className="relative z-10 max-w-[820px] mx-auto px-4 md:px-6 -mt-10 md:-mt-14 pb-16 md:pb-24 space-y-6">
         {applications.length === 0 ? (
           <div className="bg-white rounded-3xl border border-gray-100 p-10 md:p-14 text-center shadow-sm">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-100 mb-5">

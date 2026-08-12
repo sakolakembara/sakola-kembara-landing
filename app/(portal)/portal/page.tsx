@@ -88,8 +88,10 @@ export default async function PortalHomePage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Content — pulled up over the hero for a subtle overlap effect. */}
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6 -mt-10 md:-mt-14 pb-16 md:pb-24 space-y-6 md:space-y-8">
+      {/* Content — pulled up over the hero for a subtle overlap effect.
+          Explicit `relative z-10` so it always paints on top of the hero
+          band regardless of stacking-context quirks. */}
+      <div className="relative z-10 max-w-[1200px] mx-auto px-4 md:px-6 -mt-10 md:-mt-14 pb-16 md:pb-24 space-y-6 md:space-y-8">
         {error === "admin-only" && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
             <span aria-hidden className="mt-0.5">⚠</span>
@@ -188,23 +190,27 @@ function CurrentBatchCard({
     Math.ceil((openBatch.closesAt.getTime() - nowMs) / (24 * 60 * 60 * 1000)),
   );
 
-  // Open batch, no submission yet — the star card. Navy-gradient variant
-  // to draw the eye toward the CTA.
+  // Open batch, no submission yet — the star card. White surface with a
+  // yellow-accented left rail so it *contrasts* with the navy hero band
+  // above, instead of merging into it.
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-blue to-accent-navy text-white p-8 md:p-12 shadow-lg shadow-primary-blue/20">
+    <section className="relative overflow-hidden rounded-3xl bg-white border border-gray-100 p-8 md:p-12 shadow-lg">
+      {/* Yellow accent rail on the left — matches the eyebrow-dot color and
+          signals "this is the primary action" without competing with the
+          hero above. */}
       <div
         aria-hidden
-        className="absolute -top-16 -right-16 w-72 h-72 bg-secondary-yellow/15 blur-3xl rounded-full pointer-events-none"
+        className="absolute inset-y-0 left-0 w-1.5 bg-secondary-yellow"
       />
       <div className="relative">
-        <div className="inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-3">
+        <div className="inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-primary-blue uppercase tracking-wider mb-3">
           <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
           Batch {openBatch.year} · Pendaftaran Dibuka
         </div>
-        <h2 className="font-[var(--font-display)] text-2xl md:text-3xl lg:text-4xl leading-tight mb-3">
+        <h2 className="font-[var(--font-display)] text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight mb-3">
           {openBatch.name}
         </h2>
-        <p className="text-white/85 text-base md:text-lg leading-relaxed max-w-[560px] mb-6">
+        <p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-[560px] mb-6">
           Isi formulir pendaftaran untuk mengajukan diri sebagai calon siswa.
           Progres kamu tersimpan otomatis, jadi bisa dilanjutkan kapan saja.
         </p>
@@ -235,13 +241,13 @@ function CurrentBatchCard({
 
         <Link
           href="/portal/daftar"
-          className="inline-flex items-center gap-2 px-8 py-4 bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-amber-400 hover:-translate-y-0.5 hover:shadow-lg transition-all"
+          className="inline-flex items-center gap-2 px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
         >
           Mulai daftar <ArrowRight size={18} />
         </Link>
 
         {openBatch.description && (
-          <p className="text-sm text-white/75 mt-6 max-w-[560px] whitespace-pre-wrap">
+          <p className="text-sm text-gray-500 mt-6 max-w-[560px] whitespace-pre-wrap">
             {openBatch.description}
           </p>
         )}
@@ -260,12 +266,12 @@ function MetaChip({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-3">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-white/70 mb-1">
+    <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-gray-500 mb-1">
         {icon}
         {label}
       </div>
-      <div className="text-sm font-semibold">{value}</div>
+      <div className="text-sm font-semibold text-gray-900">{value}</div>
     </div>
   );
 }
