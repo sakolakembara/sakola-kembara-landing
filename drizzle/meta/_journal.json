@@ -64,6 +64,13 @@
       "when": 1785000000000,
       "tag": "0008_unified_auth_and_batches",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786522347422,
+      "tag": "0009_normalize_fk_names",
+      "breakpoints": true
     }
   ]
 }
