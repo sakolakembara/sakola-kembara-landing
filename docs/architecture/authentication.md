@@ -31,7 +31,7 @@ image: text("image"),                   // avatar URL from Google
 
 Role gates:
 
-| Role | `/portal/*` | `/gabung-siswa/form` | `/admin/*` | `/admin/settings` |
+| Role | `/portal/*` | `/portal/daftar` | `/admin/*` | `/admin/settings` |
 | --- | :-: | :-: | :-: | :-: |
 | `student` | ✅ | ✅ | ❌ (bounced to `/portal?error=admin-only`) | ❌ |
 | `viewer` | ✅ | ✅ | ✅ (read-only) | ❌ |

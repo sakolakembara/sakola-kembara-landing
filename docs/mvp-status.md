@@ -16,7 +16,7 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - `/laporan` — annual / financial / impact / donation report library, PDF downloads
 - `/donasi` — donation page with QRIS, bank details
 - `/gabung-siswa` — landing info page with "Daftar Sekarang" CTA + Pusat Dokumen link
-- `/gabung-siswa/form` — multi-step recruitment wizard (identitas → keluarga & ekonomi → tempat tinggal → organisasi → berkas → berkas marketing → interview → review), sidebar nav, localStorage persistence; writes rich `form_data` blob to `student_applications`
+- `/portal/daftar` — multi-step recruitment wizard (identitas → keluarga & ekonomi → tempat tinggal → organisasi → berkas → berkas marketing → interview → review), sidebar nav, localStorage persistence; writes rich `form_data` blob to `student_applications`
 - `/gabung-siswa/docs` — public docs catalog rendered from `site_resources`, grouped into 5 categories with anchor links (`#panduan`, `#berkas-pendaftaran`, `#berkas-marketing`, `#tutorial`, `#lainnya`); text-type entries render with a Salin button
 - `/kontak` — contact form, writes to `contact_messages`
 - `/program/[id]` — program detail (static; admin CRUD deferred)
@@ -46,7 +46,7 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - **Audit log** — every admin mutation appends a row via `writeAudit()`; viewable in `/admin/audit` and on the dashboard recent activity widget.
 - **Observability** — Sentry wired via `instrumentation.ts` + per-runtime configs (`sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation-client.ts`) and reported from every area-level error boundary. Dormant when `SENTRY_DSN` is unset.
 - **Error UX** — `app/global-error.tsx` (root fallback) plus per-area `error.tsx` under `(public)`, `(admin)`, `(portal)`. Show a warm Indonesian message and a "Coba lagi" button; forward the error digest to Sentry so on-call can correlate.
-- **Rate limiting** — postgres-backed fixed-window bucket (`rate_limit_hits` table + `lib/rate-limit.ts`). Applied to `/kontak` submit (5 req/min/IP), `/gabung-siswa/form` submit (3/5min/user), `/register` signup (3/5min/IP), and credential sign-in (5/5min/IP+email).
+- **Rate limiting** — postgres-backed fixed-window bucket (`rate_limit_hits` table + `lib/rate-limit.ts`). Applied to `/kontak` submit (5 req/min/IP), `/portal/daftar` submit (3/5min/user), `/register` signup (3/5min/IP), and credential sign-in (5/5min/IP+email).
 - **Unit tests** — Vitest (`__tests__/`) covers the Zod schemas that gate DB writes (identity, household, housing, documents, marketing, interview), the rate limiter, the admin-user domain service, and the `requireAdmin`/`requireStudent` guards. `npm test`.
 - **Form data schema tag** — `student_applications.formData` now carries `formVersion: 2`; bump when the wizard shape changes so the admin detail view can branch cleanly.
 

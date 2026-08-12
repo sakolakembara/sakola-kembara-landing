@@ -58,7 +58,7 @@ lib/auth-helpers.ts                     # requireAdmin / requireSuperAdmin / req
 
 `users.role` is one of `student | viewer | editor | super_admin`. Admin roles are `viewer`, `editor`, `super_admin` (see `adminRoles` in `lib/db/schema/users.ts`).
 
-- **`student`** — can sign in (Google only), reach `/portal/*` and the auth-gated `/gabung-siswa/form`. Cannot reach `/admin/*`.
+- **`student`** — can sign in (Google only), reach `/portal/*` and the auth-gated `/portal/daftar`. Cannot reach `/admin/*`.
 - **`viewer`** — read-only across `/admin/*`.
 - **`editor`** — content mutations (blog, announcements, reports, team, resources, batches, application review).
 - **`super_admin`** — everything, plus `/admin/settings` role management.

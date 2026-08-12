@@ -52,7 +52,7 @@ create → opens_at reached → closes_at reached → per-app decisions → publ
 
 1. **Create** — admin fills the form at `/admin/batches/new`. Server action `createBatch` (in `app/(admin)/admin/batches/actions.ts`) validates, inserts, writes an audit row (`batch.create`), redirects to `/admin/batches/[id]?created=1`.
 2. **Open** — nothing happens automatically; `getCurrentOpenBatch()` (`lib/admission-batches.ts`) simply starts returning the row once `now >= opensAt`. `/portal` and `/gabung-siswa` immediately show the CTA.
-3. **Registration window** — students submit through `/gabung-siswa/form`. Each submission requires `requireStudent()` and sets `user_id` + `batch_id`. The `(user_id, batch_id)` unique constraint prevents duplicates.
+3. **Registration window** — students submit through `/portal/daftar`. Each submission requires `requireStudent()` and sets `user_id` + `batch_id`. The `(user_id, batch_id)` unique constraint prevents duplicates.
 4. **Close** — `closesAt` passes; `getCurrentOpenBatch()` stops returning the row and the portal / gabung-siswa CTA disappears. Admins review submissions in `/admin/applications` (filtered by batch).
 5. **Decide** — each application moves `pending → under_review → accepted | rejected`. Every transition is audited.
 6. **Publish** — admin clicks "Publikasikan Hasil" on `/admin/batches/[id]`. `publishBatchResults` sets `resultsPublishedAt = now()`, writes an audit row, and revalidates `/portal` + `/portal/status`. Students now see verdicts.

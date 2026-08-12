@@ -66,7 +66,7 @@ export const users = pgTable(
 - The `signIn` callback keeps `name` / `image` fresh from Google on each login but **never demotes** an existing role.
 
 **Role gates**
-- `student` — `/portal/*`, the auth-gated `/gabung-siswa/form`.
+- `student` — `/portal/*`, the auth-gated `/portal/daftar`.
 - `viewer` — read-only across `/admin/*`.
 - `editor` — content mutations + application review.
 - `super_admin` — everything, plus role management in `/admin/settings`.

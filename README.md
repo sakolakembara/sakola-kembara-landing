@@ -18,7 +18,7 @@ Live: <https://sakolakembara.org>
 - Public site under `app/(public)/`, admin dashboard under `app/(admin)/admin/`, student portal under `app/(portal)/portal/`, unified login at `app/(auth)/login/`
 - **Vitest** for unit tests (`__tests__/`) — schemas, rate limiter, admin service, auth guards
 - **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
-- **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/gabung-siswa/form` submit, `/register` signup, credential sign-in)
+- **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/portal/daftar` submit, `/register` signup, credential sign-in)
 - Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
 
 ## Prerequisites

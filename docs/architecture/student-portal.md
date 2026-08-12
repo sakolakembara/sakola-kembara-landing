@@ -15,21 +15,26 @@ The portal replaces the earlier public "check status by email" pattern. Every st
 
 | Path | File | Purpose |
 | --- | --- | --- |
-| `/portal` | `app/(portal)/portal/page.tsx` | Home. Current-batch CTA + application history. |
+| `/portal` | `app/(portal)/portal/page.tsx` | Home. Hero band greeting + current-batch feature card + application history. |
 | `/portal/status` | `app/(portal)/portal/status/page.tsx` | Per-application detail view — one card per past submission. |
+| `/portal/daftar` | `app/(portal)/portal/daftar/page.tsx` | The multi-step recruitment wizard. Moved out of `/gabung-siswa/form` so it lives inside the auth-gated portal; a 308 redirect preserves the old URL for bookmarks / QR codes. |
 
-Both routes are guarded by `requireStudent(fromPath)` from `lib/auth-helpers.ts`, which redirects to `/login?from=<path>` when unauthenticated. Any signed-in role (`student`, `viewer`, `editor`, `super_admin`) can reach `/portal` — the middleware also permits admins so they can inspect what students see.
+Every route under `/portal/*` is gated by both the middleware (`proxy.ts` matcher) and `requireStudent(fromPath)` from `lib/auth-helpers.ts`. Unauthenticated visitors are redirected to `/login?from=<path>`. Any signed-in role (`student`, `viewer`, `editor`, `super_admin`) can reach `/portal` — the middleware also permits admins so they can inspect what students see.
+
+### Visual language
+
+Portal pages use the sub-page hero pattern from the design docs: a `bg-gradient-to-br from-primary-blue to-accent-navy` band at the top with the yellow-dot eyebrow, Lora serif H1, and short subhead. Content cards below overlap the hero by `-mt-10 md:-mt-14` for a subtle transition. The current-batch feature card on `/portal` uses the same navy gradient (instead of white) when a batch is open with no submission yet — the primary CTA of the whole portal, treated as such. See [`../design/visual-identity.md`](../design/visual-identity.md).
 
 ## `/portal` — home
 
 Three sections, top to bottom:
 
-- **Greeting** — "Selamat datang, {first name} 👋" pulled from `student.name`, falling back to "calon Sakemers".
-- **Pendaftaran saat ini** — reads `getCurrentOpenBatch()` (`lib/admission-batches.ts`). Three states:
-  - No open batch → warm placeholder copy ("Pendaftaran Sakola Kembara dibuka sekali dalam setahun. Pantau akun ini…").
-  - Open batch, no submission yet → shows batch year + name + `closesAt` deadline + description, plus a "Mulai daftar" CTA to `/gabung-siswa/form`.
-  - Open batch, already submitted → green check, "Pendaftaran kamu untuk {name} sudah terkirim." with a link to `/portal/status`.
-- **Riwayat pendaftaran** — reads `getApplicationsForUser(student.userId)`. One line per application: `{year} · {batch name}` on the left, one of "Menunggu hasil" or the status label ("Diterima" / "Belum lolos") on the right. The verdict only shows when `batch.resultsPublishedAt !== null` **and** status is `accepted` or `rejected`.
+- **Hero band** — navy gradient with "Portal Siswa" eyebrow + Lora H1 "Selamat datang, {first name}" pulled from `student.name`, falling back to "Sakemers".
+- **Current batch feature card** — reads `getCurrentOpenBatch()` (`lib/admission-batches.ts`). Three states:
+  - No open batch → white card with warm placeholder copy ("Pendaftaran Sakola Kembara dibuka sekali dalam setahun. Panitia akan memberi tahu di halaman ini…").
+  - Open batch, no submission yet → **navy gradient hero card** with batch year + name + `closesAt` chip + "sisa waktu" chip + yellow "Mulai daftar" CTA to `/portal/daftar`.
+  - Open batch, already submitted → white card with green check, "Pendaftaran kamu untuk {name} sudah masuk." and a link to `/portal/status`.
+- **Riwayat pendaftaran** — reads `getApplicationsForUser(student.userId)`. One line per application: `{year} · {batch name}` on the left, a colored status pill on the right (green "Diterima" / gray "Belum lolos" / amber "Menunggu hasil"). The verdict only shows when `batch.resultsPublishedAt !== null` **and** status is `accepted` or `rejected`.
 
 The `error=admin-only` query param renders a friendly banner ("Halaman admin hanya untuk pengurus yayasan.") when the middleware bounced a student off `/admin`.
 
