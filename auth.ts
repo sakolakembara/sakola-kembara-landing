@@ -12,15 +12,20 @@ import {
   type UserRole,
 } from "@/lib/db/schema";
 
-// Node-runtime Auth.js setup. Adds the admin Credentials provider (email +
-// bcrypt password against `users`) on top of the edge-safe Google config.
-// Server components, server actions, and the [...nextauth] route handler
-// should import from here. Middleware imports auth.config.ts directly so the
-// Edge runtime doesn't try to load pg / bcrypt.
+// Node-runtime Auth.js setup. Adds the Credentials provider (email + bcrypt
+// password against `users`) on top of the edge-safe Google config. Server
+// components, server actions, and the [...nextauth] route handler should
+// import from here. Middleware imports auth.config.ts directly so the Edge
+// runtime doesn't try to load pg / bcrypt.
+//
+// The Credentials provider is unified: any user with a `password_hash` can
+// sign in — students who registered with email + password, or admins who
+// were seeded via `npm run seed:super-admin`. Role is not checked here; the
+// middleware and requireAdmin/requireStudent guards handle route access.
 
-const adminCredentialsProvider = Credentials({
-  id: "admin-credentials",
-  name: "Admin sign-in",
+const credentialsProvider = Credentials({
+  id: "credentials",
+  name: "Email & password",
   credentials: {
     email: { label: "Email", type: "email" },
     password: { label: "Password", type: "password" },
@@ -33,10 +38,9 @@ const adminCredentialsProvider = Credentials({
     const row = await db.query.users.findFirst({
       where: eq(users.email, email),
     });
-    // Only admin roles may sign in via password. Student accounts must use
-    // Google — we don't collect passwords from them.
+    // Google-only accounts have no password_hash and can't sign in this way —
+    // they must go through the Google button on /login.
     if (!row || !row.passwordHash) return null;
-    if (!(adminRoles as readonly string[]).includes(row.role)) return null;
 
     const ok = await bcrypt.compare(password, row.passwordHash);
     if (!ok) return null;
@@ -52,12 +56,12 @@ const adminCredentialsProvider = Credentials({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  providers: [...authConfig.providers, adminCredentialsProvider],
+  providers: [...authConfig.providers, credentialsProvider],
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user, account, profile }) {
       // Credentials sign-in has already been validated in `authorize`.
-      if (account?.provider === "admin-credentials") return true;
+      if (account?.provider === "credentials") return true;
 
       // Google sign-in: upsert the users row and (provider, providerAccountId)
       // linkage so subsequent sign-ins skip account creation. New accounts

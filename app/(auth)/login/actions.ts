@@ -5,16 +5,23 @@ import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
-export async function adminSignIn(formData: FormData): Promise<void> {
+/**
+ * Sign in with email + password. Works for any account that has a
+ * `password_hash` — students who registered locally and admins seeded via
+ * the CLI. The middleware routes by role after the session is issued.
+ */
+export async function credentialsSignIn(formData: FormData): Promise<void> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const from = String(formData.get("from") ?? "");
-  const safeFrom = from.startsWith("/") && !from.startsWith("//") ? from : "/admin";
+  // Default to /portal after credential sign-in — students land there, and
+  // the middleware will bounce admins to /admin on their next request.
+  const safeFrom = from.startsWith("/") && !from.startsWith("//") ? from : "/portal";
 
-  // Throttle attempts per IP + email so a credential-stuffing attempt gets
-  // shut down quickly without locking a real admin out from every device.
+  // Throttle attempts per IP + email so credential-stuffing gets shut down
+  // quickly without locking a real user out from every device.
   const limit = await rateLimit({
-    action: "admin.signin",
+    action: "credentials.signin",
     limit: 5,
     windowSeconds: 300,
     extraKey: email || "anon",
@@ -24,9 +31,7 @@ export async function adminSignIn(formData: FormData): Promise<void> {
   }
 
   try {
-    // `redirect: false` so NextAuth throws instead of redirecting inside the
-    // action — we want to control the destination based on role.
-    await signIn("admin-credentials", {
+    await signIn("credentials", {
       email,
       password,
       redirectTo: safeFrom,
