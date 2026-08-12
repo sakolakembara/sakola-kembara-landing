@@ -87,7 +87,7 @@ export default function GabungSiswaPage() {
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <Link
-                href="/gabung-siswa/form"
+                href="/portal/daftar"
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-primary-blue font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
               >
                 <ClipboardList size={18} />
@@ -216,7 +216,7 @@ export default function GabungSiswaPage() {
               browser ini.
             </p>
             <Link
-              href="/gabung-siswa/form"
+              href="/portal/daftar"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary-blue font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
             >
               <ClipboardList size={18} />

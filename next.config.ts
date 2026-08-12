@@ -64,6 +64,14 @@ const nextConfig: NextConfig = {
       // print collateral, and Instagram bio links.
       { source: "/daftar", destination: "/gabung-siswa", permanent: true },
       { source: "/apply", destination: "/gabung-siswa", permanent: true },
+      // Registration form moved under /portal so it's auth-gated by the
+      // middleware matcher. Preserve any bookmarks/QR codes still pointing
+      // at the old path.
+      {
+        source: "/gabung-siswa/form",
+        destination: "/portal/daftar",
+        permanent: true,
+      },
       // "About" page rename — public team page took over.
       { source: "/tentang-kami", destination: "/tim", permanent: true },
       { source: "/about", destination: "/tim", permanent: true },

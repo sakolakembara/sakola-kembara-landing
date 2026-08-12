@@ -1,5 +1,5 @@
 // Client-safe constants + zod schemas + default values for the multi-step
-// recruitment form (`/gabung-siswa/form`). Shared between the wizard client
+// recruitment form (`/portal/daftar`). Shared between the wizard client
 // components and the server action so validation stays in one place.
 
 import { z } from "zod";

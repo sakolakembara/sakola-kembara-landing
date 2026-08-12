@@ -314,17 +314,21 @@ export function Wizard({ batch, user }: WizardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-[var(--hero-top,8rem)] pb-16">
+    <div className="py-8 md:py-12">
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
         <header className="mb-6 md:mb-8">
           <Link
-            href="/gabung-siswa"
+            href="/portal"
             className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-3"
           >
-            <ArrowLeft size={14} /> Kembali ke halaman informasi
+            <ArrowLeft size={14} /> Kembali ke portal
           </Link>
-          <h1 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2">
-            Formulir Pendaftaran Sakola Kembara Gen 6
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary-blue uppercase tracking-wider mb-3">
+            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
+            Formulir Pendaftaran · {batch.name}
+          </div>
+          <h1 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2 leading-tight">
+            Ceritakan tentang dirimu, {user.name?.split(" ")[0] ?? "Sakemers"}
           </h1>
           <p className="text-gray-600 max-w-[720px]">
             Isi seluruh bagian dengan jujur dan lengkap. Data yang kamu kirim

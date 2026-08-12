@@ -291,6 +291,7 @@ export async function submitStudentApplication(
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/batches/${batch.id}`);
   revalidatePath("/portal");
+  revalidatePath("/portal/daftar");
   revalidatePath("/portal/status");
 
   return { status: "success", applicationId: inserted.id };

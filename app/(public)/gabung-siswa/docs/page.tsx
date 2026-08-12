@@ -49,7 +49,7 @@ export default async function DocsPage() {
             perlu kamu siapkan selama proses pendaftaran ada di sini. Kalau kamu
             baru mulai mendaftar, buka{" "}
             <Link
-              href="/gabung-siswa/form"
+              href="/portal/daftar"
               className="underline font-semibold hover:text-white"
             >
               formulir pendaftaran

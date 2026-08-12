@@ -33,7 +33,7 @@ function invalidate() {
   revalidateTag("site-resources", "max");
   revalidatePath("/admin/resources");
   revalidatePath("/gabung-siswa/docs");
-  revalidatePath("/gabung-siswa/form");
+  revalidatePath("/portal/daftar");
 }
 
 const baseSchema = z
