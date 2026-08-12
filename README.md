@@ -18,7 +18,7 @@ Live: <https://sakolakembara.org>
 - Public site under `app/(public)/`, admin dashboard under `app/(admin)/admin/`, student portal under `app/(portal)/portal/`, unified login at `app/(auth)/login/`
 - **Vitest** for unit tests (`__tests__/`) — schemas, rate limiter, admin service, auth guards
 - **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
-- **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, registration submit, admin sign-in)
+- **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/gabung-siswa/form` submit, `/register` signup, credential sign-in)
 - Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
 
 ## Prerequisites
@@ -130,7 +130,7 @@ Day-to-day sign-in:
 
 1. `npm run db:up && npm run dev`
 2. Visit <http://localhost:3000/admin> → you're redirected to `/login?from=/admin`.
-3. Expand **"Masuk sebagai admin (email + password)"** and enter the email + password you seeded. The Credentials provider verifies the bcrypt hash and issues a JWT session, then bounces you to `/admin`.
+3. Enter the email + password you seeded. The Credentials provider verifies the bcrypt hash and issues a JWT session; the middleware sees your `super_admin` role and lets you into `/admin`. (The same form works for students who registered locally — access is decided by role, not by which form was used.)
 4. To test Google sign-in, set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (see `.env.example` for the redirect URI). A first Google login for a new email auto-creates a row with role `student` — promote yourself to `super_admin` from `/admin/settings` or by re-running the seed script against your Google email.
 5. Sign out via "Keluar" in the sidebar. Sign-out lands on `/`.
 

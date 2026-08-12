@@ -8,12 +8,14 @@ Two providers side by side, one job each.
 
 | Provider | Who uses it | Registered in |
 | --- | --- | --- |
-| **Google OAuth** | Students (primary), and any admin who wants to sign in with Google | `auth.config.ts` — Edge-safe |
-| **Credentials** (`id: "admin-credentials"`) | Admin roles only, email + bcrypt password | `auth.ts` — Node-only |
+| **Google OAuth** | Anyone — students and admins alike | `auth.config.ts` — Edge-safe |
+| **Credentials** (`id: "credentials"`) | Anyone with a `password_hash` — students who registered locally, admins seeded via CLI | `auth.ts` — Node-only |
 
 Google is registered with `prompt: "select_account"` so a shared device (siblings, a school library) always asks which account to use — silent reuse of the wrong Google account was a real risk in the pre-launch preview.
 
-The Credentials provider refuses to authenticate a `users` row whose role is `student` or whose `password_hash` is null — students are Google-only, we deliberately do not collect passwords from them.
+The Credentials provider does not check role — access control is entirely a middleware + `requireAdmin`/`requireStudent` concern. Any `users` row with a non-null `password_hash` can sign in; Google-only accounts (`password_hash IS NULL`) must go through the Google button.
+
+**Students** can also register a local (email + password) account through `/register`. Signup creates a `users` row with `role: "student"` and a bcrypt-hashed password, then immediately signs the user in via the Credentials provider. See `lib/student-signup-service.ts` + `app/(auth)/register/actions.ts`.
 
 ## `users` table
 
@@ -23,7 +25,7 @@ Every account is one row in `users` (see `lib/db/schema/users.ts`).
 role: text("role", { enum: ["student", "viewer", "editor", "super_admin"] })
   .notNull()
   .default("student"),
-passwordHash: text("password_hash"),   // bcrypt digest; null for Google-only
+passwordHash: text("password_hash"),   // bcrypt digest; null when Google-only
 image: text("image"),                   // avatar URL from Google
 ```
 
@@ -105,14 +107,26 @@ All three re-read the `users` row so a demoted user loses access mid-session eve
 ### Google — existing user
 Same flow, but the `users` row already exists. `name` / `image` are refreshed from Google, `role` is **never demoted**. If the account had been promoted to `editor` or `super_admin`, that stays.
 
-### Admin — password
-1. Expand "Masuk sebagai admin" on `/login`.
-2. Submit email + password. The Credentials provider's `authorize()` runs:
+### Email + password
+Works for anyone with a `password_hash` — students who registered locally, or admins seeded via `npm run seed:super-admin`. The form on `/login` is deliberately neutral (no "admin" label) so the admin path isn't signposted to the public.
+
+1. Submit email + password on `/login`.
+2. The Credentials provider's `authorize()` runs:
    - Lowercase-trim the email, look up in `users`.
-   - Fail if no row, no `password_hash`, or role isn't in `adminRoles`.
+   - Fail if no row or no `password_hash` (Google-only account).
    - `bcrypt.compare(password, row.passwordHash)`.
-3. `jwt` callback stamps `role` (whichever admin role) onto the token.
-4. Middleware routes based on role — admins land back on the `from` param or `/admin`.
+3. `jwt` callback stamps `role` (student or one of the admin roles) onto the token.
+4. `credentialsSignIn` in `app/(auth)/login/actions.ts` sends the user to `safeFrom ?? "/portal"`. On the next protected request the middleware bounces admins to `/admin` if they landed on `/portal` first.
+
+### Student — register (local)
+1. `/register` — name, email, password, confirm. Rate-limited (3 per 5 min per IP).
+2. `registerStudent` in `app/(auth)/register/actions.ts` calls `createStudentAccount()` which:
+   - Rejects `email_taken` (user should sign in) or `email_taken_no_password` (user should sign in with Google).
+   - Otherwise inserts a `users` row with `role: "student"` and the bcrypt hash.
+3. Immediately calls `signIn("credentials", ...)` so the user lands on `/portal` already authenticated.
+
+### Admin — password
+Admins are seeded via `npm run seed:super-admin` (see below); after that they sign in through the same neutral form as students. The middleware routes them to `/admin` on their first protected request.
 
 ### Sign-out
 Any surface. `signOut({ redirectTo: "/" })` — sign-out returns to the public homepage.
@@ -154,7 +168,7 @@ npm run seed:super-admin
 npm run dev
 ```
 
-Sign in at `http://localhost:3000/login` → expand "Masuk sebagai admin" → your seeded email + password. To try Google, register a Cloud OAuth client (see below) and add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI.
+Sign in at `http://localhost:3000/login` with your seeded email + password (the form is unified — no admin toggle). Students can also self-register at `http://localhost:3000/register`. To try Google, register a Cloud OAuth client (see below) and add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI.
 
 ## Production
 
