@@ -5,6 +5,7 @@ import { and, eq, gte } from "drizzle-orm";
 import { requireStudent } from "@/lib/auth-helpers";
 import { getCurrentOpenBatch } from "@/lib/admission-batches";
 import { getUserApplicationForBatch } from "@/lib/student-applications";
+import { rateLimit } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
@@ -41,6 +42,23 @@ export async function submitStudentApplication(
   // batch. Client wizard shouldn't render without both, but we re-check here
   // so a rogue POST can't bypass the gate.
   const student = await requireStudent();
+
+  // Tight per-IP throttle. Legit users submit once; anything more is either
+  // a stuck wizard retrying or an abuse attempt.
+  const limit = await rateLimit({
+    action: "application.submit",
+    limit: 3,
+    windowSeconds: 300,
+    extraKey: student.userId,
+  });
+  if (!limit.allowed) {
+    return {
+      status: "error",
+      message:
+        "Terlalu banyak percobaan pengiriman. Silakan tunggu beberapa menit lalu coba lagi.",
+    };
+  }
+
   const batch = await getCurrentOpenBatch();
   if (!batch) {
     return {

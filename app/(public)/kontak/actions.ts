@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import { writeAudit } from "@/lib/audit";
+import { rateLimit } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { contactMessages, contactSubject } from "@/lib/db/schema";
 
@@ -41,6 +42,21 @@ export async function submitContactMessage(
   _prev: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
+  // 5 submissions per minute per IP — generous enough for a legit user
+  // fixing typos, tight enough to blunt scripted spam.
+  const limit = await rateLimit({
+    action: "contact.submit",
+    limit: 5,
+    windowSeconds: 60,
+  });
+  if (!limit.allowed) {
+    return {
+      status: "error",
+      message:
+        "Terlalu banyak percobaan pengiriman. Silakan tunggu satu menit lalu coba lagi.",
+    };
+  }
+
   const parsed = schema.safeParse({
     fullName: formData.get("fullName"),
     email: formData.get("email"),

@@ -15,6 +15,8 @@ const ERRORS: Record<string, string> = {
   domain: "Akun ini tidak diizinkan mengakses halaman tersebut.",
   "admin-only": "Halaman admin hanya untuk pengurus yayasan.",
   CredentialsSignin: "Email atau password admin salah.",
+  RateLimited:
+    "Terlalu banyak percobaan masuk. Silakan tunggu beberapa menit lalu coba lagi.",
   Configuration:
     "Konfigurasi autentikasi belum lengkap. Hubungi tim teknis.",
   Default: "Gagal masuk. Silakan coba lagi.",
