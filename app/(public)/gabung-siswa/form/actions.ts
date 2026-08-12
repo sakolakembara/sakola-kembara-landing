@@ -8,6 +8,7 @@ import { getUserApplicationForBatch } from "@/lib/student-applications";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
+  CURRENT_FORM_DATA_VERSION,
   studentApplications,
   type StudentApplicationFormData,
 } from "@/lib/db/schema";
@@ -175,6 +176,7 @@ export async function submitStudentApplication(
     : [];
 
   const formData: StudentApplicationFormData = {
+    formVersion: CURRENT_FORM_DATA_VERSION,
     identity: {
       nickname: identity.data.nickname,
       gender: identity.data.gender,

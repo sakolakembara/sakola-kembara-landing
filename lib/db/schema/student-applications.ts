@@ -14,11 +14,21 @@ export const applicationStatus = ["pending", "under_review", "accepted", "reject
 export type ApplicationStatus = (typeof applicationStatus)[number];
 
 /**
+ * Current schema version stamped on every new submission. Bump whenever the
+ * shape below changes in a way that isn't back-compat readable — the admin
+ * detail view branches on this so old rows keep rendering. Legacy rows
+ * (submitted before this field existed) have `formVersion` = null.
+ */
+export const CURRENT_FORM_DATA_VERSION = 2 as const;
+
+/**
  * Shape of everything the multi-step recruitment form collects that isn't
  * already a top-level column. Rendered by the admin detail view via
  * `lib/student-form-types.ts`. Optional groups are `null` when not applicable.
  */
 export type StudentApplicationFormData = {
+  /** Schema tag — bumped when the shape below changes. */
+  formVersion: typeof CURRENT_FORM_DATA_VERSION;
   identity: {
     nickname: string;
     gender: "laki-laki" | "perempuan";
