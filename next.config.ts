@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Legacy WordPress category permalinks. The old site used these as URL
 // prefixes for individual posts (e.g. /cerita/<slug>/) AND as archive
@@ -87,4 +88,21 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// withSentryConfig wraps the build so error stack traces get source-mapped
+// on the Sentry side. When SENTRY_AUTH_TOKEN + org/project are set at build
+// time, sourcemaps upload automatically; otherwise the wrap is a no-op.
+export default withSentryConfig(nextConfig, {
+  // These are only used at build time for sourcemap upload — safe to leave
+  // as literals in the repo. They must match the Sentry project you point
+  // NEXT_PUBLIC_SENTRY_DSN at.
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  // Keep upload behavior off unless explicitly enabled. Local dev builds
+  // shouldn't try to auth against Sentry.
+  disableLogger: true,
+  sourcemaps: {
+    // Only upload when we have a token; otherwise Sentry SDK skips silently.
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+});

@@ -30,6 +30,9 @@ const schema = z.object({
   SEED_SUPER_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
 
   // ----- Observability -----
+  // Server-side DSN. Client uses NEXT_PUBLIC_SENTRY_DSN (Next.js requires
+  // the NEXT_PUBLIC_ prefix to expose an env var to the browser bundle,
+  // so it isn't declared in this schema).
   SENTRY_DSN: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
