@@ -16,6 +16,9 @@ Live: <https://sakolakembara.org>
 - **PostgreSQL 16 + Drizzle ORM** for the admin dashboard and the student portal
 - **Auth.js v5** — Google OAuth for everyone (students and admins) + email/password (bcryptjs) fallback for admin roles. See [`docs/architecture/authentication.md`](docs/architecture/authentication.md).
 - Public site under `app/(public)/`, admin dashboard under `app/(admin)/admin/`, student portal under `app/(portal)/portal/`, unified login at `app/(auth)/login/`
+- **Vitest** for unit tests (`__tests__/`) — schemas, rate limiter, admin service, auth guards
+- **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
+- **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, registration submit, admin sign-in)
 - Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
 
 ## Prerequisites
@@ -68,6 +71,9 @@ The admin dashboard at `/admin` and the portal at `/portal` both redirect unauth
 | `npm run build` | Production build (`output: "standalone"` for the Docker image) |
 | `npm run start` | Serve the production build locally |
 | `npm run lint` | ESLint |
+| `npm test` | Run the Vitest unit suite once |
+| `npm run test:watch` | Vitest in watch mode |
+| `npm run test:coverage` | Vitest with v8 coverage report |
 
 ### Database
 
@@ -206,7 +212,7 @@ Index: [`docs/README.md`](docs/README.md).
 - Use conventional-commit prefixes when it helps (`feat:`, `fix:`, `docs:`, `build:`, `ci:`). Mixed style is fine; check `git log` for examples.
 - **If your change is structural** (new route, new dep, new deploy step, new data model), update the relevant file under `docs/current-state/` in the same PR. Stale docs are worse than missing docs.
 - **Preserve tone and visuals.** Don't rewrite Indonesian copy or shift colors/fonts/spacing without product sign-off — see [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md) and [`docs/design/visual-identity.md`](docs/design/visual-identity.md).
-- No automated tests yet; verify changes manually in the browser before pushing.
+- Unit tests live in `__tests__/` and cover the Zod schemas that gate DB writes, the rate limiter, the admin-user domain service, and the `requireAdmin` / `requireStudent` guards. Run `npm test` before pushing.
 
 ## Ownership
 

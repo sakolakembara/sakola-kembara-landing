@@ -44,6 +44,11 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - **WordPress cutover** — `next.config.ts → redirects()` 308s for `/cerita/*`, `/education/*`, `/news/*`, `/tips/*`, `/testimonials/*`, `/career/*`, `/kiat-kiat/*` → `/blog/*`; `/daftar`, `/apply` → `/gabung-siswa`; `/tentang-kami`, `/about` → `/tim`; `/impact-reports*` → `/laporan`; `/feed`, `/index.php`, `/blog/page/N` to sensible targets. Smoke-tested against dev.
 - **SEO baseline** — `lib/seo.ts` (OG, Twitter, canonical URL, JSON-LD for articles), per-page metadata, `robots.txt`, dynamic `sitemap.xml`, viewport export with brand `themeColor`, skip-to-content link, `html lang="id"`.
 - **Audit log** — every admin mutation appends a row via `writeAudit()`; viewable in `/admin/audit` and on the dashboard recent activity widget.
+- **Observability** — Sentry wired via `instrumentation.ts` + per-runtime configs (`sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation-client.ts`) and reported from every area-level error boundary. Dormant when `SENTRY_DSN` is unset.
+- **Error UX** — `app/global-error.tsx` (root fallback) plus per-area `error.tsx` under `(public)`, `(admin)`, `(portal)`. Show a warm Indonesian message and a "Coba lagi" button; forward the error digest to Sentry so on-call can correlate.
+- **Rate limiting** — postgres-backed fixed-window bucket (`rate_limit_hits` table + `lib/rate-limit.ts`). Applied to `/kontak` submit (5 req/min/IP), `/gabung-siswa/form` submit (3/5min/user), and admin sign-in (5/5min/IP+email).
+- **Unit tests** — Vitest (`__tests__/`) covers the Zod schemas that gate DB writes (identity, household, housing, documents, marketing, interview), the rate limiter, the admin-user domain service, and the `requireAdmin`/`requireStudent` guards. `npm test`.
+- **Form data schema tag** — `student_applications.formData` now carries `formVersion: 2`; bump when the wizard shape changes so the admin detail view can branch cleanly.
 
 ## Tech stack
 
@@ -78,7 +83,6 @@ Schemas live in `lib/db/schema/*` and are documented in [`roadmap/data-model.md`
 
 Deferred features, all judged not worth the dev time at launch:
 
-- **Sentry** — wire `npx @sentry/wizard` when prod has an actual issue VPS logs can't explain.
 - **`/program/[id]` admin CRUD** — programs are a stable 3-stage taxonomy; manual swap is fine until marketing wants autonomy.
 - **`/?p=NNN` WP query-string redirects** — only handle if Search Console reveals incoming traffic; would need a small dynamic handler since Next.js declarative redirects can't match query strings.
 - **Transactional email (Resend etc.)** — admin team uses Outlook directly off the `/kontak` thread. Adding it back when there's a workflow that needs it.
