@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   admissionBatches,
@@ -67,4 +67,33 @@ export async function getUserApplicationForBatch(
     ),
     columns: { id: true, status: true, submittedAt: true },
   });
+}
+
+/**
+ * Batches where this user was accepted AND the batch's results have been
+ * publicly published. Used to build the `acceptedInBatches` claim on the
+ * SSO JWT — LMS gates course-content access on this list.
+ *
+ * Not-yet-published acceptances are intentionally excluded so the SSO
+ * claim matches what the student sees on /portal/status. See the "privacy
+ * contract" in docs/architecture/student-portal.md.
+ */
+export async function getAcceptedPublishedBatchIds(
+  userId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ batchId: admissionBatches.id })
+    .from(studentApplications)
+    .innerJoin(
+      admissionBatches,
+      eq(studentApplications.batchId, admissionBatches.id),
+    )
+    .where(
+      and(
+        eq(studentApplications.userId, userId),
+        eq(studentApplications.status, "accepted"),
+        isNotNull(admissionBatches.resultsPublishedAt),
+      ),
+    );
+  return rows.map((r) => r.batchId);
 }

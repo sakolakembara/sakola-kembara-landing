@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { authConfig, googleConfiguredFlag } from "@/auth.config";
@@ -11,6 +12,13 @@ import {
   type AdminRole,
   type UserRole,
 } from "@/lib/db/schema";
+import { env } from "@/lib/env";
+import { buildSsoClaims } from "@/lib/sso-claims";
+import {
+  clearSsoCookieOptions,
+  signSsoToken,
+  ssoCookieOptions,
+} from "@/lib/sso";
 
 // Node-runtime Auth.js setup. Adds the Credentials provider (email + bcrypt
 // password against `users`) on top of the edge-safe Google config. Server
@@ -172,9 +180,53 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       } catch (err) {
         console.error("[auth] failed to update lastLoginAt:", err);
       }
+      await mintSsoCookie(email);
+    },
+    async signOut() {
+      await clearSsoCookie();
     },
   },
 });
+
+/**
+ * Set the cross-subdomain SSO cookie so services on other subdomains
+ * (currently: the LMS) can read the session. No-op when SSO_JWT_SECRET is
+ * unset — landing keeps working without SSO configured. Best-effort:
+ * failures are logged but never break the sign-in flow.
+ */
+async function mintSsoCookie(email: string): Promise<void> {
+  if (!env.SSO_JWT_SECRET) return;
+  try {
+    const row = await db.query.users.findFirst({
+      where: eq(users.email, email),
+      columns: { id: true },
+    });
+    if (!row) return;
+    const claims = await buildSsoClaims(row.id);
+    if (!claims) return;
+    const token = await signSsoToken(claims);
+    const opts = ssoCookieOptions();
+    const store = await cookies();
+    store.set({ ...opts, value: token });
+  } catch (err) {
+    console.error("[auth] failed to mint SSO cookie:", err);
+  }
+}
+
+async function clearSsoCookie(): Promise<void> {
+  if (!env.SSO_JWT_SECRET) return;
+  try {
+    const opts = clearSsoCookieOptions();
+    const store = await cookies();
+    store.set({ ...opts, value: "" });
+  } catch (err) {
+    console.error("[auth] failed to clear SSO cookie:", err);
+  }
+}
+
+// Exported so route handlers (POST /api/auth/register + /signout) can
+// reuse the mint/clear logic without going through Auth.js events.
+export { mintSsoCookie, clearSsoCookie };
 
 export const authStatus = {
   googleConfigured: googleConfiguredFlag,
