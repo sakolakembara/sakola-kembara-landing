@@ -71,15 +71,13 @@ Match the formal-warm Indonesian tone. See [`../context/tone-of-voice.md`](../co
 - **"kamu"** — always the second-person address, never "Anda". The portal is a personal space.
 - **Emoji** — one confetti 🎉 on acceptance, one hand-wave 👋 on the greeting, one 👋 on the empty-history state. Nowhere else.
 
-## Future: LMS SSO handoff
+## LMS SSO handoff
 
-The `users` table is the anchor for the future admissions → LMS flow. A future LMS service, running in its own repo / database, is expected to:
+Once a student is accepted, they graduate into the LMS (`lms.sakolakembara.org`, Django + Nuxt). Landing stays the sole identity provider — the LMS reads a signed session cookie set on `.sakolakembara.org` and auto-provisions a local Django user with an FK to `landing.users.id` on first sign-in. No shared DB, no dual accounts.
 
-1. Read (or subscribe to changes on) `users` filtered by `role='student'` and applications where `status='accepted'` and the corresponding batch is published.
-2. Provision an LMS row keyed on `users.id`.
-3. Sign the student in via a shared token (JWT signed with a per-integration secret, or a full OIDC handshake — decision deferred).
+Full contract (JWT claim shape, endpoints landing must expose, Django + Nuxt implementation guide, local-dev recipe, landing-side checklist) lives in [`lms-integration.md`](lms-integration.md). Design invariants worth naming here:
 
-Design notes for that future work:
-- Do not fork the `users` table into two systems. LMS-specific fields (cohort, enrollment date, grades) live in the LMS DB, joined by `users.id`.
-- Preserve `users.id` when a student is promoted from `student` to any admin role — the LMS should keep working for a student who later volunteers.
-- Sign-out from Sakola should sign out from LMS (single logout). Whether we implement that end-to-end depends on the LMS choice.
+- **Do not fork the `users` table into two systems.** LMS-specific fields (enrollment status, grade history, event registrations) live in the LMS DB, joined by `landing.users.id`.
+- **Preserve `users.id` when a student is promoted** from `student` to any admin role — the LMS keeps working for a student who later volunteers.
+- **Sign-out from landing signs out from LMS** because they share the same session cookie on `.sakolakembara.org`. Single-source-of-truth wins the logout race automatically.
+- **Course access is scoped to `acceptedInBatches`** (a JWT claim) — a student accepted in Gen 7 doesn't get Gen 6 course materials.

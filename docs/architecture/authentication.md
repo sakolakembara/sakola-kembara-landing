@@ -180,6 +180,10 @@ Sign in at `http://localhost:3000/login` with your seeded email + password (the 
 3. **First boot** — `docker compose up -d`, then `docker compose exec app npm run seed:super-admin`. This upserts a super_admin row so someone can sign in immediately via the admin password form.
 4. **After first sign-in** — remove the `SEED_SUPER_ADMIN_*` values from `.env.production` if you don't intend to rotate through the CLI. The row stays; only the env vars go.
 
+## Handoff to the LMS
+
+The upcoming LMS (`lms.sakolakembara.org`, Django + Nuxt) consumes landing's identity via SSO rather than managing its own users. Landing is the identity provider; LMS auto-provisions a local user with an FK to `landing.users.id` on first sign-in. Contract, endpoints landing must expose, Django/Nuxt implementation guide, and the landing-side checklist are in [`lms-integration.md`](lms-integration.md).
+
 ## Migration 0008 — snapshot resync required
 
 `drizzle/0008_unified_auth_and_batches.sql` was hand-written to rename `admin_users → users`, add `accounts`, add `admission_batches`, and extend `student_applications` with `user_id` + `batch_id`. `drizzle/meta/` was **not** regenerated because drizzle-kit's rename detection requires an interactive TTY prompt that can't run in CI.

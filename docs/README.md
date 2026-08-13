@@ -48,6 +48,7 @@ Focused explainers for the load-bearing subsystems. Read the matching file befor
 - [`architecture/authentication.md`](architecture/authentication.md) — Google + Credentials providers, `users` / `accounts` tables, JWT sessions with role stamped in the callback, `requireAdmin` / `requireStudent` helpers, middleware routing, super-admin seed bootstrap.
 - [`architecture/student-portal.md`](architecture/student-portal.md) — `/portal` route map, the privacy contract around `admission_batches.results_published_at`, copy conventions, future LMS SSO handoff.
 - [`architecture/admission-batches.md`](architecture/admission-batches.md) — Yearly batch lifecycle, the publish guard, admin UI paths, how registration and results tie back to `admission_batches`.
+- [`architecture/lms-integration.md`](architecture/lms-integration.md) — The SSO contract between landing and the (upcoming) LMS at `lms.sakolakembara.org`. JWT + shared cookie handshake, Django auth backend + Nuxt integration guide, event-registration flow, checklist of what landing commits to. Hand this to the LMS team when they start.
 
 ## How to use this folder
 
