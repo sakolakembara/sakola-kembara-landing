@@ -25,6 +25,7 @@ A factual snapshot of the codebase. Update these as the system changes.
 - [`current-state/blog-pipeline.md`](current-state/blog-pipeline.md) — How the markdown blog is scraped, synced, and rendered.
 - [`current-state/deployment.md`](current-state/deployment.md) — Steady-state ops cheat sheet: deploy commands, manual ops, rollback. Pair with the launch runbook for first-time provisioning.
 - [`runbook/launch.md`](runbook/launch.md) — **Sequential first-launch recipe.** Fresh VPS → Google OAuth client → CI secrets → super-admin seed → first deploy on a staging subdomain → content swap → DNS cutover → post-launch checklist → rollback paths.
+- [`runbook/sso-email-launch.md`](runbook/sso-email-launch.md) — Focused rollout for the LMS SSO handshake + transactional email (Resend). Do after the main launch. ~90 min attended work + DNS propagation waits.
 - [`current-state/known-gaps.md`](current-state/known-gaps.md) — Placeholder content, missing dashboard features, work the MVP still owes.
 
 ### 3. `design/` — The visual & UX brief

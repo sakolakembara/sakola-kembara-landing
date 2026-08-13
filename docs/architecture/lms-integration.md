@@ -583,6 +583,10 @@ Prefer Option A once the two apps talk to each other.
 - **Never expose the raw JWT to JS**. HttpOnly cookie only. LMS Nuxt never reads or manipulates the token — it just proxies the cookie to Django.
 - **Log user IDs, not emails, in LMS access logs**. Emails are PII; the landing UUID is stable and safe.
 
+## Production rollout
+
+A focused ops checklist for taking SSO + transactional email from "landed in code" to "live in production" is at [`../runbook/sso-email-launch.md`](../runbook/sso-email-launch.md). It covers the Resend account setup, the SPF/DKIM/DMARC records, the env vars on the VPS, per-piece verification with `curl`, and a rollback plan. Do this **after** the main-site launch runbook (`launch.md`) — SSO + email add on top of an already-live site.
+
 ## What the landing team commits to
 
 Tracked as a checklist so the LMS team knows what to expect. Grouped by

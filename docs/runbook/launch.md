@@ -198,6 +198,13 @@ SEED_SUPER_ADMIN_NAME=      # display name; optional (defaults to email local-pa
 
 # Observability — leave SENTRY_DSN blank if not wiring Sentry yet
 SENTRY_DSN=
+
+# SSO + transactional email (LMS integration) — leave blank for a
+# main-site-only launch. When you're ready to wire the LMS integration
+# and self-service email flows, follow the focused runbook at
+# ./sso-email-launch.md. Those vars are SSO_JWT_SECRET,
+# SSO_COOKIE_DOMAIN, SSO_ALLOWED_ORIGINS, RESEND_API_KEY, EMAIL_FROM,
+# APP_URL. Code paths are dormant when these are unset.
 ```
 
 Generate `AUTH_SECRET` on the VPS so it never lands on your laptop:
