@@ -1,0 +1,129 @@
+import { z } from "zod";
+import { corsHeadersFor, optionsPreflight } from "@/lib/cors";
+import { rateLimit } from "@/lib/rate-limit";
+import { writeAudit } from "@/lib/audit";
+import {
+  STUDENT_PASSWORD_MIN_LENGTH,
+  createStudentAccount,
+} from "@/lib/student-signup-service";
+import { buildSsoClaims } from "@/lib/sso-claims";
+import { signSsoToken, ssoCookieOptions } from "@/lib/sso";
+import { cookies } from "next/headers";
+
+// LMS-facing student registration endpoint. LMS's own Nuxt "Daftar Akun"
+// form POSTs here instead of minting its own users — that way there's
+// exactly ONE identity per email across landing + LMS, forever.
+//
+// On success we set the SSO cookie in the response so the caller is
+// signed in immediately without an extra round-trip. Works cross-domain
+// because the cookie is scoped to `.sakolakembara.org` (see ssoCookieOptions).
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const schema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().toLowerCase().email().max(254),
+  password: z.string().min(STUDENT_PASSWORD_MIN_LENGTH).max(200),
+  /** Short enum for audit metadata — where did this signup originate. */
+  source: z.enum(["lms", "landing"]).optional(),
+});
+
+export const OPTIONS = optionsPreflight;
+
+export async function POST(request: Request): Promise<Response> {
+  const cors = corsHeadersFor(request);
+  const jsonHeaders = { "Content-Type": "application/json", ...cors };
+
+  const limit = await rateLimit({
+    action: "sso.register",
+    limit: 3,
+    windowSeconds: 300,
+  });
+  if (!limit.allowed) {
+    return new Response(
+      JSON.stringify({
+        reason: "rate_limited",
+        retryAfter: Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000)),
+      }),
+      { status: 429, headers: jsonHeaders },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(
+      JSON.stringify({ reason: "invalid_json" }),
+      { status: 400, headers: jsonHeaders },
+    );
+  }
+
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({
+        reason: "invalid_input",
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      }),
+      { status: 400, headers: jsonHeaders },
+    );
+  }
+
+  const result = await createStudentAccount({
+    email: parsed.data.email,
+    name: parsed.data.name,
+    password: parsed.data.password,
+  });
+
+  if (!result.ok) {
+    return new Response(JSON.stringify({ reason: result.reason }), {
+      status: 409,
+      headers: jsonHeaders,
+    });
+  }
+
+  await writeAudit({
+    actorEmail: parsed.data.email,
+    actorId: result.id,
+    action: "student.register",
+    resourceType: "user",
+    resourceId: result.id,
+    metadata: { source: parsed.data.source ?? "landing" },
+  });
+
+  // Mint the SSO cookie so the caller is signed in immediately.
+  const claims = await buildSsoClaims(result.id);
+  if (!claims) {
+    // Shouldn't happen (we just inserted the row) — fall back to 201
+    // without the cookie so LMS can send them through the sign-in flow.
+    return new Response(
+      JSON.stringify({
+        user: {
+          id: result.id,
+          email: parsed.data.email,
+          name: parsed.data.name,
+        },
+      }),
+      { status: 201, headers: jsonHeaders },
+    );
+  }
+
+  const token = await signSsoToken(claims);
+  const store = await cookies();
+  store.set({ ...ssoCookieOptions(), value: token });
+
+  return new Response(
+    JSON.stringify({
+      user: {
+        id: claims.sub,
+        email: claims.email,
+        name: claims.name,
+        landingRole: claims.landingRole,
+        emailVerified: claims.emailVerified,
+      },
+    }),
+    { status: 201, headers: jsonHeaders },
+  );
+}
