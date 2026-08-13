@@ -43,6 +43,17 @@ export async function submitStudentApplication(
   // so a rogue POST can't bypass the gate.
   const student = await requireStudent();
 
+  // Email-verification gate. Unverified users can browse the wizard but
+  // can't submit — we send confirmations + acceptance decisions to the
+  // stored address and don't want to send them into the void.
+  if (!student.emailVerifiedAt) {
+    return {
+      status: "error",
+      message:
+        "Verifikasi email kamu dulu sebelum mengirim pendaftaran. Buka portal untuk mengirim ulang tautan verifikasi.",
+    };
+  }
+
   // Tight per-IP throttle. Legit users submit once; anything more is either
   // a stuck wizard retrying or an abuse attempt.
   const limit = await rateLimit({

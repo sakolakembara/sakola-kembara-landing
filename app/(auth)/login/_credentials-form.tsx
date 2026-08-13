@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { credentialsSignIn } from "./actions";
 
@@ -37,12 +38,24 @@ export function CredentialsForm({ from }: Props) {
         />
       </div>
       <div>
-        <label
-          htmlFor="cred-password"
-          className="block text-xs font-medium text-gray-700 mb-1"
-        >
-          Password
-        </label>
+        <div className="flex items-center justify-between mb-1">
+          <label
+            htmlFor="cred-password"
+            className="block text-xs font-medium text-gray-700"
+          >
+            Password
+          </label>
+          <Link
+            href={
+              from
+                ? `/forgot-password?from=${encodeURIComponent(from)}`
+                : "/forgot-password"
+            }
+            className="text-xs text-primary-blue font-semibold hover:underline"
+          >
+            Lupa password?
+          </Link>
+        </div>
         <input
           id="cred-password"
           type="password"

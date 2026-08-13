@@ -16,6 +16,7 @@ import {
   type PortalApplication,
 } from "@/lib/student-applications";
 import type { ApplicationStatus } from "@/lib/db/schema";
+import { VerifyEmailBanner } from "./_verify-email-banner";
 
 export const metadata: Metadata = {
   title: "Beranda",
@@ -97,6 +98,10 @@ export default async function PortalHomePage({ searchParams }: PageProps) {
             <span aria-hidden className="mt-0.5">⚠</span>
             <span>Halaman itu hanya untuk pengurus yayasan.</span>
           </div>
+        )}
+
+        {!student.emailVerifiedAt && (
+          <VerifyEmailBanner email={student.email} />
         )}
 
         {/* Current-batch feature card. */}

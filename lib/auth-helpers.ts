@@ -58,6 +58,7 @@ export interface StudentContext {
   role: UserRole;
   name: string | null;
   image: string | null;
+  emailVerifiedAt: Date | null;
 }
 
 /** Enforce student sign-in. Redirects to /login when unauthenticated. */
@@ -71,7 +72,14 @@ export async function requireStudent(fromPath?: string): Promise<StudentContext>
 
   const row = await db.query.users.findFirst({
     where: eq(users.email, email),
-    columns: { id: true, email: true, role: true, name: true, image: true },
+    columns: {
+      id: true,
+      email: true,
+      role: true,
+      name: true,
+      image: true,
+      emailVerifiedAt: true,
+    },
   });
   if (!row) redirect("/login");
 
@@ -81,5 +89,6 @@ export async function requireStudent(fromPath?: string): Promise<StudentContext>
     role: row!.role,
     name: row!.name,
     image: row!.image,
+    emailVerifiedAt: row!.emailVerifiedAt,
   };
 }
