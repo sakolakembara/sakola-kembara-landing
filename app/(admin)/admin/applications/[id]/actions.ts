@@ -12,6 +12,11 @@ import {
   studentApplications,
 } from "@/lib/db/schema";
 
+// Minimum length for a revocation note — enough to force the admin to
+// type an actual reason, not "n/a". Regular decision notes stay
+// short-friendly.
+const REVOCATION_NOTES_MIN = 20;
+
 const schema = z
   .object({
     id: z.string().uuid(),
@@ -19,7 +24,10 @@ const schema = z
     reviewNotes: z.string().trim().max(2000).optional().or(z.literal("")),
   })
   .refine(
-    (v) => v.status === "pending" || v.status === "under_review" || (v.reviewNotes && v.reviewNotes.length > 0),
+    (v) =>
+      v.status === "pending" ||
+      v.status === "under_review" ||
+      (v.reviewNotes && v.reviewNotes.length > 0),
     {
       message: "Catatan review wajib diisi saat menerima atau menolak.",
       path: ["reviewNotes"],
@@ -36,7 +44,6 @@ export async function updateApplicationStatus(formData: FormData) {
   });
 
   if (!parsed.success) {
-    // Surface the first error as a query string so the page can display it.
     const firstError =
       parsed.error.flatten().fieldErrors.reviewNotes?.[0] ??
       parsed.error.flatten().formErrors[0] ??
@@ -47,6 +54,29 @@ export async function updateApplicationStatus(formData: FormData) {
   }
 
   const data = parsed.data;
+
+  // Fetch previous status BEFORE the update so we can detect the
+  // revocation transition (accepted → rejected). Revocations get a
+  // stricter validation floor and a dedicated audit action so an operator
+  // trawling the log can spot them without eyeballing every metadata blob.
+  const previous = await db.query.studentApplications.findFirst({
+    where: eq(studentApplications.id, data.id),
+    columns: { id: true, status: true },
+  });
+  if (!previous) {
+    redirect(
+      `/admin/applications/${data.id}?error=${encodeURIComponent("Pendaftar tidak ditemukan.")}`,
+    );
+  }
+
+  const isRevocation =
+    previous!.status === "accepted" && data.status === "rejected";
+
+  if (isRevocation && (data.reviewNotes ?? "").length < REVOCATION_NOTES_MIN) {
+    redirect(
+      `/admin/applications/${data.id}?error=${encodeURIComponent(`Alasan pencabutan wajib diisi minimal ${REVOCATION_NOTES_MIN} karakter — jelaskan mengapa penerimaan ini dibatalkan.`)}`,
+    );
+  }
 
   await db
     .update(studentApplications)
@@ -62,13 +92,27 @@ export async function updateApplicationStatus(formData: FormData) {
   await writeAudit({
     actorEmail: admin.email,
     actorId: admin.userId,
-    action: `application.${data.status}`,
+    // Revocation gets its own action for log-filtering. Normal status
+    // changes stay on the existing `application.{status}` shape so
+    // dashboards + audit queries don't need retroactive rewrites.
+    action: isRevocation
+      ? "application.revoke"
+      : `application.${data.status}`,
     resourceType: "application",
     resourceId: data.id,
-    metadata: data.reviewNotes ? { reviewNotes: data.reviewNotes } : undefined,
+    metadata: isRevocation
+      ? {
+          previousStatus: previous!.status,
+          revocationReason: data.reviewNotes ?? null,
+        }
+      : data.reviewNotes
+        ? { reviewNotes: data.reviewNotes }
+        : undefined,
   });
 
   revalidatePath("/admin");
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${data.id}`);
+  revalidatePath("/portal");
+  revalidatePath("/portal/status");
 }

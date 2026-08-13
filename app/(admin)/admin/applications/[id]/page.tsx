@@ -18,13 +18,12 @@ import {
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
-  applicationStatus,
   studentApplications,
   type ApplicationStatus,
   type StudentApplicationFormData,
 } from "@/lib/db/schema";
 import { formatRupiah } from "@/lib/student-form-types";
-import { updateApplicationStatus } from "./actions";
+import { ReviewForm } from "./_review-form";
 
 export const metadata: Metadata = {
   title: "Detail Pendaftar",
@@ -446,66 +445,12 @@ export default async function ApplicationDetailPage({
               </h2>
             </header>
 
-            <form action={updateApplicationStatus} className="p-6 space-y-4">
-              <input type="hidden" name="id" value={application.id} />
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Status baru
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue={application.status}
-                  required
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none bg-white"
-                >
-                  {applicationStatus.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="reviewNotes"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Catatan Review
-                </label>
-                <textarea
-                  id="reviewNotes"
-                  name="reviewNotes"
-                  rows={6}
-                  defaultValue={application.reviewNotes ?? ""}
-                  placeholder="Wajib diisi saat menerima atau menolak. Catatan ini tersimpan di audit log."
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none resize-none text-sm"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
-              >
-                Simpan Perubahan
-              </button>
-
-              <p className="text-xs text-gray-500">
-                Perubahan status menulis entry di <span className="font-mono">audit_log</span>{" "}
-                dengan email reviewer dan timestamp.
-              </p>
-            </form>
+            <ReviewForm
+              applicationId={application.id}
+              currentStatus={application.status}
+              currentReviewNotes={application.reviewNotes}
+              formError={error ?? null}
+            />
           </div>
         </aside>
       </div>
