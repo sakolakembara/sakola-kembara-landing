@@ -29,6 +29,23 @@ const schema = z.object({
   SEED_SUPER_ADMIN_PASSWORD: z.preprocess(emptyToUndefined, z.string().min(8).optional()),
   SEED_SUPER_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
 
+  // ----- Transactional email (Resend) -----
+  // Optional in dev — when unset, lib/email.ts logs the outbound message
+  // to the console instead of hitting the vendor. Prod must set it.
+  RESEND_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  // The From address on outbound mail. Resend defaults to
+  // "onboarding@resend.dev" (their sandbox domain) which works without
+  // domain verification but shows a "sent via" banner. Prod should use
+  // "no-reply@sakolakembara.org" after the sending domain is verified
+  // (SPF + DKIM records).
+  EMAIL_FROM: z.preprocess(
+    emptyToUndefined,
+    z.string().optional().default("Sakola Kembara <onboarding@resend.dev>"),
+  ),
+  // Canonical origin used to build absolute URLs in emails
+  // (verify / reset links). Falls back to NEXTAUTH_URL.
+  APP_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+
   // ----- SSO / LMS integration -----
   // HS256 signing key for the cross-subdomain session JWT read by the LMS.
   // Distinct from AUTH_SECRET so we can rotate either independently. Same
