@@ -21,6 +21,7 @@ export async function buildSsoClaims(userId: string): Promise<SsoClaims | null> 
       email: true,
       name: true,
       role: true,
+      emailVerifiedAt: true,
     },
   });
   if (!row) return null;
@@ -31,11 +32,7 @@ export async function buildSsoClaims(userId: string): Promise<SsoClaims | null> 
     sub: row.id,
     email: row.email,
     name: row.name,
-    // TODO(M2): read from users.email_verified_at once the column exists.
-    // Until email verification ships, treat every user as verified —
-    // matches the "backfill existing users as verified pre-launch" plan
-    // in the LMS integration doc.
-    emailVerified: true,
+    emailVerified: row.emailVerifiedAt !== null,
     landingRole: row.role,
     acceptedInBatches,
   };

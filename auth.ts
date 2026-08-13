@@ -87,15 +87,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (existing) {
           userId = existing.id;
           // Keep name/image fresh from Google, but never demote role.
+          // Also stamp email_verified_at if the pre-existing row was an
+          // unverified local-password user who just linked Google — Google
+          // has now confirmed the email, so lift the verification hold.
           await db
             .update(users)
             .set({
               name: existing.name ?? (profile?.name as string | null) ?? null,
               image: existing.image ?? (profile?.picture as string | null) ?? null,
+              emailVerifiedAt: existing.emailVerifiedAt ?? new Date(),
               updatedAt: new Date(),
             })
             .where(eq(users.id, existing.id));
         } else {
+          // Google has already verified the email; mark it verified
+          // immediately so this account skips the verification banner.
           const [inserted] = await db
             .insert(users)
             .values({
@@ -103,6 +109,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: (profile?.name as string | null) ?? null,
               image: (profile?.picture as string | null) ?? null,
               role: "student",
+              emailVerifiedAt: new Date(),
             })
             .returning({ id: users.id });
           userId = inserted.id;

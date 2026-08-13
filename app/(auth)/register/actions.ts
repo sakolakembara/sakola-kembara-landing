@@ -6,6 +6,7 @@ import { z } from "zod";
 import { signIn } from "@/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
+import { sendUserVerificationEmail } from "@/lib/verification-flow";
 import {
   STUDENT_PASSWORD_MIN_LENGTH,
   createStudentAccount,
@@ -116,6 +117,11 @@ export async function registerStudent(
     resourceType: "user",
     resourceId: result.id,
   });
+
+  // Kick off the verification email. Best-effort — signup still proceeds
+  // even if the vendor is down; the portal's verification banner offers a
+  // "Kirim ulang" button so the user can retry from a signed-in state.
+  await sendUserVerificationEmail(result.id, data.email);
 
   const from = String(formData.get("from") ?? "");
   const safeFrom =
