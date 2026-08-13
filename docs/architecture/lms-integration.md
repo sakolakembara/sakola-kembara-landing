@@ -117,25 +117,27 @@ Upgrading to asymmetric (RS256 / EdDSA) is possible later without breaking the c
 
 ## Landing endpoints exposed to LMS
 
-Three endpoints. Every one is rate-limited (`5–10 per minute per IP` on the landing side, already in place via `lib/rate-limit.ts`).
+Three endpoints under `/api/sso/*`. Every one is rate-limited (via `lib/rate-limit.ts`).
 
-### `GET /api/auth/session`
+**Why `/api/sso/*` and not `/api/auth/*`?** Auth.js owns the entire `/api/auth/*` namespace via its catch-all route handler (`app/api/auth/[...nextauth]/route.ts`). Adding custom routes there would shadow Auth.js's own `/api/auth/session`, `/api/auth/signout`, and `/api/auth/callback/*` endpoints, breaking landing's own client machinery. `/api/sso/*` is a clean namespace for cross-service integration.
+
+### `GET /api/sso/session`
 
 Returns the current session. LMS Nuxt can call this to hydrate SSR without decoding the JWT itself.
 
 ```
-GET /api/auth/session
+GET /api/sso/session
 Cookie: sakem-session=<jwt>
 → 200 { "authenticated": true, "user": { <same shape as JWT claims minus iat/exp> } }
 → 200 { "authenticated": false }  (no cookie / invalid)
 ```
 
-### `POST /api/auth/register`
+### `POST /api/sso/register`
 
 Called by the LMS's own event-registration form (see "Event registration" below). Creates a landing `users` row and sets the shared cookie. Same validation as landing's `/register` page.
 
 ```
-POST /api/auth/register
+POST /api/sso/register
 Content-Type: application/json
 {
   "name": "Budi Santoso",
@@ -153,12 +155,12 @@ Content-Type: application/json
 
 Response cookie is set on the same shared domain so the student is signed in on both apps immediately.
 
-### `POST /api/auth/signout`
+### `POST /api/sso/signout`
 
 LMS can call this to sign the user out globally. Clears the shared cookie.
 
 ```
-POST /api/auth/signout
+POST /api/sso/signout
 → 200
    Set-Cookie: sakem-session=; Max-Age=0; Domain=.sakolakembara.org
 ```
@@ -448,7 +450,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (publicRoutes.includes(to.path)) return;
 
   const { data } = await useAuthedFetch<{ authenticated: boolean }>(
-    `${config.public.landingUrl}/api/auth/session`,
+    `${config.public.landingUrl}/api/sso/session`,
   );
   if (!data.value?.authenticated) {
     const here = `${config.public.lmsUrl}${to.fullPath}`;
@@ -468,7 +470,7 @@ The LMS shows a Nuxt-native "Daftar Akun" form for event participants. On submit
 // pages/register.vue submit handler
 const submit = async (form: FormValues) => {
   const res = await $fetch<{ user: any } | { reason: string; fieldErrors?: any }>(
-    `${config.public.landingUrl}/api/auth/register`,
+    `${config.public.landingUrl}/api/sso/register`,
     {
       method: "POST",
       body: { ...form, source: "lms" },
@@ -513,7 +515,7 @@ Zero manual provisioning. No temp password.
 
 1. Prospect visits LMS event page directly, clicks "Daftar Tryout".
 2. Nuxt shows an LMS-styled register form.
-3. Submit → `POST landing.sakolakembara.org/api/auth/register` with `source: "lms"`.
+3. Submit → `POST landing.sakolakembara.org/api/sso/register` with `source: "lms"`.
 4. Landing creates a `users` row (`role=student`, `password_hash` set), sets the shared cookie, returns 201.
 5. LMS Nuxt sees the cookie next fetch, Django provisions the `LMSUser`, completes the event enrollment.
 
@@ -546,31 +548,37 @@ Add to `/etc/hosts`:
 
 Landing sets `Domain=.sakem.test` in dev (already the pattern for prod, just a different string). LMS reads the cookie from `lms.sakem.test`. Everything works exactly like production.
 
-Landing env:
+Landing `.env.local` additions (on top of the usual `AUTH_SECRET`, `DATABASE_URL`, etc.):
 ```
-SSO_COOKIE_DOMAIN=.sakem.test
 NEXTAUTH_URL=http://sakem.test:3000
+SSO_JWT_SECRET=<openssl rand -base64 32>
+SSO_COOKIE_DOMAIN=.sakem.test
+SSO_ALLOWED_ORIGINS=http://lms.sakem.test:3100,http://localhost:3100
 ```
 
-LMS Django env:
+LMS Django `.env` additions:
 ```
 LANDING_URL=http://sakem.test:3000
-SSO_COOKIE_DOMAIN=.sakem.test
-SSO_JWT_SECRET=<same as landing>
+SSO_JWT_SECRET=<same base64 string as landing>
+SSO_COOKIE_NAME=sakem-session
 ```
+
+Restart both dev servers after changing the env. Sign in on `http://sakem.test:3000/login`, then visit `http://lms.sakem.test:8000/` — Django's auth backend should see the shared cookie and auto-provision an LMSUser row.
 
 **Option B: dev-only shim**
 
-Landing exposes a `POST /api/dev/mint-token` endpoint (only enabled with `NODE_ENV=development`) that returns a JWT the LMS can manually paste into a cookie in DevTools. Faster to boot for LMS-only work, but doesn't exercise the real handshake.
+Landing could expose a `POST /api/dev/mint-token` endpoint (only enabled with `NODE_ENV=development`) that returns a JWT the LMS can manually paste into a cookie in DevTools. Faster to boot for LMS-only work, but doesn't exercise the real handshake. Not implemented yet — build it if the `.test` domain recipe is friction.
 
 Prefer Option A once the two apps talk to each other.
 
+**Single-subdomain fallback**: if `SSO_COOKIE_DOMAIN` is left blank, the SSO cookie is set host-only. Landing still works end-to-end but the LMS won't see the cookie. Fine for landing-only development sessions.
+
 ## Security notes
 
-- **CORS**: `POST /api/auth/register` (and `/api/auth/signout`) must accept requests from the LMS origin. Whitelist `https://lms.sakolakembara.org` (prod) and the dev equivalents. Set `Access-Control-Allow-Credentials: true`. Never `Allow-Origin: *`.
-- **CSRF**: Auth.js already handles CSRF for its own routes. The two new landing endpoints (`/api/auth/register`, `/api/auth/signout`) called from another origin need their own CSRF story. Simplest: require a double-submit cookie token, or require the request to originate from `*.sakolakembara.org` via the `Origin` header (weaker but pragmatic).
+- **CORS**: `POST /api/sso/register` (and `/api/sso/signout`) must accept requests from the LMS origin. Whitelist `https://lms.sakolakembara.org` (prod) and the dev equivalents. Set `Access-Control-Allow-Credentials: true`. Never `Allow-Origin: *`.
+- **CSRF**: Auth.js already handles CSRF for its own routes. The two new landing endpoints (`/api/sso/register`, `/api/sso/signout`) called from another origin need their own CSRF story. Simplest: require a double-submit cookie token, or require the request to originate from `*.sakolakembara.org` via the `Origin` header (weaker but pragmatic).
 - **Session revocation**: JWT is stateless — if a student is expelled from the program, they stay authed on LMS until the token expires (up to 30 days). Two mitigations:
-  - LMS course-content decorators re-check `accepted_batch_ids` on every request and can also hit `landing/api/auth/session` for the freshest state on sensitive actions.
+  - LMS course-content decorators re-check `accepted_batch_ids` on every request and can also hit `landing/api/sso/session` for the freshest state on sensitive actions.
   - For hard revocation (rare), shorten JWT lifetime and add a refresh flow. Not needed at MVP.
 - **Never expose the raw JWT to JS**. HttpOnly cookie only. LMS Nuxt never reads or manipulates the token — it just proxies the cookie to Django.
 - **Log user IDs, not emails, in LMS access logs**. Emails are PII; the landing UUID is stable and safe.
@@ -580,17 +588,18 @@ Prefer Option A once the two apps talk to each other.
 Tracked as a checklist so the LMS team knows what to expect. Grouped by
 milestone so the SSO handshake can ship independently from the email work.
 
-### Milestone 1 — SSO handshake (blocks LMS integration)
+### Milestone 1 — SSO handshake (blocks LMS integration) ✅ Landed
 
-- [ ] Auth.js session cookie config: `cookies.sessionToken.options.domain = ".sakolakembara.org"` in production (`.sakem.test` in dev)
-- [ ] Session cookie renamed to `sakem-session` for clarity (or a public alias next to the existing name)
-- [ ] JWT claims augmented with `landingRole` (renamed from the current `role` to make the "advisory" boundary visible), `acceptedInBatches`, `iss`, `aud`
-- [ ] `GET /api/auth/session` endpoint returning `{ authenticated, user? }`
-- [ ] `POST /api/auth/register` endpoint (extracted from the current `registerStudent` server action) with CORS for `lms.sakolakembara.org`
-- [ ] `POST /api/auth/signout` endpoint that clears the shared cookie
-- [ ] `SSO_JWT_SECRET` published to both apps' env
-- [ ] Local-dev `sakem.test` / `lms.sakem.test` recipe documented in landing's README
-- [ ] Rate limits applied to the new endpoints (reuse `lib/rate-limit.ts`)
+- [x] Sidecar SSO cookie (`sakem-session`) minted alongside Auth.js's own session cookie. Cookie domain read from `SSO_COOKIE_DOMAIN` — set to `.sakolakembara.org` in prod, `.sakem.test` in dev, blank for single-host dev. (`lib/sso.ts`, `auth.ts` events)
+- [x] JWT claims include `sub`, `email`, `name`, `emailVerified` (placeholder `true` until M2 lands), `landingRole` (advisory), `acceptedInBatches`, `iss`, `aud`. (`lib/sso.ts`, `lib/sso-claims.ts`)
+- [x] `GET /api/sso/session` endpoint — returns `{ authenticated, user? }`. (`app/api/sso/session/route.ts`)
+- [x] `POST /api/sso/register` endpoint — creates a landing student user via the existing `createStudentAccount` service and sets the SSO cookie on the response. (`app/api/sso/register/route.ts`)
+- [x] `POST /api/sso/signout` endpoint — clears the shared cookie. (`app/api/sso/signout/route.ts`)
+- [x] `SSO_JWT_SECRET`, `SSO_COOKIE_DOMAIN`, `SSO_ALLOWED_ORIGINS` in `.env.example` and validated in `lib/env.ts`.
+- [x] Local-dev `sakem.test` / `lms.sakem.test` recipe documented (see "Local development" section below).
+- [x] Rate limits on all three endpoints via `lib/rate-limit.ts` (`sso.register`, `sso.signout`; `sso.session` is a bare GET and doesn't need throttling).
+- [x] CORS via `lib/cors.ts` — allow-listed origins from `SSO_ALLOWED_ORIGINS`, no wildcards, credentials always on.
+- [x] Vitest coverage: `__tests__/sso.test.ts` (roundtrip, tampering, secret rotation, cookie options), `__tests__/sso-claims.test.ts` (student / editor / event-only claim shapes).
 
 ### Milestone 2 — Email verification + password reset (blocks LMS event registration and any email-based feature)
 
@@ -599,10 +608,10 @@ milestone so the SSO handshake can ship independently from the email work.
 - [ ] `lib/email.ts` helper with typed template rendering
 - [ ] Schema migration: `users.email_verified_at timestamptz NULL` + index; backfill existing rows as verified (pre-launch, all-trusted)
 - [ ] Google OAuth `signIn` callback sets `email_verified_at = now()` on account creation
-- [ ] `POST /api/auth/resend-verification` (rate-limited: 2/hour/user)
-- [ ] `GET /verify-email?token=...` page + endpoint
-- [ ] `POST /api/auth/request-password-reset` + `/forgot-password` page (rate-limited: 3/hour/IP, silent-200 on unknown-email to prevent enumeration)
-- [ ] `/reset-password?token=...` page + `POST /api/auth/reset-password` endpoint
+- [ ] `POST /api/account/resend-verification` (rate-limited: 2/hour/user)
+- [ ] `GET /verify-email?token=...` page + endpoint (server action or route handler under `/api/account/*` — anything under `/api/auth/*` is owned by Auth.js's catch-all handler)
+- [ ] `POST /api/account/request-password-reset` + `/forgot-password` page (rate-limited: 3/hour/IP, silent-200 on unknown-email to prevent enumeration)
+- [ ] `/reset-password?token=...` page + `POST /api/account/reset-password` endpoint
 - [ ] JWT claim `emailVerified: boolean` added
 - [ ] Registration wizard (`/portal/daftar`) gate: unverified email cannot submit
 - [ ] Persistent yellow banner in `/portal` while `emailVerifiedAt IS NULL` with "Kirim ulang tautan verifikasi" action

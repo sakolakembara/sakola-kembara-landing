@@ -19,6 +19,7 @@ Live: <https://sakolakembara.org>
 - **Vitest** for unit tests (`__tests__/`) — schemas, rate limiter, admin service, auth guards
 - **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
 - **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/portal/daftar` submit, `/register` signup, credential sign-in)
+- **SSO handshake** to the upcoming LMS at `lms.sakolakembara.org` — sidecar `sakem-session` cookie on `.sakolakembara.org` + `/api/sso/{session,register,signout}` endpoints. Contract lives in [`docs/architecture/lms-integration.md`](docs/architecture/lms-integration.md).
 - Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
 
 ## Prerequisites
