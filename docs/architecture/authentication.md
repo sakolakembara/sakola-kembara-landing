@@ -180,6 +180,19 @@ Sign in at `http://localhost:3000/login` with your seeded email + password (the 
 3. **First boot** — `docker compose up -d`, then `docker compose exec app npm run seed:super-admin`. This upserts a super_admin row so someone can sign in immediately via the admin password form.
 4. **After first sign-in** — remove the `SEED_SUPER_ADMIN_*` values from `.env.production` if you don't intend to rotate through the CLI. The row stays; only the env vars go.
 
+## Email verification + password reset
+
+Local-password accounts must verify their email before submitting the registration wizard, resetting a password, or (via LMS) registering for events or reaching course content. Google users are auto-verified because Google has already confirmed the address.
+
+- **Column**: `users.email_verified_at timestamptz NULL`. Null = unverified.
+- **Signup path**: `student-signup-service.ts` inserts the row; the caller (`/register` action or `/api/sso/register`) then fires `sendUserVerificationEmail` — best-effort, signup still succeeds if the vendor is down.
+- **Verify link**: signed HS256 JWT (24h TTL, purpose `verify-email`, signed with `AUTH_SECRET`). Delivered via Resend. Landed at `/verify-email?token=...` and redeemed by `verifyEmailByToken` in `lib/account-service.ts`.
+- **Portal banner**: `_verify-email-banner.tsx` sits above the current-batch card on `/portal` whenever `emailVerifiedAt IS NULL`. "Kirim ulang tautan" POSTs to `/api/account/resend-verification`.
+- **Password reset**: `/forgot-password` (silent-200 on unknown/Google-only/unverified emails to prevent enumeration) → email → `/reset-password?token=...` → auto-signs the user in on success. Redemption is rate-limited per token (5/hour) as a bruteforce mitigation on top of the JWT signature.
+- **Reset requires verified**: we refuse to send a reset link to an unverified account — otherwise a squatter could grab an unclaimed email + reset its password.
+
+Full contract, endpoint URLs, and the LMS-side follow-up items sit in [`lms-integration.md`](lms-integration.md) under Milestone 2.
+
 ## Handoff to the LMS
 
 The upcoming LMS (`lms.sakolakembara.org`, Django + Nuxt) consumes landing's identity via SSO rather than managing its own users. Landing is the identity provider; LMS auto-provisions a local user with an FK to `landing.users.id` on first sign-in and owns its own role model wholly independent of landing's. Contract, endpoints landing must expose, Django/Nuxt implementation guide, locked design decisions, and the landing-side checklist (grouped by milestone) are in [`lms-integration.md`](lms-integration.md).

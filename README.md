@@ -20,6 +20,7 @@ Live: <https://sakolakembara.org>
 - **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
 - **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/portal/daftar` submit, `/register` signup, credential sign-in)
 - **SSO handshake** to the upcoming LMS at `lms.sakolakembara.org` — sidecar `sakem-session` cookie on `.sakolakembara.org` + `/api/sso/{session,register,signout}` endpoints. Contract lives in [`docs/architecture/lms-integration.md`](docs/architecture/lms-integration.md).
+- **Transactional email** via **Resend** (`lib/email.ts`) powers email verification + self-service password reset. Dev fallback logs mail to stdout when `RESEND_API_KEY` is unset.
 - Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
 
 ## Prerequisites

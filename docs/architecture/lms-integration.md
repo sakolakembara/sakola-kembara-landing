@@ -601,20 +601,22 @@ milestone so the SSO handshake can ship independently from the email work.
 - [x] CORS via `lib/cors.ts` — allow-listed origins from `SSO_ALLOWED_ORIGINS`, no wildcards, credentials always on.
 - [x] Vitest coverage: `__tests__/sso.test.ts` (roundtrip, tampering, secret rotation, cookie options), `__tests__/sso-claims.test.ts` (student / editor / event-only claim shapes).
 
-### Milestone 2 — Email verification + password reset (blocks LMS event registration and any email-based feature)
+### Milestone 2 — Email verification + password reset ✅ Landed
 
-- [ ] Transactional email vendor picked (recommendation: Resend free tier — 3k emails/mo)
-- [ ] Sending domain verified (SPF + DKIM + DMARC on `sakolakembara.org`)
-- [ ] `lib/email.ts` helper with typed template rendering
-- [ ] Schema migration: `users.email_verified_at timestamptz NULL` + index; backfill existing rows as verified (pre-launch, all-trusted)
-- [ ] Google OAuth `signIn` callback sets `email_verified_at = now()` on account creation
-- [ ] `POST /api/account/resend-verification` (rate-limited: 2/hour/user)
-- [ ] `GET /verify-email?token=...` page + endpoint (server action or route handler under `/api/account/*` — anything under `/api/auth/*` is owned by Auth.js's catch-all handler)
-- [ ] `POST /api/account/request-password-reset` + `/forgot-password` page (rate-limited: 3/hour/IP, silent-200 on unknown-email to prevent enumeration)
-- [ ] `/reset-password?token=...` page + `POST /api/account/reset-password` endpoint
-- [ ] JWT claim `emailVerified: boolean` added
-- [ ] Registration wizard (`/portal/daftar`) gate: unverified email cannot submit
-- [ ] Persistent yellow banner in `/portal` while `emailVerifiedAt IS NULL` with "Kirim ulang tautan verifikasi" action
+- [x] Vendor: Resend (`resend` npm package). Free tier's 3k emails/mo covers the org's scale for the foreseeable future.
+- [ ] Sending domain verified (SPF + DKIM + DMARC on `sakolakembara.org`) — **ops step, not code.** Set up in the Resend dashboard before prod launch. See [`runbook/launch.md`](../runbook/launch.md).
+- [x] `lib/email.ts` — Resend wrapper with typed helpers (`sendVerificationEmail`, `sendPasswordResetEmail`), inline-styled HTML shell + plain-text fallback, dev-fallback that prints to stdout when `RESEND_API_KEY` is unset.
+- [x] Migration 0011: `users.email_verified_at timestamptz` + index; existing rows backfilled to `now()` in the same migration (`drizzle/0011_users_email_verified_at.sql`).
+- [x] Google `signIn` callback stamps `email_verified_at = now()` on account creation (and lifts a legacy password user's unverified state on Google link).
+- [x] `POST /api/account/resend-verification` — signed-in user requests a fresh link. Rate-limited 2/hour/user. (`app/api/account/resend-verification/route.ts`)
+- [x] `/verify-email?token=...` server-component page — redeems the JWT via `verifyEmailByToken`, idempotent on already-verified accounts, rejects if the email has changed since issue. (`app/(auth)/verify-email/page.tsx`, `lib/account-service.ts`)
+- [x] `/forgot-password` page + server action — silent-200 on unknown / Google-only / unverified emails to prevent enumeration. Rate-limited 3/hour/IP. (`app/(auth)/forgot-password/`, `lib/account-service.ts::requestPasswordReset`)
+- [x] `/reset-password?token=...` page + server action — validates token, sets bcrypt hash, auto-signs the user in on success. Rate-limited 5/hour/token. (`app/(auth)/reset-password/`, `lib/account-service.ts::resetPasswordByToken`)
+- [x] JWT claim `emailVerified` now reads from `users.email_verified_at` (was placeholder `true`).
+- [x] Registration wizard action refuses when `!emailVerifiedAt` — points user back to the portal banner.
+- [x] Portal home shows a yellow verification banner (`_verify-email-banner.tsx`) with a "Kirim ulang tautan" button that hits `/api/account/resend-verification`. Handles success / rate-limit / error states inline.
+- [x] Login page gains a "Lupa password?" link that carries the `from` param through to `/forgot-password`.
+- [x] Vitest coverage: `__tests__/account-tokens.test.ts` (purpose-mismatch, tamper, secret rotation), `__tests__/account-service.test.ts` (verify + request + reset happy paths + every rejection reason).
 
 ### Milestone 3 — Small landing follow-ups from LMS decisions
 
