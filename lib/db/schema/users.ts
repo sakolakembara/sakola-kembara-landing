@@ -32,6 +32,14 @@ export const users = pgTable(
     role: text("role", { enum: userRole }).notNull().default("student"),
     /** bcrypt digest. Null when the account is Google-only. */
     passwordHash: text("password_hash"),
+    /**
+     * When non-null, the user has confirmed ownership of their email
+     * address (clicked the verification link, or signed in with Google
+     * which auto-verifies). Null means unverified — the account can
+     * sign in but can't submit the registration form or reset a
+     * password until they verify.
+     */
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -39,6 +47,7 @@ export const users = pgTable(
   (t) => ({
     emailIdx: index("users_email_idx").on(t.email),
     roleIdx: index("users_role_idx").on(t.role),
+    emailVerifiedAtIdx: index("users_email_verified_at_idx").on(t.emailVerifiedAt),
   }),
 );
 
