@@ -618,9 +618,13 @@ milestone so the SSO handshake can ship independently from the email work.
 - [x] Login page gains a "Lupa password?" link that carries the `from` param through to `/forgot-password`.
 - [x] Vitest coverage: `__tests__/account-tokens.test.ts` (purpose-mismatch, tamper, secret rotation), `__tests__/account-service.test.ts` (verify + request + reset happy paths + every rejection reason).
 
-### Milestone 3 — Small landing follow-ups from LMS decisions
+### Milestone 3 — Small landing follow-ups from LMS decisions ✅ Landed
 
-- [ ] Revocation reason: prompt for a required review note when flipping `accepted` → `rejected` on `/admin/applications/[id]` (audit_log captures it already; UI just needs to enforce non-empty)
+- [x] Revocation transition (accepted → rejected) on `/admin/applications/[id]` is now first-class:
+  - Server detects the transition (previousStatus === "accepted" && newStatus === "rejected") and enforces a stricter note requirement (≥ 20 chars — enough to force a real reason).
+  - Audit log gets a dedicated `application.revoke` action with `{ previousStatus, revocationReason }` metadata so operators can filter revocations without eyeballing every metadata blob.
+  - `/admin/applications/[id]` form is now a client component (`_review-form.tsx`) that renders a red warning banner when the operator selects "rejected" while current status is "accepted", swaps the CTA label to "Cabut Penerimaan", and shows a live character counter against the 20-char minimum.
+  - Vitest coverage in `__tests__/application-status-action.test.ts` — normal transitions still emit the plain audit action; revocation with short notes redirects with the specific error; revocation with real notes emits `application.revoke` with the reason in metadata; rejected → rejected (idempotent) is NOT treated as a revocation.
 
 ## Locked decisions
 
