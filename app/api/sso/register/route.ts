@@ -1,11 +1,16 @@
 import { z } from "zod";
-import { corsHeadersFor, optionsPreflight } from "@/lib/cors";
+import {
+  corsHeadersFor,
+  isOriginAllowedForStateChange,
+  optionsPreflight,
+} from "@/lib/cors";
 import { rateLimit } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
 import {
   STUDENT_PASSWORD_MIN_LENGTH,
   createStudentAccount,
 } from "@/lib/student-signup-service";
+import { sendUserVerificationEmail } from "@/lib/verification-flow";
 import { buildSsoClaims } from "@/lib/sso-claims";
 import { signSsoToken, ssoCookieOptions } from "@/lib/sso";
 import { cookies } from "next/headers";
@@ -34,6 +39,17 @@ export const OPTIONS = optionsPreflight;
 export async function POST(request: Request): Promise<Response> {
   const cors = corsHeadersFor(request);
   const jsonHeaders = { "Content-Type": "application/json", ...cors };
+
+  // Login-CSRF defense. This endpoint sets a session cookie in the
+  // response, so we can't rely on CORS alone (CORS only stops the browser
+  // reading the reply; Set-Cookie lands regardless). Only accept POSTs
+  // whose Origin is explicitly allow-listed.
+  if (!isOriginAllowedForStateChange(request)) {
+    return new Response(
+      JSON.stringify({ reason: "forbidden_origin" }),
+      { status: 403, headers: jsonHeaders },
+    );
+  }
 
   const limit = await rateLimit({
     action: "sso.register",
@@ -92,6 +108,10 @@ export async function POST(request: Request): Promise<Response> {
     resourceId: result.id,
     metadata: { source: parsed.data.source ?? "landing" },
   });
+
+  // Best-effort send of the verification email. Failure doesn't fail the
+  // signup — the caller can invoke /api/account/resend-verification later.
+  await sendUserVerificationEmail(result.id, parsed.data.email);
 
   // Mint the SSO cookie so the caller is signed in immediately.
   const claims = await buildSsoClaims(result.id);

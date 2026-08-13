@@ -1,5 +1,9 @@
 import { cookies } from "next/headers";
-import { corsHeadersFor, optionsPreflight } from "@/lib/cors";
+import {
+  corsHeadersFor,
+  isOriginAllowedForStateChange,
+  optionsPreflight,
+} from "@/lib/cors";
 import { clearSsoCookieOptions } from "@/lib/sso";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -21,9 +25,18 @@ export async function POST(request: Request): Promise<Response> {
   const cors = corsHeadersFor(request);
   const headers = { "Content-Type": "application/json", ...cors };
 
-  // Rate limit to blunt anyone spamming sign-outs (e.g. via CSRF on a
-  // page they got the origin allow-listed for). Generous — legit users
-  // sign out infrequently.
+  // Origin allow-list check — signing a user out remotely is state-changing
+  // and the browser will attempt it (via a form submit or fetch) even
+  // without CORS allowing the response read. Reject unknown origins.
+  if (!isOriginAllowedForStateChange(request)) {
+    return new Response(
+      JSON.stringify({ reason: "forbidden_origin" }),
+      { status: 403, headers },
+    );
+  }
+
+  // Rate limit to blunt anyone spamming sign-outs even from an allow-listed
+  // origin. Generous — legit users sign out infrequently.
   const limit = await rateLimit({
     action: "sso.signout",
     limit: 20,
