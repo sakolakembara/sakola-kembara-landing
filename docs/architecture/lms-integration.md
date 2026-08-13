@@ -6,7 +6,7 @@
 
 ## The one-sentence design
 
-Landing is the sole identity provider. LMS is a relying party that reads a signed session cookie set on `.sakolakembara.org`, auto-provisions a local Django user with an FK to `landing.users.id` on first sign-in, and gates features by JWT claims — not by blocking the front door.
+Landing is the sole identity provider. LMS is a relying party that reads a signed session cookie set on `.sakolakembara.org`, auto-provisions a local Django user with an FK to `landing.users.id` on first sign-in, and gates features by JWT claims + LMS-owned state — not by blocking the front door. LMS's role model is fully independent of landing's.
 
 ## Why not the alternatives
 
@@ -78,7 +78,8 @@ Student ──▶ https://lms.sakolakembara.org/dashboard
   "sub": "<landing.users.id — UUID>",
   "email": "budi@gmail.com",
   "name": "Budi Santoso",
-  "role": "student",
+  "emailVerified": true,
+  "landingRole": "student",
   "acceptedInBatches": ["<admission_batches.id>", ...],
   "iat": 1786600000,
   "exp": 1789192000,
@@ -92,11 +93,14 @@ Student ──▶ https://lms.sakolakembara.org/dashboard
 | `sub` | UUID | Primary key for `lms_users.landing_user_id`. Stable across sign-ins. |
 | `email` | string | Cache locally, but treat landing as source of truth on re-sign-in. Refresh on each auth. |
 | `name` | string | Same — cache, refresh on sign-in. |
-| `role` | `student` \| `viewer` \| `editor` \| `super_admin` | `student` is the default. The three admin roles indicate a Sakola Kembara staff member; give them read-only access to student data + instructor tools. |
+| `emailVerified` | boolean | Whether landing has confirmed ownership of the email. **Gate on this** for anything that assumes a real inbox (event registration, course access, sending confirmation emails). Google OAuth users are always true; email+password users start false until they click the verification link. |
+| `landingRole` | `student` \| `viewer` \| `editor` \| `super_admin` | **Advisory only.** Read this at provisioning time to set sensible defaults (e.g., surface a "you look like Sakola staff, want an instructor role?" prompt to the first LMS admin who onboards them). **Never read it for runtime authorization** — LMS role is fully independent (see below). |
 | `acceptedInBatches` | `UUID[]` | Non-empty = alumni or current student. Empty = event-only user. Drives course-content access. |
 | `iat` / `exp` | Unix seconds | Enforce `exp`. Reject stale tokens. |
 | `iss` | `"sakolakembara.org"` | Must match. |
 | `aud` | `"sakolakembara-services"` | Must match. |
+
+**Note on the `landingRole` claim.** It's named with the `landing` prefix on purpose — to make it visually obvious in Django code that this is an *external* system's concept, not the LMS's own role. LMS's own role model lives on `lms_users` (see below) and is the authoritative source for everything the LMS gates.
 
 ### Signing key
 
@@ -165,13 +169,27 @@ LMS should also expose its own `POST lms.sakolakembara.org/api/logout` that call
 
 ### `lms_users` model
 
+The LMS owns its own role enum, wholly independent of landing's. Start
+with three values (`learner` / `instructor` / `lms_admin`); grow the enum
+freely as new LMS concepts emerge (`mentor`, `author`, `curriculum_reviewer`,
+…) without touching landing. Landing's role is stored as an advisory
+snapshot only — never read for authorization.
+
 ```python
 # lms/users/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser
-from uuid import UUID
+
+class LMSRole(models.TextChoices):
+    LEARNER = "learner", "Learner"
+    INSTRUCTOR = "instructor", "Instructor"
+    LMS_ADMIN = "lms_admin", "LMS Admin"
+    # Grow this enum as LMS needs — mentor, author, etc.
 
 class LandingRole(models.TextChoices):
+    """Snapshot of the landing-side role at last sign-in. Advisory only —
+    never used for LMS authorization decisions. Kept for UI hints
+    (e.g. "this user is Sakola staff") and audit context."""
     STUDENT = "student", "Student"
     VIEWER = "viewer", "Viewer"
     EDITOR = "editor", "Editor"
@@ -182,7 +200,19 @@ class LMSUser(AbstractBaseUser):
     landing_user_id = models.UUIDField(unique=True, db_index=True)
     email = models.EmailField(unique=True)   # cached; refreshed on each sign-in
     name = models.CharField(max_length=200)  # cached
-    role = models.CharField(max_length=32, choices=LandingRole.choices, default=LandingRole.STUDENT)
+    email_verified = models.BooleanField(default=False)  # from JWT claim
+
+    # LMS's OWN role — the source of truth for LMS authorization.
+    # Everyone starts as LEARNER regardless of landing role. Promotion to
+    # INSTRUCTOR / LMS_ADMIN happens via LMS's own admin UI or the
+    # `promote_lms_admin` management command.
+    role = models.CharField(max_length=32, choices=LMSRole.choices, default=LMSRole.LEARNER)
+
+    # Advisory snapshot of landing role at last sign-in. UI-only — the ONE
+    # place that may read this is a "this user is Sakola staff" badge or
+    # the provisioning-time default suggestion. Django authorization
+    # decorators must NEVER branch on this field.
+    landing_role = models.CharField(max_length=32, choices=LandingRole.choices, default=LandingRole.STUDENT)
 
     # Snapshot of the acceptedInBatches claim at last sign-in. Used for the
     # coarse gate; fresh reads should trust the current JWT, not this field.
@@ -199,6 +229,41 @@ class LMSUser(AbstractBaseUser):
     class Meta:
         db_table = "lms_users"
 ```
+
+### Bootstrap: the first LMS admin
+
+Chicken-and-egg problem: everyone provisioned via SSO starts as `LEARNER`.
+Someone has to promote the first `LMS_ADMIN` before that role can be used
+through the UI. Solve it with a Django management command analogous to
+landing's `seed:super-admin`:
+
+```python
+# lms/users/management/commands/promote_lms_admin.py
+from django.core.management.base import BaseCommand
+from lms.users.models import LMSUser, LMSRole
+
+class Command(BaseCommand):
+    help = "Promote an existing LMSUser (identified by email) to LMS_ADMIN."
+
+    def add_arguments(self, parser):
+        parser.add_argument("email")
+
+    def handle(self, *args, email, **opts):
+        user = LMSUser.objects.get(email=email.lower())
+        user.role = LMSRole.LMS_ADMIN
+        user.save(update_fields=["role", "updated_at"])
+        self.stdout.write(self.style.SUCCESS(f"Promoted {email} to LMS_ADMIN."))
+```
+
+Run once on a fresh deployment after the intended admin has signed in at
+least once (so the LMSUser row exists):
+
+```bash
+docker compose exec lms python manage.py promote_lms_admin admin@sakolakembara.org
+```
+
+Subsequent instructor / admin promotions happen in the LMS admin UI, not
+via the CLI.
 
 ### Custom auth backend
 
@@ -232,15 +297,31 @@ class LandingSessionBackend(BaseBackend):
         except jwt.PyJWTError:
             return None
 
-        user, _created = LMSUser.objects.update_or_create(
+        # `role` on the LMSUser row is LMS-owned; we DON'T overwrite it on
+        # every sign-in — that would demote a promoted instructor back to
+        # learner. Set `role` only on initial creation.
+        user, created = LMSUser.objects.get_or_create(
             landing_user_id=claims["sub"],
             defaults={
                 "email": claims["email"].lower(),
                 "name": claims.get("name") or "",
-                "role": claims.get("role", "student"),
+                "email_verified": bool(claims.get("emailVerified", False)),
+                "landing_role": claims.get("landingRole", "student"),
                 "accepted_batch_ids": claims.get("acceptedInBatches", []),
+                # `role` defaults to LMSRole.LEARNER via the model default.
             },
         )
+        if not created:
+            # Refresh mutable snapshots from the current JWT. Don't touch role.
+            user.email = claims["email"].lower()
+            user.name = claims.get("name") or user.name
+            user.email_verified = bool(claims.get("emailVerified", False))
+            user.landing_role = claims.get("landingRole", user.landing_role)
+            user.accepted_batch_ids = claims.get("acceptedInBatches", [])
+            user.save(update_fields=[
+                "email", "name", "email_verified",
+                "landing_role", "accepted_batch_ids", "updated_at",
+            ])
         return user
 
     def get_user(self, user_id):
@@ -284,9 +365,25 @@ class RequireLandingSession:
 
 ### Per-feature gates
 
+Every runtime authorization check reads LMS-owned state (`lms_users.role`,
+`accepted_batch_ids`, `email_verified`, LMS's own enrollment tables).
+None of them branch on `landing_role`.
+
 ```python
-# lms/courses/decorators.py
+# lms/auth/decorators.py
 from django.http import HttpResponseForbidden
+from lms.users.models import LMSRole
+
+def verified_email_required(view):
+    """Anything that assumes a real inbox — event signups, notifications."""
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden()
+        if not request.user.email_verified:
+            return HttpResponseForbidden("Verify email first.")
+        return view(request, *args, **kwargs)
+    return wrapped
+
 
 def accepted_student_required(view):
     """Course content — only alumni / current accepted students."""
@@ -299,16 +396,25 @@ def accepted_student_required(view):
     return wrapped
 
 
-def admin_role_required(view):
-    """Instructor tools — anyone with a landing admin role."""
+def instructor_required(view):
+    """Grading, roster views, cohort announcements."""
     def wrapped(request, *args, **kwargs):
-        if request.user.role not in {"viewer", "editor", "super_admin"}:
+        if request.user.role not in {LMSRole.INSTRUCTOR, LMSRole.LMS_ADMIN}:
+            return HttpResponseForbidden()
+        return view(request, *args, **kwargs)
+    return wrapped
+
+
+def lms_admin_required(view):
+    """LMS-wide admin ops — promoting instructors, managing courses at scale."""
+    def wrapped(request, *args, **kwargs):
+        if request.user.role != LMSRole.LMS_ADMIN:
             return HttpResponseForbidden()
         return view(request, *args, **kwargs)
     return wrapped
 ```
 
-Any endpoint that needs finer control (e.g., "enrolled in this specific event") should combine these with a lookup on the LMS's own `event_registrations` table.
+Any endpoint that needs finer control (e.g., "enrolled in this specific event", "is instructor OF this specific course") combines these with a lookup on the LMS's own `event_registrations` / `course_instructors` tables.
 
 ## Nuxt (LMS frontend) implementation guide
 
@@ -383,10 +489,12 @@ const submit = async (form: FormValues) => {
 | --- | --- |
 | LMS homepage, event catalog | `RequireLandingSession` only (any signed-in user) |
 | Free tryout landing pages | `RequireLandingSession` only |
-| Event enrollment (tryout, workshop) | `RequireLandingSession` + local `event_registrations` insert |
-| Course content, cohort forums, grades | `@accepted_student_required` |
-| Instructor gradebook, roster, submissions | `@admin_role_required` |
-| Admin site (`/admin/`) | `role == "super_admin"` — reuse landing's role, don't duplicate |
+| Event enrollment (tryout, workshop) | `@verified_email_required` + local `event_registrations` insert |
+| Course content, cohort forums, grades | `@verified_email_required` + `@accepted_student_required` |
+| Instructor gradebook, roster, cohort announcements | `@instructor_required` (LMS role) |
+| LMS admin site (promote instructors, manage courses, etc.) | `@lms_admin_required` (LMS role) |
+
+Note: `landing_role` never appears in this table. LMS authorization decisions are made from LMS-owned state only.
 
 ## Registration flows
 
@@ -469,11 +577,14 @@ Prefer Option A once the two apps talk to each other.
 
 ## What the landing team commits to
 
-Tracked as a checklist so the LMS team knows what to expect:
+Tracked as a checklist so the LMS team knows what to expect. Grouped by
+milestone so the SSO handshake can ship independently from the email work.
 
-- [ ] Auth.js session cookie config: `cookies.sessionToken.options.domain = ".sakolakembara.org"` in production (`localhost` fallback in dev)
+### Milestone 1 — SSO handshake (blocks LMS integration)
+
+- [ ] Auth.js session cookie config: `cookies.sessionToken.options.domain = ".sakolakembara.org"` in production (`.sakem.test` in dev)
 - [ ] Session cookie renamed to `sakem-session` for clarity (or a public alias next to the existing name)
-- [ ] JWT claims augmented with `role` (already present), `acceptedInBatches`, `iss`, `aud`
+- [ ] JWT claims augmented with `landingRole` (renamed from the current `role` to make the "advisory" boundary visible), `acceptedInBatches`, `iss`, `aud`
 - [ ] `GET /api/auth/session` endpoint returning `{ authenticated, user? }`
 - [ ] `POST /api/auth/register` endpoint (extracted from the current `registerStudent` server action) with CORS for `lms.sakolakembara.org`
 - [ ] `POST /api/auth/signout` endpoint that clears the shared cookie
@@ -481,12 +592,69 @@ Tracked as a checklist so the LMS team knows what to expect:
 - [ ] Local-dev `sakem.test` / `lms.sakem.test` recipe documented in landing's README
 - [ ] Rate limits applied to the new endpoints (reuse `lib/rate-limit.ts`)
 
-## Open decisions to make before implementation
+### Milestone 2 — Email verification + password reset (blocks LMS event registration and any email-based feature)
 
-1. **Instructor role on LMS**. Landing has `viewer`, `editor`, `super_admin`. Should LMS treat all three as instructors, or should there be a distinct `instructor` role? If distinct, does it live on landing (needs schema change) or LMS (needs a promotion UI)? **Recommendation**: reuse landing's admin roles for LMS instructor access initially. Split later if the concerns actually diverge.
-2. **What happens to a student who was accepted, then had their acceptance revoked?** The `acceptedInBatches` claim would no longer include that batch. LMS auto-revokes course access on next sign-in. Do we want to preserve their submissions / grades? **Recommendation**: yes, keep the `LMSUser` row + all submissions; just drop them from `active_enrollments`. Never hard-delete learning data.
-3. **Multi-batch students** (someone applied Gen 6, was rejected, applied Gen 7, was accepted). Do they get access to Gen 6 materials? **Recommendation**: no — course access is scoped to batches where they were accepted. `acceptedInBatches` already carries the exact list.
-4. **Password reset UX**. Only landing knows about passwords. If a student clicks "Lupa password?" on the LMS login redirect page, they're bounced to landing's reset flow. Landing needs a `/forgot-password` page. (This is a landing gap regardless of LMS.)
+- [ ] Transactional email vendor picked (recommendation: Resend free tier — 3k emails/mo)
+- [ ] Sending domain verified (SPF + DKIM + DMARC on `sakolakembara.org`)
+- [ ] `lib/email.ts` helper with typed template rendering
+- [ ] Schema migration: `users.email_verified_at timestamptz NULL` + index; backfill existing rows as verified (pre-launch, all-trusted)
+- [ ] Google OAuth `signIn` callback sets `email_verified_at = now()` on account creation
+- [ ] `POST /api/auth/resend-verification` (rate-limited: 2/hour/user)
+- [ ] `GET /verify-email?token=...` page + endpoint
+- [ ] `POST /api/auth/request-password-reset` + `/forgot-password` page (rate-limited: 3/hour/IP, silent-200 on unknown-email to prevent enumeration)
+- [ ] `/reset-password?token=...` page + `POST /api/auth/reset-password` endpoint
+- [ ] JWT claim `emailVerified: boolean` added
+- [ ] Registration wizard (`/portal/daftar`) gate: unverified email cannot submit
+- [ ] Persistent yellow banner in `/portal` while `emailVerifiedAt IS NULL` with "Kirim ulang tautan verifikasi" action
+
+### Milestone 3 — Small landing follow-ups from LMS decisions
+
+- [ ] Revocation reason: prompt for a required review note when flipping `accepted` → `rejected` on `/admin/applications/[id]` (audit_log captures it already; UI just needs to enforce non-empty)
+
+## Locked decisions
+
+Four design decisions were flagged during the initial design pass and have since been resolved. Recording the outcomes here so the LMS team doesn't need to re-litigate them.
+
+### 1. LMS role model is fully independent of landing's
+
+**Decision**: LMS owns its own role enum (`learner` / `instructor` / `lms_admin`, growing to `mentor` / `author` / etc. as needed). Everyone provisioned via SSO starts as `learner`, regardless of landing role. The landing `landingRole` claim is stored on `LMSUser` as an advisory snapshot but is **never read for runtime authorization**. The first `lms_admin` is bootstrapped via `python manage.py promote_lms_admin <email>`; subsequent promotions happen through LMS's own admin UI.
+
+**Why**: coupling LMS permissions to landing's role enum means every future LMS-specific role (`mentor`, `author`, `curriculum_reviewer`) either has to be added to landing's enum (polluting landing with LMS concerns) or requires the LMS to derive-from-landing rules that break whenever landing evolves. Full decoupling keeps both systems free to grow. A Sakola staff member becomes an LMS admin the same way anyone else does: sign in via SSO, then get promoted on the LMS side. Two separate concerns, two separate promotions.
+
+**Impact on code**: `LMSUser.role` = LMS enum, source of truth. `LMSUser.landing_role` = advisory snapshot, UI-only. Every decorator in this doc gates on `LMSUser.role`, never `landing_role`.
+
+### 2. Revoked acceptance: soft-revoke, never hard-delete
+
+**Decision**: When an admin flips `student_applications.status` from `accepted` back to `rejected` (e.g., misconduct, admin error, student drops out), the student's next JWT excludes that batch from `acceptedInBatches`. LMS course-content gates start failing immediately. All `LMSUser` rows, submissions, grades, and forum posts remain in the DB.
+
+**Why**: learning data belongs to the org's institutional memory regardless of the individual's current status. Instructors may still need to grade in-flight submissions. Future decisions (re-admission, appeals) benefit from complete history.
+
+**Impact**:
+- No new status enum values on landing — reuse existing `rejected` for revocations. Audit log entries distinguish the transition (`application.rejected` events after `application.accepted` events on the same row).
+- Landing UI: reviewer-notes field becomes required when flipping `accepted` → `rejected` (see Milestone 3 checklist).
+- LMS: no change beyond the existing decorator logic. Ex-students can't reach course content but their data stays.
+- Optional future work: a "self-archive export" for ex-students who ask for a copy. Not MVP.
+
+### 3. Alumni retain permanent course access
+
+**Decision**: Alumni continue to see materials for every batch they were ever accepted in. `acceptedInBatches` naturally carries the full history — no expiry, no time gate.
+
+**Why**: storage is negligible for a foundation this size, and lifetime access to program materials is a real alumni benefit that costs nothing. Multi-batch students (rejected Gen N, accepted Gen N+1; or accepted Gen N, accepted-again Gen N+K) fall out naturally from the same rule.
+
+**Impact**: no code changes. If a real reason to distinguish alumni from current students emerges later (e.g., alumni shouldn't post in the current cohort's forum), LMS adds an `enrollment_status` (`current` | `alumni`) on its own `enrollments` table and derives it from `batch.resultsPublishedAt` age. The JWT stays batch-agnostic.
+
+### 4. Email verification required; bundled with transactional email + password reset
+
+**Decision**: Email+password users must verify their email before submitting the registration wizard, resetting a password, or (on LMS) registering for events or accessing course content. Google OAuth users are auto-verified since Google has already confirmed the address. Verification is delivered via transactional email (Resend recommended, free tier is sufficient for the org's scale). The `/forgot-password` self-service reset is shipped in the same milestone since it needs the same email infrastructure.
+
+**Why**: password reset without email verification is a security hole — an attacker who registered with someone else's email could later reset that person's real account when the victim tries to register. Verification also unlocks trustworthy email delivery for future work (acceptance notifications, event confirmations, LMS mail).
+
+**Impact**:
+- New JWT claim `emailVerified: boolean` (see claims table above).
+- New Django gate: `@verified_email_required` on any endpoint that assumes a real inbox (see cheat sheet).
+- New landing surfaces: `/verify-email`, `/forgot-password`, `/reset-password`, + a persistent banner in `/portal` while unverified.
+- Ops: DNS-level setup for the sending domain (SPF + DKIM + DMARC on `sakolakembara.org`) is a one-time ~1-hour job.
+- Milestone 2 in the landing checklist above tracks the full scope.
 
 ## Related docs
 

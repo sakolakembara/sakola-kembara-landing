@@ -182,7 +182,9 @@ Sign in at `http://localhost:3000/login` with your seeded email + password (the 
 
 ## Handoff to the LMS
 
-The upcoming LMS (`lms.sakolakembara.org`, Django + Nuxt) consumes landing's identity via SSO rather than managing its own users. Landing is the identity provider; LMS auto-provisions a local user with an FK to `landing.users.id` on first sign-in. Contract, endpoints landing must expose, Django/Nuxt implementation guide, and the landing-side checklist are in [`lms-integration.md`](lms-integration.md).
+The upcoming LMS (`lms.sakolakembara.org`, Django + Nuxt) consumes landing's identity via SSO rather than managing its own users. Landing is the identity provider; LMS auto-provisions a local user with an FK to `landing.users.id` on first sign-in and owns its own role model wholly independent of landing's. Contract, endpoints landing must expose, Django/Nuxt implementation guide, locked design decisions, and the landing-side checklist (grouped by milestone) are in [`lms-integration.md`](lms-integration.md).
+
+The LMS integration also pins down four landing-side follow-ups worth naming here for anyone hunting them: **email verification** (new `users.email_verified_at` column + `/verify-email` flow), **self-service password reset** (`/forgot-password` + `/reset-password`), **transactional email vendor** (Resend recommended), and a **required review-note prompt** when flipping an application from `accepted` back to `rejected`. See the "Milestone 2" and "Milestone 3" checklists in the LMS doc.
 
 ## Migration 0008 — snapshot resync required
 
