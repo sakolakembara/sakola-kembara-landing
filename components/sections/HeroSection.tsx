@@ -7,12 +7,15 @@ import { heroStats, heroImages } from "@/lib/data";
 
 export default function HeroSection() {
   return (
-    <section className="pt-40 pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+    <section className="pt-[var(--hero-top,8rem)] md:pt-40 pb-16 md:pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute -top-1/2 -right-1/5 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(30,136,229,0.08)_0%,transparent_70%)] rounded-full" />
+      <div
+        aria-hidden
+        className="absolute -top-1/2 -right-1/5 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(30,136,229,0.08)_0%,transparent_70%)] rounded-full"
+      />
 
       <div className="max-w-[1200px] mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Text Content */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -24,35 +27,38 @@ export default function HeroSection() {
               Pendidikan Untuk Semua
             </div>
 
-            <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-tight mb-6">
+            <h1 className="font-[var(--font-display)] text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-[1.2] md:leading-tight mb-5 md:mb-6">
               Membuka Pintu{" "}
               <span className="text-primary-blue">Pendidikan Tinggi</span> untuk
               Setiap Anak Indonesia
             </h1>
 
-            <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+            <p className="text-base md:text-lg text-gray-600 mb-7 md:mb-8 leading-relaxed">
               Kami hadir untuk mendobrak hambatan ekonomi dan geografis yang
               menghalangi siswa dari daerah terpencil dan keluarga kurang mampu
               dalam meraih impian mereka ke perguruan tinggi.
             </p>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
               <Link
                 href="#activities"
-                className="px-6 py-3 text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
+                className="px-6 py-3.5 sm:py-3 text-center text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
               >
                 Lihat Program Kami
               </Link>
               <Link
                 href="/donasi"
-                className="px-6 py-3 text-[15px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-primary-blue transition-all"
+                className="px-6 py-3.5 sm:py-3 text-center text-[15px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-primary-blue transition-all"
               >
                 Dukung Misi Kami
               </Link>
             </div>
 
-            {/* Stats */}
-            <div className="flex gap-10 mt-12 pt-8 border-t border-gray-200">
+            {/* Stats — a grid, not a flex row. As a flex row the three items
+                could not shrink below their min-content width, which pushed
+                the whole document wider than a phone screen and clipped every
+                line of hero copy. */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-8 mt-10 md:mt-12 pt-8 border-t border-gray-200">
               {heroStats.map((stat, index) => (
                 <motion.div
                   key={stat.label}
@@ -61,7 +67,7 @@ export default function HeroSection() {
                   transition={{ duration: 0.6, delay: 0.2 + index * 0.1 }}
                   className="text-left"
                 >
-                  <div className="text-4xl font-extrabold text-primary-blue leading-none">
+                  <div className="text-[28px] sm:text-4xl font-extrabold text-primary-blue leading-none">
                     {stat.number.includes("+") || stat.number.includes("%") ? (
                       <>
                         {stat.number.replace(/[+%]/g, "")}
@@ -73,7 +79,9 @@ export default function HeroSection() {
                       stat.number
                     )}
                   </div>
-                  <div className="text-sm text-gray-500 mt-2">{stat.label}</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1.5 sm:mt-2 leading-snug">
+                    {stat.label}
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -84,9 +92,9 @@ export default function HeroSection() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="relative"
+            className="relative md:mr-8 lg:mr-0"
           >
-            <div className="w-full h-[450px] rounded-3xl shadow-2xl overflow-hidden relative">
+            <div className="w-full aspect-[4/3] md:aspect-auto md:h-[450px] rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl overflow-hidden relative">
               <Image
                 src={heroImages.main}
                 alt="Siswa Sakola Kembara belajar bersama"
@@ -96,8 +104,10 @@ export default function HeroSection() {
               />
             </div>
 
-            {/* Floating badges */}
-            <div className="absolute -top-8 -right-8 w-[200px] h-[140px] rounded-2xl shadow-xl overflow-hidden">
+            {/* Floating badges — desktop only. At phone widths they sat on
+                top of the main photo and were clipped by the section, which
+                is what made the hero feel crowded. */}
+            <div className="hidden md:block absolute -top-8 -right-8 w-[200px] h-[140px] rounded-2xl shadow-xl overflow-hidden">
               <Image
                 src={heroImages.badge1}
                 alt="Kegiatan belajar kelompok"
@@ -111,7 +121,7 @@ export default function HeroSection() {
               </div>
             </div>
 
-            <div className="absolute -bottom-8 -left-8 w-[200px] h-[140px] rounded-2xl shadow-xl overflow-hidden">
+            <div className="hidden md:block absolute -bottom-8 -left-8 w-[200px] h-[140px] rounded-2xl shadow-xl overflow-hidden">
               <Image
                 src={heroImages.badge2}
                 alt="Siswa merayakan kelulusan"

@@ -11,7 +11,7 @@ export default function ProblemSection() {
   const [selectedStat, setSelectedStat] = useState<typeof problemStats[0] | null>(null);
 
   return (
-    <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-primary-blue to-accent-navy text-white relative overflow-hidden">
       {/* Pattern overlay */}
       <div
         className="absolute inset-0 opacity-30"
@@ -25,31 +25,31 @@ export default function ProblemSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="font-[var(--font-display)] text-3xl md:text-4xl mb-12"
+          className="font-[var(--font-display)] text-[28px] sm:text-3xl md:text-4xl mb-10 md:mb-12"
         >
           Mengapa Kami Ada?
         </motion.h2>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid sm:grid-cols-3 gap-5 md:gap-8 mb-10 md:mb-12">
           {problemStats.map((stat, index) => (
             <motion.div
               key={stat.number}
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.2 + index * 0.15 }}
-              className={`p-8 bg-white/5 rounded-2xl border border-white/10 ${
+              className={`p-6 md:p-8 bg-white/10 rounded-2xl border border-white/15 ${
                 stat.detail ? "cursor-pointer hover:bg-white/10 hover:border-secondary-yellow/50 transition-all duration-300" : ""
               }`}
               onClick={() => stat.detail && setSelectedStat(stat)}
             >
-              <div className="text-5xl md:text-6xl font-extrabold text-secondary-yellow leading-none mb-3">
+              <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-secondary-yellow leading-none mb-3">
                 {stat.number}
               </div>
-              <p className="text-base text-gray-300 leading-relaxed">
+              <p className="text-[15px] md:text-base text-white/85 leading-relaxed">
                 {stat.text}
               </p>
               {stat.detail && (
-                <p className="text-xs text-secondary-yellow/70 mt-3">
+                <p className="text-xs font-medium text-secondary-yellow mt-3">
                   Klik untuk info lebih lanjut
                 </p>
               )}
@@ -61,7 +61,7 @@ export default function ProblemSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.8 }}
-          className="text-2xl font-semibold"
+          className="text-xl md:text-2xl font-semibold"
         >
           Kami hadir untuk{" "}
           <span className="text-secondary-yellow">mengubah realitas ini.</span>
@@ -75,7 +75,7 @@ export default function ProblemSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 bg-accent-navy/80 backdrop-blur-sm z-50 flex items-center justify-center p-5 md:p-6"
             onClick={() => setSelectedStat(null)}
           >
             <motion.div
@@ -83,7 +83,7 @@ export default function ProblemSection() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="bg-gray-800 rounded-2xl p-8 max-w-lg w-full border border-white/10 shadow-2xl"
+              className="bg-accent-navy rounded-2xl p-6 md:p-8 max-w-lg w-full border border-white/15 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-6">
@@ -96,7 +96,7 @@ export default function ProblemSection() {
               </div>
               <div className="border-t border-white/10 pt-6">
                 <h4 className="text-secondary-yellow font-semibold mb-3">Mengapa ini terjadi?</h4>
-                <p className="text-gray-300 leading-relaxed text-sm">
+                <p className="text-white/85 leading-relaxed text-sm">
                   {selectedStat.detail}
                 </p>
               </div>

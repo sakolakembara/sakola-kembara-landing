@@ -21,17 +21,17 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-20 pt-[var(--hero-top,8rem)]">
+      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-14 md:pb-20 pt-[var(--hero-top,8rem)]">
         <div className="max-w-[1200px] mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-4">
+            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
               Laporan
             </h1>
-            <p className="text-lg md:text-xl text-white/90 max-w-[700px]">
+            <p className="text-base md:text-xl text-white/90 max-w-[700px]">
               Komitmen kami untuk transparansi. Laporan tahunan, keuangan,
               dampak, dan donasi tersedia untuk diunduh dan dipelajari oleh
               donor, mitra, dan publik.

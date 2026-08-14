@@ -13,7 +13,7 @@ export default function ActivitiesSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-24 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden" id="activities">
+    <section className="py-16 md:py-24 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden" id="activities">
       {/* Background decoration */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
@@ -26,23 +26,23 @@ export default function ActivitiesSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12 md:mb-16"
         >
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Program Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-4xl md:text-5xl text-white mb-6">
+          <h2 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl text-white mb-5 md:mb-6">
             Tiga Tahap Pembinaan
           </h2>
-          <p className="text-lg text-white/80 max-w-[600px] mx-auto">
+          <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
             Program pembinaan komprehensif dari penjangkauan siswa hingga
             pendampingan alumni untuk memastikan keberhasilan jangka panjang.
           </p>
         </motion.div>
 
         {/* Programs Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {programs.map((program, index) => (
             <Link href={`/program/${program.id}`} key={program.id} className="block h-full">
               <motion.div
@@ -52,7 +52,7 @@ export default function ActivitiesSection() {
                 className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all duration-300 cursor-pointer h-full flex flex-col"
               >
                 {/* Image */}
-                <div className="h-[200px] relative overflow-hidden">
+                <div className="h-[180px] sm:h-[200px] relative overflow-hidden">
                   <Image
                     src={program.image}
                     alt={program.title}

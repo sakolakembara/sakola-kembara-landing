@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getCurrentAnnouncement } from "@/lib/announcements";
@@ -10,11 +9,14 @@ export default async function PublicLayout({
 }) {
   const announcement = await getCurrentAnnouncement();
   // Hero sections read --hero-top for their top padding so they always clear
-  // the fixed navbar regardless of whether the announcement strip is present.
-  const heroTop = announcement ? "11rem" : "8rem";
-  const style = { "--hero-top": heroTop } as CSSProperties;
+  // the fixed navbar. The class carries breakpoint-specific values (see
+  // globals.css) because the announcement strip is much taller on phones.
   return (
-    <div style={style}>
+    <div
+      className={
+        announcement ? "nav-clearance-announced" : "nav-clearance"
+      }
+    >
       <a
         href="#konten-utama"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-blue focus:text-white focus:rounded-lg focus:font-semibold focus:shadow-lg"

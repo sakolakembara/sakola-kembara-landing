@@ -19,21 +19,21 @@ export default function NewsSection({ articles }: NewsSectionProps) {
   const displayArticles = articles;
 
   return (
-    <section className="py-16 bg-white" id="blog">
+    <section className="py-14 md:py-16 bg-white" id="blog">
       <div className="max-w-[1200px] mx-auto px-6" ref={ref}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="flex justify-between items-center mb-8"
+          className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8"
         >
           <div>
             <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-2">
               <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
               Blog
             </div>
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900">
+            <h2 className="font-[var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-gray-900">
               Cerita & Inspirasi
             </h2>
           </div>

@@ -67,7 +67,7 @@ export default function CTASection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-16 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
+    <section className="py-14 md:py-16 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
@@ -86,7 +86,7 @@ export default function CTASection() {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Bergabung Bersama Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-white mb-4">
+          <h2 className="font-[var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-white mb-4">
             Jadilah Bagian dari Perubahan
           </h2>
           <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
@@ -103,7 +103,7 @@ export default function CTASection() {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.2 + index * 0.1 }}
-              className="bg-white rounded-2xl p-5 flex items-center gap-4 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300"
+              className="bg-white rounded-2xl p-5 flex items-start sm:items-center gap-4 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300"
             >
               {/* Icon */}
               <div
@@ -122,7 +122,7 @@ export default function CTASection() {
                 </p>
                 <Link
                   href={option.href}
-                  className={`inline-flex items-center justify-center min-w-[160px] px-4 py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
+                  className={`inline-flex w-full sm:w-auto items-center justify-center sm:min-w-[160px] px-4 py-2.5 sm:py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
                 >
                   {option.buttonText}
                 </Link>

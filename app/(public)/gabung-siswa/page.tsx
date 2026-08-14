@@ -66,7 +66,7 @@ export default function GabungSiswaPage() {
   return (
     <main className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-24 pt-[var(--hero-top,8rem)] overflow-hidden">
+      <section className="relative bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-16 md:pb-24 pt-[var(--hero-top,8rem)] overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -77,10 +77,10 @@ export default function GabungSiswaPage() {
             <span className="inline-block px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider bg-white/15 rounded-full border border-white/25">
               Open Recruitment Gen 6
             </span>
-            <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight">
+            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight">
               Wujudkan Mimpimu Bersama Sakola Kembara
             </h1>
-            <p className="text-lg md:text-xl text-white/90 max-w-[700px] mb-8 leading-relaxed">
+            <p className="text-base md:text-xl text-white/90 max-w-[700px] mb-8 leading-relaxed">
               Bergabunglah dengan ratusan siswa lain yang berhasil menembus
               perguruan tinggi terbaik di Indonesia melalui program pembinaan
               intensif gratis dari Sakola Kembara.
@@ -210,7 +210,7 @@ export default function GabungSiswaPage() {
             <h2 className="font-[var(--font-display)] text-3xl md:text-4xl mb-4">
               Siap Bergabung dengan Sakola Kembara?
             </h2>
-            <p className="text-lg text-white/90 mb-8 leading-relaxed">
+            <p className="text-base md:text-lg text-white/90 mb-8 leading-relaxed">
               Isi formulir pendaftaran sekarang. Formulir dibagi menjadi
               beberapa bagian dan progres kamu akan tersimpan otomatis di
               browser ini.

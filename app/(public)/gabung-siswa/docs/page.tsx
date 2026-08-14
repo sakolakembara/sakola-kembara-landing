@@ -33,7 +33,7 @@ export default async function DocsPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-16 pt-[var(--hero-top,8rem)]">
+      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-12 md:pb-16 pt-[var(--hero-top,8rem)]">
         <div className="max-w-[1100px] mx-auto px-6">
           <Link
             href="/gabung-siswa"
@@ -41,10 +41,10 @@ export default async function DocsPage() {
           >
             <ArrowLeft size={14} /> Kembali ke halaman informasi
           </Link>
-          <h1 className="font-[var(--font-display)] text-4xl md:text-5xl mb-4">
+          <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl mb-4">
             Pusat Dokumen &amp; Berkas
           </h1>
-          <p className="text-lg text-white/90 max-w-[700px]">
+          <p className="text-base md:text-lg text-white/90 max-w-[700px]">
             Semua panduan, template berkas, poster, twibbon, dan bahan lain yang
             perlu kamu siapkan selama proses pendaftaran ada di sini. Kalau kamu
             baru mulai mendaftar, buka{" "}

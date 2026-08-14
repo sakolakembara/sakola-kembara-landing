@@ -93,6 +93,45 @@ html {
   scroll-behavior: smooth;
 }
 
+/* The navbar is fixed, so every hero has to reserve room for it. The strip
+   wraps to two or three lines on a narrow screen, which is why the mobile
+   values are the taller ones — a single hard-coded `--hero-top` used to push
+   copy under the navbar on phones. Heroes read this var for their top pad. */
+.nav-clearance {
+  --hero-top: 6.5rem;
+}
+
+.nav-clearance-announced {
+  --hero-top: 11.5rem;
+}
+
+@media (min-width: 768px) {
+  .nav-clearance {
+    --hero-top: 8rem;
+  }
+
+  .nav-clearance-announced {
+    --hero-top: 11rem;
+  }
+}
+
+/* Site-wide motion opt-out. Framer Motion respects this via useReducedMotion,
+   but CSS transitions/animations need the blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   font-family: var(--font-body);
   color: var(--dark-gray);
@@ -100,53 +139,61 @@ body {
   background: var(--white);
 }
 
-/* Typography Scale */
-.text-display {
-  font-family: var(--font-display);
-  font-size: 64px;
-  font-weight: 700;
-  line-height: 114%;
-  letter-spacing: -0.01em;
-}
+/* Typography Scale
+   These live in @layer base on purpose. Unlayered rules beat every layered
+   one in Tailwind v4 regardless of specificity, so as plain rules they were
+   silently overriding `text-3xl`, `text-sm`, and every other size utility
+   applied to a heading — a phone rendered every h1 at 48px and every h3 at
+   28px no matter what the component asked for. Sizes are fluid so bare
+   headings (no utility classes) still behave on a small screen. */
+@layer base {
+  .text-display {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 8vw, 64px);
+    font-weight: 700;
+    line-height: 114%;
+    letter-spacing: -0.01em;
+  }
 
-h1, .text-h1 {
-  font-family: var(--font-body);
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 155%;
-  letter-spacing: 0.003em;
-}
+  h1, .text-h1 {
+    font-family: var(--font-body);
+    font-size: clamp(30px, 6vw, 48px);
+    font-weight: 700;
+    line-height: 130%;
+    letter-spacing: 0.003em;
+  }
 
-h2, .text-h2 {
-  font-family: var(--font-body);
-  font-size: 36px;
-  font-weight: 600;
-  line-height: 155%;
-  letter-spacing: 0.003em;
-}
+  h2, .text-h2 {
+    font-family: var(--font-body);
+    font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600;
+    line-height: 135%;
+    letter-spacing: 0.003em;
+  }
 
-h3, .text-h3 {
-  font-family: var(--font-body);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 155%;
-  letter-spacing: 0.003em;
-}
+  h3, .text-h3 {
+    font-family: var(--font-body);
+    font-size: clamp(20px, 4vw, 28px);
+    font-weight: 600;
+    line-height: 140%;
+    letter-spacing: 0.003em;
+  }
 
-h4, .text-h4 {
-  font-family: var(--font-body);
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 155%;
-  letter-spacing: 0.003em;
-}
+  h4, .text-h4 {
+    font-family: var(--font-body);
+    font-size: clamp(18px, 3vw, 24px);
+    font-weight: 500;
+    line-height: 145%;
+    letter-spacing: 0.003em;
+  }
 
-h5, .text-h5 {
-  font-family: var(--font-body);
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 155%;
-  letter-spacing: 0.003em;
+  h5, .text-h5 {
+    font-family: var(--font-body);
+    font-size: clamp(17px, 2.5vw, 20px);
+    font-weight: 500;
+    line-height: 150%;
+    letter-spacing: 0.003em;
+  }
 }
 
 .text-body-lg {
@@ -335,6 +382,20 @@ h5, .text-h5 {
   color: var(--dark-gray);
   font-size: 1.0625rem;
   line-height: 1.75;
+  /* Migrated posts contain bare URLs. Unbroken, one of them is wider than a
+     phone screen and stretches the whole layout viewport. */
+  overflow-wrap: break-word;
+}
+
+.blog-content a {
+  overflow-wrap: anywhere;
+}
+
+/* Wide markdown tables scroll inside themselves rather than the page. */
+.blog-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .blog-content h2,

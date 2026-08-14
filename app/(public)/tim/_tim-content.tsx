@@ -44,17 +44,17 @@ export function TimContent({ members }: TimContentProps) {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-20 pt-[var(--hero-top,8rem)]">
+      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-14 md:pb-20 pt-[var(--hero-top,8rem)]">
         <div className="max-w-[1200px] mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="font-[var(--font-display)] text-4xl md:text-5xl lg:text-6xl mb-6">
+            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-6">
               Pahlawan di Balik Sakola Kembara
             </h1>
-            <p className="text-lg text-white/90 max-w-[600px]">
+            <p className="text-base md:text-lg text-white/90 max-w-[600px]">
               Didukung oleh pengurus dan relawan dari berbagai universitas
               terbaik di Indonesia yang berkomitmen untuk pendidikan yang
               setara.
