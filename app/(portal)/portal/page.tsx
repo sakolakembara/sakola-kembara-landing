@@ -15,25 +15,10 @@ import {
   getUserApplicationForBatch,
   type PortalApplication,
 } from "@/lib/student-applications";
-import type { ApplicationStatus } from "@/lib/db/schema";
 import { VerifyEmailBanner } from "./_verify-email-banner";
 
 export const metadata: Metadata = {
   title: "Beranda",
-};
-
-const STATUS_LABEL: Record<ApplicationStatus, string> = {
-  pending: "Menunggu review",
-  under_review: "Sedang direview",
-  accepted: "Diterima",
-  rejected: "Belum lolos",
-};
-
-const STATUS_PILL: Record<ApplicationStatus, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  under_review: "bg-blue-50 text-blue-700 border-blue-200",
-  accepted: "bg-secondary-green/10 text-secondary-green border-secondary-green/30",
-  rejected: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 interface PageProps {
@@ -171,7 +156,7 @@ function CurrentBatchCard({
           <div className="flex-1">
             <SectionEyebrow>Batch {openBatch.year}</SectionEyebrow>
             <h2 className="font-[var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
-              Pendaftaran kamu untuk {openBatch.name} sudah masuk
+              Pendaftaran kamu untuk {openBatch.name} sudah kami terima
             </h2>
             <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
               Kami akan mengabari hasilnya di halaman{" "}
@@ -281,76 +266,85 @@ function MetaChip({
   );
 }
 
+/**
+ * Registration-history card. Deliberately verdict-free: the accepted /
+ * rejected decision only ever renders on /portal/status, so this card at most
+ * says "the result is out, go look". Listing the batches a student has sent
+ * keeps the history useful without leaking the outcome here.
+ */
 function HistoryCard({ applications }: { applications: PortalApplication[] }) {
+  const published = applications.some(
+    (app) => app.batch?.resultsPublishedAt != null,
+  );
+
   return (
     <section className="bg-white rounded-3xl border border-gray-100 p-8 md:p-10 shadow-sm">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <SectionEyebrow>
-            <FileText size={12} className="text-primary-blue" /> Riwayat
-          </SectionEyebrow>
+      <div className="flex items-start gap-4">
+        <div
+          className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${
+            published
+              ? "bg-secondary-yellow/20 text-primary-blue"
+              : "bg-gray-100 text-gray-500"
+          }`}
+        >
+          {published ? <Sparkles size={22} /> : <FileText size={22} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <SectionEyebrow>Riwayat</SectionEyebrow>
           <h2 className="font-[var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
-            Riwayat pendaftaran
+            {applications.length === 0
+              ? "Riwayat pendaftaran"
+              : published
+                ? "Hasil pendaftaran kamu sudah keluar"
+                : "Hasil belum diumumkan"}
           </h2>
-        </div>
-        {applications.length > 0 && (
-          <Link
-            href="/portal/status"
-            className="inline-flex items-center gap-1 text-sm text-primary-blue font-semibold hover:underline"
-          >
-            Detail <ArrowRight size={14} />
-          </Link>
-        )}
-      </div>
 
-      {applications.length === 0 ? (
-        <div className="rounded-2xl bg-gray-50 border border-dashed border-gray-200 p-8 text-center">
-          <p className="text-sm text-gray-600 leading-relaxed max-w-[420px] mx-auto">
-            Kamu belum pernah mengirim pendaftaran. Setelah kirim, riwayat setiap
-            batch akan muncul di sini.
-          </p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {applications.map((app) => {
-            const showResult =
-              (app.status === "accepted" || app.status === "rejected") &&
-              app.batch !== null &&
-              app.batch.resultsPublishedAt !== null;
-            const label = showResult
-              ? STATUS_LABEL[app.status]
-              : "Menunggu hasil";
-            const pill = showResult
-              ? STATUS_PILL[app.status]
-              : STATUS_PILL.under_review;
-            return (
-              <li
-                key={app.id}
-                className="py-4 flex items-center justify-between gap-4"
+          {applications.length === 0 ? (
+            <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
+              Kamu belum pernah mengirim pendaftaran. Setelah kirim, setiap
+              pendaftaran yang kamu kirim akan tercatat di sini.
+            </p>
+          ) : (
+            <>
+              <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
+                {published
+                  ? "Panitia sudah mengumumkan keputusan batch kamu. Silakan buka halaman Status Pendaftaran untuk melihat hasilnya."
+                  : "Panitia masih menilai seluruh pendaftar batch ini. Hasilnya akan muncul di halaman Status Pendaftaran begitu diumumkan."}
+              </p>
+
+              <ul className="mt-5 divide-y divide-gray-100 border-y border-gray-100">
+                {applications.map((app) => (
+                  <li key={app.id} className="py-3">
+                    <div className="font-semibold text-gray-900 truncate">
+                      {app.batch
+                        ? `${app.batch.year} · ${app.batch.name}`
+                        : "Pendaftaran"}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Dikirim{" "}
+                      {app.submittedAt.toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                      })}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/portal/status"
+                className={`inline-flex items-center gap-2 mt-6 font-semibold rounded-xl transition-all ${
+                  published
+                    ? "px-6 py-3 bg-primary-blue text-white hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30"
+                    : "text-sm text-primary-blue hover:underline"
+                }`}
               >
-                <div className="min-w-0">
-                  <div className="font-semibold text-gray-900 truncate">
-                    {app.batch
-                      ? `${app.batch.year} · ${app.batch.name}`
-                      : "Pendaftaran"}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    Dikirim{" "}
-                    {app.submittedAt.toLocaleString("id-ID", {
-                      dateStyle: "medium",
-                    })}
-                  </div>
-                </div>
-                <span
-                  className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap ${pill}`}
-                >
-                  {label}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                {published ? "Lihat hasil" : "Buka Status Pendaftaran"}
+                <ArrowRight size={published ? 18 : 14} />
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

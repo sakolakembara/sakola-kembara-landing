@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { navLinks } from "@/lib/data";
 import { AnnouncementStrip } from "@/components/AnnouncementStrip";
+import { AuthNavButton } from "@/components/AuthNavButton";
 import type { Announcement } from "@/lib/db/schema";
 
 export default function Navbar({
@@ -45,8 +46,9 @@ export default function Navbar({
           ))}
         </ul>
 
-        {/* Desktop CTA Button */}
-        <div className="hidden md:flex">
+        {/* Desktop CTA Buttons */}
+        <div className="hidden md:flex items-center gap-2 lg:gap-3">
+          <AuthNavButton />
           <Link
             href="/donasi"
             className="px-6 py-3 text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
@@ -82,6 +84,10 @@ export default function Navbar({
             ))}
           </ul>
           <div className="flex flex-col gap-3 mt-6">
+            <AuthNavButton
+              variant="mobile"
+              onNavigate={() => setIsMenuOpen(false)}
+            />
             <Link
               href="/donasi"
               className="px-6 py-3 text-center text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark transition-all"
