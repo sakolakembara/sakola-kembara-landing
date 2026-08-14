@@ -34,7 +34,35 @@ export const problemStats = [
   },
 ];
 
-export const programs = [
+export interface SubProgramAttachment {
+  /** Link label shown on the button. */
+  label: string;
+  /** File under public/ — replace the file, keep the name, no code change. */
+  href: string;
+}
+
+export interface SubProgram {
+  title: string;
+  description: string;
+  /** Contact hours, rendered as a badge on the activity card. */
+  hours?: string;
+  /** Activity thumbnail under public/images/program/. */
+  image?: string;
+  /** Downloadable sample document. */
+  attachment?: SubProgramAttachment;
+}
+
+export interface Program {
+  id: string;
+  title: string;
+  description: string;
+  points: string[];
+  tag: string;
+  image: string;
+  subPrograms: SubProgram[];
+}
+
+export const programs: Program[] = [
   {
     id: "prapembinaan",
     title: "Roadshow & Seleksi",
@@ -74,26 +102,41 @@ export const programs = [
       {
         title: "KBM Pekanan",
         description: "Belajar setiap hari Sabtu dan Minggu dari Agustus hingga April.",
+        hours: "290+ jam belajar setahun",
+        image: "/images/program/kbm-pekanan.jpg",
       },
       {
         title: "Asrama Akhir Tahun",
         description: "Asrama selama 2 minggu saat libur semester sekolah di Desember-Januari. Proses belajar dilakukan setiap hari dari jam 8 pagi sampai 10 malam, di masing-masing cabang.",
+        hours: "100 jam belajar",
+        image: "/images/program/asrama-akhir-tahun.jpg",
       },
       {
         title: "Asrama Intensif",
         description: "Asrama 1-2 bulan setelah selesai berbagai Ujian di Sekolah. Proses belajar dilakukan setiap hari dari jam 8 pagi sampai 10 malam, dipusatkan di Kota Bandung.",
+        hours: "Hingga 400 jam belajar",
+        image: "/images/program/asrama-intensif.jpg",
       },
       {
         title: "Mentoring",
         description: "Program pendampingan personal untuk mendukung perkembangan akademik dan non-akademik siswa.",
+        image: "/images/program/mentoring.jpg",
       },
       {
         title: "Talents Mapping",
         description: "Bekerjasama dengan talentsmapping.id, membantu seluruh siswa Sakola Kembara untuk memetakan bakat sehingga dapat memilih jurusan sesuai dengan bakatnya.",
+        attachment: {
+          label: "Contoh hasil Talents Mapping",
+          href: "/files/contoh-hasil-talents-mapping.pdf",
+        },
       },
       {
         title: "Kurikulum Khusus",
         description: "Kurikulum yang dirancang khusus menggabungkan materi dari SD-SMA untuk dapat dipahami dalam 1 tahun pembelajaran, menyesuaikan dengan kemampuan awal siswa.",
+        attachment: {
+          label: "Contoh Kurikulum Khusus",
+          href: "/files/kurikulum-khusus-sakola-kembara.pdf",
+        },
       },
     ],
   },
@@ -195,30 +238,19 @@ export const mapLocations = [
     lng: 107.5500,
     type: "roadshow",
   },
-  // Rencana Bimbel Baru
   {
     id: 8,
     name: "Sakola Kembara Cisarua",
     region: "Bandung Barat",
     lat: -6.7833,
     lng: 107.5500,
-    type: "rencana",
-  },
-  {
-    id: 9,
-    name: "Sakola Kembara Bojonegara",
-    region: "Serang",
-    lat: -6.0333,
-    lng: 106.1333,
-    type: "rencana",
+    type: "bimbel",
   },
 ];
 
 export const mapStats = [
-  { number: "6", label: "Bimbel Aktif" },
-  { number: "2", label: "Rencana Bimbel Baru" },
+  { number: "7", label: "Bimbel Aktif" },
   { number: "3", label: "Provinsi" },
-  { number: "15+", label: "Sekolah Terjangkau" },
 ];
 
 export const testimonials = [

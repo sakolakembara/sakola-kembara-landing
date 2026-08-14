@@ -44,12 +44,12 @@ Source: `components/Navbar.tsx` + `navLinks` in `lib/data.ts`.
 
 Source: `components/Footer.tsx`.
 
-- **Background**: `bg-gray-900 text-white`. Container `max-w-[1200px] mx-auto px-6 pt-16 pb-10`.
+- **Background**: `bg-gradient-to-b from-accent-navy to-primary-blue text-white`, under a 4px `bg-secondary-yellow` hairline. Container `max-w-[1200px] mx-auto px-6 pt-12 md:pt-16 pb-8 md:pb-10`.
 - **3-column grid** on `lg:` (stacks to 2 / 1 on smaller widths):
   1. **Logo + location**: inverted logo (CSS `filter: invert(1) hue-rotate(180deg)` so the dark-blue mark reads light on dark), MapPin icon + "Bandung, Jawa Barat, Indonesia".
   2. **Kontak**: Mail icon link to `contact@sakolakembara.org`.
   3. **Social Media**: `<SocialLinks theme="dark" />` — Instagram, TikTok, X (Twitter), YouTube.
-- **Bottom strip**: `border-t border-white/10`, two lines:
+- **Bottom strip**: `border-t border-white/15`, two lines:
   - `© {new Date().getFullYear()} Sakola Kembara. All rights reserved.`
   - `Yayasan Sakola Kembara Indonesia`
 

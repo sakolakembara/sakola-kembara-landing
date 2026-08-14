@@ -79,28 +79,38 @@ body {
 }
 ```
 
-Heading defaults (`h1`–`h5` style block):
-- `h1` / `.text-h1` → 48px, 700, line-height 155%, letter-spacing 0.003em
-- `h2` / `.text-h2` → 36px, 600
-- `h3` / `.text-h3` → 28px, 600
-- `h4` / `.text-h4` → 24px, 500
-- `h5` / `.text-h5` → 20px, 500
-- `.text-display` → 64px Lora, 700, line-height 114%, letter-spacing -0.01em
+Heading defaults (`h1`–`h5` style block), fluid so a bare heading still behaves on a phone:
+- `h1` / `.text-h1` → `clamp(30px, 6vw, 48px)`, 700, line-height 130%
+- `h2` / `.text-h2` → `clamp(26px, 5vw, 36px)`, 600, line-height 135%
+- `h3` / `.text-h3` → `clamp(20px, 4vw, 28px)`, 600, line-height 140%
+- `h4` / `.text-h4` → `clamp(18px, 3vw, 24px)`, 500, line-height 145%
+- `h5` / `.text-h5` → `clamp(17px, 2.5vw, 20px)`, 500, line-height 150%
+- `.text-display` → `clamp(36px, 8vw, 64px)` Lora, 700, line-height 114%, letter-spacing -0.01em
 
 In practice **components override these with Tailwind utilities**, because Tailwind's type scale gives finer responsive control. Treat the `.text-h*` and `.text-display` classes as fallbacks, not the primary system.
+
+> **These rules must stay inside `@layer base`.** Tailwind v4 gives every
+> unlayered rule precedence over every layered one, regardless of
+> specificity. While this block sat outside a layer it silently beat the
+> utilities: a 390px viewport rendered every `h1` at 48px and every `h3` at
+> 28px no matter what the component asked for, which is what made mobile
+> headlines swallow the screen. If you add a base element rule here, keep it
+> in the layer.
 
 ### Heading scale (as used in production)
 
 | Use | Classes |
 | --- | --- |
-| Sub-page hero H1 | `text-4xl md:text-5xl lg:text-6xl font-[var(--font-display)]` |
-| Homepage Hero H1 | `text-4xl md:text-5xl lg:text-[56px] font-[var(--font-display)] leading-tight` |
-| Section H2 (light) | `text-3xl md:text-4xl lg:text-5xl font-[var(--font-display)] text-gray-900` |
-| Section H2 (dark) | `text-3xl md:text-4xl lg:text-5xl font-[var(--font-display)] text-white` |
+| Sub-page hero H1 | `text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-[var(--font-display)]` |
+| Homepage Hero H1 | `text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold font-[var(--font-display)]` |
+| Section H2 (light) | `text-3xl sm:text-4xl md:text-5xl font-[var(--font-display)] text-gray-900` |
+| Section H2 (dark) | `text-3xl sm:text-4xl md:text-5xl font-[var(--font-display)] text-white` |
 | Card H3 | `text-xl font-bold text-gray-900` |
-| Compact H3 (inside metrics / inside maps) | `text-2xl md:text-3xl font-bold` |
-| Big stat number | `text-4xl md:text-5xl font-extrabold` (impact) / `text-5xl md:text-6xl font-extrabold` (problem) |
-| Hero stat number | `text-4xl font-extrabold` |
+| Compact H3 (inside metrics / inside maps) | `text-xl sm:text-2xl md:text-3xl font-bold` |
+| Big stat number | `text-[26px] sm:text-4xl md:text-5xl font-extrabold` (impact) / `text-4xl sm:text-5xl md:text-6xl font-extrabold` (problem) |
+| Hero stat number | `text-[28px] sm:text-4xl font-extrabold` |
+
+Every heading starts a step smaller than its desktop size and steps up at `sm`/`md`. A long headline may drop one more step — the Programs H2 is `text-[26px] sm:text-3xl md:text-[40px]` because its question runs seven words where its siblings run three.
 
 The `font-[var(--font-display)]` is the brand signature for big headings — keep it on all H1s and most H2s. Smaller headings (H3, H4) stay on Plus Jakarta Sans for tightness.
 

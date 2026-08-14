@@ -19,7 +19,7 @@ When you look at the site, four things define the brand:
 
 - File: `public/images/logo-sakola-kembara.png` (300×103 source, rendered at `h-10 w-auto` ≈ 40px tall).
 - **Navbar**: used at native colors on white surface.
-- **Footer**: same file, inverted via CSS — `className="[filter:invert(1)_hue-rotate(180deg)]"` to read light on the dark `bg-gray-900` footer.
+- **Footer**: same file, inverted via CSS — `className="[filter:invert(1)_hue-rotate(180deg)]"` to read light on the navy footer.
 
 **Do**
 - Keep adequate clear space around the logo (at minimum the height of the wordmark cap height).
@@ -110,14 +110,17 @@ hover:shadow-2xl                          /* CTA-card emphasis */
 The homepage alternates surfaces to create banding:
 
 - `bg-gradient-to-b from-gray-50 to-white` (Hero)
-- `bg-gray-900` (Problem — dark photographic-style break)
+- `bg-gradient-to-b from-primary-blue to-accent-navy` (Problem — navy break)
 - `bg-gradient-to-br from-primary-blue to-accent-navy` (Activities — navy break)
 - `bg-white` (Impact)
-- `bg-gray-900` (Partners)
+- `bg-[#F5F7FA]` (Partners — light break before the footer)
 - `bg-gradient-to-br from-primary-blue to-accent-navy` (CTA)
 - `bg-white` (News)
+- `bg-gradient-to-b from-accent-navy to-primary-blue` (Footer)
 
 Maintain alternation. Don't run two dark sections back-to-back without a visual break.
+
+Dark surfaces are the brand navy family, never neutral charcoal. `bg-gray-900` used to carry Problem, Partners, and the footer; it reads cold and gloomy next to a palette built on navy and sunglow, so it is no longer used as a section background anywhere on the public site.
 
 Sub-page heroes consistently use `bg-gradient-to-br from-primary-blue to-accent-navy` with `pt-32 pb-20` and a serif H1.
 

@@ -145,7 +145,7 @@ bg-gradient-to-br {metricColors[color]} rounded-2xl p-8 text-white text-center r
 - `from-primary-blue to-accent-navy` for the "blue" metric
 - `from-secondary-yellow to-orange-500` for "yellow"
 - `from-secondary-green to-green-700` for "green"
-- `from-gray-700 to-gray-900` for "dark"
+- `from-blue-yonder to-accent-navy` for "dark"
 
 ### Donation tier card (`ContactSection` donation box)
 
@@ -192,10 +192,12 @@ Because the navbar is `fixed`, every page that mounts it adds top padding manual
 
 `components/Footer.tsx`:
 
-- `bg-gray-900 text-white`, container `max-w-[1200px] mx-auto px-6 pt-16 pb-10`.
+- `bg-gradient-to-b from-accent-navy to-primary-blue text-white`, container `max-w-[1200px] mx-auto px-6 pt-12 md:pt-16 pb-8 md:pb-10`.
+- A 4px `bg-secondary-yellow` hairline sits above the footer so it doesn't read as a slab of dark.
 - 3-column grid on `lg:` (stacks to 2 / 1).
-- Logo uses `[filter:invert(1)_hue-rotate(180deg)]` to read on dark.
-- Bottom strip: `border-t border-white/10`, `py-5`, copyright + legal entity name.
+- Column headings are `text-secondary-yellow`; body copy is `text-white/75`, not `gray-400` — the old neutral greys failed contrast against the dark surface.
+- Logo uses `[filter:invert(1)_hue-rotate(180deg)]` to read on dark. A proper light-variant logo asset would be better; there is only one logo file today.
+- Bottom strip: `border-t border-white/15`, `py-5`, copyright + legal entity name.
 
 ## Forms
 

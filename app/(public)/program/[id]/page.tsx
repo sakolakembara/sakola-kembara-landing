@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Download } from "lucide-react";
+import { CheckCircle2, Clock, Download, FileText } from "lucide-react";
 import { programs } from "@/lib/data";
 
 export default function ProgramDetailPage() {
@@ -94,25 +94,57 @@ export default function ProgramDetailPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
-                    className="bg-gray-50 rounded-2xl p-6 md:p-8 border border-gray-100 hover:border-primary-blue/20 hover:shadow-lg transition-all duration-300"
+                    className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden hover:border-primary-blue/20 hover:shadow-lg transition-all duration-300 flex flex-col"
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-primary-blue/10 rounded-full flex items-center justify-center">
-                          <CheckCircle2
-                            className="text-primary-blue"
-                            size={20}
-                          />
+                    {subProgram.image && (
+                      <div className="relative h-[180px] sm:h-[220px] w-full">
+                        <Image
+                          src={subProgram.image}
+                          alt={`Kegiatan ${subProgram.title}`}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <div className="p-6 md:p-8 flex-1 flex flex-col">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-primary-blue/10 rounded-full flex items-center justify-center">
+                            <CheckCircle2
+                              className="text-primary-blue"
+                              size={20}
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            {subProgram.title}
+                          </h3>
+                          {subProgram.hours && (
+                            <span className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full bg-primary-blue/10 text-primary-blue text-sm font-semibold">
+                              <Clock size={14} aria-hidden />
+                              {subProgram.hours}
+                            </span>
+                          )}
+                          <p className="text-gray-600 leading-relaxed">
+                            {subProgram.description}
+                          </p>
                         </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">
-                          {subProgram.title}
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                          {subProgram.description}
-                        </p>
-                      </div>
+
+                      {subProgram.attachment && (
+                        <a
+                          href={subProgram.attachment.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-5 sm:ml-14 inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 rounded-lg border border-primary-blue/30 bg-white text-primary-blue text-sm font-semibold hover:bg-primary-blue hover:text-white transition-colors"
+                        >
+                          <FileText size={16} aria-hidden />
+                          {subProgram.attachment.label} (PDF)
+                        </a>
+                      )}
                     </div>
                   </motion.div>
                 ))}
