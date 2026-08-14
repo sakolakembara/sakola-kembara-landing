@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { applicationStatus, studentApplications, type ApplicationStatus } from "@/lib/db/schema";
 import { BatchEditorForm } from "../_editor-form";
 import { publishBatchResults, unpublishBatchResults } from "../actions";
+import { TableHint } from "../../_table-hint";
 
 export const metadata: Metadata = {
   title: "Detail Batch",
@@ -147,6 +148,7 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
+                  <TableHint />
                   <thead className="bg-gray-50 text-gray-600">
                     <tr>
                       <Th>Nama</Th>

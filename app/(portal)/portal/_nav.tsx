@@ -24,7 +24,7 @@ export function PortalNav({ displayName }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-40 border-b border-gray-100">
+    <nav className="sticky top-0 bg-white/95 backdrop-blur-md z-40 border-b border-gray-100">
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-8">
           <Link href="/" aria-label="Sakola Kembara" className="flex items-center">
@@ -85,7 +85,7 @@ export function PortalNav({ displayName }: Props) {
 
       {/* Mobile secondary nav row */}
       <div className="md:hidden max-w-[1200px] mx-auto px-4 border-t border-gray-100">
-        <ul className="flex items-center gap-6 py-2">
+        <ul className="flex items-center gap-5">
           {NAV_ITEMS.map((item) => {
             const active =
               item.href === "/portal"
@@ -95,10 +95,10 @@ export function PortalNav({ displayName }: Props) {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`block py-3 text-sm font-medium border-b-2 transition-colors ${
                     active
-                      ? "text-primary-blue"
-                      : "text-gray-600 hover:text-primary-blue"
+                      ? "text-primary-blue border-primary-blue"
+                      : "text-gray-600 border-transparent hover:text-primary-blue"
                   }`}
                 >
                   {item.label}

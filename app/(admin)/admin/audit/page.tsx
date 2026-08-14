@@ -20,6 +20,7 @@ import {
   RESOURCE_TYPE_LABEL,
   auditHref,
 } from "@/lib/audit-labels";
+import { TableHint } from "../_table-hint";
 
 export const metadata: Metadata = {
   title: "Aktivitas",
@@ -195,6 +196,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <TableHint />
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th className="w-[180px]">Waktu</Th>

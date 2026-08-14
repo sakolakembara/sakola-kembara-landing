@@ -199,7 +199,7 @@ export default async function StatusPage() {
                   className={`rounded-3xl border overflow-hidden ${TONE_CARD[view.tone]}`}
                 >
                   <div className="p-7 md:p-12">
-                    <header className="flex items-start gap-4 mb-5">
+                    <header className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-5">
                       <div
                         className={`shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center ${TONE_ICON[view.tone]}`}
                       >
@@ -215,7 +215,10 @@ export default async function StatusPage() {
                             <span
                               className={`font-medium normal-case tracking-normal ${TONE_BATCH[view.tone]}`}
                             >
-                              · Batch {app.batch.year} · {app.batch.name}
+                              <span aria-hidden className="hidden sm:inline">
+                                ·{" "}
+                              </span>
+                              Batch {app.batch.year} · {app.batch.name}
                             </span>
                           )}
                         </div>

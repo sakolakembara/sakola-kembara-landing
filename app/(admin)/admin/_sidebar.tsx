@@ -85,7 +85,7 @@ export function Sidebar({ email }: SidebarProps) {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Tutup menu"
-            className="md:hidden p-1 -mr-1 text-gray-400 hover:text-white"
+            className="md:hidden p-2.5 -mr-2 text-gray-400 hover:text-white"
           >
             <X size={20} />
           </button>

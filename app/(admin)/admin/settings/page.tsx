@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { users, type AdminRole } from "@/lib/db/schema";
 import { countSuperAdmins, getAllAdmins } from "@/lib/users";
 import { DeleteButton } from "./_delete-button";
+import { TableHint } from "../_table-hint";
 
 export const metadata: Metadata = {
   title: "Pengaturan",
@@ -89,6 +90,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <TableHint />
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th>Email</Th>

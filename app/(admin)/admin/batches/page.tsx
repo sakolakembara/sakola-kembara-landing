@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { getAllBatches } from "@/lib/admission-batches";
+import { TableHint } from "../_table-hint";
 
 export const metadata: Metadata = {
   title: "Batch Pendaftaran",
@@ -75,6 +76,7 @@ export default async function BatchesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <TableHint />
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th>Tahun</Th>

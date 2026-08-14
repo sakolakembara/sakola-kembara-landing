@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Download, Edit, Plus } from "lucide-react";
 import { getAllReports, REPORT_CATEGORY_LABEL, REPORT_CATEGORY_PILL, formatBytes } from "@/lib/reports";
 import { DeleteButton } from "./_delete-button";
+import { TableHint } from "../_table-hint";
 
 export const metadata: Metadata = {
   title: "Laporan",
@@ -71,6 +72,7 @@ export default async function ReportsAdminPage({ searchParams }: PageProps) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <TableHint />
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th>Judul</Th>

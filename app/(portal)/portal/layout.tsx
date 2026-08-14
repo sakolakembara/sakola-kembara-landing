@@ -17,10 +17,10 @@ export default async function PortalLayout({
 
   return (
     <div className="min-h-dvh bg-gray-50 flex flex-col">
+      {/* The nav is sticky rather than fixed, so it reserves its own space —
+          no hand-maintained top padding that goes stale when the nav grows. */}
       <PortalNav displayName={displayName} />
-      {/* Fixed nav is ~64px desktop / ~92px mobile (with the secondary row).
-          Push main below it. */}
-      <main className="flex-1 pt-[92px] md:pt-[68px]">{children}</main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

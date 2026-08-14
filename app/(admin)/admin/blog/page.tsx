@@ -4,6 +4,7 @@ import { Edit, Plus } from "lucide-react";
 import { getBlogArticlesSorted } from "@/lib/blog";
 import { BLOG_CATEGORIES, cleanExcerpt } from "@/lib/blog-types";
 import { DeleteButton } from "./_delete-button";
+import { TableHint } from "../_table-hint";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -116,6 +117,7 @@ export default async function BlogAdminPage({ searchParams }: PageProps) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <TableHint />
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th>Judul</Th>

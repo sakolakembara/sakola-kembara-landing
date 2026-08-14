@@ -10,6 +10,7 @@ import {
   type ApplicationStatus,
 } from "@/lib/db/schema";
 import { getAllBatches } from "@/lib/admission-batches";
+import { TableHint } from "../_table-hint";
 
 export const metadata: Metadata = {
   title: "Pendaftar",
@@ -160,6 +161,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <TableHint />
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <Th>Nama</Th>

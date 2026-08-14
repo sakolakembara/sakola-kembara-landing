@@ -45,7 +45,7 @@ export default async function StudentFormPage() {
     return (
       <PortalGate
         eyebrow={`Batch ${openBatch.year}`}
-        headline={`Pendaftaran kamu untuk ${openBatch.name} sudah masuk`}
+        headline={`Pendaftaran kamu untuk ${openBatch.name} sudah kami terima`}
         icon={<CheckCircle2 className="text-secondary-green" size={32} />}
         body={
           <>
