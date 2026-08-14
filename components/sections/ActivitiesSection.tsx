@@ -32,8 +32,8 @@ export default function ActivitiesSection() {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Program Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl text-white mb-5 md:mb-6">
-            Tiga Tahap Pembinaan
+          <h2 className="font-[var(--font-display)] text-[26px] sm:text-3xl md:text-[40px] leading-tight text-white mb-5 md:mb-6 max-w-[760px] mx-auto text-balance">
+            Apa saja yang dilalui penerima manfaat Sakola Kembara?
           </h2>
           <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
             Program pembinaan komprehensif dari penjangkauan siswa hingga

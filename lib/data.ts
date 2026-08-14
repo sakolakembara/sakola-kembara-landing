@@ -13,7 +13,7 @@ export const navLinks = [
 export const heroStats = [
   { number: "500+", label: "Siswa Terbantu" },
   { number: "75.88%", label: "Berkuliah" },
-  { number: "5", label: "Wilayah Jangkauan" },
+  { number: "7", label: "Wilayah Jangkauan" },
 ];
 
 export const problemStats = [
@@ -253,8 +253,6 @@ export const partners = [
 // Hero section images
 export const heroImages = {
   main: "/images/hero-team.png",
-  badge1: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=280&fit=crop",
-  badge2: "https://images.unsplash.com/photo-1529390079861-591de354faf5?w=400&h=280&fit=crop",
 };
 
 export const donationTiers = [

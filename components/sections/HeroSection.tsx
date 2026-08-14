@@ -27,7 +27,7 @@ export default function HeroSection() {
               Pendidikan Untuk Semua
             </div>
 
-            <h1 className="font-[var(--font-display)] text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-[1.2] md:leading-tight mb-5 md:mb-6">
+            <h1 className="font-[var(--font-display)] font-bold text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-[1.2] md:leading-tight mb-5 md:mb-6">
               Membuka Pintu{" "}
               <span className="text-primary-blue">Pendidikan Tinggi</span> untuk
               Setiap Anak Indonesia
@@ -92,7 +92,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="relative md:mr-8 lg:mr-0"
+            className="relative"
           >
             <div className="w-full aspect-[4/3] md:aspect-auto md:h-[450px] rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl overflow-hidden relative">
               <Image
@@ -102,37 +102,6 @@ export default function HeroSection() {
                 className="object-cover"
                 priority
               />
-            </div>
-
-            {/* Floating badges — desktop only. At phone widths they sat on
-                top of the main photo and were clipped by the section, which
-                is what made the hero feel crowded. */}
-            <div className="hidden md:block absolute -top-8 -right-8 w-[200px] h-[140px] rounded-2xl shadow-xl overflow-hidden">
-              <Image
-                src={heroImages.badge1}
-                alt="Kegiatan belajar kelompok"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-secondary-yellow/80 to-transparent flex items-end justify-center pb-3">
-                <span className="text-white text-xs font-semibold">
-                  #PendidikanUntukSemua
-                </span>
-              </div>
-            </div>
-
-            <div className="hidden md:block absolute -bottom-8 -left-8 w-[200px] h-[140px] rounded-2xl shadow-xl overflow-hidden">
-              <Image
-                src={heroImages.badge2}
-                alt="Siswa merayakan kelulusan"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-secondary-green/80 to-transparent flex items-end justify-center pb-3">
-                <span className="text-white text-xs font-semibold">
-                  500+ Siswa Terbantu
-                </span>
-              </div>
             </div>
           </motion.div>
         </div>
