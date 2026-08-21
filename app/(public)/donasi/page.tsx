@@ -46,7 +46,7 @@ export default function DonasiPage() {
     <>
       <main className="min-h-screen bg-gray-50">
         {/* Hero Section */}
-        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-14 md:pb-20 pt-[var(--hero-top,8rem)]">
+        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24">
           <div className="max-w-[1200px] mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
