@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Briefcase,
@@ -144,9 +145,12 @@ export function TimContent({ members }: TimContentProps) {
             </h2>
             <p className="text-lg text-gray-600 mb-8">
               Kami selalu mencari relawan yang bersemangat untuk berkontribusi
-              dalam membuka akses pendidikan bagi siswa Indonesia.
+              dalam membuka akses pendidikan bagi siswa Indonesia. Terbuka juga
+              untuk kerja sama lembaga dan bentuk dukungan lainnya.
             </p>
-            <div className="flex justify-center">
+            {/* Secondary route for anyone who wants to collaborate rather than
+                sign up as a volunteer — the path the /donasi card used to serve. */}
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
               <a
                 href="https://linktr.ee/JoinSakolaKembara"
                 target="_blank"
@@ -155,6 +159,12 @@ export function TimContent({ members }: TimContentProps) {
               >
                 Bergabung Menjadi Relawan
               </a>
+              <Link
+                href="/kontak"
+                className="px-8 py-4 border-2 border-primary-blue text-primary-blue font-semibold rounded-xl hover:bg-primary-blue/5 transition-colors"
+              >
+                Hubungi Kami
+              </Link>
             </div>
           </motion.div>
         </div>

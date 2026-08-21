@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Download, Copy, Check, QrCode, ClipboardCheck, Users } from "lucide-react";
+import { Download, Copy, Check, QrCode, ClipboardCheck, Mail } from "lucide-react";
 import Link from "next/link";
 import qrisImage from "@/public/images/qris-sakola-kembara.png";
 
@@ -212,15 +212,17 @@ export default function DonasiPage() {
                 </a>
               </div>
 
-              {/* Ingin Bergabung */}
+              {/* Kontak Kami — donation questions. The volunteer/partnership
+                  pitch that used to sit here now lives on /tim, next to the
+                  actual sign-up link. */}
               <div className="bg-gradient-to-br from-primary-blue to-accent-navy rounded-3xl p-8 text-center text-white flex flex-col items-center">
                 <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center mb-4">
-                  <Users className="text-white" size={24} />
+                  <Mail className="text-white" size={24} />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Ingin Bergabung?</h3>
+                <h3 className="text-xl font-bold mb-2">Kontak Kami</h3>
                 <p className="text-white/80 text-sm mb-6 max-w-[360px]">
-                  Jadilah bagian dari perubahan. Daftarkan diri Anda sebagai relawan
-                  atau dukung kami melalui kerjasama lainnya.
+                  Ada pertanyaan seputar donasi, penyaluran dana, atau laporan
+                  penggunaannya? Tim kami siap membantu.
                 </p>
                 <Link
                   href="/kontak"
