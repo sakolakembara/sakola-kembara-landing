@@ -66,7 +66,8 @@ Render via the eyebrow JSX pattern (yellow dot + uppercase tracked text). See `c
 
 ## Date & number formatting
 
-- **Currency**: `Rp 50.000` — *Rp*, space, dot thousands separator (matches `donationTiers` in `lib/data.ts`).
+- **Currency**: `Rp50.000` — *Rp*, **no space**, dot thousands separator (matches `donationTiers` in `lib/data.ts`). PUEBI writes the symbol joined to the numeral, and the Professionalism pillar in [`tone-of-voice.md`](../context/tone-of-voice.md) commits the site to proper EYD. The spaced form `Rp 50.000` was used until 2026-08-21 and was swept out; don't reintroduce it.
+  - This is **display** formatting only. Form *input* is a separate matter: `rupiahSchema` in `lib/student-form-types.ts` deliberately rejects any `Rp` prefix a user types and asks for bare digits (`1.200.000`). Don't "fix" that to match this rule.
 - **Indonesian display dates**: long form (*"7 Desember 2025"*) — used in blog post cards (`article.date`).
 - **ISO dates** (`2025-12-07`): used in frontmatter and `dateISO` for sorting; never shown to users directly.
 - **Percentages**: `75.88%` with the `%` styled in `text-secondary-yellow` when used as a hero stat.

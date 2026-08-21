@@ -69,14 +69,21 @@ Three stacked groups inside the section:
 ### 4c. Testimonials carousel — "Cerita Sukses Alumni"
 - Custom manual carousel (no Swiper). Tracks `currentSlide` via `useState`; left/right buttons + dot indicators.
 - Shows **two testimonials per slide** on `md+` and **one** below that, wrapping around. Cards stack image-over-quote on phones — side by side, the quote column was ~110px wide.
-- Each testimonial card: portrait image left, italic quote + name + major (blue) + university chip right.
-- Source: `testimonials` in `lib/data.ts`. Currently only **2 entries**, which makes the wrap-around redundant — add more entries to make the carousel meaningful.
+- Each testimonial card: portrait image left, italic quote on the right with name + major (blue) + university chip bottom-anchored via `mt-auto`, so a short quote and a long one still line up across a pair.
+- Source: `testimonials` in `lib/data.ts` — **7 entries** as of 2026-08-21 (2 original + 5 alumni quotes supplied by the team).
+- Quote lengths range ~270–490 characters. The slide track is a flex row, so the carousel's height is set by the tallest slide and stays constant while sliding (no layout jump), at the cost of whitespace on the shorter ones. If that whitespace becomes a problem, trim the longest quote rather than adding a line-clamp — clamping would truncate a real person's words with no way to expand them.
+- Alumni photos are all **placeholders** in `public/images/testimoni/`; see `public/images/README.md`.
 
 ## 5. Partners (`PartnersSection.tsx`)
 
-- Light `bg-[#F5F7FA]`. Header + flex-wrapped partner tiles (`w-[136px] sm:w-40 h-20`, white background, `border-gray-200`, `text-gray-700`).
-- Source: `partners` in `lib/data.ts`. Currently only ITB has a real logo URL; the rest render the partner name as a text label inside the tile.
-- Logos themselves are not actually displayed — only `partner.name`. The `partner.logo` field is unused at present.
+- Light `bg-[#F5F7FA]`. Header + two subheaded groups of flex-wrapped partner tiles.
+- **Split into two groups** so active relationships read apart from past ones:
+  - *Partner & Pendukung Aktif* — `activePartners` in `lib/data.ts` (ITB, Talents Mapping, Zurich Syariah, Rumah Amal Salman, ITC)
+  - *Pernah Bermitra & Mendukung* — `pastPartners` (Salam Setara)
+  - `partners` remains exported as the flat concatenation for any consumer that wants the whole list.
+- Each tile is a column: logo on top (`h-11 sm:h-12`, `object-contain`), partner name below in `text-[11px] sm:text-xs`. The container uses `items-stretch` so tiles stay level when a long name wraps.
+- Every `partner.logo` is a **placeholder** in `public/images/partners/` (400×200 PNG), statically imported. Drop a real logo in at the same filename to replace it — see `public/images/README.md`.
+- Logo `alt` is intentionally empty: the name is adjacent visible text, so alt text would double-announce it.
 
 ## 6. CTA — Bergabung Bersama Kami (`CTASection.tsx`)
 
@@ -84,11 +91,12 @@ Three stacked groups inside the section:
 - **Eyebrow**: yellow dot + `Bergabung Bersama Kami`.
 - **H2**: "Jadilah Bagian dari Perubahan".
 - **4 CTA cards** (2-col grid) — each is a horizontal card with a colored icon tile + title + short blurb + a colored pill button:
-  1. **Menjadi Siswa** (orange) → `/kontak` — "Daftar Sekarang"
+  1. **Menjadi Siswa** (orange) → `/gabung-siswa` — "Daftar Sekarang" (was `/kontak`; the student landing page is the correct destination)
   2. **Menjadi Donatur** (primary blue) → `/donasi` — "Donasi Sekarang"
   3. **Menjadi Relawan** (green) → `/kontak` — "Gabung Tim"
   4. **Menjadi Partner** (yellow) → `/kontak` — "Hubungi Kami"
-- Bottom tagline: "Bersama-sama, kita bisa membuka lebih banyak pintu pendidikan untuk generasi masa depan Indonesia."
+- Bottom line: "Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami bantu mencarikannya."
+- Card blurbs and the intro paragraph were rewritten 2026-08-21 to name concrete mechanisms instead of generic sentiment. The intro carries no cohort figure on purpose (Impact section already states them). See `docs/context/tone-of-voice.md`.
 
 > The 4-card content is hard-coded inside `CTASection.tsx` (not in `lib/data.ts`). Move to `lib/data.ts` if it ever needs CMS-managed control.
 

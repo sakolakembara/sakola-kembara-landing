@@ -73,7 +73,8 @@ From `heroStats`, `impactMetrics`, and `mapStats` in `lib/data.ts`:
 ## Programs / initiatives mentioned on the site
 
 - **Bimbingan Belajar Kembara** (primary program — three-phase cycle above).
-- **Donation tiers** (currently shown on Donasi page & ContactSection): **Bronze Rp 50.000**, **Silver Rp 100.000**, **Gold Rp 200.000**, **Custom**.
+- **Donation tiers**: **Bronze Rp50.000**, **Silver Rp100.000**, **Gold Rp200.000**, **Custom**.
+  - Correction (2026-08-21): these are **not currently rendered anywhere**. `donationTiers` in `lib/data.ts` is exported but has no consumer, and `ContactSection` no longer exists as a component. The values are kept as the agreed tier definition for whenever the Donasi page surfaces them.
 - **Volunteer roles**: recruited via external Linktree (`https://linktr.ee/JoinSakolaKembara`) linked from the Tim page.
 
 ## Partners shown on the site (`partners` in `lib/data.ts`)

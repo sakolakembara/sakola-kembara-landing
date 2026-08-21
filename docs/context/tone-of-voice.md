@@ -49,10 +49,41 @@ Keep new copy consistent with these. They live in the codebase today and are the
 **Partners heading**
 > Bersama Mewujudkan Perubahan
 
-**CTA section**
+**CTA section** (revised 2026-08-21 — the previous "Ada banyak cara untuk berkontribusi…" opener was replaced because it named no mechanism and no number)
 > Jadilah Bagian dari Perubahan
 >
-> Ada banyak cara untuk berkontribusi dalam membuka akses pendidikan bagi anak-anak Indonesia. Pilih peran yang sesuai dengan Anda.
+> Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya. Empat peran berikut membuat program kami terus berjalan, dan semuanya terbuka lebar untuk Anda.
+>
+> *Closing line:* Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami bantu mencarikannya.
+
+The intro opens by echoing the hero's own metaphor (*Membuka Pintu Pendidikan
+Tinggi*) as a plain statement of fact. The repetition of *terbuka* across the
+two sentences is deliberate: the door does not open by itself, but these roles
+are open.
+
+The closing clause reads *terbuka lebar untuk Anda*, not *untuk umum*. Two
+reasons, both worth preserving. *Anda* keeps the donor-facing pronoun this doc
+sets as the default, and it puts the reader inside the sentence rather than
+addressing a crowd. More importantly, *untuk umum* would have been inaccurate:
+two of the four roles are not open to the general public — Menjadi Siswa runs a
+real selection (verifikasi berkas + wawancara) aimed at students from low-income
+and remote backgrounds, and Menjadi Partner is institutional. *untuk Anda* keeps
+the sense of openness without promising open eligibility.
+
+The intro deliberately carries **no cohort figure**. The Impact section already
+states 500+, 75.88%, 172, and 13 higher up the same page, so repeating one here
+only created a number that would go stale every intake year.
+
+The four CTA card blurbs still follow the concrete-mechanism rule — each names
+the program's actual span (*satu tahun, Agustus hingga April, tanpa biaya*),
+what a donation funds (*kegiatan belajar pekanan, asrama, pendampingan
+beasiswa*), what a volunteer actually does (*mengajar di kelas pekanan,
+mendampingi asrama*), and the current footprint (*tujuh cabang di tiga
+provinsi*). When these change, update `CTASection.tsx` and this doc together.
+
+Note the hedge in the donor blurb: *"dapat membantu menopang"*, not *"menopang"*.
+A single Rp50.000 donation does not by itself fund a student's year, and the
+Trust pillar is better served by a claim that survives scrutiny.
 
 **Donasi hero**
 > Dukung Perjalanan Mereka
@@ -65,6 +96,11 @@ Keep new copy consistent with these. They live in the codebase today and are the
 > Punya pertanyaan, ingin berkolaborasi, atau tertarik menjadi relawan? Kami senang mendengar dari Anda.
 
 The pattern is clear: open with an **emotional truth or stat**, support with a **concrete mechanism**, close with a **collective verb** (*kita ciptakan*, *kami hadir*, *mari bergerak*).
+
+One deliberate exception: the CTA section now closes with a practical offer of
+help rather than a collective verb. A collective-verb close directly above four
+action buttons restates what the buttons already say; pointing an undecided
+reader at a human is more useful there.
 
 ## CTA verb conventions
 

@@ -12,6 +12,7 @@
 | Hero stats | `heroStats` in `lib/data.ts` | 3 entries; rendered in `HeroSection.tsx` |
 | Problem stats (with modal detail) | `problemStats` in `lib/data.ts` | Middle stat carries the long `detail` string for the modal |
 | Programs + sub-programs | `programs` in `lib/data.ts` | Drives Activities section + `/program/[id]` |
+| Program photo gallery | `public/images/program/galeri/<program-id>/` (filesystem) | Read at request time by `lib/gallery.ts`; numbered files `1.jpg`, `2.jpg`, … No code change to add photos |
 | Team members | `teamMembers` in `lib/data.ts` | 8 placeholder entries with Unsplash avatars |
 | Impact metrics | `impactMetrics` in `lib/data.ts` | 4 entries with `color` key matching `metricColors` in `ImpactSection.tsx` |
 | Map locations + stats | `mapLocations`, `mapStats` in `lib/data.ts` | Drives the Leaflet map |
