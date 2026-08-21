@@ -1,15 +1,22 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Clock, Download, FileText } from "lucide-react";
 import { programs } from "@/lib/data";
+import type { GalleryPhoto } from "@/lib/gallery";
 
-export default function ProgramDetailPage() {
-  const params = useParams();
-  const programId = params.id as string;
+interface ProgramContentProps {
+  programId: string;
+  /** Read from disk by the server page — see lib/gallery.ts. */
+  gallery: GalleryPhoto[];
+}
+
+export default function ProgramContent({
+  programId,
+  gallery,
+}: ProgramContentProps) {
 
   const program = programs.find((p) => p.id === programId);
 
@@ -219,9 +226,28 @@ export default function ProgramDetailPage() {
               <p className="text-gray-600 mb-8">
                 Dokumentasi kegiatan program {program.title}.
               </p>
-              <div className="bg-gray-50 rounded-2xl p-12 border border-gray-200">
-                <p className="text-gray-400">Galeri foto akan ditambahkan</p>
-              </div>
+              {gallery.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                  {gallery.map((photo, index) => (
+                    <div
+                      key={photo.name}
+                      className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100"
+                    >
+                      <Image
+                        src={photo.src}
+                        alt={`Dokumentasi ${program.title} ${index + 1}`}
+                        fill
+                        sizes="(min-width: 768px) 33vw, 50vw"
+                        className="object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-2xl p-12 border border-gray-200">
+                  <p className="text-gray-400">Galeri foto akan ditambahkan</p>
+                </div>
+              )}
             </motion.div>
           </div>
         </section>

@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Next 16 rejects a query string on a local image unless localPatterns is
+    // configured (it ships a single default entry of {pathname:'**',search:''}
+    // and throws for anything with a '?'). The program gallery appends
+    // ?v=<size><mtime> so replacing a photo in place changes its URL and
+    // bypasses every cache — see lib/gallery.ts. Omitting `search` on the
+    // gallery entry allows any query string, but only for that path.
+    localPatterns: [
+      { pathname: "**", search: "" },
+      { pathname: "/images/program/galeri/**" },
+    ],
     remotePatterns: [
       // Legacy WordPress blog images (referenced from migrated markdown).
       {
