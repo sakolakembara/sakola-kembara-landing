@@ -21,7 +21,7 @@ export async function generateMetadata({
     title: `Program ${program.title}`,
     description: program.description,
     path: `/program/${id}`,
-    ogImage: program.image,
+    ogImage: program.image.src,
   });
 }
 

@@ -8,6 +8,7 @@ import { navLinks } from "@/lib/data";
 import { AnnouncementStrip } from "@/components/AnnouncementStrip";
 import { AuthNavButton } from "@/components/AuthNavButton";
 import type { Announcement } from "@/lib/db/schema";
+import brandLogo from "@/public/images/logo-sakola-kembara.png";
 
 export default function Navbar({
   announcement,
@@ -23,7 +24,7 @@ export default function Navbar({
         {/* Logo */}
         <Link href="/" aria-label="Sakola Kembara" className="flex items-center">
           <Image
-            src="/images/logo-sakola-kembara.png"
+            src={brandLogo}
             alt="Sakola Kembara"
             width={300}
             height={103}

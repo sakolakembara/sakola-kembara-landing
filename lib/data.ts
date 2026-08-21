@@ -1,5 +1,24 @@
 // Static data for Sakola Kembara website
 
+// Photos are imported rather than referenced by path string on purpose.
+// A static import makes Next emit a content-hashed URL, so replacing the
+// file on disk changes the URL and busts every cache automatically — a
+// plain "/images/..." string keeps the same URL and can be served stale
+// from .next/**/cache/images for up to images.minimumCacheTTL (4h).
+// Replacement workflow is unchanged: overwrite the file, same filename.
+// See public/images/README.md.
+import type { StaticImageData } from "next/image";
+import prapembinaanPhoto from "@/public/images/program/prapembinaan.jpg";
+import pembinaanPhoto from "@/public/images/program/pembinaan.jpg";
+import pascaPembinaanPhoto from "@/public/images/program/pasca-pembinaan.jpg";
+import daffaNajwanPhoto from "@/public/images/testimoni/daffa-najwan.jpg";
+import natiaNurFazaPhoto from "@/public/images/testimoni/natia-nur-faza.jpg";
+import kbmPekananPhoto from "@/public/images/program/kbm-pekanan.jpg";
+import asramaAkhirTahunPhoto from "@/public/images/program/asrama-akhir-tahun.jpg";
+import asramaIntensifPhoto from "@/public/images/program/asrama-intensif.jpg";
+import mentoringPhoto from "@/public/images/program/mentoring.jpg";
+import heroTeamPhoto from "@/public/images/hero-team.png";
+
 export const navLinks = [
   { href: "/", label: "Home" },
   { href: "/tim", label: "Team" },
@@ -46,8 +65,8 @@ export interface SubProgram {
   description: string;
   /** Contact hours, rendered as a badge on the activity card. */
   hours?: string;
-  /** Activity thumbnail under public/images/program/. */
-  image?: string;
+  /** Activity thumbnail, statically imported from public/images/program/. */
+  image?: StaticImageData;
   /** Downloadable sample document. */
   attachment?: SubProgramAttachment;
 }
@@ -58,7 +77,8 @@ export interface Program {
   description: string;
   points: string[];
   tag: string;
-  image: string;
+  /** Program card photo, statically imported from public/images/program/. */
+  image: StaticImageData;
   subPrograms: SubProgram[];
 }
 
@@ -74,7 +94,7 @@ export const programs: Program[] = [
       "Seleksi berbasis motivasi dan potensi belajar",
     ],
     tag: "Pra Pembinaan",
-    image: "https://images.unsplash.com/photo-1577896851231-70ef18881754?w=600&h=400&fit=crop",
+    image: prapembinaanPhoto,
     subPrograms: [
       {
         title: "Roadshow ke Sekolah",
@@ -97,30 +117,30 @@ export const programs: Program[] = [
       "Asrama intensif menjelang seleksi PTN",
     ],
     tag: "Pembinaan",
-    image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop",
+    image: pembinaanPhoto,
     subPrograms: [
       {
         title: "KBM Pekanan",
         description: "Belajar setiap hari Sabtu dan Minggu dari Agustus hingga April.",
         hours: "290+ jam belajar setahun",
-        image: "/images/program/kbm-pekanan.jpg",
+        image: kbmPekananPhoto,
       },
       {
         title: "Asrama Akhir Tahun",
         description: "Asrama selama 2 minggu saat libur semester sekolah di Desember-Januari. Proses belajar dilakukan setiap hari dari jam 8 pagi sampai 10 malam, di masing-masing cabang.",
         hours: "100 jam belajar",
-        image: "/images/program/asrama-akhir-tahun.jpg",
+        image: asramaAkhirTahunPhoto,
       },
       {
         title: "Asrama Intensif",
         description: "Asrama 1-2 bulan setelah selesai berbagai Ujian di Sekolah. Proses belajar dilakukan setiap hari dari jam 8 pagi sampai 10 malam, dipusatkan di Kota Bandung.",
         hours: "Hingga 400 jam belajar",
-        image: "/images/program/asrama-intensif.jpg",
+        image: asramaIntensifPhoto,
       },
       {
         title: "Mentoring",
         description: "Program pendampingan personal untuk mendukung perkembangan akademik dan non-akademik siswa.",
-        image: "/images/program/mentoring.jpg",
+        image: mentoringPhoto,
       },
       {
         title: "Talents Mapping",
@@ -151,7 +171,7 @@ export const programs: Program[] = [
       "50% alumni kembali membantu sebagai volunteer",
     ],
     tag: "Pasca Pembinaan",
-    image: "https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=600&h=400&fit=crop",
+    image: pascaPembinaanPhoto,
     subPrograms: [
       {
         title: "Pendampingan Beasiswa",
@@ -284,7 +304,7 @@ export const partners = [
 
 // Hero section images
 export const heroImages = {
-  main: "/images/hero-team.png",
+  main: heroTeamPhoto,
 };
 
 export const donationTiers = [

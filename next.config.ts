@@ -32,12 +32,6 @@ const nextConfig: NextConfig = {
         hostname: "sakolakembara.org",
         pathname: "/wp-content/uploads/**",
       },
-      // Unsplash placeholders — used as hero / program / team / testimonial
-      // fallbacks until real photography lands (see roadmap Phase 8).
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
       // Partner logos hosted on Wikimedia (e.g. ITB).
       {
         protocol: "https",

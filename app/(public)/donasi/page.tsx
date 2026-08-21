@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Copy, Check, QrCode, ClipboardCheck, Users } from "lucide-react";
 import Link from "next/link";
+import qrisImage from "@/public/images/qris-sakola-kembara.png";
 
 const bankDetails = [
   { label: "Bank", value: "Bank Muamalat" },
@@ -13,7 +14,10 @@ const bankDetails = [
 ];
 
 const ACCOUNT_NUMBER = "1010141940";
-const QRIS_IMAGE = "/images/qris-sakola-kembara.png";
+/** Repo path, shown verbatim to admins when the QR file is missing. */
+const QRIS_PUBLIC_PATH = "/images/qris-sakola-kembara.png";
+/** Content-hashed URL — swapping the QR file busts every cache on its own. */
+const QRIS_IMAGE = qrisImage.src;
 const CONFIRMATION_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSe0wQUmreIspbu75JpHYpuHHYbgVi4FaROcfNTiTvgchCywdQ/viewform";
 
@@ -98,7 +102,7 @@ export default function DonasiPage() {
                     <p className="text-sm text-gray-400">
                       Tambahkan file QRIS di
                       <br />
-                      <span className="font-mono text-xs">public{QRIS_IMAGE}</span>
+                      <span className="font-mono text-xs">public{QRIS_PUBLIC_PATH}</span>
                     </p>
                   </div>
                 ) : (
@@ -124,7 +128,7 @@ export default function DonasiPage() {
 
                 <a
                   href={QRIS_IMAGE}
-                  download
+                  download="qris-sakola-kembara.png"
                   className="mt-auto w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 border-primary-blue text-primary-blue font-semibold hover:bg-primary-blue/5 transition-colors"
                 >
                   <Download size={18} />

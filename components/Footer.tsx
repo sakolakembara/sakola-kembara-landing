@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
 import SocialLinks from "@/components/SocialLinks";
+import brandLogo from "@/public/images/logo-sakola-kembara.png";
 
 export default function Footer() {
   return (
@@ -19,7 +20,7 @@ export default function Footer() {
           <div>
             <Link href="/" aria-label="Sakola Kembara" className="inline-flex items-center mb-4">
               <Image
-                src="/images/logo-sakola-kembara.png"
+                src={brandLogo}
                 alt="Sakola Kembara"
                 width={300}
                 height={103}

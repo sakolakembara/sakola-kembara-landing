@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { portalSignOut } from "./_actions";
+import brandLogo from "@/public/images/logo-sakola-kembara.png";
 
 const NAV_ITEMS = [
   { href: "/portal", label: "Beranda" },
@@ -29,7 +30,7 @@ export function PortalNav({ displayName }: Props) {
         <div className="flex items-center gap-8">
           <Link href="/" aria-label="Sakola Kembara" className="flex items-center">
             <Image
-              src="/images/logo-sakola-kembara.png"
+              src={brandLogo}
               alt="Sakola Kembara"
               width={300}
               height={103}
