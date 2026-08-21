@@ -380,9 +380,9 @@ export const heroImages = {
 };
 
 export const donationTiers = [
-  { id: 1, name: "Bronze", amount: "Rp 50.000" },
-  { id: 2, name: "Silver", amount: "Rp 100.000" },
-  { id: 3, name: "Gold", amount: "Rp 200.000" },
+  { id: 1, name: "Bronze", amount: "Rp50.000" },
+  { id: 2, name: "Silver", amount: "Rp100.000" },
+  { id: 3, name: "Gold", amount: "Rp200.000" },
   { id: 4, name: "Custom", amount: "Nominal Lain" },
 ];
 

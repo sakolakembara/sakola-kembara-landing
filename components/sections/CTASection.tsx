@@ -12,9 +12,9 @@ const ctaOptions = [
     icon: GraduationCap,
     title: "Menjadi Siswa",
     description:
-      "Daftarkan diri sebagai siswa Sakola Kembara dan raih kesempatan masuk perguruan tinggi terbaik di Indonesia.",
+      "Pembinaan penuh selama satu tahun, Agustus hingga April, tanpa biaya. Terbuka bagi siswa kelas 12 dan lulusan yang menyiapkan UTBK maupun ujian mandiri.",
     buttonText: "Daftar Sekarang",
-    href: "/kontak",
+    href: "/gabung-siswa",
     color: "bg-orange-500",
     hoverColor: "hover:bg-orange-600",
     iconBg: "bg-orange-500/10",
@@ -25,7 +25,7 @@ const ctaOptions = [
     icon: Heart,
     title: "Menjadi Donatur",
     description:
-      "Setiap donasi Anda membantu siswa dari keluarga kurang mampu mendapatkan akses pendidikan yang layak.",
+      "Donasi mulai Rp50.000 dapat membantu menopang kegiatan belajar pekanan, asrama, dan pendampingan beasiswa hingga siswa benar-benar duduk di bangku kuliah.",
     buttonText: "Donasi Sekarang",
     href: "/donasi",
     color: "bg-primary-blue",
@@ -38,7 +38,7 @@ const ctaOptions = [
     icon: Users,
     title: "Menjadi Relawan",
     description:
-      "Bergabunglah dengan tim kami untuk berbagi ilmu dan pengalaman kepada siswa-siswa yang membutuhkan.",
+      "Mengajar di kelas pekanan, mendampingi asrama, atau menopang operasional cabang. Sekitar separuh relawan kami adalah alumni yang kembali.",
     buttonText: "Gabung Tim",
     href: "/kontak",
     color: "bg-secondary-green",
@@ -51,7 +51,7 @@ const ctaOptions = [
     icon: Handshake,
     title: "Menjadi Partner",
     description:
-      "Kolaborasi bersama kami untuk memperluas dampak pendidikan ke lebih banyak daerah di Indonesia.",
+      "Dukungan institusi memperluas jangkauan kami dari tujuh cabang di tiga provinsi ke daerah yang belum terjangkau.",
     buttonText: "Hubungi Kami",
     href: "/kontak",
     color: "bg-secondary-yellow",
@@ -90,8 +90,9 @@ export default function CTASection() {
             Jadilah Bagian dari Perubahan
           </h2>
           <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
-            Ada banyak cara untuk berkontribusi dalam membuka akses pendidikan
-            bagi anak-anak Indonesia. Pilih peran yang sesuai dengan Anda.
+            Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya.
+            Empat peran berikut membuat program kami terus berjalan, dan
+            semuanya terbuka lebar untuk Anda.
           </p>
         </motion.div>
 
@@ -138,8 +139,8 @@ export default function CTASection() {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="text-center text-white/60 mt-8 text-sm"
         >
-          Bersama-sama, kita bisa membuka lebih banyak pintu pendidikan untuk
-          generasi masa depan Indonesia.
+          Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami
+          bantu mencarikannya.
         </motion.p>
       </div>
     </section>
