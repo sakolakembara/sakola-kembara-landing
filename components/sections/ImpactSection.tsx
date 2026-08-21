@@ -190,21 +190,23 @@ export default function ImpactSection() {
                               className="object-cover"
                             />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 flex flex-col">
                             <blockquote className="text-[15px] text-gray-700 italic leading-relaxed mb-4">
                               &ldquo;{testimonial.quote}&rdquo;
                             </blockquote>
-                            <div>
+                            {/* mt-auto pins attribution to the card's bottom so
+                                a short quote and a long one still line up. */}
+                            <div className="mt-auto">
                               <strong className="text-base text-gray-900">
                                 {testimonial.name}
                               </strong>
                               <p className="text-sm text-primary-blue">
                                 {testimonial.major}
                               </p>
-                            </div>
-                            <div className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-lg text-xs text-gray-600 mt-3 border border-gray-200">
-                              <GraduationCap size={14} />
-                              {testimonial.university}
+                              <div className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-lg text-xs text-gray-600 mt-3 border border-gray-200">
+                                <GraduationCap size={14} />
+                                {testimonial.university}
+                              </div>
                             </div>
                           </div>
                         </div>

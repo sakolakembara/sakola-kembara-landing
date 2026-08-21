@@ -13,6 +13,11 @@ import pembinaanPhoto from "@/public/images/program/pembinaan.jpg";
 import pascaPembinaanPhoto from "@/public/images/program/pasca-pembinaan.jpg";
 import daffaNajwanPhoto from "@/public/images/testimoni/daffa-najwan.jpg";
 import natiaNurFazaPhoto from "@/public/images/testimoni/natia-nur-faza.jpg";
+import chintyaDwiAzizahPhoto from "@/public/images/testimoni/chintya-dwi-azizah.jpg";
+import syahidFattahulIhsanPhoto from "@/public/images/testimoni/syahid-fattahul-ihsan.jpg";
+import muhammadAnwarTaufikPhoto from "@/public/images/testimoni/muhammad-anwar-taufik.jpg";
+import jesikaMarshaYoanikaPhoto from "@/public/images/testimoni/jesika-marsha-yoanika.jpg";
+import fathyaSahlaHumairaPhoto from "@/public/images/testimoni/fathya-sahla-humaira.jpg";
 import kbmPekananPhoto from "@/public/images/program/kbm-pekanan.jpg";
 import asramaAkhirTahunPhoto from "@/public/images/program/asrama-akhir-tahun.jpg";
 import asramaIntensifPhoto from "@/public/images/program/asrama-intensif.jpg";
@@ -287,7 +292,7 @@ export const testimonials = [
     name: "Daffa Najwan",
     major: "Manajemen, UGM",
     university: "Universitas Gadjah Mada",
-    image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=240&h=320&fit=crop&crop=face",
+    image: daffaNajwanPhoto,
   },
   {
     id: 2,
@@ -296,7 +301,52 @@ export const testimonials = [
     name: "Natia Nur Faza",
     major: "Ekonomi Islam, UNPAD",
     university: "Universitas Padjadjaran",
-    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=240&h=320&fit=crop&crop=face",
+    image: natiaNurFazaPhoto,
+  },
+  {
+    id: 3,
+    quote:
+      "Di Sakola Kembara saya diberikan lebih dari sekadar ilmu, tapi juga semangat dan kepercayaan diri untuk meraih mimpi. Bertemu dengan para mentor yang luar biasa yang sangat memotivasi, bertemu dengan teman-teman yang luar biasa, yang memiliki mimpi sama membuat saya juga lebih termotivasi untuk mewujudkan mimpi bersama-sama. Sakola Kembara juga memiliki lingkungan yang sangat menyenangkan dan mendukung untuk belajar, membuat saya lebih bersemangat hingga saya bisa lulus ke PTN impian saya.",
+    name: "Chintya Dwi Azizah",
+    major: "Akuntansi, IPB",
+    university: "Institut Pertanian Bogor",
+    image: chintyaDwiAzizahPhoto,
+  },
+  {
+    id: 4,
+    quote:
+      "Saya sangat bersyukur bisa belajar di Bimbingan Belajar Sakola Kembara. Metode pembelajaran yang inovatif dan dukungan dari para pengajar, terutama Kak Rommi, sangat membantu saya memahami materi, meningkatkan kepercayaan diri, dan mempersiapkan diri untuk dunia perkuliahan dan kerja. Saya merasa beruntung menjadi bagian dari keluarga besar Sakola Kembara yang penuh dengan orang-orang hebat!",
+    name: "Syahid Fattahul Ihsan",
+    major: "Statistika, UNPAD",
+    university: "Universitas Padjadjaran",
+    image: syahidFattahulIhsanPhoto,
+  },
+  {
+    id: 5,
+    quote:
+      "Di Sakola Kembara saya belajar banyak hal yang tidak saya dapatkan di tempat lainnya. Bertemu dengan mentor-mentor hebat dan teman-teman yang selalu memiliki semangat belajar yang tinggi, membuat saya terus termotivasi untuk mengejar perguruan impian saya. Karena Sakola Kembara, saya menjadi sadar akan ketimpangan pendidikan di Indonesia, oleh karena itu saya turut senang bisa menjadi salah satu komponen yang dapat membuktikan bahwa pendidikan milik semuanya.",
+    name: "Muhammad Anwar Taufik",
+    major: "Kedokteran Hewan, IPB",
+    university: "Institut Pertanian Bogor",
+    image: muhammadAnwarTaufikPhoto,
+  },
+  {
+    id: 6,
+    quote:
+      "Selama di Sakola Kembara, aku merasa terinspirasi oleh orang-orang yang aku temui di sana. Cerita yang mereka bagikan mendorong aku untuk bermimpi lebih besar. Sakola Kembara bukan hanya tempat belajar, tapi tempat di mana aku menemukan keberanian untuk percaya pada diri sendiri.",
+    name: "Jesika Marsha Yoanika",
+    major: "FMIPA, ITB",
+    university: "Institut Teknologi Bandung",
+    image: jesikaMarshaYoanikaPhoto,
+  },
+  {
+    id: 7,
+    quote:
+      "Kalau aku nggak diterima di Sakola Kembara, mungkin aku nggak akan ketemu mentor-mentor hebat yang dengan tulus ngasih waktunya buat ngebimbing kita yang pengen masuk kuliah, juga teman-teman yang super semangat haus ilmu, selalu pengen belajar, dan taat dengan keimanan mereka.",
+    name: "Fathya Sahla Humaira",
+    major: "Manajemen, UI",
+    university: "Universitas Indonesia",
+    image: fathyaSahlaHumairaPhoto,
   },
 ];
 
