@@ -109,9 +109,9 @@ export default function ImpactSection() {
             <GISMap />
 
             {/* Map Stats Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-5 gap-x-4 sm:gap-x-8 px-4 py-6 bg-white border-t border-gray-100">
+            <div className="flex flex-wrap justify-center gap-y-5 gap-x-10 sm:gap-x-16 px-4 py-6 bg-white border-t border-gray-100">
               {mapStats.map((stat) => (
-                <div key={stat.label} className="text-center">
+                <div key={stat.label} className="text-center min-w-[110px]">
                   <div className="text-2xl md:text-3xl font-extrabold text-primary-blue leading-none">
                     {stat.number}
                   </div>
