@@ -123,10 +123,6 @@ export default function GISMap() {
             <div className="w-3 h-3 rounded-full bg-primary-blue" />
             <span>Bimbel Aktif</span>
           </div>
-          <div className="flex items-center gap-2.5 text-[13px] text-gray-700">
-            <div className="w-3 h-3 rounded-full bg-secondary-yellow" />
-            <span>Roadshow Sekolah</span>
-          </div>
         </div>
       </div>
 

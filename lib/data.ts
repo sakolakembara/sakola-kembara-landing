@@ -210,6 +210,11 @@ export const impactMetrics = [
   { number: "172", label: "Siswa Program 2025/2026", color: "dark" },
 ];
 
+// Map pins. Bimbel branches only — the single "Roadshow Sekolah" pin that
+// used to sit here was a placeholder at an invented coordinate labelled
+// "Berbagai Daerah", which a map cannot honestly represent as one point.
+// The roadshow marker/legend styling is still wired up in GISMap, so a
+// real roadshow location can be added back as a { type: "roadshow" } entry.
 export const mapLocations = [
   // Bimbel Aktif
   {
@@ -259,15 +264,6 @@ export const mapLocations = [
     lat: -7.3903,
     lng: 109.3639,
     type: "bimbel",
-  },
-  // Roadshow Sekolah
-  {
-    id: 7,
-    name: "Roadshow Sekolah",
-    region: "Berbagai Daerah",
-    lat: -6.8500,
-    lng: 107.5500,
-    type: "roadshow",
   },
   {
     id: 8,
