@@ -18,6 +18,12 @@ import asramaAkhirTahunPhoto from "@/public/images/program/asrama-akhir-tahun.jp
 import asramaIntensifPhoto from "@/public/images/program/asrama-intensif.jpg";
 import mentoringPhoto from "@/public/images/program/mentoring.jpg";
 import heroTeamPhoto from "@/public/images/hero-team.png";
+import itbLogo from "@/public/images/partners/itb.png";
+import talentsMappingLogo from "@/public/images/partners/talents-mapping.png";
+import zurichSyariahLogo from "@/public/images/partners/zurich-syariah.png";
+import rumahAmalSalmanLogo from "@/public/images/partners/rumah-amal-salman.png";
+import itcLogo from "@/public/images/partners/itc.png";
+import salamSetaraLogo from "@/public/images/partners/salam-setara.png";
 
 export const navLinks = [
   { href: "/", label: "Home" },
@@ -294,13 +300,29 @@ export const testimonials = [
   },
 ];
 
-export const partners = [
-  { id: 1, name: "Institut Teknologi Bandung (ITB)", logo: "https://upload.wikimedia.org/wikipedia/id/thumb/4/44/Logo_ITB_1920.svg/200px-Logo_ITB_1920.svg.png" },
-  { id: 2, name: "Salam Setara", logo: null },
-  { id: 3, name: "Talents Mapping", logo: null },
-  { id: 4, name: "Universitas Padjadjaran", logo: null },
-  { id: 5, name: "Universitas Gadjah Mada", logo: null },
+export interface Partner {
+  id: string;
+  name: string;
+  /** Logo, statically imported from public/images/partners/. */
+  logo: StaticImageData;
+}
+
+/** Partners and supporters currently working with us. */
+export const activePartners: Partner[] = [
+  { id: "itb", name: "Institut Teknologi Bandung (ITB)", logo: itbLogo },
+  { id: "talents-mapping", name: "Talents Mapping", logo: talentsMappingLogo },
+  { id: "zurich-syariah", name: "Zurich Syariah", logo: zurichSyariahLogo },
+  { id: "rumah-amal-salman", name: "Rumah Amal Salman", logo: rumahAmalSalmanLogo },
+  { id: "itc", name: "ITC", logo: itcLogo },
 ];
+
+/** Partners and supporters we have worked with in the past. */
+export const pastPartners: Partner[] = [
+  { id: "salam-setara", name: "Salam Setara", logo: salamSetaraLogo },
+];
+
+// Keep for backward compatibility with anything reading the flat list.
+export const partners: Partner[] = [...activePartners, ...pastPartners];
 
 // Hero section images
 export const heroImages = {
