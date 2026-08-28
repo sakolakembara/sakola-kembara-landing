@@ -104,7 +104,7 @@ export default function PartnersSection() {
             delay={0.2}
           />
           <PartnerGroup
-            title="Pernah Bermitra & Mendukung"
+            title="Pernah Didukung & Bermitra Dengan"
             partners={pastPartners}
             isInView={isInView}
             delay={0.4}

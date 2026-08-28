@@ -103,7 +103,7 @@ tidak terlalu tinggi.
 | `partners/zurich-syariah.png` | Zurich Syariah | Aktif |
 | `partners/rumah-amal-salman.png` | Rumah Amal Salman | Aktif |
 | `partners/itc.png` | ITC | Aktif |
-| `partners/salam-setara.png` | Salam Setara | Pernah bermitra |
+| `partners/salam-setara.png` | Salam Setara | Pernah didukung & bermitra |
 
 Daftar dan pengelompokannya diatur di `lib/data.ts` — `activePartners` dan
 `pastPartners`. Menambah partner baru: taruh logo di `partners/`, tambahkan

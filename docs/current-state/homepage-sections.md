@@ -79,7 +79,7 @@ Three stacked groups inside the section:
 - Light `bg-[#F5F7FA]`. Header + two subheaded groups of flex-wrapped partner tiles.
 - **Split into two groups** so active relationships read apart from past ones:
   - *Partner & Pendukung Aktif* — `activePartners` in `lib/data.ts` (ITB, Talents Mapping, Zurich Syariah, Rumah Amal Salman, ITC)
-  - *Pernah Bermitra & Mendukung* — `pastPartners` (Salam Setara)
+  - *Pernah Didukung & Bermitra Dengan* — `pastPartners` (Salam Setara)
   - `partners` remains exported as the flat concatenation for any consumer that wants the whole list.
 - Each tile is a column: logo on top (`h-11 sm:h-12`, `object-contain`), partner name below in `text-[11px] sm:text-xs`. The container uses `items-stretch` so tiles stay level when a long name wraps.
 - Every `partner.logo` is a **placeholder** in `public/images/partners/` (400×200 PNG), statically imported. Drop a real logo in at the same filename to replace it — see `public/images/README.md`.
