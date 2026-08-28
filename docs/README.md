@@ -50,6 +50,7 @@ Focused explainers for the load-bearing subsystems. Read the matching file befor
 - [`architecture/student-portal.md`](architecture/student-portal.md) — `/portal` route map, the privacy contract around `admission_batches.results_published_at`, copy conventions, future LMS SSO handoff.
 - [`architecture/admission-batches.md`](architecture/admission-batches.md) — Yearly batch lifecycle, the publish guard, admin UI paths, how registration and results tie back to `admission_batches`.
 - [`architecture/lms-integration.md`](architecture/lms-integration.md) — The SSO contract between landing and the (upcoming) LMS at `lms.sakolakembara.org`. JWT + shared cookie handshake, Django auth backend + Nuxt integration guide, event-registration flow, four locked design decisions (LMS role independence, revocation policy, alumni access, email verification), and a three-milestone landing-side checklist. Hand this to the LMS team when they start.
+- [`architecture/shortlinks.md`](architecture/shortlinks.md) — Admin-managed vanity redirects at `sakolakembara.org/<slug>`. Covers the root-level dynamic-route precedence that makes the feature safe, the reserved-slug list you must extend when adding a top-level route, and the redirect/validation rules.
 
 ## How to use this folder
 

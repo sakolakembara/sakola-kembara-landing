@@ -28,6 +28,9 @@ export const AUDIT_LABEL: Record<string, string> = {
   "resource.create": "Berkas pendaftaran dibuat",
   "resource.update": "Berkas pendaftaran diubah",
   "resource.delete": "Berkas pendaftaran dihapus",
+  "shortlink.create": "Shortlink dibuat",
+  "shortlink.update": "Shortlink diubah",
+  "shortlink.delete": "Shortlink dihapus",
 };
 
 export const KNOWN_ACTIONS = Object.keys(AUDIT_LABEL).sort();
@@ -42,6 +45,7 @@ export const KNOWN_RESOURCE_TYPES = [
   "contact_message",
   "admin_user",
   "site_resource",
+  "shortlink",
 ] as const;
 
 export const RESOURCE_TYPE_LABEL: Record<string, string> = {
@@ -56,6 +60,7 @@ export const RESOURCE_TYPE_LABEL: Record<string, string> = {
   contact_message: "Pesan",
   admin_user: "Admin",
   site_resource: "Berkas Pendaftaran",
+  shortlink: "Shortlink",
 };
 
 /**
@@ -90,6 +95,8 @@ export function auditHref(
       return `/admin/settings/${resourceId}/edit`;
     case "site_resource":
       return `/admin/resources`;
+    case "shortlink":
+      return `/admin/shortlinks/${resourceId}/edit`;
     default:
       return null;
   }

@@ -38,6 +38,7 @@ app/
 │       ├── batches/                   # admission-batch CRUD + publish
 │       ├── applications/              # student-application review
 │       ├── announcements/, reports/, blog/, team/, resources/
+│       ├── shortlinks/                   # vanity redirects (see architecture/shortlinks.md)
 │       ├── messages/, audit/, settings/
 │       └── _actions.ts, _sidebar.tsx
 │

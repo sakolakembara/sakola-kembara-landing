@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/admin/blog", label: "Blog" },
   { href: "/admin/team", label: "Tim" },
   { href: "/admin/resources", label: "Berkas Pendaftaran" },
+  { href: "/admin/shortlinks", label: "Shortlink" },
   { href: "/admin/audit", label: "Aktivitas" },
   { href: "/admin/settings", label: "Pengaturan" },
 ];

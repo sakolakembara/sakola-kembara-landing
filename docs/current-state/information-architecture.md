@@ -17,6 +17,16 @@ Defined under `app/` (Next.js App Router):
 
 There is **no** `/tentang-kami`, `/siswa`, `/laporan`, or `/team`.
 
+### Root-level shortlinks
+
+`app/(public)/[slug]/page.tsx` also serves the whole root namespace as
+admin-managed vanity redirects — `sakolakembara.org/daftar-2026` → any target.
+It only ever runs for a single-segment path that no route in the table above
+and no `public/` file already claims, because Next resolves static routes
+first. **Adding a top-level route means adding it to `RESERVED_SLUGS` in
+`lib/shortlinks.ts`**, otherwise an admin can mint a shortlink there that
+silently never fires. See [`../architecture/shortlinks.md`](../architecture/shortlinks.md).
+
 ## Header
 
 Source: `components/Navbar.tsx` + `navLinks` in `lib/data.ts`.
