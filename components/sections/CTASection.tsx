@@ -4,12 +4,10 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
-import { Heart, Users, Handshake, GraduationCap } from "lucide-react";
 
 const ctaOptions = [
   {
     id: "siswa",
-    icon: GraduationCap,
     title: "Menjadi Siswa",
     description:
       "Pembinaan penuh selama satu tahun, Agustus hingga April, tanpa biaya. Terbuka bagi siswa kelas 12 dan lulusan yang menyiapkan UTBK maupun ujian mandiri.",
@@ -17,12 +15,9 @@ const ctaOptions = [
     href: "/gabung-siswa",
     color: "bg-orange-500",
     hoverColor: "hover:bg-orange-600",
-    iconBg: "bg-orange-500/10",
-    iconColor: "text-orange-500",
   },
   {
     id: "donatur",
-    icon: Heart,
     title: "Menjadi Donatur",
     description:
       "Donasi mulai Rp50.000 dapat membantu menopang kegiatan belajar pekanan, asrama, dan pendampingan beasiswa hingga siswa benar-benar duduk di bangku kuliah.",
@@ -30,12 +25,9 @@ const ctaOptions = [
     href: "/donasi",
     color: "bg-primary-blue",
     hoverColor: "hover:bg-primary-blue-dark",
-    iconBg: "bg-primary-blue/10",
-    iconColor: "text-primary-blue",
   },
   {
     id: "relawan",
-    icon: Users,
     title: "Menjadi Relawan",
     description:
       "Mengajar di kelas pekanan, mendampingi asrama, atau menopang operasional cabang. Sekitar separuh relawan kami adalah alumni yang kembali.",
@@ -43,12 +35,9 @@ const ctaOptions = [
     href: "/kontak",
     color: "bg-secondary-green",
     hoverColor: "hover:bg-green-600",
-    iconBg: "bg-secondary-green/10",
-    iconColor: "text-secondary-green",
   },
   {
     id: "partner",
-    icon: Handshake,
     title: "Menjadi Partner",
     description:
       "Dukungan institusi memperluas jangkauan kami dari delapan cabang di empat provinsi ke daerah yang belum terjangkau.",
@@ -56,8 +45,6 @@ const ctaOptions = [
     href: "/kontak",
     color: "bg-secondary-yellow",
     hoverColor: "hover:bg-yellow-500",
-    iconBg: "bg-secondary-yellow/10",
-    iconColor: "text-secondary-yellow",
     textColor: "text-gray-900",
   },
 ];
@@ -104,30 +91,22 @@ export default function CTASection() {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.2 + index * 0.1 }}
-              className="bg-white rounded-2xl p-5 flex items-start sm:items-center gap-4 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300"
+              className="bg-white rounded-2xl p-5 sm:p-6 flex flex-col hover:-translate-y-1 hover:shadow-2xl transition-all duration-300"
             >
-              {/* Icon */}
-              <div
-                className={`w-14 h-14 ${option.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}
+              <h3 className="text-lg font-bold text-gray-900 mb-1.5">
+                {option.title}
+              </h3>
+              <p className="text-sm text-gray-600 leading-snug mb-4">
+                {option.description}
+              </p>
+              {/* mt-auto keeps the buttons on a common baseline when two
+                  cards in a row have blurbs of different lengths. */}
+              <Link
+                href={option.href}
+                className={`mt-auto inline-flex w-full sm:w-auto sm:self-start items-center justify-center sm:min-w-[160px] px-4 py-2.5 sm:py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
               >
-                <option.icon className={`w-7 h-7 ${option.iconColor}`} />
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  {option.title}
-                </h3>
-                <p className="text-sm text-gray-600 leading-snug mb-3">
-                  {option.description}
-                </p>
-                <Link
-                  href={option.href}
-                  className={`inline-flex w-full sm:w-auto items-center justify-center sm:min-w-[160px] px-4 py-2.5 sm:py-2 ${option.color} ${option.hoverColor} ${option.textColor || "text-white"} text-sm font-semibold rounded-lg transition-colors`}
-                >
-                  {option.buttonText}
-                </Link>
-              </div>
+                {option.buttonText}
+              </Link>
             </motion.div>
           ))}
         </div>

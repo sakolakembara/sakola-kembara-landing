@@ -90,7 +90,7 @@ Three stacked groups inside the section:
 - Gradient navy background, same orb decorations as Activities.
 - **Eyebrow**: yellow dot + `Bergabung Bersama Kami`.
 - **H2**: "Jadilah Bagian dari Perubahan".
-- **4 CTA cards** (2-col grid) — each is a horizontal card with a colored icon tile + title + short blurb + a colored pill button:
+- **4 CTA cards** (2-col grid) — each is a **text-only** block: title + short blurb + a colored pill button, no icon and no image. The tinted Lucide icon tiles were swapped for photos and then dropped again on 2026-08-28 (no real photography available); the per-card colour now lives only in the button. The button is pinned with `mt-auto` so two cards in a row keep a common button baseline.
   1. **Menjadi Siswa** (orange) → `/gabung-siswa` — "Daftar Sekarang" (was `/kontak`; the student landing page is the correct destination)
   2. **Menjadi Donatur** (primary blue) → `/donasi` — "Donasi Sekarang"
   3. **Menjadi Relawan** (green) → `/kontak` — "Gabung Tim"
