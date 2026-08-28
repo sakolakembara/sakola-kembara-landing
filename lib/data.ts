@@ -43,7 +43,7 @@ export const navLinks = [
 export const heroStats = [
   { number: "600+", label: "Siswa Terbantu" },
   { number: "80%", label: "Berkuliah" },
-  { number: "7", label: "Wilayah Jangkauan" },
+  { number: "8", label: "Wilayah Jangkauan" },
 ];
 
 export const problemStats = [
@@ -273,11 +273,19 @@ export const mapLocations = [
     lng: 107.5500,
     type: "bimbel",
   },
+  {
+    id: 9,
+    name: "Sakola Kembara Samarinda",
+    region: "Kalimantan Timur",
+    lat: -0.5017,
+    lng: 117.1536,
+    type: "bimbel",
+  },
 ];
 
 export const mapStats = [
-  { number: "7", label: "Bimbel Aktif" },
-  { number: "3", label: "Provinsi" },
+  { number: "8", label: "Bimbel Aktif" },
+  { number: "4", label: "Provinsi" },
 ];
 
 export const testimonials = [

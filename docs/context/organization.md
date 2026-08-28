@@ -60,17 +60,35 @@ From `heroStats`, `impactMetrics`, and `mapStats` in `lib/data.ts`:
   by the program team; confirm before republishing it).
 - **13 siswa** placed in Indonesia's top 3 universities.
 - **172 siswa** in the current 2025/2026 program cohort.
-- **6 bimbel aktif** across **3 provinces**, plus 2 planned branches (mapped on the homepage Leaflet map).
+- **8 bimbel aktif** across **4 provinces** (mapped on the homepage Leaflet map).
+  The pins themselves span Jawa Barat, Jawa Tengah and Kalimantan Timur — three
+  provinces — so `mapStats` claims one more than `mapLocations` can show. The
+  discrepancy predates the Samarinda pin; reconcile with the program team.
 
 > **Note for editors.** These stats appear in production copy. They are not assumptions — they ship to donors. Any update must come from the program team with the source cited, then update `lib/data.ts` and this document together.
 
 ## Branches (`mapLocations` in `lib/data.ts`)
 
-| Type | Locations |
+All eight pins are `type: "bimbel"` — the map renders a single legend row.
+
+| Location | Region |
 | --- | --- |
-| **Bimbel Aktif** | Cililin (Bandung Barat), Bojong (Purwakarta), Bandung, Cibodas (Bandung Barat), Cirebon, Purbalingga |
-| **Roadshow** | Various sekolah across the regions above |
-| **Rencana** | Cisarua (Bandung Barat), Bojonegara (Serang) |
+| Cililin | Bandung Barat |
+| Bojong | Purwakarta |
+| Bandung | Kota Bandung |
+| Cibodas | Bandung Barat |
+| Cirebon | Cirebon |
+| Purbalingga | Purbalingga |
+| Cisarua | Bandung Barat |
+| Samarinda | Kalimantan Timur |
+
+The map fits its viewport to these pins (`fitBounds` in `GISMap.tsx`), so adding
+Samarinda widened the default view from Java to the whole archipelago.
+
+Earlier revisions of this doc also listed a **Roadshow** row ("various sekolah")
+and a **Rencana** row (Cisarua, Bojonegara). The roadshow pin was removed as an
+invented coordinate; Cisarua is now an active branch; Bojonegara was never in
+`mapLocations`.
 
 ## Programs / initiatives mentioned on the site
 

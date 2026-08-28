@@ -78,7 +78,7 @@ The four CTA card blurbs still follow the concrete-mechanism rule — each names
 the program's actual span (*satu tahun, Agustus hingga April, tanpa biaya*),
 what a donation funds (*kegiatan belajar pekanan, asrama, pendampingan
 beasiswa*), what a volunteer actually does (*mengajar di kelas pekanan,
-mendampingi asrama*), and the current footprint (*tujuh cabang di tiga
+mendampingi asrama*), and the current footprint (*delapan cabang di empat
 provinsi*). When these change, update `CTASection.tsx` and this doc together.
 
 Note the hedge in the donor blurb: *"dapat membantu menopang"*, not *"menopang"*.
