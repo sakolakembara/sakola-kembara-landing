@@ -668,6 +668,73 @@ Note the flow after a successful 201: the cookie is already set, so the next
 request to Django provisions the `LMSUser` automatically. Don't try to sign the
 user in a second time.
 
+## What an unaccepted registrant can do
+
+A student can register on landing, sign in, and never be admitted to the
+program — or be admitted only months later. This is the normal case, not an
+edge case, and it is the question most likely to come up first, so it is worth
+being precise about.
+
+**Landing does not gate the LMS.** The SSO cookie is minted on every successful
+sign-in, with no check on role or admission status. A rejected applicant,
+someone still `pending`, and a pure event registrant who never applied all
+receive a valid cookie, and the Django backend provisions an `LMSUser` for each
+of them on first visit.
+
+That is deliberate. It is what makes [Path 2 — event-only registrant](#path-2--event-only-registrant-future)
+work: prospects need LMS accounts to join a tryout or a workshop long before
+anyone decides whether to admit them.
+
+What separates them is the `acceptedInBatches` claim, which is populated only
+from applications that are **both** `status = "accepted"` **and** in a batch
+whose `results_published_at` is set. The other three statuses — `pending`,
+`under_review`, `rejected` — all produce an empty list.
+
+| Surface | Unaccepted registrant |
+| --- | --- |
+| LMS homepage, event catalog, tryout pages | ✅ reachable |
+| Event / workshop enrollment | ✅ reachable (verified email only) |
+| Course content, cohort forums, grades | ❌ blocked — `acceptedInBatches` is empty |
+| Instructor / admin areas | ❌ blocked — LMS role |
+
+### Who decides what
+
+Easy to conflate, so stated plainly:
+
+- **The LMS owns enrolment and its own roles** — which course a cohort maps to,
+  who is an instructor, who administers the site.
+- **Landing owns admission.** An LMS admin cannot grant course access to
+  someone landing has not admitted, and should not add a workaround that does.
+  If a person needs course access, the fix is an admissions decision on
+  landing, not an override in the LMS.
+
+### The gate only exists if you build it
+
+Bears repeating because the failure is silent: **landing blocks nothing.** It
+publishes a claim. If a course view ships without `@accepted_student_required`,
+a rejected applicant will see that course, and nothing on the landing side will
+prevent it, warn about it, or record it. Treat the
+[feature gating cheat sheet](#feature-gating-cheat-sheet) below as a checklist,
+not a suggestion.
+
+### The publish-window gap
+
+Between an admin marking an application `accepted` and that batch's results
+being published, the student's claim is `[]` — **indistinguishable from a
+rejection.**
+
+This is intentional. It is the privacy contract described in
+`docs/architecture/student-portal.md`: admission results must not leak through
+the LMS ahead of the announcement date, and the SSO claim is deliberately kept
+in step with what the student can already see on `/portal/status`.
+
+The consequence to plan for: an accepted student who signs into the LMS during
+that window is locked out of course content and looks exactly like someone who
+was turned down. That is correct behaviour, but it reads as a bug to whoever
+fields the support message. If you surface an explanation in the UI, key it off
+"no accepted batch yet" rather than trying to distinguish the two states — the
+LMS cannot tell them apart, by design.
+
 ## Feature gating cheat sheet
 
 | LMS surface | Django decorator / check |
