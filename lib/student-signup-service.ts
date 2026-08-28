@@ -47,15 +47,35 @@ export async function createStudentAccount(
   }
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
-  const [inserted] = await db
-    .insert(users)
-    .values({
-      email,
-      name: input.name.trim() || null,
-      role: "student",
-      passwordHash,
-    })
-    .returning({ id: users.id });
+  try {
+    const [inserted] = await db
+      .insert(users)
+      .values({
+        email,
+        name: input.name.trim() || null,
+        role: "student",
+        passwordHash,
+      })
+      .returning({ id: users.id });
 
-  return { ok: true, id: inserted.id };
+    return { ok: true, id: inserted.id };
+  } catch (err) {
+    // The existence check above is advisory, not a lock. A double-submitted
+    // signup form — the ordinary case, not an exotic one — races two inserts
+    // past it and only `users_email_unique` stops the second. Report that as
+    // the same "already taken" the sequential path returns, rather than
+    // letting a 23505 surface as a 500 on a form the user submitted twice.
+    if (isUniqueViolation(err)) return { ok: false, reason: "email_taken" };
+    throw err;
+  }
+}
+
+/** Postgres unique-violation SQLSTATE. */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "23505"
+  );
 }

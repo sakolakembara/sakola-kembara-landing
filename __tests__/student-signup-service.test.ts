@@ -75,4 +75,50 @@ describe("createStudentAccount", () => {
     expect(inserted.role).toBe("student");
     expect(inserted.passwordHash).toMatch(/^\$2[aby]\$/);
   });
+
+  test("maps a concurrent-insert unique violation to email_taken", async () => {
+    // A double-submitted signup form races two inserts past the existence
+    // check; only users_email_unique stops the second. That must read as
+    // "already taken", not a 500.
+    dbMock.query.users.findFirst.mockResolvedValueOnce(null);
+    dbMock.insert.mockReturnValueOnce({
+      values: () => ({
+        returning: async () => {
+          const err: Error & { code?: string } = new Error(
+            'duplicate key value violates unique constraint "users_email_unique"',
+          );
+          err.code = "23505";
+          throw err;
+        },
+      }),
+    });
+
+    const r = await createStudentAccount({
+      email: "race@example.com",
+      name: "Nama",
+      password: "supersecret",
+    });
+    expect(r).toEqual({ ok: false, reason: "email_taken" });
+  });
+
+  test("still propagates a non-unique-violation database error", async () => {
+    dbMock.query.users.findFirst.mockResolvedValueOnce(null);
+    dbMock.insert.mockReturnValueOnce({
+      values: () => ({
+        returning: async () => {
+          const err: Error & { code?: string } = new Error("connection lost");
+          err.code = "08006";
+          throw err;
+        },
+      }),
+    });
+
+    await expect(
+      createStudentAccount({
+        email: "boom@example.com",
+        name: "Nama",
+        password: "supersecret",
+      }),
+    ).rejects.toThrow("connection lost");
+  });
 });
