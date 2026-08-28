@@ -54,8 +54,10 @@ The section title is **"Mengapa Kami Ada?"** and the closing emotional line is *
 
 From `heroStats`, `impactMetrics`, and `mapStats` in `lib/data.ts`:
 
-- **500+ siswa** terbantu cumulatively.
-- **75.88%** of alumni continue to higher education (**71.49%** to PTN).
+- **600+ siswa** terbantu cumulatively.
+- **80%** of alumni continue to higher education (**71.49%** to PTN — this
+  sub-figure was reported alongside the old 75.88% and has not been restated
+  by the program team; confirm before republishing it).
 - **13 siswa** placed in Indonesia's top 3 universities.
 - **172 siswa** in the current 2025/2026 program cohort.
 - **6 bimbel aktif** across **3 provinces**, plus 2 planned branches (mapped on the homepage Leaflet map).

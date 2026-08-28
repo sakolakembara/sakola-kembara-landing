@@ -10,7 +10,7 @@
 
 | Pillar | Manifestation in copy |
 | --- | --- |
-| **Trust** | Concrete numbers (75.88%, 500+, 13 alumni di top-3 PTN), named universities |
+| **Trust** | Concrete numbers (80%, 600+, 13 alumni di top-3 PTN), named universities |
 | **Transparency** | Stats with sources; planned PDF reports linked from the Donasi page's Transparansi & Akuntabilitas block |
 | **Credibility** | Full legal name (*Yayasan Sakola Kembara Indonesia*) in the footer; partner logos shown plainly |
 | **Social impact** | Outcomes framed around the student's life, not the org's effort |
@@ -71,7 +71,7 @@ and remote backgrounds, and Menjadi Partner is institutional. *untuk Anda* keeps
 the sense of openness without promising open eligibility.
 
 The intro deliberately carries **no cohort figure**. The Impact section already
-states 500+, 75.88%, 172, and 13 higher up the same page, so repeating one here
+states 600+, 80%, 172, and 13 higher up the same page, so repeating one here
 only created a number that would go stale every intake year.
 
 The four CTA card blurbs still follow the concrete-mechanism rule — each names

@@ -70,8 +70,8 @@ Render via the eyebrow JSX pattern (yellow dot + uppercase tracked text). See `c
   - This is **display** formatting only. Form *input* is a separate matter: `rupiahSchema` in `lib/student-form-types.ts` deliberately rejects any `Rp` prefix a user types and asks for bare digits (`1.200.000`). Don't "fix" that to match this rule.
 - **Indonesian display dates**: long form (*"7 Desember 2025"*) — used in blog post cards (`article.date`).
 - **ISO dates** (`2025-12-07`): used in frontmatter and `dateISO` for sorting; never shown to users directly.
-- **Percentages**: `75.88%` with the `%` styled in `text-secondary-yellow` when used as a hero stat.
-- **Plus/multiplier suffix**: `500+`, `2x` — the suffix character is styled yellow (`text-secondary-yellow`) when used as a hero stat or impact number.
+- **Percentages**: `80%` with the `%` styled in `text-secondary-yellow` when used as a hero stat.
+- **Plus/multiplier suffix**: `600+`, `2x` — the suffix character is styled yellow (`text-secondary-yellow`) when used as a hero stat or impact number.
 
 ## Inline tags
 
