@@ -72,7 +72,7 @@ Three stacked groups inside the section:
 - Each testimonial card: portrait image left, italic quote on the right with name + major (blue) + university chip bottom-anchored via `mt-auto`, so a short quote and a long one still line up across a pair.
 - Source: `testimonials` in `lib/data.ts` — **7 entries** as of 2026-08-21 (2 original + 5 alumni quotes supplied by the team).
 - Quote lengths range ~270–490 characters. The slide track is a flex row, so the carousel's height is set by the tallest slide and stays constant while sliding (no layout jump), at the cost of whitespace on the shorter ones. If that whitespace becomes a problem, trim the longest quote rather than adding a line-clamp — clamping would truncate a real person's words with no way to expand them.
-- Alumni photos are all **placeholders** in `public/images/testimoni/`; see `public/images/README.md`.
+- Alumni photos in `public/images/testimoni/` are **real** as of 2026-08-28 (dropped in at their existing filenames, so no code change was needed). They keep their natural aspect ratios rather than the 600×800 the placeholders used; the card crops with `object-cover`. See `public/images/README.md`.
 
 ## 5. Partners (`PartnersSection.tsx`)
 

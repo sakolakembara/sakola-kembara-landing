@@ -41,13 +41,13 @@ mengambil varian `w=` yang berbeda dan hanya sebagian yang basi.
 | `program/prapembinaan.jpg` | Kartu "Roadshow & Seleksi" di seksi *Apa saja yang dilalui penerima manfaat* | 1200×800 (3:2) | asli |
 | `program/pembinaan.jpg` | Kartu "Pembelajaran Intensif" di seksi yang sama | 1200×800 (3:2) | asli |
 | `program/pasca-pembinaan.jpg` | Kartu "Alumni & Beasiswa" di seksi yang sama | 1200×800 (3:2) | asli |
-| `testimoni/daffa-najwan.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
-| `testimoni/natia-nur-faza.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
-| `testimoni/chintya-dwi-azizah.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
-| `testimoni/syahid-fattahul-ihsan.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
-| `testimoni/muhammad-anwar-taufik.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
-| `testimoni/jesika-marsha-yoanika.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
-| `testimoni/fathya-sahla-humaira.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | **PLACEHOLDER** |
+| `testimoni/daffa-najwan.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
+| `testimoni/natia-nur-faza.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
+| `testimoni/chintya-dwi-azizah.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
+| `testimoni/syahid-fattahul-ihsan.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
+| `testimoni/muhammad-anwar-taufik.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
+| `testimoni/jesika-marsha-yoanika.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
+| `testimoni/fathya-sahla-humaira.jpg` | Kartu testimoni di seksi *Dampak* | 600×800 (3:4, potret) | asli |
 
 Ketiga foto program juga muncul sebagai gambar header di halaman detail
 `/program/prapembinaan`, `/program/pembinaan`, `/program/pasca-pembinaan`.
