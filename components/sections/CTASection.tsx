@@ -40,7 +40,7 @@ const ctaOptions = [
     id: "partner",
     title: "Menjadi Partner",
     description:
-      "Dukungan institusi memperluas jangkauan kami dari delapan cabang di empat provinsi ke daerah yang belum terjangkau.",
+      "Dukungan institusi memperluas jangkauan kami dari delapan cabang di tiga provinsi ke daerah yang belum terjangkau.",
     buttonText: "Hubungi Kami",
     href: "/kontak",
     color: "bg-secondary-yellow",

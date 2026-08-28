@@ -285,7 +285,7 @@ export const mapLocations = [
 
 export const mapStats = [
   { number: "8", label: "Bimbel Aktif" },
-  { number: "4", label: "Provinsi" },
+  { number: "3", label: "Provinsi" },
 ];
 
 export const testimonials = [

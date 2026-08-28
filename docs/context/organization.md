@@ -58,10 +58,10 @@ From `heroStats`, `impactMetrics`, and `mapStats` in `lib/data.ts`:
 - **84%** of alumni continue to higher education (**60%** to PTN).
 - **19 siswa** placed in Indonesia's top 3 universities.
 - **172 siswa** in the current 2026/2027 program cohort.
-- **8 bimbel aktif** across **4 provinces** (mapped on the homepage Leaflet map).
-  The pins themselves span Jawa Barat, Jawa Tengah and Kalimantan Timur — three
-  provinces — so `mapStats` claims one more than `mapLocations` can show. The
-  discrepancy predates the Samarinda pin; reconcile with the program team.
+- **8 bimbel aktif** across **3 provinces** — Jawa Barat (6), Jawa Tengah (1),
+  Kalimantan Timur (1) — mapped on the homepage Leaflet map. The stat is
+  derived from `mapLocations`, so it stays in step with the pins; recount here
+  when a branch is added in a province that isn't already represented.
 
 > **Note for editors.** These stats appear in production copy. They are not assumptions — they ship to donors. Any update must come from the program team with the source cited, then update `lib/data.ts` and this document together.
 
