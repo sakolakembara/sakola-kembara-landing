@@ -88,6 +88,13 @@ SSO_COOKIE_DOMAIN=.sakolakembara.org
 
 # Comma-separated CORS allow-list for /api/sso/{session,register,signout}
 # AND the login-CSRF guard on state-changing calls. No wildcards.
+# REQUIRED in production — POST /api/sso/{register,signout} FAIL CLOSED when
+# this is empty, rejecting every origin including the real LMS. That is
+# deliberate: these endpoints mint a session cookie, and Set-Cookie lands in
+# the victim's jar whether or not CORS lets an attacker read the reply, so a
+# forgotten variable must break registration loudly rather than open
+# login-CSRF to the internet. Symptom: every register call returns
+# 403 {"reason":"forbidden_origin"}.
 SSO_ALLOWED_ORIGINS=https://lms.sakolakembara.org
 
 # ─── Transactional email (Resend) ──────────────────────────────────
@@ -137,6 +144,28 @@ Expected:
 ```json
 {"authenticated": true, "user": {"sub":"...", "email":"...", "emailVerified": true, "landingRole":"super_admin", "acceptedInBatches": []}}
 ```
+
+### D.2b Live-claims check (the endpoint reads the DB, not the cookie)
+
+`GET /api/sso/session` re-reads Postgres on every call, so revoking an
+acceptance takes effect immediately rather than waiting up to 30 days for the
+JWT to expire. Confirm on a throwaway account:
+
+```bash
+# 1. With an accepted, published application, note acceptedInBatches:
+curl -s -b "sakem-session=<paste>" https://sakolakembara.org/api/sso/session
+
+# 2. In /admin, reject that application (or un-publish the batch results).
+
+# 3. Same cookie, unchanged — acceptedInBatches must now be []:
+curl -s -b "sakem-session=<paste>" https://sakolakembara.org/api/sso/session
+```
+
+If step 3 still lists the batch, the deploy is running pre-2026-08-28 code.
+
+The response also carries a refreshed `Set-Cookie` whose `exp` is unchanged —
+re-issuing keeps claims current without extending the session. Check with
+`curl -sD - ... | grep -i set-cookie`.
 
 ### D.3 CORS + Origin guard
 
@@ -225,7 +254,7 @@ If any part of this rollout goes sideways, you can safely walk it back — the c
 - **SSO endpoints acting up**: unset `SSO_JWT_SECRET` in `.env.production` and restart. Landing keeps working; LMS gets 401 on its integration. Auth.js's own sign-in flow is untouched.
 - **Email vendor rejecting**: unset `RESEND_API_KEY`. Verification / reset flows still run but emails go to the container's stdout (via the dev fallback). Users lose self-service verification until you fix Resend, but no data loss.
 - **DNS records causing a mail deliverability crisis** at the org (unrelated senders bouncing because you edited SPF wrong): revert the SPF `TXT` record. Resend will unverify the domain within an hour; email sending falls back to the sandbox `onboarding@resend.dev` sender until you fix it.
-- **CSRF guard blocking legit LMS traffic**: check `SSO_ALLOWED_ORIGINS` value on the VPS. If the LMS runs on a different origin than `https://lms.sakolakembara.org` (e.g. behind a `www.` you didn't expect), add it. Then restart.
+- **CSRF guard blocking legit LMS traffic**: check `SSO_ALLOWED_ORIGINS` value on the VPS. If it is **empty or missing**, the guard fails closed and rejects everything — that is the most likely cause of a blanket `403 forbidden_origin`. If the LMS runs on a different origin than `https://lms.sakolakembara.org` (e.g. behind a `www.` you didn't expect), add it. Env vars are read at container boot, so restart with `docker compose up -d --force-recreate app`.
 
 ---
 

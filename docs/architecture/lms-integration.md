@@ -2,7 +2,31 @@
 
 > **Audience.** The team building the Sakola Kembara LMS. This doc is the contract landing (`sakolakembara.org`) commits to on the auth + user-provisioning boundary. Copy it into the LMS repo when you start.
 >
-> **Status.** Design locked. Landing-side implementation pending; LMS team can develop against the mocked contract below in parallel.
+> **Status.** Design locked, **landing side implemented and verified end-to-end** (2026-08-28). The endpoints below are live behaviour, not a proposal. Hand this doc to the LMS team as-is.
+
+## Start here — the five things that bite
+
+Read the whole doc, but if you take nothing else:
+
+1. **Landing is the only identity provider.** The LMS never asks anyone to set
+   a password and never creates a user by itself. Registration goes through
+   `POST /api/sso/register`.
+2. **`landingRole` is advisory. Never authorize on it.** LMS roles are
+   LMS-owned, independent, and yours to grow.
+3. **The cookie is a 30-day snapshot; `GET /api/sso/session` is the live
+   view.** Verify the JWT locally for identity; call the endpoint before any
+   decision that depends on `acceptedInBatches`. See
+   [Freshness and revocation](#freshness-and-revocation).
+4. **Call `POST /api/sso/register` from the user's browser, never from your
+   server.** The cookie has to reach their jar, and the rate limit is per-IP —
+   a server-side proxy caps signups at three per five minutes globally.
+5. **Both apps must share `SSO_JWT_SECRET`, and landing must have your origin
+   in `SSO_ALLOWED_ORIGINS`.** If registration returns `403 forbidden_origin`
+   for everything, that variable is missing on landing — it fails closed in
+   production on purpose.
+
+Contact for landing-side changes: whoever owns `sakolakembara.org` deploys.
+Everything below is implemented and verified end-to-end as of 2026-08-28.
 
 ## The one-sentence design
 
@@ -123,18 +147,49 @@ Three endpoints under `/api/sso/*`. Every one is rate-limited (via `lib/rate-lim
 
 ### `GET /api/sso/session`
 
-Returns the current session. LMS Nuxt can call this to hydrate SSR without decoding the JWT itself.
+**This endpoint is authoritative. The cookie is not.** It re-reads the database
+on every call and returns live state; see [Freshness and revocation](#freshness-and-revocation)
+for when you must use it instead of decoding the JWT yourself.
 
 ```
 GET /api/sso/session
 Cookie: sakem-session=<jwt>
-→ 200 { "authenticated": true, "user": { <same shape as JWT claims minus iat/exp> } }
-→ 200 { "authenticated": false }  (no cookie / invalid)
+→ 200 { "authenticated": true, "user": {
+          "sub": "<landing users.id>",
+          "email": "budi@gmail.com",
+          "name": "Budi Santoso" | null,
+          "emailVerified": true,
+          "landingRole": "student",       // advisory — never authorize on this
+          "acceptedInBatches": ["<batch-uuid>", ...]
+        } }
+→ 200 { "authenticated": false }   // no cookie, bad signature, expired,
+                                   // wrong iss/aud, or the user was deleted
 ```
+
+Behaviour worth knowing:
+
+- **Always 200.** Absence of a session is `{"authenticated": false}`, never a 401.
+  Don't branch on status code.
+- **The signature is checked before the database is touched.** An anonymous or
+  forged request costs one HMAC verification, which is why this endpoint is
+  safe to call on every page load and is deliberately not rate-limited.
+- **It repairs the cookie.** If live state has drifted from the token, the
+  response carries a refreshed `Set-Cookie` so a consumer that verifies the JWT
+  locally converges too. Expiry is **preserved, never extended** — calling this
+  endpoint in a loop cannot keep a session alive forever.
+- **A deleted user clears the cookie** and reports `authenticated: false`.
+- `Cache-Control: private, no-store`. Never cache it, never share it between users.
 
 ### `POST /api/sso/register`
 
 Called by the LMS's own event-registration form (see "Event registration" below). Creates a landing `users` row and sets the shared cookie. Same validation as landing's `/register` page.
+
+> **Call this from the end user's browser, never from the LMS server.** Two
+> independent reasons. The `Set-Cookie` has to land in the user's own cookie
+> jar, and the rate limit buckets by client IP — proxying through your backend
+> would put every signup in the world into one bucket and cap registrations at
+> **three per five minutes globally**. Use `fetch(..., { credentials: "include" })`
+> from Nuxt.
 
 ```
 POST /api/sso/register
@@ -146,14 +201,36 @@ Content-Type: application/json
   "source": "lms"                 // audit metadata; keep to a short enum
 }
 
-→ 201 { "user": { "id": "...", "email": "...", "name": "...", "role": "student" } }
+→ 201 { "user": { "id": "...", "email": "...", "name": "...",
+                  "landingRole": "student", "emailVerified": false } }
      Set-Cookie: sakem-session=<jwt>; Domain=.sakolakembara.org; ...
 → 409 { "reason": "email_taken" | "email_taken_no_password" }
-→ 400 { "fieldErrors": { ... } }
+→ 403 { "reason": "forbidden_origin" }
+→ 400 { "reason": "invalid_input", "fieldErrors": { ... } }
+→ 400 { "reason": "invalid_json" }
 → 429 { "reason": "rate_limited", "retryAfter": <seconds> }
 ```
 
 Response cookie is set on the same shared domain so the student is signed in on both apps immediately.
+
+Handling the responses:
+
+- **`409 email_taken`** — the address already has a password. Send them to
+  sign-in, not to a second signup.
+- **`409 email_taken_no_password`** — the address exists as a Google-only
+  account. Tell them to use the Google button; a password signup would strand
+  them with two ways in and one of them broken. Distinguishing these two is the
+  whole reason `reason` exists — don't collapse them into one message.
+- **`409` also covers the double-submit race.** Two concurrent posts of the
+  same form both pass the existence check and the database's unique index
+  stops the second; it comes back as `email_taken` rather than a 500. Your form
+  should still disable its submit button, but a duplicate is survivable.
+- **`403 forbidden_origin`** — your `Origin` is not in landing's
+  `SSO_ALLOWED_ORIGINS`. This is a landing deployment config issue, not
+  something the LMS can fix; see [Security notes](#security-notes).
+- **`201` without a `Set-Cookie`** is possible in one edge case (the row was
+  created but claims could not be built immediately afterwards). Treat it as
+  "account created, not signed in" and send the user through normal sign-in.
 
 ### `POST /api/sso/signout`
 
@@ -166,6 +243,40 @@ POST /api/sso/signout
 ```
 
 LMS should also expose its own `POST lms.sakolakembara.org/api/logout` that calls this landing endpoint and then clears any LMS-local session storage (unlikely, but future-proofs against LMS adding server-side sessions).
+
+## Freshness and revocation
+
+The single most important thing to get right on the LMS side.
+
+The cookie is a **snapshot taken when the user signed in, valid for 30 days**.
+It is not a live view. Between the moment it is minted and the moment it
+expires, any of these can change in landing without the token knowing:
+
+| What changes | Example |
+| --- | --- |
+| `acceptedInBatches` | an acceptance is revoked, or an admin un-publishes a batch's results |
+| `emailVerified` | the student clicks the verification link |
+| `landingRole` | a student is promoted to editor |
+| `name` | the student edits their profile |
+| the user exists at all | the account is deleted |
+
+So split your reads by what they are for:
+
+- **Identity** — `sub`, `email`. Verify the JWT locally in Django. Cheap, no
+  network call, and identity does not change under you.
+- **Authorization** — anything gated on `acceptedInBatches` (course access,
+  enrollment, graded material). **Call `GET /api/sso/session`.** Local
+  verification will happily grant a revoked student access for up to 30 days.
+
+A practical middle ground: verify locally on every request, and call the
+session endpoint on sign-in, on entering a gated area, and on a short TTL
+(60 seconds is ample) cached per user. The endpoint is cheap by design — the
+signature is checked before the database is touched — and it repairs the cookie
+as a side effect, so the local-verification path converges too.
+
+There is **no push revocation**. Landing cannot reach into an LMS session. If
+you need a hard kill switch, that is LMS-owned state: a `lms_users.suspended`
+flag your own decorators check. Don't wait for landing to invalidate a token.
 
 ## Django implementation guide
 
@@ -216,8 +327,12 @@ class LMSUser(AbstractBaseUser):
     # decorators must NEVER branch on this field.
     landing_role = models.CharField(max_length=32, choices=LandingRole.choices, default=LandingRole.STUDENT)
 
-    # Snapshot of the acceptedInBatches claim at last sign-in. Used for the
-    # coarse gate; fresh reads should trust the current JWT, not this field.
+    # Snapshot of the acceptedInBatches claim, refreshed whenever we see a
+    # newer token. Good enough for coarse UI (showing a "Kelas Saya" tab).
+    # NOT good enough to gate course content: the JWT it comes from is itself
+    # a 30-day snapshot, so this can be stale in the dangerous direction —
+    # granting access to a student whose acceptance was revoked. For that,
+    # call landing's /api/sso/session. See "Freshness and revocation".
     accepted_batch_ids = models.JSONField(default=list)
 
     # LMS-only preferences go here (notification opts, avatar, etc.)
@@ -338,6 +453,50 @@ Register in `settings.py`:
 AUTHENTICATION_BACKENDS = ["lms.auth.backend.LandingSessionBackend"]
 SSO_JWT_SECRET = env("SSO_JWT_SECRET")   # from django-environ or similar
 ```
+
+### Live claims for authorization decisions
+
+The backend above establishes *identity* from the token, which is the right
+call — it is cheap and identity does not drift. But `accepted_batch_ids` on
+that row is only as fresh as the token it came from. Before gating course
+content, read the live view:
+
+```python
+# lms/auth/landing.py
+import requests
+from django.conf import settings
+
+LANDING = "https://sakolakembara.org"
+SESSION_URL = f"{LANDING}/api/sso/session"
+
+def fetch_live_claims(request, timeout=3.0):
+    """Landing's authoritative view of the current user, or None.
+
+    Forwards the caller's own cookie — this is the user's session, not a
+    service-to-service call, so there is no API key involved.
+    """
+    token = request.COOKIES.get("sakem-session")
+    if not token:
+        return None
+    try:
+        r = requests.get(
+            SESSION_URL,
+            cookies={"sakem-session": token},
+            timeout=timeout,
+        )
+        r.raise_for_status()
+    except requests.RequestException:
+        # Landing unreachable. Fail CLOSED for authorization: a network blip
+        # must not silently promote a revoked student. Callers should render
+        # "coba lagi", not fall back to the cached snapshot.
+        return None
+    body = r.json()
+    return body["user"] if body.get("authenticated") else None
+```
+
+Cache it per user for ~60 seconds if the extra hop shows up in your latency
+budget. Do **not** cache it across users, and do not cache a negative result
+longer than a few seconds — that is the revocation path.
 
 ### Middleware — "must be signed in"
 
@@ -469,21 +628,45 @@ The LMS shows a Nuxt-native "Daftar Akun" form for event participants. On submit
 ```ts
 // pages/register.vue submit handler
 const submit = async (form: FormValues) => {
-  const res = await $fetch<{ user: any } | { reason: string; fieldErrors?: any }>(
-    `${config.public.landingUrl}/api/sso/register`,
-    {
-      method: "POST",
-      body: { ...form, source: "lms" },
-      credentials: "include",
-    },
-  );
-  if ("reason" in res) {
-    // Handle email_taken / email_taken_no_password / rate_limited
-    return;
+  try {
+    await $fetch<{ user: LandingUser }>(
+      `${config.public.landingUrl}/api/sso/register`,
+      {
+        method: "POST",
+        body: { ...form, source: "lms" },
+        // Required: without it the browser neither sends nor stores the
+        // shared cookie, so the 201 arrives and the user is still signed out.
+        credentials: "include",
+      },
+    );
+    await navigateTo("/dashboard");
+  } catch (e) {
+    // ofetch THROWS on 4xx/5xx — an `if ("reason" in res)` branch after the
+    // await is unreachable. The body lives on `e.data`.
+    const err = e as { status?: number; data?: { reason?: string; fieldErrors?: unknown } };
+    switch (err.data?.reason) {
+      case "email_taken":
+        return showError("Email sudah terdaftar. Silakan masuk.");
+      case "email_taken_no_password":
+        return showError("Email ini terdaftar lewat Google. Gunakan tombol Masuk dengan Google.");
+      case "rate_limited":
+        return showError("Terlalu banyak percobaan. Coba lagi beberapa menit lagi.");
+      case "forbidden_origin":
+        // Landing config problem, not the user's. Log it and show a generic
+        // error — retrying will not help.
+        return showError("Pendaftaran sedang bermasalah. Hubungi panitia.");
+      case "invalid_input":
+        return applyFieldErrors(err.data.fieldErrors);
+      default:
+        return showError("Terjadi kesalahan. Coba lagi.");
+    }
   }
-  await navigateTo("/dashboard");
 };
 ```
+
+Note the flow after a successful 201: the cookie is already set, so the next
+request to Django provisions the `LMSUser` automatically. Don't try to sign the
+user in a second time.
 
 ## Feature gating cheat sheet
 
@@ -492,11 +675,20 @@ const submit = async (form: FormValues) => {
 | LMS homepage, event catalog | `RequireLandingSession` only (any signed-in user) |
 | Free tryout landing pages | `RequireLandingSession` only |
 | Event enrollment (tryout, workshop) | `@verified_email_required` + local `event_registrations` insert |
-| Course content, cohort forums, grades | `@verified_email_required` + `@accepted_student_required` |
+| Course content, cohort forums, grades | `@verified_email_required` + `@accepted_student_required` — this decorator must read **live** claims via `fetch_live_claims`, not `lms_users.accepted_batch_ids` |
 | Instructor gradebook, roster, cohort announcements | `@instructor_required` (LMS role) |
 | LMS admin site (promote instructors, manage courses, etc.) | `@lms_admin_required` (LMS role) |
 
-Note: `landing_role` never appears in this table. LMS authorization decisions are made from LMS-owned state only.
+Note: `landing_role` never appears in this table. LMS authorization decisions
+are made from LMS-owned state only.
+
+Two independent rules, easy to conflate:
+
+1. **`landingRole` is advisory** — never authorize on it, in any form, ever.
+   LMS roles are LMS-owned.
+2. **`acceptedInBatches` *is* authoritative** — landing owns admissions — but
+   the copy in the JWT is stale by up to 30 days. Authorize on it, from the
+   live endpoint.
 
 ## Registration flows
 
@@ -575,11 +767,27 @@ Prefer Option A once the two apps talk to each other.
 
 ## Security notes
 
-- **CORS**: `POST /api/sso/register` (and `/api/sso/signout`) must accept requests from the LMS origin. Whitelist `https://lms.sakolakembara.org` (prod) and the dev equivalents. Set `Access-Control-Allow-Credentials: true`. Never `Allow-Origin: *`.
-- **CSRF**: Auth.js already handles CSRF for its own routes. The two new landing endpoints (`/api/sso/register`, `/api/sso/signout`) called from another origin need their own CSRF story. Simplest: require a double-submit cookie token, or require the request to originate from `*.sakolakembara.org` via the `Origin` header (weaker but pragmatic).
-- **Session revocation**: JWT is stateless — if a student is expelled from the program, they stay authed on LMS until the token expires (up to 30 days). Two mitigations:
-  - LMS course-content decorators re-check `accepted_batch_ids` on every request and can also hit `landing/api/sso/session` for the freshest state on sensitive actions.
-  - For hard revocation (rare), shorten JWT lifetime and add a refresh flow. Not needed at MVP.
+- **CORS**: allow-listed from `SSO_ALLOWED_ORIGINS`, credentials on, never a
+  wildcard — an origin outside the list gets no `Access-Control-*` headers at
+  all. Preflight allows `Content-Type` only, so **do not send custom request
+  headers** (`X-Requested-With` and friends) to these endpoints; the preflight
+  will fail with an unhelpful browser error. Put anything you need in the body.
+- **CSRF is handled, by Origin allow-listing.** `POST /api/sso/register` and
+  `/api/sso/signout` reject any request whose `Origin` is not allow-listed,
+  and reject a request with no `Origin` at all. CORS by itself is not enough
+  here: it only stops the attacker *reading* the reply, while `Set-Cookie`
+  lands in the victim's jar regardless — which is login-CSRF on an endpoint
+  that mints a session.
+- **`SSO_ALLOWED_ORIGINS` is required in production and fails closed.** If it
+  is unset in a production deploy, both POST endpoints reject *everything*,
+  including the legitimate LMS origin. That is deliberate — a forgotten
+  environment variable should break registration loudly, not silently open
+  login-CSRF to the whole internet. If registration returns `403
+  forbidden_origin` for every request, this variable is the first thing to
+  check.
+- **Session revocation**: see [Freshness and revocation](#freshness-and-revocation).
+  Short version: the JWT is a 30-day snapshot, `GET /api/sso/session` is the
+  live view, and hard suspension belongs to LMS-owned state.
 - **Never expose the raw JWT to JS**. HttpOnly cookie only. LMS Nuxt never reads or manipulates the token — it just proxies the cookie to Django.
 - **Log user IDs, not emails, in LMS access logs**. Emails are PII; the landing UUID is stable and safe.
 
@@ -595,15 +803,20 @@ milestone so the SSO handshake can ship independently from the email work.
 ### Milestone 1 — SSO handshake (blocks LMS integration) ✅ Landed
 
 - [x] Sidecar SSO cookie (`sakem-session`) minted alongside Auth.js's own session cookie. Cookie domain read from `SSO_COOKIE_DOMAIN` — set to `.sakolakembara.org` in prod, `.sakem.test` in dev, blank for single-host dev. (`lib/sso.ts`, `auth.ts` events)
-- [x] JWT claims include `sub`, `email`, `name`, `emailVerified` (placeholder `true` until M2 lands), `landingRole` (advisory), `acceptedInBatches`, `iss`, `aud`. (`lib/sso.ts`, `lib/sso-claims.ts`)
-- [x] `GET /api/sso/session` endpoint — returns `{ authenticated, user? }`. (`app/api/sso/session/route.ts`)
+- [x] JWT claims include `sub`, `email`, `name`, `emailVerified` (real, read from `users.email_verified_at`), `landingRole` (advisory), `acceptedInBatches`, `iss`, `aud`, `exp`. (`lib/sso.ts`, `lib/sso-claims.ts`)
+- [x] `GET /api/sso/session` endpoint — returns `{ authenticated, user? }` from a **live database read**, not from the cookie, and re-issues the cookie when state has drifted (preserving absolute expiry). (`app/api/sso/session/route.ts`)
 - [x] `POST /api/sso/register` endpoint — creates a landing student user via the existing `createStudentAccount` service and sets the SSO cookie on the response. (`app/api/sso/register/route.ts`)
 - [x] `POST /api/sso/signout` endpoint — clears the shared cookie. (`app/api/sso/signout/route.ts`)
 - [x] `SSO_JWT_SECRET`, `SSO_COOKIE_DOMAIN`, `SSO_ALLOWED_ORIGINS` in `.env.example` and validated in `lib/env.ts`.
 - [x] Local-dev `sakem.test` / `lms.sakem.test` recipe documented (see "Local development" section below).
-- [x] Rate limits on all three endpoints via `lib/rate-limit.ts` (`sso.register`, `sso.signout`; `sso.session` is a bare GET and doesn't need throttling).
-- [x] CORS via `lib/cors.ts` — allow-listed origins from `SSO_ALLOWED_ORIGINS`, no wildcards, credentials always on.
-- [x] Vitest coverage: `__tests__/sso.test.ts` (roundtrip, tampering, secret rotation, cookie options), `__tests__/sso-claims.test.ts` (student / editor / event-only claim shapes).
+- [x] Rate limits via `lib/rate-limit.ts` — `sso.register` 3/5 min per IP, `sso.signout` 20/min per IP. `sso.session` is deliberately unthrottled: its signature check runs before any database access, so anonymous traffic costs one HMAC.
+- [x] CORS via `lib/cors.ts` — allow-listed origins from `SSO_ALLOWED_ORIGINS`, no wildcards, credentials always on. State-changing POSTs additionally enforce the allow-list as login-CSRF defence, and **fail closed in production** when the variable is unset.
+- [x] Vitest coverage:
+  - `__tests__/sso.test.ts` — roundtrip, tampering, secret rotation, expiry pinning, cookie options, claim comparison.
+  - `__tests__/sso-claims.test.ts` — student / editor / event-only claim shapes, verified and unverified email.
+  - `__tests__/sso-session-route.test.ts` — live-vs-snapshot claims, cookie repair, expiry preservation, deleted user, no DB read for anonymous callers.
+  - `__tests__/cors.test.ts` — allow-list matching and the production fail-closed rule.
+  - `__tests__/student-signup-service.test.ts` — duplicate email, Google-only collision, concurrent-insert race.
 
 ### Milestone 2 — Email verification + password reset ✅ Landed
 
