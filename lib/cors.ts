@@ -1,7 +1,7 @@
 import "server-only";
 import { env } from "@/lib/env";
 
-// Small CORS helper shared by the /api/auth/* SSO endpoints. Not a
+// Small CORS helper shared by the /api/sso/* endpoints. Not a
 // framework — just enough to answer preflight and stamp the right
 // Access-Control-* headers on responses to the LMS Nuxt front end.
 //
@@ -33,17 +33,18 @@ function allowedOrigins(): string[] {
  *   on POST; anything else is a server-to-server call that has no
  *   business at these endpoints (and isn't the LMS integration path).
  * - Origin present but not allow-listed: reject.
- * - Origin missing AND SSO_ALLOWED_ORIGINS unset: allow. This is the
- *   "dev without vendor configured" escape hatch — otherwise curl-based
- *   local testing needs an Origin header for no good reason.
+ * - SSO_ALLOWED_ORIGINS unset: allowed OUTSIDE production only, so local
+ *   curl testing doesn't need an Origin header. In production an empty
+ *   allow-list fails CLOSED. These endpoints mint a session cookie, and
+ *   Set-Cookie lands in the victim's jar whether or not CORS lets the
+ *   attacker read the reply — failing open on a missing env var would turn
+ *   one forgotten deploy variable into open login-CSRF.
  */
 export function isOriginAllowedForStateChange(request: Request): boolean {
   const origins = allowedOrigins();
   const origin = request.headers.get("origin");
   if (origins.length === 0) {
-    // No allow-list configured — dev / unconfigured deploy. Skip the check
-    // so local tooling still works. Production MUST set SSO_ALLOWED_ORIGINS.
-    return true;
+    return env.NODE_ENV !== "production";
   }
   if (!origin) return false;
   return origins.includes(origin);

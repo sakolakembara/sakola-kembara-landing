@@ -65,8 +65,10 @@ const schema = z.object({
     emptyToUndefined,
     z.string().startsWith(".").optional(),
   ),
-  // Comma-separated list of origins allowed to hit the /api/auth/*
+  // Comma-separated list of origins allowed to hit the /api/sso/*
   // endpoints from a browser. Prod: "https://lms.sakolakembara.org".
+  // REQUIRED in production: POST /api/sso/{register,signout} fail closed
+  // when this is empty.
   // Dev: add "http://lms.sakem.test:3100" or similar.
   SSO_ALLOWED_ORIGINS: z.preprocess(
     emptyToUndefined,
