@@ -33,12 +33,13 @@ describe("buildSsoClaims", () => {
     expect(await buildSsoClaims("ghost")).toBeNull();
   });
 
-  test("shapes claims for an accepted student", async () => {
+  test("shapes claims for an accepted, verified student", async () => {
     dbMock.query.users.findFirst.mockResolvedValueOnce({
       id: "u-1",
       email: "budi@example.com",
       name: "Budi Santoso",
       role: "student",
+      emailVerifiedAt: new Date("2026-01-05T00:00:00Z"),
     });
     getAcceptedPublishedBatchIdsMock.mockResolvedValueOnce(["batch-gen-7"]);
 
@@ -46,10 +47,38 @@ describe("buildSsoClaims", () => {
       sub: "u-1",
       email: "budi@example.com",
       name: "Budi Santoso",
-      emailVerified: true, // TODO(M2): read from users.email_verified_at
+      emailVerified: true,
       landingRole: "student",
       acceptedInBatches: ["batch-gen-7"],
     });
+  });
+
+  test("reports an unverified email as unverified", async () => {
+    dbMock.query.users.findFirst.mockResolvedValueOnce({
+      id: "u-4",
+      email: "belum@example.com",
+      name: null,
+      role: "student",
+      emailVerifiedAt: null,
+    });
+    getAcceptedPublishedBatchIdsMock.mockResolvedValueOnce([]);
+
+    expect((await buildSsoClaims("u-4"))?.emailVerified).toBe(false);
+  });
+
+  test("treats a missing emailVerifiedAt as unverified, not verified", async () => {
+    // Regression guard. `!== null` would let undefined through as `true`,
+    // which is the dangerous direction: an unverified account would be
+    // announced to the LMS as verified.
+    dbMock.query.users.findFirst.mockResolvedValueOnce({
+      id: "u-5",
+      email: "partial@example.com",
+      name: null,
+      role: "student",
+    });
+    getAcceptedPublishedBatchIdsMock.mockResolvedValueOnce([]);
+
+    expect((await buildSsoClaims("u-5"))?.emailVerified).toBe(false);
   });
 
   test("carries landing admin role through as landingRole (advisory)", async () => {
@@ -58,6 +87,7 @@ describe("buildSsoClaims", () => {
       email: "editor@example.com",
       name: "Editor",
       role: "editor",
+      emailVerifiedAt: new Date("2026-01-05T00:00:00Z"),
     });
     getAcceptedPublishedBatchIdsMock.mockResolvedValueOnce([]);
 
@@ -72,6 +102,7 @@ describe("buildSsoClaims", () => {
       email: "prospect@example.com",
       name: null,
       role: "student",
+      emailVerifiedAt: new Date("2026-01-05T00:00:00Z"),
     });
     getAcceptedPublishedBatchIdsMock.mockResolvedValueOnce([]);
 

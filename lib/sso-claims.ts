@@ -33,7 +33,9 @@ export async function buildSsoClaims(userId: string): Promise<SsoClaims | null> 
     sub: row.id,
     email: row.email,
     name: row.name,
-    emailVerified: row.emailVerifiedAt !== null,
+    // `!= null` on purpose: catches undefined as well as null, so a
+    // partially-selected row can never report an unverified user as verified.
+    emailVerified: row.emailVerifiedAt != null,
     landingRole: row.role,
     acceptedInBatches,
   };
