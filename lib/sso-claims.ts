@@ -7,8 +7,9 @@ import type { SsoClaims } from "@/lib/sso";
 
 /**
  * Read the user's current landing state and shape it into the SSO JWT
- * claims. Called on sign-in and (in a future milestone) on-demand from
- * /api/auth/session.
+ * claims. Called on sign-in, by POST /api/sso/register, and on every
+ * GET /api/sso/session so consumers can get state fresher than the
+ * 30-day cookie snapshot.
  *
  * Returns null when the user has been deleted between minting the auth.js
  * session and calling this — treat as "no valid session".

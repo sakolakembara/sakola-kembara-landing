@@ -48,24 +48,40 @@ function secretKey(): Uint8Array {
 /**
  * Sign a fresh SSO JWT. Caller supplies the domain claims; iat/exp/iss/aud
  * are added here so no route handler forgets them.
+ *
+ * `expiresAt` (epoch seconds) pins the expiry instead of starting a new
+ * 30-day window. Re-issuing a token to carry refreshed claims must NOT
+ * quietly extend the session, or a user who merely keeps a tab open is
+ * never asked to sign in again.
  */
-export async function signSsoToken(claims: SsoClaims): Promise<string> {
+export async function signSsoToken(
+  claims: SsoClaims,
+  options?: { expiresAt?: number },
+): Promise<string> {
   return new SignJWT({ ...claims })
     .setProtectedHeader({ alg: ALGORITHM })
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(AUDIENCE)
-    .setExpirationTime(`${TOKEN_MAX_AGE_SECONDS}s`)
+    .setExpirationTime(options?.expiresAt ?? `${TOKEN_MAX_AGE_SECONDS}s`)
     .sign(secretKey());
 }
 
+export interface VerifiedSsoToken {
+  claims: SsoClaims;
+  /** `exp` in epoch seconds, so a re-issue can preserve absolute expiry. */
+  expiresAt: number;
+}
+
 /**
- * Verify a token and return its claims. Returns null on any failure —
- * bad signature, expired, wrong issuer/audience, malformed. Callers
- * should treat null as "no valid session" and never try to distinguish
- * the failure mode (that's an attacker's oracle).
+ * Verify a token and return its claims plus expiry. Returns null on any
+ * failure — bad signature, expired, wrong issuer/audience, malformed.
+ * Callers should treat null as "no valid session" and never try to
+ * distinguish the failure mode (that's an attacker's oracle).
  */
-export async function readSsoToken(token: string | undefined): Promise<SsoClaims | null> {
+export async function verifySsoToken(
+  token: string | undefined,
+): Promise<VerifiedSsoToken | null> {
   if (!token) return null;
   if (!env.SSO_JWT_SECRET) return null;
   try {
@@ -74,23 +90,31 @@ export async function readSsoToken(token: string | undefined): Promise<SsoClaims
       audience: AUDIENCE,
       algorithms: [ALGORITHM],
     });
-    // Structural check — jose validates iss/aud/exp but not our custom claims.
+    // Structural check — jose validates iss/aud/exp but not our custom
+    // claims. `sub` must be non-empty: it is the key every consumer looks
+    // the user up by, and an empty string would sail through a bare
+    // typeof check.
     if (
       typeof payload.sub === "string" &&
+      payload.sub.length > 0 &&
       typeof payload.email === "string" &&
       typeof payload.emailVerified === "boolean" &&
       typeof payload.landingRole === "string" &&
-      Array.isArray(payload.acceptedInBatches)
+      Array.isArray(payload.acceptedInBatches) &&
+      typeof payload.exp === "number"
     ) {
       return {
-        sub: payload.sub,
-        email: payload.email,
-        name: typeof payload.name === "string" ? payload.name : null,
-        emailVerified: payload.emailVerified,
-        landingRole: payload.landingRole as UserRole,
-        acceptedInBatches: payload.acceptedInBatches.filter(
-          (v): v is string => typeof v === "string",
-        ),
+        claims: {
+          sub: payload.sub,
+          email: payload.email,
+          name: typeof payload.name === "string" ? payload.name : null,
+          emailVerified: payload.emailVerified,
+          landingRole: payload.landingRole as UserRole,
+          acceptedInBatches: payload.acceptedInBatches.filter(
+            (v): v is string => typeof v === "string",
+          ),
+        },
+        expiresAt: payload.exp,
       };
     }
     return null;
@@ -101,6 +125,30 @@ export async function readSsoToken(token: string | undefined): Promise<SsoClaims
     if (err instanceof joseErrors.JOSEError) return null;
     throw err;
   }
+}
+
+/** Claims-only form of {@link verifySsoToken}, for callers that ignore exp. */
+export async function readSsoToken(
+  token: string | undefined,
+): Promise<SsoClaims | null> {
+  return (await verifySsoToken(token))?.claims ?? null;
+}
+
+/**
+ * True when two claim sets differ in any field a consumer acts on. Used to
+ * decide whether a refreshed cookie is worth writing.
+ */
+export function ssoClaimsEqual(a: SsoClaims, b: SsoClaims): boolean {
+  return (
+    a.sub === b.sub &&
+    a.email === b.email &&
+    a.name === b.name &&
+    a.emailVerified === b.emailVerified &&
+    a.landingRole === b.landingRole &&
+    a.acceptedInBatches.length === b.acceptedInBatches.length &&
+    [...a.acceptedInBatches].sort().join(",") ===
+      [...b.acceptedInBatches].sort().join(",")
+  );
 }
 
 export interface CookieOptions {

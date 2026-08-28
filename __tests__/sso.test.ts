@@ -20,7 +20,9 @@ import {
   clearSsoCookieOptions,
   readSsoToken,
   signSsoToken,
+  ssoClaimsEqual,
   ssoCookieOptions,
+  verifySsoToken,
   type SsoClaims,
 } from "@/lib/sso";
 
@@ -70,6 +72,59 @@ describe("signSsoToken / readSsoToken", () => {
   test("returns null when SSO_JWT_SECRET is not configured", async () => {
     envMock.SSO_JWT_SECRET = undefined;
     expect(await readSsoToken("any-token")).toBeNull();
+  });
+});
+
+describe("verifySsoToken", () => {
+  test("exposes exp so a re-issue can preserve absolute expiry", async () => {
+    const before = Math.floor(Date.now() / 1000);
+    const token = await signSsoToken(sampleClaims);
+    const verified = await verifySsoToken(token);
+    expect(verified).not.toBeNull();
+    expect(verified!.claims).toEqual(sampleClaims);
+    // Default lifetime, within a second of now.
+    expect(verified!.expiresAt).toBeGreaterThanOrEqual(
+      before + TOKEN_MAX_AGE_SECONDS - 2,
+    );
+    expect(verified!.expiresAt).toBeLessThanOrEqual(
+      before + TOKEN_MAX_AGE_SECONDS + 2,
+    );
+  });
+
+  test("signSsoToken honours a pinned expiresAt instead of restarting the window", async () => {
+    const pinned = Math.floor(Date.now() / 1000) + 600;
+    const token = await signSsoToken(sampleClaims, { expiresAt: pinned });
+    const verified = await verifySsoToken(token);
+    expect(verified!.expiresAt).toBe(pinned);
+  });
+
+  test("rejects an already-expired token", async () => {
+    const past = Math.floor(Date.now() / 1000) - 10;
+    const token = await signSsoToken(sampleClaims, { expiresAt: past });
+    expect(await verifySsoToken(token)).toBeNull();
+  });
+});
+
+describe("ssoClaimsEqual", () => {
+  test("true for identical claims", () => {
+    expect(ssoClaimsEqual(sampleClaims, { ...sampleClaims })).toBe(true);
+  });
+
+  test("batch order does not count as a difference", () => {
+    const a = { ...sampleClaims, acceptedInBatches: ["b-1", "b-2"] };
+    const b = { ...sampleClaims, acceptedInBatches: ["b-2", "b-1"] };
+    expect(ssoClaimsEqual(a, b)).toBe(true);
+  });
+
+  test.each([
+    ["email", { email: "lain@example.com" }],
+    ["name", { name: "Nama Lain" }],
+    ["emailVerified", { emailVerified: false }],
+    ["landingRole", { landingRole: "editor" as const }],
+    ["a revoked acceptance", { acceptedInBatches: [] }],
+    ["an added acceptance", { acceptedInBatches: ["b-1", "b-2", "b-3"] }],
+  ])("false when %s changes", (_label, patch) => {
+    expect(ssoClaimsEqual(sampleClaims, { ...sampleClaims, ...patch })).toBe(false);
   });
 });
 
