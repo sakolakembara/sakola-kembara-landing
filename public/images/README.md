@@ -59,9 +59,9 @@ folder program yang sesuai, lalu muat ulang halaman — tidak ada kode yang
 perlu disentuh, tidak ada daftar yang perlu diperbarui.
 
 ```
-public/images/program/galeri/prapembinaan/     <- 1.jpg ... 3.jpg (PLACEHOLDER)
-public/images/program/galeri/pembinaan/        <- 1.jpg ... 6.jpg (PLACEHOLDER)
-public/images/program/galeri/pasca-pembinaan/  <- 1.jpg ... 3.jpg (PLACEHOLDER)
+public/images/program/galeri/prapembinaan/     <- 1.jpg ... 6.jpg (asli)
+public/images/program/galeri/pembinaan/        <- 1.jpg ... 6.jpg (asli)
+public/images/program/galeri/pasca-pembinaan/  <- 1.jpg ... 3.jpg (asli)
 ```
 
 Aturannya:

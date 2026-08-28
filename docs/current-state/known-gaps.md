@@ -24,7 +24,7 @@ These are not bugs — they're known gaps waiting on real data from the org team
 
 - **`/gabung-siswa`** — replaced the legacy WP redirect with a real on-site form that writes to `student_applications`. Mailto fallback is gone.
 - **`/program/[id]`** — the "Timeline" section is still a placeholder showing "Konten timeline akan ditambahkan". Replace with real content or remove it if not coming soon.
-- **`/program/[id]` Galeri Foto** — no longer a static placeholder. It reads `public/images/program/galeri/<program-id>/` off disk at request time via `lib/gallery.ts`, so adding a photo is a file drop with no code change. All three programs now hold placeholder images (`prapembinaan` 3, `pembinaan` 6, `pasca-pembinaan` 3), so the empty state only shows if a folder is emptied or removed. See `public/images/README.md`.
+- **`/program/[id]` Galeri Foto** — no longer a static placeholder. It reads `public/images/program/galeri/<program-id>/` off disk at request time via `lib/gallery.ts`, so adding a photo is a file drop with no code change. All three programs now hold **real** photos (`prapembinaan` 6, `pembinaan` 6, `pasca-pembinaan` 3), so the empty state only shows if a folder is emptied or removed. See `public/images/README.md`.
 - **`/program/[id]`** — links to `/files/pitchdeck-sakola-kembara.pdf` for a download. Confirm the file exists at that path in `public/files/` before linking from comms.
 - **Hero badge images** (`badge1`, `badge2` in `heroImages`) — Unsplash placeholders. Replace with real photos.
 - **Activities section program images** — Unsplash placeholders. Replace with real program photography.
