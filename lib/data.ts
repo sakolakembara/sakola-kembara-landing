@@ -42,7 +42,7 @@ export const navLinks = [
 
 export const heroStats = [
   { number: "600+", label: "Siswa Terbantu" },
-  { number: "80%", label: "Berkuliah" },
+  { number: "84%", label: "Berkuliah" },
   { number: "8", label: "Wilayah Jangkauan" },
 ];
 
@@ -205,9 +205,9 @@ export const activities = programs;
 
 export const impactMetrics = [
   { number: "600+", label: "Total Siswa Terbantu", color: "blue" },
-  { number: "80%", label: "Berkuliah (71.49% di PTN)", color: "yellow" },
-  { number: "13", label: "Siswa Diterima di Top 3 Universitas di Indonesia", color: "green" },
-  { number: "172", label: "Siswa Program 2025/2026", color: "dark" },
+  { number: "84%", label: "Berkuliah (60% di PTN)", color: "yellow" },
+  { number: "19", label: "Siswa Diterima di Top 3 Universitas di Indonesia", color: "green" },
+  { number: "172", label: "Siswa Program 2026/2027", color: "dark" },
 ];
 
 // Map pins. Bimbel branches only — the single "Roadshow Sekolah" pin that
