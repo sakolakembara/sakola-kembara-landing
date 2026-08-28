@@ -22,6 +22,13 @@ import { cookies } from "next/headers";
 // On success we set the SSO cookie in the response so the caller is
 // signed in immediately without an extra round-trip. Works cross-domain
 // because the cookie is scoped to `.sakolakembara.org` (see ssoCookieOptions).
+//
+// MUST be called from the end user's browser (fetch with
+// `credentials: "include"`), never proxied through the LMS server. Two
+// reasons: the Set-Cookie has to reach the user's own cookie jar, and the
+// rate limit below buckets by client IP — a server-side proxy would put
+// every signup in the world into one bucket and cap registrations at three
+// per five minutes globally.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -231,7 +231,7 @@ async function clearSsoCookie(): Promise<void> {
   }
 }
 
-// Exported so route handlers (POST /api/auth/register + /signout) can
+// Exported so route handlers (POST /api/sso/register + /signout) can
 // reuse the mint/clear logic without going through Auth.js events.
 export { mintSsoCookie, clearSsoCookie };
 
