@@ -63,12 +63,10 @@ export default function Footer() {
 
       {/* Copyright */}
       <div className="border-t border-white/15">
-        <div className="max-w-[1200px] mx-auto px-6 py-5 flex flex-col md:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-white/70">
-            © {new Date().getFullYear()} Sakola Kembara. All rights reserved.
-          </p>
-          <p className="text-xs text-white/55">
-            Yayasan Sakola Kembara Indonesia
+        <div className="max-w-[1200px] mx-auto px-6 py-5">
+          <p className="text-xs text-white/70 text-center">
+            © {new Date().getFullYear()} Yayasan Sakola Kembara Indonesia. All
+            rights reserved.
           </p>
         </div>
       </div>
