@@ -37,7 +37,7 @@ git clone <repo-url> sakola-kembara-landing
 cd sakola-kembara-landing
 
 # 2. Install dependencies
-npm install
+pnpm install
 
 # 3. Copy the env template and fill in at least DATABASE_URL + AUTH_SECRET
 cp .env.example .env.local
