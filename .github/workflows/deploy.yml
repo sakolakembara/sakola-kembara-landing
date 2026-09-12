@@ -1,75 +1,78 @@
+# Build in CI, deploy to VPS. Server only pulls the image + rolls the container.
+#
+# Trigger: push a `v*` tag (e.g. `git tag v1.0.0 && git push --tags`).
+# Registry: Docker Hub, shared repo faishalrachman/ipat-app, tag `sakem-landing`.
+# Secrets/vars live in the `production` environment of this repo.
+
 name: Build & Deploy
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE: docker.io/faishalrachman/ipat-app:sakem-landing
 
 jobs:
-  build:
-    name: Build & push image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image_sha: ${{ steps.meta.outputs.version }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,format=short
-
-      - name: Build & push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
-    name: Deploy to VPS
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    environment: production
+    concurrency:
+      group: deploy-sakem-landing
+      cancel-in-progress: false
     steps:
-      - name: SSH and roll the app container
-        uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Build & push image
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -eu
+          echo "$DOCKERHUB_TOKEN" | docker login -u faishalrachman --password-stdin
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      # Migrations run from the runner against the DB's PUBLIC endpoint
+      # (62.72.46.54:51112) — drizzle-kit is a devDependency and isn't in the
+      # runtime image, so it can't run inside the container on the server.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          script: |
-            set -euo pipefail
-            cd /opt/sakem
-            docker compose pull app
-            docker compose up -d app
-            # Run pending Drizzle migrations. Non-fatal if none.
-            docker compose exec -T app node ./node_modules/drizzle-kit/bin.cjs migrate || true
-            # Prune dangling images from older deploys.
-            docker image prune -f
+          node-version: 22
+          cache: pnpm
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_CI }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run db:migrate
+
+      - name: Deploy to VPS
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ vars.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_DIR: /opt/app/sakola-kembara-landing
+          # .env.local written on the server. App reaches Postgres over the
+          # internal ipat-bridge network at postgres_16:5432.
+          ENV_FILE_CONTENT: |
+            NODE_ENV=production
+            NEXTAUTH_URL=${{ vars.NEXTAUTH_URL }}
+            AUTH_URL=${{ vars.AUTH_URL }}
+            AUTH_TRUST_HOST=true
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            AUTH_MICROSOFT_ENTRA_ID_ID=${{ vars.AUTH_MICROSOFT_ENTRA_ID_ID }}
+            AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=${{ vars.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID }}
+            AUTH_MICROSOFT_ENTRA_ID_SECRET=${{ secrets.AUTH_MICROSOFT_ENTRA_ID_SECRET }}
+            AUTH_DEV_PROVIDER_ENABLED=
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            PORT=3000
+            SHAREPOINT_SITE_ID=${{ vars.SHAREPOINT_SITE_ID }}
+            SHAREPOINT_DRIVE_ID=${{ vars.SHAREPOINT_DRIVE_ID }}
+            SHAREPOINT_FOLDER_PATH=${{ vars.SHAREPOINT_FOLDER_PATH }}
+        run: bash .github/scripts/deploy.sh
