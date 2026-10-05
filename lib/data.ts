@@ -52,21 +52,68 @@ export const heroStats = [
   { number: "8", label: "Wilayah Jangkauan" },
 ];
 
-export const problemStats = [
+/**
+ * Infographic drawn above each "Mengapa Kami Ada?" figure. `label` is the
+ * chart's text alternative; the figure and sentence stay as plain text too.
+ */
+export type ProblemChart =
+  | { kind: "pictogram"; highlighted: number; total: number; label: string }
+  | {
+      kind: "share";
+      /** Fraction of the bar that is highlighted, 0–1. */
+      share: number;
+      caption: string;
+      highlightLabel: string;
+      restLabel: string;
+      label: string;
+    }
+  | { kind: "ratio"; bars: { name: string; value: number }[]; label: string };
+
+export interface ProblemStat {
+  number: string;
+  text: string;
+  detail: string | null;
+  chart: ProblemChart;
+}
+
+export const problemStats: ProblemStat[] = [
   {
     number: "3/10",
     text: "Hanya 3 dari 10 anak Indonesia yang memiliki akses ke pendidikan tinggi",
     detail: null,
+    chart: {
+      kind: "pictogram",
+      highlighted: 3,
+      total: 10,
+      label: "Ilustrasi: 3 dari 10 ikon anak disorot",
+    },
   },
   {
     number: "50%+",
     text: "Lebih dari setengah mahasiswa berasal dari keluarga 20% terkaya",
+    chart: {
+      kind: "share",
+      // "Lebih dari setengah": drawn just past the halfway mark.
+      share: 0.55,
+      caption: "Asal keluarga mahasiswa",
+      highlightLabel: "20% keluarga terkaya",
+      restLabel: "80% keluarga lainnya",
+      label: "Grafik batang: lebih dari separuh mahasiswa berasal dari 20% keluarga terkaya",
+    },
     detail: "Penelitian menunjukkan bahwa anak-anak dari keluarga dengan kondisi ekonomi lebih baik cenderung memiliki kemampuan kognitif yang lebih tinggi. Hal ini disebabkan oleh akses yang lebih baik terhadap nutrisi, stimulasi pendidikan sejak dini, bimbingan belajar, dan lingkungan yang mendukung perkembangan otak. Akibatnya, anak-anak dari keluarga mampu memiliki peluang lebih besar untuk lolos berbagai seleksi masuk Perguruan Tinggi Negeri seperti SNBP dan UTBK. Kondisi ini menciptakan ketimpangan di mana mayoritas mahasiswa PTN di Indonesia saat ini berasal dari 20% keluarga terkaya.",
   },
   {
     number: "2x",
     text: "Anak kota punya kesempatan 2x lebih besar untuk kuliah",
     detail: null,
+    chart: {
+      kind: "ratio",
+      bars: [
+        { name: "Kota", value: 2 },
+        { name: "Desa", value: 1 },
+      ],
+      label: "Grafik: peluang kuliah anak kota dua kali anak desa",
+    },
   },
 ];
 

@@ -18,7 +18,7 @@ Variants:
 | --- | --- |
 | `max-w-[1200px] mx-auto px-6` | Default for full-width sections (Hero, Activities, Impact, Partners, CTA, News, Footer, Navbar, all sub-page heroes) |
 | `max-w-[1000px] mx-auto px-6` | `/donasi` body — narrower for a focused two-card layout |
-| `max-w-[900px] mx-auto px-6` | `ProblemSection` — centered narrow column for the 3-card stat row |
+| `max-w-[900px] mx-auto px-6` | Centered narrow column (no current user; `ProblemSection` moved to 1200px for its infographic cards) |
 | `max-w-[800px] mx-auto px-6` | Blog detail body, blog detail hero, CTA-only blocks |
 | `max-w-[600px] mx-auto` | Constrained sub-headlines (max-width on a paragraph) |
 
@@ -134,14 +134,13 @@ hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all dur
 - Body padding `p-6`, title `text-xl font-bold`, green-dot bullets (`w-1.5 h-1.5 rounded-full bg-secondary-green`).
 - Footer CTA: filled "Lihat Detail" button, full width (see Buttons).
 
-### Stat card (`ProblemSection`)
+### Infographic stat card (`ProblemSection`)
 
 ```
-p-8 bg-white/5 rounded-2xl border border-white/10
-[hover:bg-white/10 hover:border-secondary-yellow/50 if clickable]
+flex flex-col gap-4 p-6 md:p-7 bg-white/[0.07] rounded-2xl border border-white/15
 ```
 
-Yellow extruded number (`text-5xl md:text-6xl font-extrabold text-secondary-yellow`), gray-300 body.
+Top to bottom: a 124px chart slot (pictogram, 100% bar or paired bars — sunglow for the highlighted part, `white/20–45` for the rest), the figure (`text-5xl md:text-[56px] font-extrabold text-secondary-yellow`), the sentence in `text-white/85`. Optional full-width "Mengapa ini terjadi?" outlined-on-dark button (`w-full h-10 border-white/60`) that opens the detail in a modal (see Modals).
 
 ### Metric card (`ImpactSection`)
 
@@ -220,15 +219,11 @@ The site has one real form UI (`/kontak`) and a few placeholder ones. The patter
 
 ## Modals
 
-`ProblemSection` is the lone modal in the site. Pattern:
+`ProblemSection`'s "Mengapa ini terjadi?" is the one modal on the public site. Build modals on the native `<dialog>` element opened with `showModal()` — the browser supplies the focus trap, Escape to close, and focus return:
 
-- `<AnimatePresence>` wraps the conditional render.
-- Backdrop: `fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6` (closes on click).
-- Panel: `bg-gray-800 rounded-2xl p-8 max-w-lg w-full border border-white/10 shadow-2xl` (stops propagation).
-- Enter/exit: `opacity + scale + y`.
-- Close button: full-width yellow.
-
-If you need another modal, reuse this shape.
+- Trigger: a real `<button aria-haspopup="dialog">`.
+- Dialog: `m-auto` (Tailwind's preflight zeroes the margin the native centring relies on), `w-[calc(100%-2.5rem)] max-w-lg max-h-[calc(100dvh-2.5rem)] overflow-y-auto rounded-2xl border border-white/15 bg-accent-navy p-0`, `backdrop:bg-accent-navy/80 backdrop:backdrop-blur-sm`, `aria-labelledby` pointing at its heading.
+- Close: a full-width yellow "Tutup" inside `<form method="dialog">`, plus a click handler that closes when the click lands on the dialog element itself (the backdrop).
 
 ## Grid patterns to reuse
 

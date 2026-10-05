@@ -133,7 +133,6 @@ Restraint, but not absent. The established motion is:
 - **Scroll-reveal**: every section uses `useInView` + `motion.div` with `initial={{ opacity: 0, y: 20 (or 30) }}` → `{ opacity: 1, y: 0 }`, duration 0.5–0.6s, stagger by index.
 - **Hover**: small `-translate-y` lifts (`-translate-y-0.5` / `-translate-y-1` / `-translate-y-2`) + shadow growth.
 - **Carousel**: testimonials slide via `transform: translateX(-X%)` with `transition-transform duration-500 ease-in-out`.
-- **Modal**: `AnimatePresence` with `scale + y` enter/exit (`ProblemSection`).
 - **Map markers**: CSS `pulse` keyframe scales 0.5 → 1.5 + fades over 2s, repeating.
 - **Smooth scroll** for anchor links (`scroll-behavior: smooth`).
 
