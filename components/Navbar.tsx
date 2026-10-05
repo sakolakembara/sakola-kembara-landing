@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
@@ -10,12 +10,30 @@ import { AuthNavButton } from "@/components/AuthNavButton";
 import type { Announcement } from "@/lib/db/schema";
 import brandLogo from "@/public/images/logo-sakola-kembara.png";
 
-export default function Navbar({
-  announcement,
-}: {
-  announcement?: Announcement | null;
-}) {
+export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+
+  // Fetched at runtime (not build) — the DB is only reachable from the server.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/announcements/current")
+      .then((res) => (res.ok ? res.json() : { announcement: null }))
+      .then((data) => {
+        if (cancelled) return;
+        setAnnouncement(data.announcement ?? null);
+        // Lift hero padding to clear the strip once it's known to be present
+        // (the clearance values are in globals.css, keyed on this attribute).
+        if (data.announcement) {
+          document.documentElement.dataset.announced = "";
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      delete document.documentElement.dataset.announced;
+    };
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100">

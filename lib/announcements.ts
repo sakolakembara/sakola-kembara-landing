@@ -51,8 +51,16 @@ function hydrateAnnouncement(
 }
 
 export async function getCurrentAnnouncement(): Promise<Announcement | null> {
-  const row = await getCachedCurrent();
-  return hydrateAnnouncement(row);
+  try {
+    const row = await getCachedCurrent();
+    return hydrateAnnouncement(row);
+  } catch (err) {
+    // The DB isn't reachable during `next build` (it lives on the VPS), and a
+    // transient outage shouldn't blank the whole site. Degrade to "no
+    // announcement" — the strip just doesn't render.
+    console.error("[announcements] read failed, rendering without strip:", err);
+    return null;
+  }
 }
 
 /** Used by the admin list — bypasses the cache to always show fresh data. */

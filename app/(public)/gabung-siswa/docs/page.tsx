@@ -19,6 +19,10 @@ import { formatBytes } from "@/lib/report-types";
 import { buildPageMetadata } from "@/lib/seo";
 import { CopyButton } from "./_copy-button";
 
+// Reads the DB, which is only reachable at runtime (on the VPS), not during
+// the CI build. Render per-request instead of prerendering.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = buildPageMetadata({
   title: "Pusat Dokumen & Berkas",
   description:

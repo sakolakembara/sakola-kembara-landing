@@ -96,12 +96,14 @@ html {
 /* The navbar is fixed, so every hero has to reserve room for it. The strip
    wraps to two or three lines on a narrow screen, which is why the mobile
    values are the taller ones — a single hard-coded `--hero-top` used to push
-   copy under the navbar on phones. Heroes read this var for their top pad. */
+   copy under the navbar on phones. Heroes read this var for their top pad.
+   Navbar sets `data-announced` on <html> once the strip has loaded. The var is
+   declared on the layout wrapper, so it must be overridden there, not on <html>. */
 .nav-clearance {
   --hero-top: 6.5rem;
 }
 
-.nav-clearance-announced {
+[data-announced] .nav-clearance {
   --hero-top: 11.5rem;
 }
 
@@ -110,7 +112,7 @@ html {
     --hero-top: 8rem;
   }
 
-  .nav-clearance-announced {
+  [data-announced] .nav-clearance {
     --hero-top: 11rem;
   }
 }
