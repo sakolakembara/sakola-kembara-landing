@@ -102,7 +102,9 @@ See [`homepage-sections.md`](homepage-sections.md). Order: Hero → Problem → 
 
 ### `/program/[id]`
 - Per-phase program page driven by `programs` in `lib/data.ts`. Dynamic route covers `prapembinaan`, `pembinaan`, `pasca-pembinaan`.
-- Layout: hero image with tag pill + title, sub-programs grid, PitchDeck download CTA, timeline placeholder, gallery placeholder, prev/next navigation.
+- The three stages read as **one page with tabs** (SAKEM-028, layout "Opsi B"): a shared navy hero ("Program Kami" + *Apa saja yang dilalui penerima manfaat Sakola Kembara?*), then a numbered 1-2-3 stepper card that overlaps it. Each step is a **link to that stage's own URL** with `aria-current="page"` on the active one, so every stage stays server-rendered, shareable, and works with Back; homepage cards, sitemap and shortlinks keep pointing at the same URLs.
+- Below the stepper: stage intro (photo + "Tahap N · tag" pill + **h1 = stage title** + description + points), *Kegiatan* grid, timeline placeholder, gallery, a "Tahap berikutnya" card with an outlined *Lanjut ke Tahap N* button (absent on the last stage), PitchDeck CTA. The old "Program Lainnya" prev/next block is gone.
+- `/program` itself has no page (404).
 
 ## Anchors & in-page scrolling
 
