@@ -45,6 +45,13 @@ There are **two button systems** in the codebase. Prefer the second (inline Tail
 
 **No arrows on buttons.** Buttons and text CTAs ("Lihat Detail", "Baca Selengkapnya", "Kembali ke Blog", pagination) carry no arrow or chevron icons. A leading icon that names the action (e.g. `ClipboardList` on *Daftar Sekarang*) is fine. The one exception is an icon-only control where the arrow *is* the button — the testimonial carousel's previous/next — which must keep an `aria-label`.
 
+**"Lihat Detail" is outlined; inside a card it is filled** (SAKEM-027). Both are `h-11` (44px), `px-5`, `rounded-lg`, `text-[15px] font-semibold`:
+
+- Outlined (standalone): `border-[1.5px] border-primary-blue text-primary-blue hover:bg-primary-blue/5`.
+- Filled (in a card): `bg-primary-blue text-white`, turning `bg-primary-blue-dark` on the card's `group-hover`. A clickable card is one link, so the button inside is a styled `<span>`, never a second link.
+
+**Header auth button** (`AuthNavButton`, desktop): outlined grey, `h-10` (40px). The mobile menu variant stays ≥44px for touch.
+
 ### 1. Legacy `.btn-*` classes (in `app/globals.css`)
 
 ```css
@@ -125,7 +132,7 @@ hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all dur
 
 - Image at top (`h-[200px]`), `program.tag` pill overlaid top-left (`bg-primary-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold`).
 - Body padding `p-6`, title `text-xl font-bold`, green-dot bullets (`w-1.5 h-1.5 rounded-full bg-secondary-green`).
-- Footer CTA "Lihat Detail" (text only) in `text-primary-blue font-semibold text-sm`.
+- Footer CTA: filled "Lihat Detail" button, full width (see Buttons).
 
 ### Stat card (`ProblemSection`)
 

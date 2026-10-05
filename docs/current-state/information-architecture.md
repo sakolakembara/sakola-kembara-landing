@@ -36,7 +36,7 @@ Source: `components/Navbar.tsx` + `navLinks` in `lib/data.ts`.
 - **Logo**: `/images/logo-sakola-kembara.png`, 40px tall, links to `/`.
 - **Layout** (from `md:`): a `grid-cols-[1fr_auto_1fr]` grid — logo left, menu in the middle, auth button right. The equal side columns keep the menu centred on the page, not in the leftover space between logo and button.
 - **Desktop nav**: plain links, `text-gray-600 text-[15px] font-medium hover:text-primary-blue`.
-- **Right side**: one outlined auth button (`components/AuthNavButton.tsx`), text only — **Masuk** → `/login` when signed out, **Portal** or **Dashboard** once the session resolves on the client. There is no donation button in the header; `/donasi` is reached from the menu.
+- **Right side**: one outlined auth button (`components/AuthNavButton.tsx`), text only, 40px tall on desktop — **Masuk** → `/login` when signed out, **Portal** or **Dashboard** once the session resolves on the client. There is no donation button in the header; `/donasi` is reached from the menu.
 - **Mobile (`< md`)**: hamburger toggle → full-width drop panel with the same items stacked + the auth button at the bottom.
 
 ### Nav order (left → right)

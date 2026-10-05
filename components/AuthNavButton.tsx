@@ -60,7 +60,7 @@ export function AuthNavButton({
       onClick={onNavigate}
       className={
         variant === "desktop"
-          ? `${base} px-4 py-3 text-[15px]`
+          ? `${base} h-10 px-4 text-[15px]`
           : `${base} justify-center px-6 py-3 text-[15px]`
       }
     >

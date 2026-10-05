@@ -79,9 +79,11 @@ export default function ActivitiesSection() {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-auto text-primary-blue font-semibold text-sm">
+                  {/* Inside a card the CTA is filled. The whole card is the
+                      link, so this is a styled span, not a nested link. */}
+                  <span className="mt-auto flex h-11 items-center justify-center rounded-lg bg-primary-blue px-5 text-[15px] font-semibold text-white transition-colors group-hover:bg-primary-blue-dark">
                     Lihat Detail
-                  </div>
+                  </span>
                 </div>
               </motion.div>
             </Link>
