@@ -7,7 +7,10 @@ export const LEGAL_NAME = "Yayasan Sakola Kembara Indonesia";
 export const SITE_TAGLINE = "Pendidikan Untuk Semua";
 
 export const ORG_LOGO = `${SITE_URL}/images/logo-sakola-kembara.png`;
-export const DEFAULT_OG_IMAGE = "/og-default.png"; // 1200×630 — placeholder until design ships it
+// 1200×630 share image for pages without their own (programs and blog posts
+// pass their cover photo instead). JPEG because it carries a photo: ~80 KB vs
+// ~330 KB as PNG, and WhatsApp drops large previews.
+export const DEFAULT_OG_IMAGE = "/og-default.jpg";
 
 export const SOCIAL_URLS = [
   "https://instagram.com/sakolakembara",

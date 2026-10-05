@@ -21,6 +21,7 @@ When you look at the site, four things define the brand:
 - **Navbar**: used at native colors on white surface.
 - **Footer**: `public/images/logo-sakola-kembara-light.png` — the same artwork with the black wordmark recoloured white; the K mark and the pinwheel "o" keep their real colours on navy. (Replaced the old `invert(1) hue-rotate(180deg)` filter, which shifted the mark's colours.) If an official light-variant file arrives, drop it in at the same path.
 - **Favicon & app icons** (Next.js file conventions, picked up automatically): the K mark alone, cropped from the logo — `app/favicon.ico` (16/32/48), `app/icon.png` (192), `app/apple-icon.png` (180, on a white tile because iOS shows transparency as black). The source mark is only ~93 px tall, so larger icons wait for a high-res or SVG mark; regenerate all three from it when it arrives.
+- **Share image**: `public/og-default.jpg` (1200×630) — navy gradient, light logo, *Pendidikan Untuk Semua*, a real student photo. Used by every page that does not pass its own `ogImage`.
 
 **Do**
 - Keep adequate clear space around the logo (at minimum the height of the wordmark cap height).

@@ -102,7 +102,7 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
    - `/blog` and `/blog/[id]` — already have dynamic metadata; verify canonical + image.
 
 3. **Open Graph + Twitter cards**
-   - Single brand-wide default OG image at `public/og-default.png` (1200×630, logo + tagline).
+   - Single brand-wide default OG image at `public/og-default.jpg` (1200×630, logo + tagline + student photo; shipped in SAKEM-026).
    - Per-blog-post OG uses `article.image`.
    - Per-program OG uses the program's hero image.
 
