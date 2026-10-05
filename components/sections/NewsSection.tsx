@@ -5,7 +5,6 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import type { BlogArticle } from "@/lib/blog-types";
 
 interface NewsSectionProps {
@@ -39,10 +38,9 @@ export default function NewsSection({ articles }: NewsSectionProps) {
           </div>
           <Link
             href="/blog"
-            className="inline-flex items-center gap-2 text-[15px] font-semibold text-primary-blue hover:underline"
+            className="text-[15px] font-semibold text-primary-blue hover:underline"
           >
             Lihat Semua
-            <ArrowRight size={16} />
           </Link>
         </motion.div>
 

@@ -1,6 +1,6 @@
 # Visual Identity
 
-> **Hard rule.** The current visual style is the established Sakola Kembara brand and must be preserved across new work. Documents in `design/` describe the guardrails so additions stay coherent.
+> **Hard rule.** The style documented here is the Sakola Kembara brand, and new work must stay coherent with it. The visual refresh (from SAKEM-024) changes it only through tickets, each updating these documents in the same PR.
 
 ## Brand feel in one line
 
@@ -19,11 +19,11 @@ When you look at the site, four things define the brand:
 
 - File: `public/images/logo-sakola-kembara.png` (300×103 source, rendered at `h-10 w-auto` ≈ 40px tall).
 - **Navbar**: used at native colors on white surface.
-- **Footer**: same file, inverted via CSS — `className="[filter:invert(1)_hue-rotate(180deg)]"` to read light on the navy footer.
+- **Footer**: `public/images/logo-sakola-kembara-light.png` — the same artwork with the black wordmark recoloured white; the K mark and the pinwheel "o" keep their real colours on navy. (Replaced the old `invert(1) hue-rotate(180deg)` filter, which shifted the mark's colours.) If an official light-variant file arrives, drop it in at the same path.
 
 **Do**
 - Keep adequate clear space around the logo (at minimum the height of the wordmark cap height).
-- Use the existing asset — don't recolor manually; inversion is handled by the CSS filter on the footer.
+- Use one of the two asset files — dark wordmark on light surfaces, light wordmark on navy. Don't recolour with CSS filters.
 
 **Don't**
 - Place the logo on busy photographic backgrounds without a solid pad.

@@ -46,7 +46,7 @@ Dark surfaces use the brand navy family (`accent-navy` → `primary-blue`), neve
 - **3-column grid** of `programs` from `lib/data.ts` (Pra Pembinaan, Pembinaan, Pasca Pembinaan). Each card:
   - White surface, `rounded-2xl`.
   - Image with `program.tag` pill (primary-blue) overlaid top-left.
-  - Title, 3 bullet points (green dot bullets), "Lihat Detail →" footer that links to `/program/[id]`.
+  - Title, 3 bullet points (green dot bullets), "Lihat Detail" footer (text only) that links to `/program/[id]`.
   - Hover: `-translate-y-2 shadow-xl`.
 
 ## 4. Impact (`ImpactSection.tsx`)

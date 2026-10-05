@@ -38,9 +38,11 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100">
       {announcement && <AnnouncementStrip announcement={announcement} />}
-      <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
+      {/* From md up, equal 1fr side columns keep the menu centred on the page
+          rather than in whatever space the logo and the auth button leave. */}
+      <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]">
         {/* Logo */}
-        <Link href="/" aria-label="Sakola Kembara" className="flex items-center">
+        <Link href="/" aria-label="Sakola Kembara" className="flex items-center justify-self-start">
           <Image
             src={brandLogo}
             alt="Sakola Kembara"
@@ -65,15 +67,9 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* Desktop CTA Buttons */}
-        <div className="hidden md:flex items-center gap-2 lg:gap-3">
+        {/* Desktop auth action */}
+        <div className="hidden md:flex items-center justify-self-end">
           <AuthNavButton />
-          <Link
-            href="/donasi"
-            className="px-6 py-3 text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
-          >
-            Donasi Sekarang
-          </Link>
         </div>
 
         {/* Mobile Menu Button */}
@@ -102,18 +98,11 @@ export default function Navbar() {
               </li>
             ))}
           </ul>
-          <div className="flex flex-col gap-3 mt-6">
+          <div className="flex flex-col mt-6">
             <AuthNavButton
               variant="mobile"
               onNavigate={() => setIsMenuOpen(false)}
             />
-            <Link
-              href="/donasi"
-              className="px-6 py-3 text-center text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark transition-all"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Donasi Sekarang
-            </Link>
           </div>
         </div>
       )}

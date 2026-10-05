@@ -2,7 +2,7 @@
 
 This folder is the single source of truth for non-code knowledge about the Sakola Kembara website. It exists so anyone (engineering, design, product, leadership) can quickly understand **what the site is**, **why it exists in its current shape**, and **what must not drift** as we evolve it.
 
-> **Hard rule.** The current Indonesian language tone and the current visual style are not up for redesign. Documents here describe those guardrails. New work should extend, not replace.
+> **Hard rule.** The current Indonesian language tone is not up for redesign. The visual style is being refreshed in deliberate steps (starting with SAKEM-024): change it only through a ticket, and update `design/` in the same PR so these documents always describe what ships. Outside such a ticket, new work extends the documented style rather than replacing it.
 
 > :compass: **Just landed here? Start with [`mvp-status.md`](mvp-status.md).** It's a one-page snapshot of what the repo can do today — public site, admin dashboard, tech stack, what's deferred, what's blocking launch.
 

@@ -43,6 +43,8 @@ Horizontal gaps inside grids use `gap-6`, `gap-8`, `gap-12`, or `gap-16` dependi
 
 There are **two button systems** in the codebase. Prefer the second (inline Tailwind) for all new work — it's what every modern page uses.
 
+**No arrows on buttons.** Buttons and text CTAs ("Lihat Detail", "Baca Selengkapnya", "Kembali ke Blog", pagination) carry no arrow or chevron icons. A leading icon that names the action (e.g. `ClipboardList` on *Daftar Sekarang*) is fine. The one exception is an icon-only control where the arrow *is* the button — the testimonial carousel's previous/next — which must keep an `aria-label`.
+
 ### 1. Legacy `.btn-*` classes (in `app/globals.css`)
 
 ```css
@@ -123,7 +125,7 @@ hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all dur
 
 - Image at top (`h-[200px]`), `program.tag` pill overlaid top-left (`bg-primary-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold`).
 - Body padding `p-6`, title `text-xl font-bold`, green-dot bullets (`w-1.5 h-1.5 rounded-full bg-secondary-green`).
-- Footer CTA "Lihat Detail →" in `text-primary-blue font-semibold text-sm`.
+- Footer CTA "Lihat Detail" (text only) in `text-primary-blue font-semibold text-sm`.
 
 ### Stat card (`ProblemSection`)
 
@@ -194,9 +196,9 @@ Because the navbar is `fixed`, every page that mounts it adds top padding manual
 
 - `bg-gradient-to-b from-accent-navy to-primary-blue text-white`, container `max-w-[1200px] mx-auto px-6 pt-12 md:pt-16 pb-8 md:pb-10`.
 - A 4px `bg-secondary-yellow` hairline sits above the footer so it doesn't read as a slab of dark.
-- 3-column grid on `lg:` (stacks to 2 / 1).
-- Column headings are `text-secondary-yellow`; body copy is `text-white/75`, not `gray-400` — the old neutral greys failed contrast against the dark surface.
-- Logo uses `[filter:invert(1)_hue-rotate(180deg)]` to read on dark. A proper light-variant logo asset would be better; there is only one logo file today.
+- 4-column grid on `lg:` — `grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]`, the wider first column holding logo + description (stacks to 2 / 1).
+- Column headings are `text-secondary-yellow`; body copy and links are `text-white/75` (links `hover:text-white`), not `gray-400` — the old neutral greys failed contrast against the dark surface.
+- Logo is the light variant `logo-sakola-kembara-light.png`: same mark as the navbar, wordmark in white. No CSS filter.
 - Bottom strip: `border-t border-white/15`, `py-5`, copyright + legal entity name.
 
 ## Forms

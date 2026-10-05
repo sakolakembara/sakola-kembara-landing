@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogIn, UserRound } from "lucide-react";
 
 /** Admin roles — mirrors `adminRoles` in lib/db/schema/users.ts. */
 const ADMIN_ROLES = ["viewer", "editor", "super_admin"];
@@ -10,14 +9,9 @@ const ADMIN_ROLES = ["viewer", "editor", "super_admin"];
 interface Target {
   href: string;
   label: string;
-  icon: React.ReactNode;
 }
 
-const SIGNED_OUT: Target = {
-  href: "/login",
-  label: "Masuk",
-  icon: <LogIn size={16} />,
-};
+const SIGNED_OUT: Target = { href: "/login", label: "Masuk" };
 
 /**
  * Auth-aware header action. The public pages are statically rendered, so we
@@ -47,16 +41,8 @@ export function AuthNavButton({
         const role = session.user.role;
         setTarget(
           role && ADMIN_ROLES.includes(role)
-            ? {
-                href: "/admin",
-                label: "Dashboard",
-                icon: <LayoutDashboard size={16} />,
-              }
-            : {
-                href: "/portal",
-                label: "Portal",
-                icon: <UserRound size={16} />,
-              },
+            ? { href: "/admin", label: "Dashboard" }
+            : { href: "/portal", label: "Portal" },
         );
       })
       .catch(() => {
@@ -66,7 +52,7 @@ export function AuthNavButton({
   }, []);
 
   const base =
-    "inline-flex items-center gap-1.5 font-semibold rounded-lg border border-gray-200 text-gray-700 hover:text-primary-blue hover:border-primary-blue/40 hover:bg-primary-blue/5 transition-colors";
+    "inline-flex items-center font-semibold rounded-lg border border-gray-200 text-gray-700 hover:text-primary-blue hover:border-primary-blue/40 hover:bg-primary-blue/5 transition-colors";
 
   return (
     <Link
@@ -78,7 +64,6 @@ export function AuthNavButton({
           : `${base} justify-center px-6 py-3 text-[15px]`
       }
     >
-      {target.icon}
       {target.label}
     </Link>
   );

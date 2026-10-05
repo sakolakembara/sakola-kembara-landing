@@ -34,9 +34,10 @@ Source: `components/Navbar.tsx` + `navLinks` in `lib/data.ts`.
 - **Position**: `fixed top-0 left-0 right-0 z-50`, `bg-white/95 backdrop-blur-md`, `border-b border-gray-100`. The navbar overlaps content; each page applies its own top padding (`pt-32` / `pt-40`) to compensate.
 - **Container**: `max-w-[1200px] mx-auto px-6 py-4`.
 - **Logo**: `/images/logo-sakola-kembara.png`, 40px tall, links to `/`.
-- **Desktop nav** (visible from `md:`): plain links, `text-gray-600 text-[15px] font-medium hover:text-primary-blue`.
-- **Right-side CTA**: **Donasi Sekarang** → `/donasi`. Pill-rounded? **No** — `rounded-lg` (8px). The button uses `bg-primary-blue text-white`, lifts `-translate-y-0.5` and adds a blue glow on hover.
-- **Mobile (`< md`)**: hamburger toggle → full-width drop panel with the same items stacked + the same CTA at the bottom.
+- **Layout** (from `md:`): a `grid-cols-[1fr_auto_1fr]` grid — logo left, menu in the middle, auth button right. The equal side columns keep the menu centred on the page, not in the leftover space between logo and button.
+- **Desktop nav**: plain links, `text-gray-600 text-[15px] font-medium hover:text-primary-blue`.
+- **Right side**: one outlined auth button (`components/AuthNavButton.tsx`), text only — **Masuk** → `/login` when signed out, **Portal** or **Dashboard** once the session resolves on the client. There is no donation button in the header; `/donasi` is reached from the menu.
+- **Mobile (`< md`)**: hamburger toggle → full-width drop panel with the same items stacked + the auth button at the bottom.
 
 ### Nav order (left → right)
 
@@ -44,9 +45,10 @@ Source: `components/Navbar.tsx` + `navLinks` in `lib/data.ts`.
 2. **Team** → `/tim`
 3. **Siswa** → `/gabung-siswa`
 4. **Donasi** → `/donasi`
-5. **Blog** → `/blog`
-6. **Kontak** → `/kontak`
-7. **Donasi Sekarang** (right-aligned button) → `/donasi`
+5. **Laporan** → `/laporan`
+6. **Blog** → `/blog`
+
+Kontak is not in the header; it lives in the footer.
 
 > Labels `Home`, `Team`, and `Blog` are intentionally English. See `context/tone-of-voice.md` "English content policy". Do not Indonesianize without product sign-off.
 
@@ -55,10 +57,11 @@ Source: `components/Navbar.tsx` + `navLinks` in `lib/data.ts`.
 Source: `components/Footer.tsx`.
 
 - **Background**: `bg-gradient-to-b from-accent-navy to-primary-blue text-white`, under a 4px `bg-secondary-yellow` hairline. Container `max-w-[1200px] mx-auto px-6 pt-12 md:pt-16 pb-8 md:pb-10`.
-- **3-column grid** on `lg:` (stacks to 2 / 1 on smaller widths):
-  1. **Logo + location**: inverted logo (CSS `filter: invert(1) hue-rotate(180deg)` so the dark-blue mark reads light on dark), MapPin icon + "Bandung, Jawa Barat, Indonesia".
-  2. **Kontak**: Mail icon link to `contact@sakolakembara.org`.
-  3. **Social Media**: `<SocialLinks theme="dark" />` — Instagram, TikTok, X (Twitter), YouTube.
+- **4-column grid** on `lg:` (first column wider; stacks to 2 / 1 on smaller widths):
+  1. **Logo, description, location**: `/images/logo-sakola-kembara-light.png` — the navbar logo with its wordmark recoloured white, so the mark keeps its real colours on navy. Below it the line *"Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia."*, then MapPin icon + "Bandung, Jawa Barat, Indonesia".
+  2. **Jelajahi**: `footerLinks` from `lib/data.ts` — the header destinations minus Home, plus **Kontak** → `/kontak`.
+  3. **Kontak**: Mail icon link to `contact@sakolakembara.org`.
+  4. **Social Media**: `<SocialLinks theme="dark" />` — Instagram, TikTok, X (Twitter), YouTube.
 - **Bottom strip**: `border-t border-white/15`, two lines:
   - `© {new Date().getFullYear()} Sakola Kembara. All rights reserved.`
   - `Yayasan Sakola Kembara Indonesia`

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  ArrowRight,
   BookOpen,
   ClipboardList,
   FolderOpen,
@@ -92,7 +91,6 @@ export default function GabungSiswaPage() {
               >
                 <ClipboardList size={18} />
                 Daftar Sekarang
-                <ArrowRight size={18} />
               </Link>
               <a
                 href="#manfaat"
@@ -221,7 +219,6 @@ export default function GabungSiswaPage() {
             >
               <ClipboardList size={18} />
               Daftar Sekarang
-              <ArrowRight size={18} />
             </Link>
           </motion.div>
         </div>

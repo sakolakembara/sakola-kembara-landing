@@ -37,6 +37,12 @@ export const navLinks = [
   { href: "/donasi", label: "Donasi" },
   { href: "/laporan", label: "Laporan" },
   { href: "/blog", label: "Blog" },
+];
+
+// The footer repeats the header destinations (its logo already links home)
+// and carries Kontak, which lives only in the footer.
+export const footerLinks = [
+  ...navLinks.filter((link) => link.href !== "/"),
   { href: "/kontak", label: "Kontak" },
 ];
 

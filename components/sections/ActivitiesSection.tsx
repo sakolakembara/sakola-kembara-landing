@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { programs } from "@/lib/data";
 
@@ -80,12 +79,8 @@ export default function ActivitiesSection() {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-auto flex items-center gap-2 text-primary-blue font-semibold text-sm">
-                    <span>Lihat Detail</span>
-                    <ArrowRight
-                      size={16}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
+                  <div className="mt-auto text-primary-blue font-semibold text-sm">
+                    Lihat Detail
                   </div>
                 </div>
               </motion.div>

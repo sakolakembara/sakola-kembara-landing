@@ -40,7 +40,7 @@ Render via the eyebrow JSX pattern (yellow dot + uppercase tracked text). See `c
 - Verb + object pattern: *Donasi Sekarang*, *Dukung Misi Kami*, *Lihat Program Kami*, *Daftar Sekarang*, *Hubungi Kami*, *Konfirmasi Donasi*, *Salin No Rekening*, *Download QR*.
 - Volunteer CTAs use *Menjadi X* / *Gabung X*: *Menjadi Relawan*, *Gabung Tim*, *Bergabung Menjadi Relawan*.
 - "Sekarang" suffix is allowed for primary action emphasis (*Donasi Sekarang*, *Daftar Sekarang*, *Daftar Gratis Sekarang*).
-- The header CTA stays at 2 words: **Donasi Sekarang**.
+- The header has no CTA button besides **Masuk**; donation is reached via the *Donasi* menu link.
 
 **Don't**
 - *Klik di sini*
@@ -80,8 +80,8 @@ Render via the eyebrow JSX pattern (yellow dot + uppercase tracked text). See `c
 
 ## Footer copy
 
-- Tagline line under the logo: location only (*"Bandung, Jawa Barat, Indonesia"*) — short and concrete.
-- Section headings: `text-sm font-bold uppercase tracking-wider text-gray-300` — *Kontak*, *Social Media*.
+- Under the logo: one mission sentence (*"Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia."*), then the location (*"Bandung, Jawa Barat, Indonesia"*).
+- Section headings: `text-sm font-bold uppercase tracking-wider text-secondary-yellow` — *Jelajahi*, *Kontak*, *Social Media*.
 - Copyright uses live year via `new Date().getFullYear()` — do not hard-code.
 
 ## What never to do

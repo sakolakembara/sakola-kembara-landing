@@ -4,7 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
 import SocialLinks from "@/components/SocialLinks";
-import brandLogo from "@/public/images/logo-sakola-kembara.png";
+import { footerLinks } from "@/lib/data";
+// Same mark as the navbar logo, with the black wordmark recoloured white so
+// it reads on the navy footer.
+import brandLogo from "@/public/images/logo-sakola-kembara-light.png";
 
 export default function Footer() {
   return (
@@ -15,8 +18,8 @@ export default function Footer() {
 
       {/* Main Footer */}
       <div className="max-w-[1200px] mx-auto px-6 pt-12 md:pt-16 pb-8 md:pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-12">
-          {/* Logo & Location */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))] gap-10 md:gap-12">
+          {/* Logo, description & location */}
           <div>
             <Link href="/" aria-label="Sakola Kembara" className="inline-flex items-center mb-4">
               <Image
@@ -24,14 +27,40 @@ export default function Footer() {
                 alt="Sakola Kembara"
                 width={300}
                 height={103}
-                className="h-10 w-auto [filter:invert(1)_hue-rotate(180deg)]"
+                className="h-10 w-auto"
               />
             </Link>
+            <p className="text-sm text-white/75 leading-relaxed max-w-sm mb-4">
+              Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan
+              pendidikan yang setara kepada seluruh anak Indonesia.
+            </p>
             <div className="flex items-start gap-3 text-sm text-white/75">
               <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
               Bandung, Jawa Barat, Indonesia
             </div>
           </div>
+
+          {/* Site links */}
+          <nav aria-labelledby="footer-links-heading">
+            <h4
+              id="footer-links-heading"
+              className="text-sm font-bold uppercase tracking-wider text-secondary-yellow mb-5"
+            >
+              Jelajahi
+            </h4>
+            <ul className="space-y-3">
+              {footerLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-white/75 hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           {/* Contact */}
           <div>

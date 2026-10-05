@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Info, Megaphone } from "lucide-react";
+import { AlertTriangle, Info, Megaphone } from "lucide-react";
 import type { Announcement } from "@/lib/db/schema";
 
 const STYLES = {
@@ -45,10 +45,9 @@ export function AnnouncementStrip({ announcement }: { announcement: Announcement
             href={announcement.ctaUrl}
             target={isExternal ? "_blank" : undefined}
             rel={isExternal ? "noopener noreferrer" : undefined}
-            className={`shrink-0 inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full transition-colors ${style.cta}`}
+            className={`shrink-0 px-3 py-1 text-xs font-semibold rounded-full transition-colors ${style.cta}`}
           >
             {announcement.ctaLabel}
-            <ArrowRight size={12} />
           </Link>
         )}
       </div>
