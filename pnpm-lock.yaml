@@ -29,6 +29,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4

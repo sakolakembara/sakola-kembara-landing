@@ -28,6 +28,7 @@
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.27.1",
     "gray-matter": "^4.0.3",
+    "jose": "^6.2.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "marked": "^18.0.4",
