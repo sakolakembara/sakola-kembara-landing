@@ -200,7 +200,7 @@ drizzle/                   Generated SQL migrations (committed)
 The `docs/` folder is organized so each role gets what they need first:
 
 - **Editing public copy?** [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md) — the Indonesian-formal voice is locked.
-- **Touching visuals?** [`docs/design/`](docs/design/) — color, typography, components, copy style. Brand is locked too.
+- **Touching visuals?** [`DESIGN.md`](DESIGN.md) — color, type, layout, components, imagery, motion, UI copy. Visual changes go through a ticket.
 - **Adding a feature?** [`docs/current-state/tech-stack.md`](docs/current-state/tech-stack.md) for the lay of the land, then the matching `docs/current-state/*` file.
 - **How auth / portal / batches work?** [`docs/architecture/authentication.md`](docs/architecture/authentication.md), [`docs/architecture/student-portal.md`](docs/architecture/student-portal.md), [`docs/architecture/admission-batches.md`](docs/architecture/admission-batches.md).
 - **Curious what's coming?** [`docs/roadmap/mvp-priorities.md`](docs/roadmap/mvp-priorities.md), [`admin-dashboard.md`](docs/roadmap/admin-dashboard.md), [`infrastructure.md`](docs/roadmap/infrastructure.md), [`data-model.md`](docs/roadmap/data-model.md).
@@ -213,7 +213,7 @@ Index: [`docs/README.md`](docs/README.md).
 - Branch from `main`, push to your branch, open a PR.
 - Use conventional-commit prefixes when it helps (`feat:`, `fix:`, `docs:`, `build:`, `ci:`). Mixed style is fine; check `git log` for examples.
 - **If your change is structural** (new route, new dep, new deploy step, new data model), update the relevant file under `docs/current-state/` in the same PR. Stale docs are worse than missing docs.
-- **Preserve tone and visuals.** Don't rewrite Indonesian copy or shift colors/fonts/spacing without product sign-off — see [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md) and [`docs/design/visual-identity.md`](docs/design/visual-identity.md).
+- **Preserve tone; change visuals only through a ticket.** Don't rewrite Indonesian copy, and don't shift colors/fonts/spacing outside a SAKEM ticket that also updates [`DESIGN.md`](DESIGN.md). Voice: [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md).
 - Unit tests live in `__tests__/` and cover the Zod schemas that gate DB writes, the rate limiter, the admin-user domain service, and the `requireAdmin` / `requireStudent` guards. Run `npm test` before pushing.
 
 ## Ownership

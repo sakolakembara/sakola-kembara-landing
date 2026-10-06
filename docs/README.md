@@ -2,7 +2,7 @@
 
 This folder is the single source of truth for non-code knowledge about the Sakola Kembara website. It exists so anyone (engineering, design, product, leadership) can quickly understand **what the site is**, **why it exists in its current shape**, and **what must not drift** as we evolve it.
 
-> **Hard rule.** The current Indonesian language tone is not up for redesign. The visual style is being refreshed in deliberate steps (starting with SAKEM-024): change it only through a ticket, and update `design/` in the same PR so these documents always describe what ships. Outside such a ticket, new work extends the documented style rather than replacing it.
+> **Hard rule.** The current Indonesian language tone is not up for redesign. The visual style is being refreshed in deliberate steps (starting with SAKEM-024): change it only through a ticket, and update [`DESIGN.md`](../DESIGN.md) in the same PR so it always describes what ships. Outside such a ticket, new work extends the documented style rather than replacing it.
 
 > :compass: **Just landed here? Start with [`mvp-status.md`](mvp-status.md).** It's a one-page snapshot of what the repo can do today — public site, admin dashboard, tech stack, what's deferred, what's blocking launch.
 
@@ -28,13 +28,8 @@ A factual snapshot of the codebase. Update these as the system changes.
 - [`runbook/sso-email-launch.md`](runbook/sso-email-launch.md) — Focused rollout for the LMS SSO handshake + transactional email (Resend). Do after the main launch. ~90 min attended work + DNS propagation waits.
 - [`current-state/known-gaps.md`](current-state/known-gaps.md) — Placeholder content, missing dashboard features, work the MVP still owes.
 
-### 3. `design/` — The visual & UX brief
-Guardrails for any future UI work. Treat these as the design system contract.
-
-- [`design/visual-identity.md`](design/visual-identity.md) — Brand feel, photography, illustration, motion.
-- [`design/color-and-typography.md`](design/color-and-typography.md) — Color tokens, font families, weights, sizes.
-- [`design/components-and-layout.md`](design/components-and-layout.md) — Buttons, eyebrow, cards, containers, sections, spacing scale.
-- [`design/copy-style.md`](design/copy-style.md) — Headline structure, button verbs, microcopy conventions.
+### 3. Design — [`/DESIGN.md`](../DESIGN.md)
+The design system lives in one file at the repo root: brand, color and type tokens, layout, components, imagery, motion, UI copy, accessibility. (It replaced the four `design/*.md` files in SAKEM-030.)
 
 ### 4. `roadmap/` — Where we're going
 - [`roadmap/mvp-roadmap.md`](roadmap/mvp-roadmap.md) — **Start here.** Master sequenced execution plan (Phases 0–9) covering production deploy + auth, SEO baseline, admin dashboard from scratch, student-application flow, announcements, reports, blog dashboard, content replacement, and launch.
@@ -54,6 +49,6 @@ Focused explainers for the load-bearing subsystems. Read the matching file befor
 
 ## How to use this folder
 
-- **Before writing code that affects public pages**, scan `context/` and `design/`. If your change would shift tone or visuals beyond what the design docs allow, raise it with product first.
+- **Before writing code that affects public pages**, scan `context/` and [`DESIGN.md`](../DESIGN.md). If your change would shift tone, or visuals beyond what `DESIGN.md` describes, it needs a ticket and product sign-off first.
 - **After shipping something structural**, update the relevant `current-state/` file in the same PR. Stale docs are worse than missing docs.
 - **Discussion notes & decisions** that don't fit any file: drop them in a new file under the closest folder and link it from this README.
