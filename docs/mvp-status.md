@@ -106,5 +106,5 @@ Operational, not code. Tracked in [`runbook/launch.md`](runbook/launch.md) Phase
 - **How the student portal works**: [`architecture/student-portal.md`](architecture/student-portal.md)
 - **How admission batches work**: [`architecture/admission-batches.md`](architecture/admission-batches.md)
 - **What's still placeholder**: [`current-state/known-gaps.md`](current-state/known-gaps.md)
-- **Visual guardrails**: [`design/visual-identity.md`](design/visual-identity.md), [`design/color-and-typography.md`](design/color-and-typography.md)
+- **Visual guardrails**: [`DESIGN.md`](../DESIGN.md)
 - **Indonesian tone-of-voice**: [`context/tone-of-voice.md`](context/tone-of-voice.md)

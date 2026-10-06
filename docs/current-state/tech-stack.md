@@ -29,9 +29,9 @@ A snapshot of what powers the site today. Keep this in sync with `package.json` 
   - **Neutrals**: `white`, `light-gray`, `medium-gray`, `dark-gray`, `black`.
   - **Type**: `var(--font-display)` (Lora) and `var(--font-body)` (Plus Jakarta Sans).
 - Component classes defined in `app/globals.css`: `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-accent`, `.card`, `.input`, `.label`, `.blog-content`, `.image-placeholder`, `.animate-pulse-marker`.
-  > In practice most components inline Tailwind utilities directly (e.g. `bg-primary-blue rounded-lg`) rather than using these classes. The classes are kept for consistency with form-heavy surfaces (e.g. `/kontak`) and for the blog HTML.
+  > In practice most components inline Tailwind utilities directly (e.g. `bg-primary-blue rounded-lg`) rather than using these classes. No component uses these classes any more (`/kontak` inlines utilities too); see [`DESIGN.md`](../../DESIGN.md) › Legacy CSS.
 
-See [`docs/design/color-and-typography.md`](../design/color-and-typography.md) for how to use the tokens.
+See [`DESIGN.md`](../../DESIGN.md) for how to use the tokens.
 
 ## Fonts
 

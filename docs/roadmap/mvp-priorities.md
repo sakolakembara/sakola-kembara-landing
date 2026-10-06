@@ -57,7 +57,7 @@ Captured from product discussion. Order is intentional — items higher in the l
 
 ## Working principles for the MVP
 
-- **Don't redesign.** The current visual style (catalina blue / sunglow yellow / may green / Lora serif heads) and Indonesian tone are the established brand. New surfaces must compose with the existing system. See `docs/design/*`.
+- **Don't redesign.** The current visual style (catalina blue / sunglow yellow / may green / Lora serif heads) and Indonesian tone are the established brand. New surfaces must compose with the existing system. See [`DESIGN.md`](../../DESIGN.md); visual changes go through a SAKEM ticket.
 - **Static-first where churn is low** (team page, principles content) — manual edits to `lib/data.ts` are fine for MVP.
 - **Dashboard-managed where churn is high** (blog, announcements, reports, student applications). Build the editor surfaces in the dashboard, not in code.
 - **External forms are tolerable as a stop-gap** — donation confirmation (Google Form) and volunteer signup (Linktree) can stay externally hosted, but the student registration form should move on-site as part of MVP item #3.

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cleanExcerpt, type BlogArticle } from "@/lib/blog-types";
@@ -79,9 +79,8 @@ export function BlogIndex({
                     <p className="text-gray-600 leading-relaxed mb-6">
                       {cleanExcerpt(featured.excerpt)}
                     </p>
-                    <span className="inline-flex items-center gap-2 text-primary-blue font-semibold group-hover:underline">
+                    <span className="text-primary-blue font-semibold group-hover:underline">
                       Baca Selengkapnya
-                      <span>→</span>
                     </span>
                   </div>
                 </div>
@@ -146,10 +145,9 @@ export function BlogIndex({
                     </p>
                     <Link
                       href={`/blog/${article.id}`}
-                      className="inline-flex items-center gap-1 text-sm text-primary-blue font-semibold hover:underline"
+                      className="text-sm text-primary-blue font-semibold hover:underline"
                     >
                       Baca Selengkapnya
-                      <span>→</span>
                     </Link>
                   </div>
                 </motion.article>
@@ -184,13 +182,13 @@ function Pagination({
       {prevHref ? (
         <Link
           href={prevHref}
-          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
+          className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
         >
-          <ChevronLeft size={16} /> Sebelumnya
+          Sebelumnya
         </Link>
       ) : (
-        <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
-          <ChevronLeft size={16} /> Sebelumnya
+        <span className="px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
+          Sebelumnya
         </span>
       )}
       <div className="flex items-center gap-1">
@@ -224,13 +222,13 @@ function Pagination({
       {nextHref ? (
         <Link
           href={nextHref}
-          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
+          className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
         >
-          Berikutnya <ChevronRight size={16} />
+          Berikutnya
         </Link>
       ) : (
-        <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
-          Berikutnya <ChevronRight size={16} />
+        <span className="px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
+          Berikutnya
         </span>
       )}
     </nav>

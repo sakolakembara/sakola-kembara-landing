@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Calendar, User, ArrowLeft } from "lucide-react";
+import { Calendar, User } from "lucide-react";
 import BlogPostContent from "@/components/blog/BlogPostContent";
 import {
   getAllArticles,
@@ -102,9 +102,8 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
           <div className="relative max-w-[800px] mx-auto px-6 pb-10 min-h-[420px] md:min-h-[500px] flex flex-col justify-end pt-[var(--hero-top,8rem)]">
             <Link
               href="/blog"
-              className="inline-flex items-center gap-2 text-white/90 text-sm font-medium mb-4 hover:text-white transition-colors w-fit"
+              className="text-white/90 text-sm font-medium mb-4 hover:text-white transition-colors w-fit"
             >
-              <ArrowLeft size={16} />
               Kembali ke Blog
             </Link>
             <span className="inline-block w-fit text-xs font-semibold text-white bg-primary-blue px-3 py-1 rounded-full mb-3">

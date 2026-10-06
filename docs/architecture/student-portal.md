@@ -23,7 +23,7 @@ Every route under `/portal/*` is gated by both the middleware (`proxy.ts` matche
 
 ### Visual language
 
-Portal pages use the sub-page hero pattern from the design docs: a `bg-gradient-to-br from-primary-blue to-accent-navy` band at the top with the yellow-dot eyebrow, Lora serif H1, and short subhead. Content cards below overlap the hero by `-mt-10 md:-mt-14` for a subtle transition. The current-batch feature card on `/portal` uses the same navy gradient (instead of white) when a batch is open with no submission yet — the primary CTA of the whole portal, treated as such. See [`../design/visual-identity.md`](../design/visual-identity.md).
+Portal pages use the sub-page hero pattern from [`DESIGN.md`](../../DESIGN.md): a `bg-gradient-to-br from-primary-blue to-accent-navy` band at the top with the yellow-dot eyebrow, Lora serif H1, and short subhead. Content cards below overlap the hero by `-mt-10 md:-mt-14` for a subtle transition. The current-batch feature card on `/portal` uses the same navy gradient (instead of white) when a batch is open with no submission yet — the primary CTA of the whole portal, treated as such.
 
 ## `/portal` — home
 

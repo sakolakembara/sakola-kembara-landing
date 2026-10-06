@@ -102,7 +102,7 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
    - `/blog` and `/blog/[id]` — already have dynamic metadata; verify canonical + image.
 
 3. **Open Graph + Twitter cards**
-   - Single brand-wide default OG image at `public/og-default.png` (1200×630, logo + tagline).
+   - Single brand-wide default OG image at `public/og-default.jpg` (1200×630, logo + tagline + student photo; shipped in SAKEM-026).
    - Per-blog-post OG uses `article.image`.
    - Per-program OG uses the program's hero image.
 
@@ -150,7 +150,7 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 1. **Admin home `/admin`**
    - Stat cards: pending applications, active announcements, total reports, latest sign-ins.
    - "Recent activity" pulled from `audit_log` (latest 20 rows).
-   - Visual style mirrors the public design system (`docs/design/*`) — same Lora headings, primary-blue accents.
+   - Visual style mirrors the public design system ([`DESIGN.md`](../../DESIGN.md)) — same Lora headings, primary-blue accents.
 
 2. **Audit log helper**
    - `lib/audit.ts` exporting `writeAudit({ actorEmail, action, resourceType, resourceId, metadata })`.
@@ -203,7 +203,7 @@ The dev loop works end-to-end: `npm run db:up && npm run db:migrate && npm run d
 **Exit criteria**
 - Submitting `/gabung-siswa` from an incognito window creates a row visible at `/admin/applications` within one refresh.
 - Marking accepted/rejected writes both the status and an audit entry.
-- Form rejects malformed input (missing required fields, bad email format) with field-level Indonesian error messages matching `docs/design/copy-style.md`.
+- Form rejects malformed input (missing required fields, bad email format) with field-level Indonesian error messages matching the UI-copy rules in `DESIGN.md`.
 
 ## Phase 5 — Public announcement strip (MVP priority #7)
 

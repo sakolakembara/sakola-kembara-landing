@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Download,
   ExternalLink,
   FileText,
@@ -18,6 +17,10 @@ import type { SiteResource } from "@/lib/db/schema";
 import { formatBytes } from "@/lib/report-types";
 import { buildPageMetadata } from "@/lib/seo";
 import { CopyButton } from "./_copy-button";
+
+// Reads the DB, which is only reachable at runtime (on the VPS), not during
+// the CI build. Render per-request instead of prerendering.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "Pusat Dokumen & Berkas",
@@ -37,9 +40,9 @@ export default async function DocsPage() {
         <div className="max-w-[1100px] mx-auto px-6">
           <Link
             href="/gabung-siswa"
-            className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white transition-colors mb-4"
+            className="inline-block text-sm text-white/80 hover:text-white transition-colors mb-4"
           >
-            <ArrowLeft size={14} /> Kembali ke halaman informasi
+            Kembali ke halaman informasi
           </Link>
           <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl mb-4">
             Pusat Dokumen &amp; Berkas

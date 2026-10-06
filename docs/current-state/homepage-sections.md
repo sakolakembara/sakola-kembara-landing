@@ -34,9 +34,13 @@ Dark surfaces use the brand navy family (`accent-navy` → `primary-blue`), neve
 
 - Navy `bg-gradient-to-b from-primary-blue to-accent-navy` with a low-opacity SVG diamond pattern overlay.
 - **Heading**: serif `text-3xl md:text-4xl` — **"Mengapa Kami Ada?"**.
-- **3 stat cards** in a grid: yellow extruded number (`text-secondary-yellow`), `text-white/85` body on `bg-white/10` cards. The middle card (the 50%+ one with `detail`) is **clickable** — it opens a framer-motion modal with the longer explanation. A small yellow "Klik untuk info lebih lanjut" hint appears under it.
+- **3 infographic cards** (`md:grid-cols-3`, 1200px container), each: a small chart, the yellow figure (`text-secondary-yellow`), and the sentence in `text-white/85`, on `bg-white/[0.07]` cards. Chart data lives with the copy in `problemStats` (`lib/data.ts`, field `chart`):
+  - **3/10** → pictogram, one row of 10 child icons (scaling with the card, max 28px), the first 3 filled sunglow.
+  - **50%+** → 100% bar, the sunglow segment (drawn at 55%, "just past half") is students from the richest 20% of families.
+  - **2x** → two horizontal progress bars, Kota (full, sunglow) vs Desa (half, white).
+  Each chart is `role="img"` with an `aria-label`; the figures stay plain text. No sources are shown (Dzul's call, SAKEM-029).
+- The 50%+ card has a **"Mengapa ini terjadi?"** button that opens the longer `detail` text in a modal: native `<dialog>` + `showModal()` (focus trap, Escape, focus return), closed by "Tutup", Escape, or a backdrop click. Same look as the old framer-motion modal it replaced: big figure, sentence, divider, explanation, full-width yellow "Tutup".
 - **Closing line**: `text-2xl font-semibold` — "Kami hadir untuk **mengubah realitas ini.**" with the last clause in `text-secondary-yellow`.
-- The modal uses `AnimatePresence`; clicking the overlay or the "Tutup" button dismisses it.
 
 ## 3. Activities / Programs (`ActivitiesSection.tsx`)
 
@@ -46,7 +50,7 @@ Dark surfaces use the brand navy family (`accent-navy` → `primary-blue`), neve
 - **3-column grid** of `programs` from `lib/data.ts` (Pra Pembinaan, Pembinaan, Pasca Pembinaan). Each card:
   - White surface, `rounded-2xl`.
   - Image with `program.tag` pill (primary-blue) overlaid top-left.
-  - Title, 3 bullet points (green dot bullets), "Lihat Detail →" footer that links to `/program/[id]`.
+  - Title, 3 bullet points (green dot bullets), filled "Lihat Detail" button at the bottom (the whole card links to `/program/[id]`).
   - Hover: `-translate-y-2 shadow-xl`.
 
 ## 4. Impact (`ImpactSection.tsx`)

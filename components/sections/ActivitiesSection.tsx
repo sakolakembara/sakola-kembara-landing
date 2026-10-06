@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { programs } from "@/lib/data";
 
@@ -80,13 +79,11 @@ export default function ActivitiesSection() {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-auto flex items-center gap-2 text-primary-blue font-semibold text-sm">
-                    <span>Lihat Detail</span>
-                    <ArrowRight
-                      size={16}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
-                  </div>
+                  {/* Inside a card the CTA is filled. The whole card is the
+                      link, so this is a styled span, not a nested link. */}
+                  <span className="mt-auto flex h-11 items-center justify-center rounded-lg bg-primary-blue px-5 text-[15px] font-semibold text-white transition-colors group-hover:bg-primary-blue-dark">
+                    Lihat Detail
+                  </span>
                 </div>
               </motion.div>
             </Link>
