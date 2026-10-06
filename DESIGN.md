@@ -299,7 +299,7 @@ Voice and canonical copy: [`docs/context/tone-of-voice.md`](docs/context/tone-of
 
 ### Tags
 
-Category and phase tags: white on `bg-primary-blue`, `text-xs font-semibold`, `rounded-md`. Blog categories from the WordPress migration stay in English (*News*, *Tips*).
+Category and phase tags: white on `bg-primary-blue`, `text-xs font-semibold`. The shape is not settled yet: program/phase tags are `rounded-md`, blog category tags are `rounded-full`. Blog categories from the WordPress migration stay in English (*News*, *Tips*).
 
 ### English
 
