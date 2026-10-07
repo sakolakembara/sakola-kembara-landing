@@ -192,6 +192,14 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 - **A clickable card is one link.** The "button" inside it is a styled `<span>`, never a nested link.
 - **External links** get `target="_blank" rel="noopener noreferrer"`.
 
+### Icons
+
+- **One set:** [lucide-react](https://lucide.dev) for every UI icon, outline style at its default 2px stroke. The social brand marks (Instagram, TikTok, X, YouTube) are inline SVGs in `SocialLinks`; don't mix in another icon set or filled icons.
+- **Color follows the text** (`currentColor`): set the color on the parent, not on the icon, except for status icons, which take the status `-fg` color.
+- **A leading icon names the action**; no arrows or chevrons on buttons and text CTAs (see Buttons).
+- **Decorative icons** next to a text label get `aria-hidden`. **Icon-only controls** need an `aria-label` (section 10).
+- **Sizes:** no scale is decided yet. The code uses 12 to 56px, most often 14 (admin), 16 (buttons, inline with `text-sm`) and 12 (small badges). Storybook's *Foundations/Iconography* page lists every icon and size in use.
+
 ### Cards
 
 - **Program card** (`ActivitiesSection`): `group bg-white rounded-2xl overflow-hidden border border-gray-100 h-full flex flex-col hover:-translate-y-2 hover:shadow-xl`. Photo on top with the phase `<Tag>` pill, title, green-dot bullets, then the filled *Lihat Detail*.

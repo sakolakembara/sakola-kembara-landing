@@ -1,11 +1,12 @@
-import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Markdown, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { designSection } from "./design-md";
 import { FontFamilies, HeadingScale, TextStyles } from "./foundations";
 
 <Meta title="Foundations/Typography" />
 
 # Typography
 
-Two families, one heading scale. The sizes below are measured live, so switch the viewport to *HP (375)* to see the phone sizes. Rules (emphasis, eyebrows, line lengths) are in [DESIGN.md section 3](https://github.com/sakolakembara/sakola-kembara-landing/blob/development/DESIGN.md#3-typography).
+Two families, one heading scale. The sizes below are measured live, so switch the viewport to *HP (375)* to see the phone sizes. Body text, eyebrow and emphasis rules are under Rules at the bottom.
 
 ## Families
 
@@ -28,3 +29,9 @@ Use `<Heading>` for Lora headings. If you must write the class yourself, write i
 <Unstyled>
   <TextStyles />
 </Unstyled>
+
+## Rules
+
+From DESIGN.md section 3.
+
+<Markdown>{designSection("## 3. Typography", "**Body.**")}</Markdown>

@@ -9,7 +9,14 @@ const preview: Preview = {
     controls: { expanded: true },
     options: {
       storySort: {
-        order: ["Introduction", "Foundations", ["Colors", "Typography"], "Atoms", "Molecules", "Organisms"],
+        order: [
+          "Introduction",
+          "Foundations",
+          ["Logo & brand", "Colors", "Typography", "Iconography", "Layout & spacing", "Shape & elevation", "Motion", "UI copy", "Accessibility"],
+          "Atoms",
+          "Molecules",
+          "Organisms",
+        ],
       },
     },
     backgrounds: {

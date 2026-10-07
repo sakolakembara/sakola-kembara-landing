@@ -1,0 +1,27 @@
+import { Markdown, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { designSection } from "./design-md";
+import { Breakpoints, Widths } from "./foundations";
+
+<Meta title="Foundations/Layout & spacing" />
+
+# Layout & spacing
+
+## Widths
+
+Drawn to scale against the 1200px page container. Every container has 24px side padding (`px-6`). The `Container` atom has the three sizes.
+
+<Unstyled>
+  <Widths />
+</Unstyled>
+
+## Breakpoints
+
+<Unstyled>
+  <Breakpoints />
+</Unstyled>
+
+## Rules
+
+From DESIGN.md section 4.
+
+<Markdown>{designSection("## 4. Layout & spacing")}</Markdown>

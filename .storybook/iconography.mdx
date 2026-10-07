@@ -1,0 +1,33 @@
+import { Markdown, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { designSection } from "./design-md";
+import { BrandMarks, IconSizes, IconsInUse } from "./foundations";
+
+<Meta title="Foundations/Iconography" />
+
+# Iconography
+
+<Markdown>{designSection("### Icons")}</Markdown>
+
+## Sizes in use
+
+Every `size` given to a lucide icon in the app, with how often it appears. A scale to settle on is still open.
+
+<Unstyled>
+  <IconSizes />
+</Unstyled>
+
+## Icons in use
+
+Read from the app's source files when Storybook is built, most used first. Hover a card to see the files.
+
+<Unstyled>
+  <IconsInUse />
+</Unstyled>
+
+## Brand marks
+
+The social profiles, as inline SVGs in `SocialLinks`, on light and on navy.
+
+<Unstyled>
+  <BrandMarks />
+</Unstyled>

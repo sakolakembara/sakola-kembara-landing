@@ -1,16 +1,30 @@
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import * as Lucide from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { MotionProvider } from "@/components/MotionProvider";
+import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Heading, headingVariants } from "@/components/ui/heading";
+import { SocialLinks } from "@/components/ui/social-links";
 import { fontVariables } from "@/lib/fonts";
+import appleIcon from "@/app/apple-icon.png";
+import appIcon from "@/app/icon.png";
+import logoLight from "@/public/images/logo-sakola-kembara-light.png";
+import logo from "@/public/images/logo-sakola-kembara.png";
+import ogImage from "@/public/og-default.jpg";
 import designMd from "../DESIGN.md?raw";
 import globalsCss from "../app/globals.css?raw";
 import tailwindTheme from "tailwindcss/theme.css?raw";
 
 /*
- * The Foundations pages (colors, typography). Every value is read from the
- * source at build time: tokens from app/globals.css, Tailwind's palette from
- * tailwindcss/theme.css, and the "use" of each brand color from the table in
- * DESIGN.md section 2. Nothing here needs updating when a token changes.
+ * The blocks on the Foundations pages. Every value is read from the source at
+ * build time: tokens from app/globals.css, Tailwind's scales from
+ * tailwindcss/theme.css, brand-color uses from the table in DESIGN.md
+ * section 2, and icon usage from the app's own source files. Nothing here
+ * needs updating when a token or an icon changes. The written rules under
+ * each block come from DESIGN.md (see design-md.ts).
  */
 
 /** The `--name: value;` declarations in the block opened by `selector {`. */
@@ -313,5 +327,290 @@ export function TextStyles() {
         <Eyebrow>Program Kami</Eyebrow>
       </div>
     </div>
+  );
+}
+
+/** `--<prefix>-<name>: value;` declarations anywhere in Tailwind's theme. */
+function twScale(prefix: string): [string, string][] {
+  return [...tailwindTheme.matchAll(new RegExp(`--${prefix}-([\\w]+):\\s*([^;]+);`, "g"))].map(([, name, value]) => [
+    name,
+    value.trim(),
+  ]);
+}
+
+const rem = (value: string) => (value.endsWith("rem") ? `${parseFloat(value) * 16}px` : value);
+
+/* ---------- Logo & brand ---------- */
+
+function Asset({ caption, file, children }: { caption: string; file: string; children: React.ReactNode }) {
+  return (
+    <figure className="overflow-hidden rounded-xl border border-gray-200">
+      {children}
+      <figcaption className="space-y-1 border-t border-gray-100 p-4">
+        <p className="font-semibold text-gray-900">{caption}</p>
+        <p className="text-xs text-gray-500">
+          <Code>{file}</Code>
+        </p>
+      </figcaption>
+    </figure>
+  );
+}
+
+/** The logo files on the surfaces they are made for, the app icons and the share image. */
+export function LogoAssets() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Asset caption="Logo on light surfaces" file="public/images/logo-sakola-kembara.png">
+        <div className="flex items-center justify-center bg-white" style={{ height: 160 }}>
+          <Image src={logo} alt="Sakola Kembara" className="h-10 w-auto" />
+        </div>
+      </Asset>
+      <Asset caption="Logo on navy surfaces" file="public/images/logo-sakola-kembara-light.png">
+        <div className="flex items-center justify-center bg-gradient-to-br from-primary-blue to-accent-navy" style={{ height: 160 }}>
+          <Image src={logoLight} alt="Sakola Kembara" className="h-10 w-auto" />
+        </div>
+      </Asset>
+      <Asset caption="App icons (K mark)" file="app/icon.png (192) · app/apple-icon.png (180)">
+        <div className="flex items-center justify-center gap-6 bg-gray-50" style={{ height: 160 }}>
+          <Image src={appIcon} alt="" className="h-16 w-16 rounded-xl" />
+          <Image src={appleIcon} alt="" className="h-16 w-16 rounded-2xl" />
+        </div>
+      </Asset>
+      <Asset caption="Share image (default og:image)" file="public/og-default.jpg (1200×630)">
+        <Image src={ogImage} alt="" className="w-full object-cover" style={{ height: 160 }} />
+      </Asset>
+    </div>
+  );
+}
+
+/** The four moves of the look, on a light card and on navy. */
+export function BrandMoves() {
+  return (
+    <div className={`${fontVariables} grid gap-4 md:grid-cols-2`} style={{ fontFamily: "var(--font-body)" }}>
+      <div className="rounded-2xl border border-gray-100 bg-white p-8">
+        <Eyebrow className="mb-4">Program Kami</Eyebrow>
+        <Heading level="section" as="p" className="text-gray-900">
+          Membuka Pintu <span className="text-primary-blue">Pendidikan Tinggi</span>
+        </Heading>
+        <p className="mt-4 text-gray-600">Lora headline, Plus Jakarta Sans body, the yellow-dot eyebrow.</p>
+      </div>
+      <div className="rounded-2xl bg-gradient-to-br from-primary-blue to-accent-navy p-8 text-white">
+        <Eyebrow tone="dark" className="mb-4">
+          Dampak Kami
+        </Eyebrow>
+        <Heading level="section" as="p">
+          Kami hadir untuk <span className="text-secondary-yellow">mengubah realitas ini.</span>
+        </Heading>
+        <p className="mt-4 text-white/80">Navy gradient, sunglow for emphasis, soft rounded corners.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Iconography ---------- */
+
+const sources = import.meta.glob<string>(["../app/**/*.tsx", "../components/**/*.tsx", "!../**/*.stories.tsx"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
+
+/** Every lucide icon imported in app/ and components/, with the files and `size`s that use it. */
+function iconUsage() {
+  const usage = new Map<string, { files: Set<string>; sizes: Set<number> }>();
+  const sizeCount = new Map<number, number>();
+  for (const [path, code] of Object.entries(sources)) {
+    const specs = [...code.matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g)].flatMap(([, list]) =>
+      list.split(",").map((spec) => spec.trim()),
+    );
+    for (const spec of specs) {
+      if (!spec || spec.startsWith("type ")) continue;
+      const [name, local = name] = spec.split(/\s+as\s+/);
+      const entry = usage.get(name) ?? { files: new Set<string>(), sizes: new Set<number>() };
+      entry.files.add(path.replace(/^\.\.\//, ""));
+      for (const [, size] of code.matchAll(new RegExp(`<${local}\\b[^>]*?size=\\{(\\d+)\\}`, "g"))) {
+        entry.sizes.add(Number(size));
+        sizeCount.set(Number(size), (sizeCount.get(Number(size)) ?? 0) + 1);
+      }
+      usage.set(name, entry);
+    }
+  }
+  const icons = [...usage].sort(([a, x], [b, y]) => y.files.size - x.files.size || a.localeCompare(b));
+  return { icons, sizes: [...sizeCount].sort(([a], [b]) => a - b) };
+}
+
+const lucide = Lucide as unknown as Record<string, LucideIcon | undefined>;
+
+/** The sizes icons are drawn at across the code, with how often each is used. */
+export function IconSizes() {
+  const { sizes } = iconUsage();
+  const Sample = lucide.Download!;
+  return (
+    <div className="flex flex-wrap items-end gap-6">
+      {sizes.map(([size, count]) => (
+        <div key={size} className="text-center">
+          <Sample size={size} aria-hidden className="mx-auto text-gray-900" />
+          <p className="mt-2 text-sm font-semibold text-gray-900">{size}px</p>
+          <p className="text-xs text-gray-500">{count}×</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Every icon in use, most used first. Hover a card for the files. */
+export function IconsInUse() {
+  const { icons } = iconUsage();
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {icons.map(([name, { files, sizes }]) => {
+        const Icon = lucide[name];
+        return (
+          <div key={name} title={[...files].join("\n")} className="rounded-xl border border-gray-200 p-4 text-center">
+            {Icon ? <Icon size={24} aria-hidden className="mx-auto text-gray-900" /> : <span className="text-xs">?</span>}
+            <p className="mt-2 text-sm font-semibold text-gray-900">{name}</p>
+            <p className="text-xs text-gray-500">
+              {files.size} {files.size === 1 ? "file" : "files"}
+              {sizes.size > 0 && ` · ${[...sizes].sort((a, b) => a - b).join(", ")}px`}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The brand marks, which are inline SVGs rather than lucide icons. */
+export function BrandMarks() {
+  return (
+    <div className="flex flex-wrap items-center gap-6">
+      <SocialLinks theme="light" />
+      <div className="rounded-xl bg-gradient-to-br from-primary-blue to-accent-navy p-4">
+        <SocialLinks />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Layout & spacing ---------- */
+
+const WIDTHS = [
+  { name: "Container page (default)", px: 1200 },
+  { name: "Container focused", px: 1000 },
+  { name: "Container reading", px: 800 },
+  { name: "Text measure, long headline", px: 760 },
+  { name: "Text measure, lead paragraph", px: 600 },
+];
+
+/** Container widths and text measures, drawn to scale against the 1200px page. */
+export function Widths() {
+  return (
+    <div className="space-y-3">
+      {WIDTHS.map(({ name, px }) => (
+        <div key={name}>
+          <div className="mb-1 flex justify-between text-sm">
+            <span className="font-semibold text-gray-900">{name}</span>
+            <span className="text-gray-500">{px}px</span>
+          </div>
+          <div className="h-3 rounded-full bg-primary-blue/10">
+            <div className="h-3 rounded-full bg-primary-blue" style={{ width: `${(px / 1200) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Tailwind's breakpoints. */
+export function Breakpoints() {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {twScale("breakpoint").map(([name, value]) => (
+        <div key={name} className="rounded-xl border border-gray-200 px-4 py-3">
+          <p className="font-semibold text-gray-900">{name}</p>
+          <p className="text-sm text-gray-600">from {rem(value)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- Shape & elevation ---------- */
+
+const RADII = ["lg", "xl", "2xl", "3xl"];
+
+/** The corner radii in use, plus `full` for avatars, dots and tags. */
+export function Radii() {
+  const scale = Object.fromEntries(twScale("radius"));
+  return (
+    <div className="flex flex-wrap gap-6">
+      {[...RADII.map((name) => [name, scale[name]] as const), ["full", "9999px"] as const].map(([name, value]) => (
+        <div key={name} className="text-center">
+          <div className="border-2 border-primary-blue bg-primary-blue/10" style={{ width: 80, height: 80, borderRadius: value }} />
+          <p className="mt-2 text-sm font-semibold text-gray-900">rounded-{name}</p>
+          <p className="text-xs text-gray-500">{rem(value)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Tailwind's shadows, from the subtle ones to the hover ones. */
+export function Shadows() {
+  const scale = Object.fromEntries(twScale("shadow"));
+  return (
+    <div className="flex flex-wrap gap-6 bg-gray-50 p-6">
+      {["sm", "md", "lg", "xl"].map((name) => (
+        <div key={name} className="text-center">
+          <div className="rounded-2xl bg-white" style={{ width: 112, height: 80, boxShadow: scale[name] }} />
+          <p className="mt-2 text-sm font-semibold text-gray-900">shadow-{name}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The two hover lifts. Hover the cards. */
+export function HoverLifts() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-lg">
+        <p className="font-semibold text-gray-900">Small card</p>
+        <Code>hover:-translate-y-1 hover:shadow-lg</Code>
+      </div>
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 transition-all hover:-translate-y-2 hover:shadow-xl">
+        <p className="font-semibold text-gray-900">Program card</p>
+        <Code>hover:-translate-y-2 hover:shadow-xl</Code>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Motion ---------- */
+
+/** The scroll reveal: fade up 20px over 0.6s, staggered by index. Replays on demand. */
+export function RevealDemo() {
+  const [run, setRun] = useState(0);
+  return (
+    <MotionProvider>
+      <div className="space-y-4" style={{ fontFamily: "var(--font-body)" }}>
+        <Button variant="neutral" size="sm" onClick={() => setRun((n) => n + 1)}>
+          Putar ulang
+        </Button>
+        <div key={run} className="grid gap-4 sm:grid-cols-3">
+          {["Roadshow & Seleksi", "Pembelajaran Intensif", "Alumni & Beasiswa"].map((title, i) => (
+            <motion.div
+              key={title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: i * 0.1 }}
+              className="rounded-2xl border border-gray-100 bg-white p-6"
+            >
+              <p className="text-xl font-bold text-gray-900">{title}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </MotionProvider>
   );
 }
