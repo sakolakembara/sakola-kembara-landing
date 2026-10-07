@@ -184,7 +184,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 | Outlined ("Lihat Detail" outside a card, "Lanjut ke Tahap N") | `h-11 px-5 rounded-lg border-[1.5px] border-primary-blue text-primary-blue text-[15px] font-semibold hover:bg-primary-blue/5` |
 | Filled in a card ("Lihat Detail" on program cards) | `h-11 px-5 rounded-lg bg-primary-blue text-white text-[15px] font-semibold group-hover:bg-primary-blue-dark` |
 | Outlined on navy | `border-[1.5px] border-white/60 text-white hover:bg-white/10` |
-| Yellow on navy | `bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-secondary-yellow/90` (the PitchDeck button still uses `hover:bg-yellow-400`) |
+| Yellow on navy | `bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-secondary-yellow/90` (`<Button variant="yellow-on-navy">`; *Download PitchDeck* is `size="lg"`) |
 | Subtle | `px-6 py-3 text-[15px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-primary-blue` |
 
 - **A clickable card is one link.** The "button" inside it is a styled `<span>`, never a nested link.
@@ -215,7 +215,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 
 ### Program stage stepper (`/program/[id]`)
 
-A shared navy hero (*Program Kami* + *Apa saja yang dilalui penerima manfaat Sakola Kembara?*, as a display `<p>`) with a white stepper card overlapping its bottom edge (`-mt-20 md:-mt-24 rounded-2xl shadow-xl`). The card is a `<nav aria-label="Tahapan program">` around an `<ol>` of three links: a numbered circle, the phase tag, and (from `sm`) the stage title. Each link goes to that stage's own URL; the active one has `aria-current="page"` and a filled `primary-blue` circle. The page's `<h1>` is the stage title in the intro below.
+A shared navy hero (`<SectionHeader tone="dark" as="p">`: *Program Kami* + *Apa saja yang dilalui penerima manfaat Sakola Kembara?*, the same header as the homepage's Activities section) with a white stepper card overlapping its bottom edge (`-mt-20 md:-mt-24 rounded-2xl shadow-xl`). The card is a `<nav aria-label="Tahapan program">` around an `<ol>` of three links: a numbered circle, the phase tag, and (from `sm`) the stage title. Each link goes to that stage's own URL; the active one has `aria-current="page"` and a filled `primary-blue` circle. The page's `<h1>` is the stage title in the intro below, at the `article` heading level, under a `<Tag>` *Tahap N · tag*. Section titles (*Kegiatan*, *Timeline Kegiatan*, *Galeri Foto*) use `SectionHeader`; activity hours are a soft `<Tag>`; PDF attachments are outlined `Button`s.
 
 ### Forms
 
@@ -373,6 +373,8 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
 
 Sub-pages (SAKEM-037): `/tim`, `/laporan`, `/kontak`, `/donasi`, plus the `/blog` hero, use `PageHero`. Headings follow D3: team categories, report years and the `/laporan` closing heading are `subsection`; *Cara Berdonasi* and the `/kontak` column titles are `panel`. Kept inline: the light *Hubungi Kami* button on the navy `/donasi` card (no variant yet), the colored report-category pills, and the contact form (phase 4).
+
+Program pages (SAKEM-038): `/program/[id]` uses `Container`, `SectionHeader`, `Heading`, `Tag` and `Button` throughout; the stepper card stays custom.
 
 **Standards decided, applied as each page is migrated:**
 

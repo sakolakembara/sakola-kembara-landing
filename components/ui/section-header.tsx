@@ -20,7 +20,7 @@ export function SectionHeader({
   lead?: React.ReactNode;
   tone?: "light" | "dark";
   align?: "center" | "left";
-  as?: "h1" | "h2" | "h3";
+  as?: "h1" | "h2" | "h3" | "p";
   className?: string;
 }) {
   const center = align === "center";

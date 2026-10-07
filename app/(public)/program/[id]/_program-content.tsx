@@ -4,6 +4,11 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Clock, Download, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Tag } from "@/components/ui/tag";
 import { programs } from "@/lib/data";
 import type { GalleryPhoto } from "@/lib/gallery";
 
@@ -25,9 +30,9 @@ export default function ProgramContent({
       <>
         <main className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            <Heading level="panel" as="h1" className="text-gray-900 mb-4">
               Program tidak ditemukan
-            </h1>
+            </Heading>
             <Link
               href="/#activities"
               className="text-primary-blue hover:underline"
@@ -50,20 +55,20 @@ export default function ProgramContent({
         {/* Shared hero: the three stages read as one journey. The page's h1 is
             the stage title below, so each URL keeps its own heading. */}
         <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[var(--hero-top,8rem)] pb-28 md:pb-32">
-          <div className="max-w-[1200px] mx-auto px-6 text-center">
-            <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
-              <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-              Program Kami
-            </div>
-            <p className="font-[family-name:var(--font-display)] text-[28px] sm:text-4xl md:text-[44px] leading-tight max-w-[760px] mx-auto text-balance">
-              Apa saja yang dilalui penerima manfaat Sakola Kembara?
-            </p>
-          </div>
+          <Container>
+            {/* The same header as the homepage's Activities section. */}
+            <SectionHeader
+              tone="dark"
+              as="p"
+              eyebrow="Program Kami"
+              title="Apa saja yang dilalui penerima manfaat Sakola Kembara?"
+            />
+          </Container>
         </section>
 
         {/* Stage tabs. Each tab is a link to that stage's own URL, so stages
             stay shareable, server-rendered, and work with Back. */}
-        <div className="max-w-[1200px] mx-auto px-6 -mt-20 md:-mt-24 relative z-10">
+        <Container className="-mt-20 md:-mt-24 relative z-10">
           <nav
             aria-label="Tahapan program"
             className="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-primary-blue/10 px-3 py-5 sm:px-8 sm:py-7"
@@ -112,16 +117,16 @@ export default function ProgramContent({
               })}
             </ol>
           </nav>
-        </div>
+        </Container>
 
         {/* Stage intro */}
-        <section className="pt-12 md:pt-16 pb-6">
+        <Container as="section" className="pt-12 md:pt-16 pb-6">
           <motion.div
             key={program.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-[1200px] mx-auto px-6 grid md:grid-cols-2 gap-8 md:gap-12 items-center"
+            className="grid md:grid-cols-2 gap-8 md:gap-12 items-center"
           >
             <div className="relative h-[240px] sm:h-[320px] md:h-[360px] rounded-2xl overflow-hidden">
               <Image
@@ -134,12 +139,12 @@ export default function ProgramContent({
               />
             </div>
             <div className="flex flex-col items-start gap-4">
-              <span className="bg-primary-blue text-white px-3 py-1.5 rounded-md text-sm font-semibold">
+              <Tag>
                 Tahap {currentIndex + 1} · {program.tag}
-              </span>
-              <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-[40px] leading-tight text-gray-900">
+              </Tag>
+              <Heading level="article" className="text-gray-900">
                 {program.title}
-              </h1>
+              </Heading>
               <p className="text-base md:text-lg text-gray-700 leading-relaxed">
                 {program.description}
               </p>
@@ -156,14 +161,12 @@ export default function ProgramContent({
               </ul>
             </div>
           </motion.div>
-        </section>
+        </Container>
 
         {/* Sub Programs Section */}
         <section className="py-12 md:py-16">
-          <div className="max-w-[1200px] mx-auto px-6">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-8 md:mb-10">
-              Kegiatan
-            </h2>
+          <Container>
+            <SectionHeader align="left" title="Kegiatan" className="mb-8 md:mb-10" />
 
             <div className="grid md:grid-cols-2 gap-6">
               {program.subPrograms.map((subProgram, index) => (
@@ -197,14 +200,14 @@ export default function ProgramContent({
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        <Heading level="card" className="text-gray-900 mb-2">
                           {subProgram.title}
-                        </h3>
+                        </Heading>
                         {subProgram.hours && (
-                          <span className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full bg-primary-blue/10 text-primary-blue text-sm font-semibold">
+                          <Tag tone="soft" className="mb-3">
                             <Clock size={14} aria-hidden />
                             {subProgram.hours}
-                          </span>
+                          </Tag>
                         )}
                         <p className="text-gray-600 leading-relaxed">
                           {subProgram.description}
@@ -213,47 +216,47 @@ export default function ProgramContent({
                     </div>
 
                     {subProgram.attachment && (
-                      <a
+                      <Button
                         href={subProgram.attachment.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-5 sm:ml-14 inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 rounded-lg border border-primary-blue/30 bg-white text-primary-blue text-sm font-semibold hover:bg-primary-blue hover:text-white transition-colors"
+                        variant="outline"
+                        className="mt-5 sm:ml-14 sm:self-start"
                       >
                         <FileText size={16} aria-hidden />
                         {subProgram.attachment.label} (PDF)
-                      </a>
+                      </Button>
                     )}
                   </div>
                 </motion.div>
               ))}
             </div>
-          </div>
+          </Container>
         </section>
 
         {/* Timeline Placeholder */}
         <section className="py-16 bg-gray-50">
-          <div className="max-w-[1200px] mx-auto px-6 text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-              Timeline Kegiatan
-            </h2>
-            <p className="text-gray-600 mb-8">
-              Jadwal dan timeline kegiatan akan segera diperbarui.
-            </p>
+          <Container className="text-center">
+            <SectionHeader
+              title="Timeline Kegiatan"
+              lead="Jadwal dan timeline kegiatan akan segera diperbarui."
+              className="mb-8"
+            />
             <div className="bg-white rounded-2xl p-12 border border-gray-200">
               <p className="text-gray-400">Konten timeline akan ditambahkan</p>
             </div>
-          </div>
+          </Container>
         </section>
 
         {/* Gallery */}
         <section className="py-16">
-          <div className="max-w-[1200px] mx-auto px-6">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-              Galeri Foto
-            </h2>
-            <p className="text-gray-600 mb-8">
-              Dokumentasi kegiatan program {program.title}.
-            </p>
+          <Container>
+            <SectionHeader
+              align="left"
+              title="Galeri Foto"
+              lead={`Dokumentasi kegiatan program ${program.title}.`}
+              className="mb-8"
+            />
             {gallery.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 {gallery.map((photo, index) => (
@@ -276,11 +279,11 @@ export default function ProgramContent({
                 <p className="text-gray-400">Galeri foto akan ditambahkan</p>
               </div>
             )}
-          </div>
+          </Container>
         </section>
 
         <section className="pb-16 md:pb-24">
-          <div className="max-w-[1200px] mx-auto px-6 flex flex-col gap-8">
+          <Container className="flex flex-col gap-8">
             {/* Next stage */}
             {nextProgram && (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 md:p-8 border border-gray-200 rounded-2xl">
@@ -292,12 +295,13 @@ export default function ProgramContent({
                     {nextProgram.tag} · {nextProgram.title}
                   </span>
                 </div>
-                <Link
+                <Button
                   href={`/program/${nextProgram.id}`}
-                  className="self-start sm:self-auto inline-flex h-11 items-center px-5 rounded-lg border-[1.5px] border-primary-blue text-primary-blue text-[15px] font-semibold hover:bg-primary-blue/5 transition-colors"
+                  variant="outline"
+                  className="self-start sm:self-auto"
                 >
                   Lanjut ke Tahap {currentIndex + 2}
-                </Link>
+                </Button>
               </div>
             )}
 
@@ -308,23 +312,24 @@ export default function ProgramContent({
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-yellow/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
               </div>
               <div className="relative z-10">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                <Heading level="panel" as="h2" className="text-white mb-3">
                   Ingin Tahu Lebih Lanjut?
-                </h2>
-                <p className="text-white/80 mb-6 max-w-[500px] mx-auto">
+                </Heading>
+                <p className="text-white/80 mb-6 max-w-[600px] mx-auto">
                   Download PitchDeck kami untuk informasi lengkap tentang program, dampak, dan cara berkontribusi.
                 </p>
-                <a
+                <Button
                   href="/files/pitchdeck-sakola-kembara.pdf"
                   download
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-yellow-400 transition-colors"
+                  variant="yellow-on-navy"
+                  size="lg"
                 >
                   <Download size={20} />
                   Download PitchDeck
-                </a>
+                </Button>
               </div>
             </div>
-          </div>
+          </Container>
         </section>
       </main>
     </>
