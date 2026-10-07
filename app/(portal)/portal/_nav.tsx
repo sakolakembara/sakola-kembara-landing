@@ -77,8 +77,9 @@ export function PortalNav({ displayName }: Props) {
               type="submit"
               className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-primary-blue border border-gray-200 rounded-lg px-3 py-2 hover:border-primary-blue/40 transition-colors"
             >
-              <LogOut size={14} />
-              <span className="hidden sm:inline">Keluar</span>
+              <LogOut size={14} aria-hidden />
+              {/* Visible from sm; on phones the button is icon-only but keeps its name. */}
+              <span className="sr-only sm:not-sr-only">Keluar</span>
             </button>
           </form>
         </div>

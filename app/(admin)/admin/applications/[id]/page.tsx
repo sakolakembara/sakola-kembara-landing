@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   Briefcase,
   Calendar,
   ExternalLink,
@@ -53,15 +51,8 @@ export default async function ApplicationDetailPage({
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">
-      <Link
-        href="/admin/applications"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"
-      >
-        <ArrowLeft size={14} />
-        Kembali ke daftar
-      </Link>
-
       <AdminPageHeader
+        back={{ href: "/admin/applications", label: "Kembali ke daftar" }}
         title={application.fullName}
         overline="Detail pendaftar"
         className="md:items-start"
@@ -88,7 +79,7 @@ export default async function ApplicationDetailPage({
 
       <div className="grid lg:grid-cols-5 gap-6 items-start">
         {/* Left: applicant profile */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="lg:col-span-3 min-w-0 bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <ProfileSection
             title="Identitas"
             icon={<User size={14} />}
@@ -420,7 +411,7 @@ export default async function ApplicationDetailPage({
         </div>
 
         {/* Right: sticky status action card */}
-        <aside className="lg:col-span-2 lg:sticky lg:top-10">
+        <aside className="lg:col-span-2 lg:sticky lg:top-10 min-w-0">
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <header className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
               <Settings2 size={14} className="text-gray-500" />

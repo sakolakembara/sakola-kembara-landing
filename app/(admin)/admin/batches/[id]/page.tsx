@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle, Undo2, Users } from "lucide-react";
+import { CalendarDays, CheckCircle, Undo2, Users } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-helpers";
 import {
@@ -16,6 +16,7 @@ import { TableHint } from "../../_table-hint";
 import { Table, THead, Th, TBody, Td } from "@/components/ui/table";
 import { AdminPageHeader } from "../../_page-header";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_TONE } from "@/lib/application-status";
 
@@ -64,14 +65,8 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">
-      <Link
-        href="/admin/batches"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"
-      >
-        ← Kembali ke daftar batch
-      </Link>
-
       <AdminPageHeader
+        back={{ href: "/admin/batches", label: "Kembali ke daftar batch" }}
         title={batch.name}
         overline={<>Batch {batch.year}</>}
         className="md:items-start"
@@ -99,7 +94,9 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
       {error && <Alert className="mb-4">{error}</Alert>}
 
       <div className="grid lg:grid-cols-5 gap-6 items-start">
-        <div className="lg:col-span-3 space-y-6">
+        {/* min-w-0 lets the applicants table scroll inside its card on phones
+            instead of widening the whole column. */}
+        <div className="lg:col-span-3 min-w-0 space-y-6">
           <section className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
               <Users size={14} /> Ringkasan Pendaftar
@@ -126,9 +123,9 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
               </h2>
               <Link
                 href={`/admin/applications?batch=${batch.id}`}
-                className="text-xs text-primary-blue font-medium hover:underline inline-flex items-center gap-1"
+                className="text-xs text-primary-blue font-medium hover:underline"
               >
-                Lihat semua <ArrowRight size={12} />
+                Lihat semua
               </Link>
             </header>
             {applications.length === 0 ? (
@@ -192,7 +189,7 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
           </section>
         </div>
 
-        <aside className="lg:col-span-2 lg:sticky lg:top-10 space-y-4">
+        <aside className="lg:col-span-2 lg:sticky lg:top-10 min-w-0 space-y-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-2">
               Publikasi Hasil
@@ -213,12 +210,9 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
                   })}
                   .
                 </p>
-                <button
-                  type="submit"
-                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 border-2 border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-                >
+                <Button type="submit" variant="neutral" fullWidth>
                   <Undo2 size={16} /> Batalkan Publikasi
-                </button>
+                </Button>
               </form>
             ) : (
               <form action={publishBatchResults} className="space-y-3">
@@ -229,13 +223,9 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
                   <li>• Diterima: <b>{counts.accepted}</b></li>
                   <li>• Ditolak: <b>{counts.rejected}</b></li>
                 </ul>
-                <button
-                  type="submit"
-                  disabled={!canPublish}
-                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <Button type="submit" disabled={!canPublish} fullWidth>
                   <CheckCircle size={16} /> Publikasikan Hasil
-                </button>
+                </Button>
                 {!canPublish && (
                   <p className="text-xs text-gray-500">
                     {counts.total === 0

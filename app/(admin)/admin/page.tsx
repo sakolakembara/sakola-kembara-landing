@@ -3,7 +3,6 @@ import Link from "next/link";
 import { count, desc, eq, isNull } from "drizzle-orm";
 import {
   AlertCircle,
-  ArrowRight,
   CircleDot,
   Edit3,
   FilePlus2,
@@ -227,9 +226,9 @@ export default async function AdminHomePage() {
             <h2 className="text-base font-semibold text-gray-900">Pendaftar terbaru</h2>
             <Link
               href="/admin/applications"
-              className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
+              className="text-xs font-medium text-primary-blue hover:underline"
             >
-              Semua <ArrowRight size={12} />
+              Semua
             </Link>
           </header>
           {stats.recentApps.length === 0 ? (
@@ -278,9 +277,9 @@ export default async function AdminHomePage() {
             <h2 className="text-base font-semibold text-gray-900">Pesan terbaru</h2>
             <Link
               href="/admin/messages"
-              className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
+              className="text-xs font-medium text-primary-blue hover:underline"
             >
-              Semua <ArrowRight size={12} />
+              Semua
             </Link>
           </header>
           {stats.recentMessages.length === 0 ? (
@@ -465,7 +464,7 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 hover:border-primary-blue hover:shadow-sm transition-all"
+      className="group flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 hover:border-primary-blue hover:shadow-sm transition-all"
     >
       <span className="shrink-0 w-9 h-9 rounded-lg bg-primary-blue/10 text-primary-blue flex items-center justify-center group-hover:bg-primary-blue group-hover:text-white transition-colors">
         <Icon size={18} />

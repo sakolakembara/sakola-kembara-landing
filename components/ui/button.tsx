@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
  * link, which must be a styled `<span>` (add `group-hover:` classes there).
  */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+  "inline-flex items-center justify-center gap-2 text-center font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -26,9 +26,11 @@ export const buttonVariants = cva(
           "border border-gray-200 text-gray-700 hover:border-primary-blue/40 hover:bg-primary-blue/5 hover:text-primary-blue",
       },
       size: {
+        // A minimum height, not a fixed one: a label that has to wrap on a
+        // narrow screen makes the button taller instead of overflowing it.
         /** 40px, desktop header only — touch layouts need `md` or larger. */
-        sm: "h-10 rounded-lg px-4 text-[15px]",
-        md: "h-11 rounded-lg px-5 text-[15px]",
+        sm: "min-h-10 rounded-lg px-4 py-2 text-[15px] leading-snug",
+        md: "min-h-11 rounded-lg px-5 py-2 text-[15px] leading-snug",
         lg: "rounded-xl px-8 py-4 text-base",
       },
       fullWidth: { true: "w-full" },

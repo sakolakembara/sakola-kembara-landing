@@ -113,9 +113,11 @@ export const controlVariants = cva(
   "w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none",
   {
     variants: {
+      // A fixed line height so inputs and selects come out the same height
+      // (48px and 40px) instead of inheriting the body's 1.6.
       size: {
-        md: "rounded-xl px-4 py-3",
-        sm: "rounded-lg px-4 py-2 text-sm",
+        md: "rounded-xl px-4 py-2.5 leading-6",
+        sm: "rounded-lg px-4 py-1.5 text-sm leading-6",
       },
     },
     defaultVariants: { size: "md" },
@@ -145,7 +147,17 @@ export function Textarea({ size, className, ...props }: React.ComponentProps<"te
   );
 }
 
-/** Native select (atom), white so it matches the inputs in every browser. */
+/**
+ * Native select (atom), white so it matches the inputs in every browser. It
+ * gets an explicit height because browsers size a select's text box
+ * differently from an input's.
+ */
 export function Select({ size, className, ...props }: Omit<React.ComponentProps<"select">, "size"> & ControlSize) {
-  return <select {...props} {...useFieldProps(props)} className={cn(controlVariants({ size }), "bg-white", className)} />;
+  return (
+    <select
+      {...props}
+      {...useFieldProps(props)}
+      className={cn(controlVariants({ size }), "bg-white", size === "sm" ? "h-10" : "h-12", className)}
+    />
+  );
 }

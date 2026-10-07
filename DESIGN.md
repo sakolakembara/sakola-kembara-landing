@@ -227,7 +227,7 @@ Build forms from `components/ui/field.tsx` and `alert.tsx` (SAKEM-042):
 - `<Field id label required hint error labelAside>` wraps one control: label `block text-sm font-medium text-gray-700 mb-2`, required asterisk in `text-danger-fg` (hidden from screen readers; the control keeps its own `required`), then a hint (`text-xs text-gray-500 mt-1.5`) or an error (`text-xs text-danger-fg mt-1.5`). It gives the control its id (generated when `id` is left out), `aria-describedby` and `aria-invalid`.
 - `<Field group>` is for a set of controls (radio cards, yes/no): a `<fieldset>` whose `<legend>` carries the label, with the hint or error describing the set.
 - Radio cards (the wizard's `RadioGroup`, `YesNoToggle`, `RadioGroupWithOther` in `app/(portal)/portal/daftar/_shared.tsx`): `px-4 py-2.5 border-2 rounded-xl text-sm`, gray border, filled `border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold` when chosen.
-- `<Input>`, `<Textarea>`, `<Select>`: `w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none`, 16px text (smaller text makes iOS zoom in on focus). Textareas don't resize unless given `resize-y`; selects are white.
+- `<Input>`, `<Textarea>`, `<Select>`: `w-full px-4 py-2.5 leading-6 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none` (48px for inputs and selects alike), 16px text (smaller text makes iOS zoom in on focus). Textareas don't resize unless given `resize-y`; selects are white.
 - Placeholders are example-style (`email@example.com`), not instructions.
 - Banners: `<Alert tone>` (`danger` by default, `success`, `warning`, `info`) in the status colors, `rounded-lg px-4 py-3 text-sm leading-relaxed`. Errors use `role="alert"`, the rest `role="status"`.
 - Submit: `<Button type="submit" size="lg">`, with a leading icon where one names the action. In the narrow auth cards it is `fullWidth`. The wizard's *Sebelumnya* / *Selanjutnya* / *Kirim Pendaftaran* row is lg too (`neutral` for back).
@@ -345,7 +345,7 @@ The mission sentence (*Yayasan Sakola Kembara berkomitmen untuk memberikan kesem
 - **Modals** use `<dialog>` (section 6).
 - **Text contrast:** at least 4.5:1. On navy, use `white/70` or stronger for text.
 
-## 11. Atomic design system (in progress)
+## 11. Atomic design system
 
 The site is moving from copy-pasted utility strings to shared components, one small ticket and PR at a time (plan agreed in SAKEM-031). Until a page is migrated, its current classes stay as documented above.
 
@@ -367,7 +367,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 
 | Component | Level | Use |
 | --- | --- | --- |
-| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `white-on-navy` · `subtle` · `neutral` · `danger` (destructive, irreversible: *Cabut Penerimaan*). `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
+| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `white-on-navy` · `subtle` · `neutral` · `danger` (destructive, irreversible: *Cabut Penerimaan*). `size`: `sm` (40px min, desktop header only) · `md` (44px min, default; a label that must wrap makes it taller) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
 | `buttonVariants` | style | The same classes for a CTA inside a card that is already one link: `<span className={buttonVariants({ fullWidth: true, className: "group-hover:bg-primary-blue-dark" })}>` |
 | `Eyebrow` | atom | `tone`: `light` (blue text) · `dark` (yellow text, for navy) |
 | `Heading` | atom | `level`: `display` · `page` · `article` · `section` · `subsection` · `panel` · `card` (D3 scale). Sets the default element (h1/h2/h3); `as` overrides it. Color is up to the caller |
@@ -380,7 +380,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `Field` | molecule | `id`, `label`, `required`, `hint`, `error`, `labelAside`. Label + control + hint/error, with the aria wiring (see Forms) |
 | `Input` · `Textarea` · `Select` | atoms | The form controls; inside a `Field` they are labelled automatically. `size="sm"` (40px, 14px) only for the filter rows above admin tables |
 | `TableCard` · `Table` · `THead` · `Th` · `TBody` · `Td` | molecule | Admin data tables: white card, sideways scroll on phones, uppercase column labels, `px-4 py-3` cells |
-| `AdminPageHeader` | organism (`app/(admin)/admin/_page-header.tsx`) | `title`, `overline`, `actions`, description as children. Admin-only |
+| `AdminPageHeader` | organism (`app/(admin)/admin/_page-header.tsx`) | `title`, `back` (`{ href, label }`, the "Kembali ke daftar" link on detail pages), `overline`, `actions`, description as children. Admin-only |
 | `EditorHeader` · `SaveButton` · `EditorMessages` · `FormSection` | admin editor parts (`app/(admin)/admin/_editor.tsx`) | The sticky top bar of an editor (back link, label, `meta`, actions), its save button, the save-result banners, and the titled field groups |
 | `Alert` | atom | `tone`: `danger` · `success` · `warning` · `info`. Message banner in the status colors |
 
@@ -401,6 +401,8 @@ Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`,
 Admin lists (SAKEM-044): every admin list page (and the headers of the dashboard and detail pages) uses `AdminPageHeader`, `Alert` for its flash messages, the `Table` parts, `Tag` hues for every category/status pill, `Button` for the header action, and `size="sm"` controls with a `sm` `Button` in its filter row. The admin title is the `subsection` heading level (24px on phones, 30px from `md`). Next: the admin editor forms (phase 5b), then the dashboard, detail pages and student portal (phase 5c).
 
 Admin editors (SAKEM-045): the eight editor forms (blog, team, reports, resources, announcements, shortlinks, settings, batches) and the application review form use `EditorHeader`, `SaveButton`, `EditorMessages`, `FormSection` (the blog keeps its own section helper for its tab panels), `Field` (`group` for radio-card questions) and the standard 48px controls; the team history rows use `size="sm"`. Selectable cards (severity, role, content type, the "Aktifkan" checkbox rows) are `rounded-xl` like the inputs. Upload buttons are `neutral` Buttons instead of black.
+
+Dashboard, detail pages and portal (SAKEM-047): admin detail pages take their back link from `AdminPageHeader`; the dashboard, detail and portal links lose their arrows; detail-page actions (*Publikasikan Hasil*, *Batalkan Publikasi*, *Balas via Email*) and the error pages' buttons are `Button`s. The student portal (`/portal`, `/portal/status`) uses `Container` (status page at `focused` 1000px), `Eyebrow`, `Heading` (`page` H1 on the home, `subsection` on status, `section` for the open-batch title), `Alert` and `Button`. Kept as they are: the admin sidebar and portal nav (app shells), the dashboard stat and quick-action tiles, the portal's small Lora card titles (`text-xl md:text-2xl`, not on the D3 scale) and verdict cards, and the email-verification banner (now on the `warning`/`success`/`danger` tokens). With this the plan from SAKEM-031 is complete.
 
 **Standards decided, applied as each page is migrated:**
 

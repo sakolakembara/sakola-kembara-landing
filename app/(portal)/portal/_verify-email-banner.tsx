@@ -49,7 +49,7 @@ export function VerifyEmailBanner({ email }: Props) {
   return (
     <div
       role="status"
-      className="relative overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:px-6 md:py-4"
+      className="relative overflow-hidden rounded-2xl border border-warning-border bg-warning-bg px-4 py-3 md:px-6 md:py-4"
     >
       <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -63,7 +63,7 @@ export function VerifyEmailBanner({ email }: Props) {
               Tautan verifikasi berlaku 24 jam.
             </p>
             {state.status === "sent" && (
-              <p className="text-xs text-secondary-green font-semibold mt-2">
+              <p className="text-xs text-success-fg font-semibold mt-2">
                 Tautan baru sudah dikirim. Cek folder spam jika belum muncul.
               </p>
             )}
@@ -74,7 +74,7 @@ export function VerifyEmailBanner({ email }: Props) {
               </p>
             )}
             {state.status === "failed" && (
-              <p className="text-xs text-red-700 font-semibold mt-2">
+              <p className="text-xs text-danger-fg font-semibold mt-2">
                 Gagal mengirim. Coba lagi beberapa saat lagi.
               </p>
             )}
