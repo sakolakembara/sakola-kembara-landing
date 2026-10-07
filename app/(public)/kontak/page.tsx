@@ -2,6 +2,9 @@
 
 import { motion } from "framer-motion";
 import { Mail, MessageCircle, MapPin } from "lucide-react";
+import { PageHero } from "@/components/layout/page-hero";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
 import { contactInfo } from "@/lib/data";
 import SocialLinks from "@/components/SocialLinks";
 import { ContactForm } from "./_contact-form";
@@ -16,28 +19,14 @@ export default function KontakPage() {
   return (
     <>
       <main className="min-h-screen bg-white">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24">
-          <div className="max-w-[1200px] mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
-                Mari Bergerak Bersama
-              </h1>
-              <p className="text-base md:text-lg text-white/90 max-w-[600px]">
-                Punya pertanyaan, ingin berkolaborasi, atau tertarik menjadi relawan?
-                Kami senang mendengar dari Anda.
-              </p>
-            </motion.div>
-          </div>
-        </section>
+        <PageHero
+          title="Mari Bergerak Bersama"
+          lead="Punya pertanyaan, ingin berkolaborasi, atau tertarik menjadi relawan? Kami senang mendengar dari Anda."
+        />
 
         {/* Main Content */}
         <section className="py-16">
-          <div className="max-w-[1200px] mx-auto px-6">
+          <Container>
             <div className="grid lg:grid-cols-2 gap-16">
               {/* Contact Form */}
               <motion.div
@@ -45,9 +34,9 @@ export default function KontakPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                <Heading level="panel" as="h2" className="text-gray-900 mb-6">
                   Kirim Pesan
-                </h2>
+                </Heading>
 
                 <ContactForm />
               </motion.div>
@@ -58,9 +47,9 @@ export default function KontakPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                <Heading level="panel" as="h2" className="text-gray-900 mb-6">
                   Informasi Kontak
-                </h2>
+                </Heading>
 
                 {/* Contact Methods */}
                 <div className="space-y-5 mb-10">
@@ -91,7 +80,7 @@ export default function KontakPage() {
                 </div>
               </motion.div>
             </div>
-          </div>
+          </Container>
         </section>
       </main>
     </>

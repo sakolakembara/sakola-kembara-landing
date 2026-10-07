@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { PageHero } from "@/components/layout/page-hero";
 import { cleanExcerpt, type BlogArticle } from "@/lib/blog-types";
 
 interface BlogIndexProps {
@@ -21,23 +22,10 @@ export function BlogIndex({
 }: BlogIndexProps) {
   return (
     <main className="min-h-screen bg-gray-50">
-      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
-              Blog & Cerita
-            </h1>
-            <p className="text-base md:text-xl text-white/90 max-w-[600px]">
-              Ikuti perjalanan kami dalam membuka akses pendidikan. Cerita
-              inspiratif, kegiatan terbaru, dan update dari Sakola Kembara.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Blog & Cerita"
+        lead="Ikuti perjalanan kami dalam membuka akses pendidikan. Cerita inspiratif, kegiatan terbaru, dan update dari Sakola Kembara."
+      />
 
       {featured && (
         <section className="py-12">

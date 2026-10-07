@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Briefcase,
@@ -9,6 +8,11 @@ import {
   User,
   X,
 } from "lucide-react";
+import { PageHero } from "@/components/layout/page-hero";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { TeamCategory, TeamMember } from "@/lib/db/schema";
 import { TEAM_CATEGORY_LABEL, TEAM_CATEGORY_ORDER } from "@/lib/team-types";
 
@@ -44,29 +48,14 @@ export function TimContent({ members }: TimContentProps) {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24">
-        <div className="max-w-[1200px] mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-6">
-              Pahlawan di Balik Sakola Kembara
-            </h1>
-            <p className="text-base md:text-lg text-white/90 max-w-[600px]">
-              Didukung oleh pengurus dan relawan dari berbagai universitas
-              terbaik di Indonesia yang berkomitmen untuk pendidikan yang
-              setara.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      <PageHero
+        title="Pahlawan di Balik Sakola Kembara"
+        lead="Didukung oleh pengurus dan relawan dari berbagai universitas terbaik di Indonesia yang berkomitmen untuk pendidikan yang setara."
+      />
 
       {/* Sections by category */}
       <section className="py-16 md:py-20">
-        <div className="max-w-[1200px] mx-auto px-6 space-y-16">
+        <Container className="space-y-16">
           {!hasAnyMember && (
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -81,10 +70,10 @@ export function TimContent({ members }: TimContentProps) {
             list.length === 0 ? null : (
               <section key={category}>
                 <header className="mb-6">
-                  <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2">
+                  <Heading level="subsection" className="text-gray-900 mb-2">
                     {TEAM_CATEGORY_LABEL[category]}
-                  </h2>
-                  <p className="text-gray-600 max-w-[700px]">
+                  </Heading>
+                  <p className="text-gray-600 max-w-[760px]">
                     {CATEGORY_DESCRIPTION[category]}
                   </p>
                 </header>
@@ -128,46 +117,35 @@ export function TimContent({ members }: TimContentProps) {
               </section>
             ),
           )}
-        </div>
+        </Container>
       </section>
 
       {/* CTA Section */}
       <section className="py-16 bg-white">
-        <div className="max-w-[800px] mx-auto px-6 text-center">
+        <Container size="reading">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-              Ingin Bergabung dengan Tim?
-            </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Kami selalu mencari relawan yang bersemangat untuk berkontribusi
-              dalam membuka akses pendidikan bagi siswa Indonesia. Terbuka juga
-              untuk kerja sama lembaga dan bentuk dukungan lainnya.
-            </p>
+            <SectionHeader
+              className="mb-8"
+              title="Ingin Bergabung dengan Tim?"
+              lead="Kami selalu mencari relawan yang bersemangat untuk berkontribusi dalam membuka akses pendidikan bagi siswa Indonesia. Terbuka juga untuk kerja sama lembaga dan bentuk dukungan lainnya."
+            />
             {/* Secondary route for anyone who wants to collaborate rather than
                 sign up as a volunteer — the path the /donasi card used to serve. */}
             <div className="flex flex-col sm:flex-row justify-center gap-3">
-              <a
-                href="https://linktr.ee/JoinSakolaKembara"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors"
-              >
+              <Button href="https://linktr.ee/JoinSakolaKembara" size="lg">
                 Bergabung Menjadi Relawan
-              </a>
-              <Link
-                href="/kontak"
-                className="px-8 py-4 border-2 border-primary-blue text-primary-blue font-semibold rounded-xl hover:bg-primary-blue/5 transition-colors"
-              >
+              </Button>
+              <Button href="/kontak" variant="outline" size="lg">
                 Hubungi Kami
-              </Link>
+              </Button>
             </div>
           </motion.div>
-        </div>
+        </Container>
       </section>
 
       <MemberDrawer member={active} onClose={() => setActive(null)} />
@@ -257,12 +235,13 @@ function MemberDrawer({
                     <User size={48} className="text-gray-300" />
                   )}
                 </div>
-                <h2
+                <Heading
+                  level="subsection"
                   id={`member-${member.id}-name`}
-                  className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900"
+                  className="text-gray-900"
                 >
                   {member.name}
-                </h2>
+                </Heading>
                 <p className="text-sm font-semibold text-primary-blue mt-1">
                   {member.role}
                 </p>

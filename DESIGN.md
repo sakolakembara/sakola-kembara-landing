@@ -101,7 +101,7 @@ On navy, swap `text-primary-blue` for `text-secondary-yellow`. The dot is always
 
 ## 4. Layout & spacing
 
-**Containers.** `max-w-[1200px] mx-auto px-6` is the default; when in doubt, use it. Narrower containers exist for focused reading: `1100px` (gabung-siswa documents), `1000px` (`/donasi` body), `800px` (blog article), and `max-w-[600px]` on a lead paragraph.
+**Containers.** `max-w-[1200px] mx-auto px-6` is the default; when in doubt, use it. Narrower containers exist for focused reading: `1000px` (`/donasi` body), `800px` (blog article, closing CTAs on `/tim` and `/laporan`), and `max-w-[600px]` on a lead paragraph. The gabung-siswa documents still use `1100px` until they are migrated (D4 moves them to 1200).
 
 **Section spacing.** Each section sets its own padding:
 
@@ -110,7 +110,7 @@ On navy, swap `text-primary-blue` for `text-secondary-yellow`. The dot is always
 
 **Heroes clear the fixed navbar** with the `--hero-top` variable, never a hard-coded `pt-32`/`pt-40`. `.nav-clearance` in `globals.css` sets it to 6.5rem on phones and 8rem from `md`, and taller (11.5rem / 11rem) when the announcement strip is showing (`data-announced` on `<html>`).
 
-- Sub-page hero: `bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24`, serif H1.
+- Sub-page hero: `<PageHero title lead>` (`components/layout/page-hero.tsx`), used by `/tim`, `/laporan`, `/kontak`, `/donasi` and `/blog`. Navy gradient, `pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24`, page-level H1, lead `text-base md:text-lg text-white/90 max-w-[600px]`. `/program/[id]`, `/gabung-siswa` and blog articles have their own heroes.
 - Homepage hero: `pt-[var(--hero-top,8rem)] md:pt-40 pb-16 md:pb-24 bg-gradient-to-b from-gray-50 to-white`.
 
 **Grids.** Hero split `grid lg:grid-cols-2 gap-16 items-center` · three cards `grid md:grid-cols-3 gap-6` · two cards `grid md:grid-cols-2 gap-6` · team `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6`. Most layout switches happen at `md` (768px) and `lg` (1024px).
@@ -179,8 +179,8 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 | Variant | Classes |
 | --- | --- |
 | Primary | `px-6 py-3 text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark` on unmigrated pages; `<Button>` (`h-11 px-5`) on migrated ones. The homepage hero adds `transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30` |
-| Big standalone CTA | `px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark` |
-| Big outlined (pairs with the big CTA, e.g. `/tim`) | `px-8 py-4 border-2 border-primary-blue text-primary-blue font-semibold rounded-xl hover:bg-primary-blue/5` |
+| Big standalone CTA | `px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark` (`<Button size="lg">`) |
+| Big outlined (pairs with the big CTA, e.g. `/tim`) | `px-8 py-4 border-2 border-primary-blue text-primary-blue font-semibold rounded-xl hover:bg-primary-blue/5`; `<Button variant="outline" size="lg">` on migrated pages, with the 1.5px border of every outlined button |
 | Outlined ("Lihat Detail" outside a card, "Lanjut ke Tahap N") | `h-11 px-5 rounded-lg border-[1.5px] border-primary-blue text-primary-blue text-[15px] font-semibold hover:bg-primary-blue/5` |
 | Filled in a card ("Lihat Detail" on program cards) | `h-11 px-5 rounded-lg bg-primary-blue text-white text-[15px] font-semibold group-hover:bg-primary-blue-dark` |
 | Outlined on navy | `border-[1.5px] border-white/60 text-white hover:bg-white/10` |
@@ -361,15 +361,18 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 
 | Component | Level | Use |
 | --- | --- | --- |
-| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `subtle` · `neutral`. `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for `/files/`, mail/tel and downloads |
+| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `subtle` · `neutral`. `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
 | `buttonVariants` | style | The same classes for a CTA inside a card that is already one link: `<span className={buttonVariants({ fullWidth: true, className: "group-hover:bg-primary-blue-dark" })}>` |
 | `Eyebrow` | atom | `tone`: `light` (blue text) · `dark` (yellow text, for navy) |
 | `Heading` | atom | `level`: `display` · `page` · `article` · `section` · `subsection` · `panel` · `card` (D3 scale). Sets the default element (h1/h2/h3); `as` overrides it. Color is up to the caller |
 | `Tag` | atom | `tone`: `brand` · `soft`; `size`: `sm` · `md`. Always `rounded-full` |
 | `Container` | atom | `size`: `page` (1200) · `focused` (1000) · `reading` (800); `as` for the element |
 | `SectionHeader` | molecule | `eyebrow`, `title`, `lead`, `tone` (`light`/`dark`), `align` (`center`/`left`), `as` |
+| `PageHero` | organism (`components/layout/`) | `title`, `lead`. The navy hero that opens a sub-page; the title is the page's H1 (`page` level) |
 
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
+
+Sub-pages (SAKEM-037): `/tim`, `/laporan`, `/kontak`, `/donasi`, plus the `/blog` hero, use `PageHero`. Headings follow D3: team categories, report years and the `/laporan` closing heading are `subsection`; *Cara Berdonasi* and the `/kontak` column titles are `panel`. Kept inline: the light *Hubungi Kami* button on the navy `/donasi` card (no variant yet), the colored report-category pills, and the contact form (phase 4).
 
 **Standards decided, applied as each page is migrated:**
 

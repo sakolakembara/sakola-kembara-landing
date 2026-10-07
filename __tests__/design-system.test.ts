@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cn } from "@/lib/cn";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants, linkKind } from "@/components/ui/button";
 import { headingVariants } from "@/components/ui/heading";
 
 describe("cn", () => {
@@ -29,6 +29,21 @@ describe("buttonVariants", () => {
     for (const size of ["sm", "md", "lg"] as const) {
       expect(buttonVariants({ size })).not.toContain("rounded-full");
     }
+  });
+});
+
+describe("linkKind", () => {
+  it("keeps files, mail/tel links and downloads out of the router", () => {
+    expect(linkKind("/reports/2025-2026/keuangan/laporan-ab12cd.pdf")).toBe("plain");
+    expect(linkKind("/files/pitchdeck-sakola-kembara.pdf?v=2")).toBe("plain");
+    expect(linkKind("mailto:halo@example.org")).toBe("plain");
+    expect(linkKind("/_next/static/media/qris.png", "qris.png")).toBe("plain");
+  });
+
+  it("opens external URLs in a new tab and routes the rest", () => {
+    expect(linkKind("https://linktr.ee/JoinSakolaKembara")).toBe("external");
+    expect(linkKind("/program/pembinaan")).toBe("route");
+    expect(linkKind("#activities")).toBe("route");
   });
 });
 

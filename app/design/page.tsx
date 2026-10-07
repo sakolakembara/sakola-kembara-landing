@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PageHero } from "@/components/layout/page-hero";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -122,6 +123,18 @@ export default function DesignCatalog() {
           <Tag tone="soft">290+ jam belajar setahun</Tag>
         </div>
       </Block>
+
+      <section>
+        <Container className="pt-12">
+          <h2 className="mb-6 text-xs font-bold uppercase tracking-wider text-gray-500">
+            PageHero (components/layout)
+          </h2>
+        </Container>
+        <PageHero
+          title="Pahlawan di Balik Sakola Kembara"
+          lead="Didukung oleh pengurus dan relawan dari berbagai universitas terbaik di Indonesia."
+        />
+      </section>
 
       <Block title="Container sizes">
         <div className="space-y-3">
