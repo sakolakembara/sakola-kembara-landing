@@ -175,7 +175,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 
 ### Buttons
 
-**No arrows on buttons.** Buttons and text CTAs carry no arrow or chevron icons. A leading icon that names the action is fine (`ClipboardList` on *Daftar Sekarang*, `Download` on *Download PitchDeck*). The only exception is an icon-only control where the arrow *is* the button (testimonial carousel prev/next), which keeps an `aria-label`.
+**No arrows on buttons.** Buttons and text CTAs carry no arrow or chevron icons. That includes *Lihat*/*Buka* links in admin tables, *Sebelumnya*/*Berikutnya* in pagination, and links that leave the site (no ↗ marker; SAKEM-053). A leading icon that names the action is fine (`ClipboardList` on *Daftar Sekarang*, `Download` on *Download PitchDeck*). The only exception is an icon-only control where the arrow *is* the button (testimonial carousel prev/next), which keeps an `aria-label`.
 
 | Variant | Classes |
 | --- | --- |

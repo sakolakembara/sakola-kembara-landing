@@ -10,7 +10,7 @@ import {
   lte,
   type SQL,
 } from "drizzle-orm";
-import { ArrowRight, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { X } from "lucide-react";
 import { db } from "@/lib/db";
 import { auditLog } from "@/lib/db/schema";
 import {
@@ -244,7 +244,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
                               href={href}
                               className="text-[11px] text-primary-blue font-medium hover:underline inline-flex items-center gap-1 mt-0.5"
                             >
-                              Buka <ArrowRight size={10} />
+                              Buka
                             </Link>
                           )}
                         </div>
@@ -325,11 +325,11 @@ function Pagination({
           href={hrefForPage(currentPage - 1)}
           className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
         >
-          <ChevronLeft size={16} /> Sebelumnya
+          Sebelumnya
         </Link>
       ) : (
         <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
-          <ChevronLeft size={16} /> Sebelumnya
+          Sebelumnya
         </span>
       )}
       <div className="flex items-center gap-1">
@@ -365,11 +365,11 @@ function Pagination({
           href={hrefForPage(currentPage + 1)}
           className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors"
         >
-          Berikutnya <ChevronRight size={16} />
+          Berikutnya
         </Link>
       ) : (
         <span className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100">
-          Berikutnya <ChevronRight size={16} />
+          Berikutnya
         </span>
       )}
     </nav>

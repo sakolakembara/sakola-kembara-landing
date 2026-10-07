@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import {
   CONTACT_SUBJECT_LABEL,
   CONTACT_SUBJECT_TONE,
@@ -119,10 +118,6 @@ export default async function MessagesPage({ searchParams }: PageProps) {
                           timeStyle: "short",
                         })}
                       </div>
-                      <ArrowRight
-                        size={14}
-                        className="ml-auto mt-1 text-gray-300"
-                      />
                     </div>
                   </Link>
                 </li>
