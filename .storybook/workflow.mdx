@@ -1,0 +1,89 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Workflow" />
+
+# Changing a component
+
+How designers and developers add or change a component, from the idea to the merge. It sums up rules that already exist: the team workflow in [`CLAUDE.md`](https://github.com/sakolakembara/sakola-kembara-landing/blob/development/CLAUDE.md) and the design rules in [`DESIGN.md`](https://github.com/sakolakembara/sakola-kembara-landing/blob/development/DESIGN.md). If this page and those files ever disagree, the files win.
+
+## Before you start
+
+- **Every change has a ticket** in Saung (project *Sakola Kembara*), numbered `SAKEM-NNN`, written before any code. Changes to the visual style happen only through a ticket.
+- **Extend, don't replace.** The Indonesian copy and the visual style are fixed; use the colors, fonts, radii and motion that exist. If nothing fits, propose a new token in the ticket instead of adding a one-off.
+- **Look first.** Find the component in this Storybook and check its stories, so you know every variant and state you are about to touch.
+
+## The steps
+
+1. **Ticket.** Write what changes and why in the `SAKEM-NNN` ticket, with a screenshot or a Figma link if there is one.
+
+2. **Branch** from `development`, named after the kind of change: `feat/…`, `fix/…` or `docs/…`.
+
+   ```bash
+   git fetch origin
+   git switch -c feat/thicker-outline-button origin/development
+   ```
+
+3. **Change the component in one place.** Every page that uses it changes with it.
+   - Atoms and molecules are in `components/ui/`, organisms in `components/layout/`, homepage sections in `components/sections/`, and page-specific parts next to their page in `app/` (files starting with `_`).
+   - **A new look for some cases is a new variant**, not a `className` override at the call site. Overrides are for layout only (margin, width, position).
+   - **A new component** is worth it once a pattern is used three or more times. One-offs stay inline.
+   - **Colors and fonts are tokens** in `app/globals.css`. Change them there; the Colors and Typography pages here update by themselves.
+
+4. **Update the stories** in the `*.stories.tsx` file next to the component: one story per variant and per state (disabled, error, empty, long text), and a phone-width story when the layout can wrap. A new component gets a new stories file. Use sample data named *Contoh …* (shared samples are in `.storybook/fixtures.ts`).
+
+5. **Update `DESIGN.md`** when a rule changes, and the component table in section 11 when a component or variant is added. The Foundations pages here read their rules from it.
+
+6. **Check it.**
+   - Run Storybook and look at every story you touched, at *HP (375)* and desktop, on the right background, and in the **Accessibility** tab.
+   - Look at the stories that use the component too (*Sections*, *Public*, *Portal*, *Admin*) to see the change in context.
+   - Run the checks from `package.json`:
+
+   ```bash
+   pnpm storybook
+   pnpm test
+   pnpm exec tsc --noEmit
+   pnpm build-storybook
+   pnpm build
+   ```
+
+   Lint the files you changed with `pnpm exec eslint <files>` (the whole repo still has older lint errors).
+
+7. **Open a pull request** into `development`. Put the ticket number in every commit, `type(scope): summary (SAKEM-NNN)`, and in the PR's *Ticket* field, and fill in the template: what changed and why, how it was tested, and what was *not* tested. CI builds Storybook on every pull request, so a broken story turns it red.
+
+8. **Review, merge, close.** A designer checks the change here in Storybook and on the preview site. After the merge, delete the branch and close the ticket in Saung with a short *Resolusi* and the PR link.
+
+## Working with Claude
+
+Describe the change in the ticket or in chat, for example *"make the outline button's border 2px"*. Claude does steps 1 to 7 (ticket, branch, component, stories, `DESIGN.md`, checks, pull request) and reports what it checked and what it didn't. You review in step 8 and say when it can be merged; Claude merges only after that.
+
+## For designers
+
+- **Name things the way the code does.** In Figma, use the component, variant and size names shown here, such as `Button` / `outline` / `md` or `Tag` / `amber` / `sm`, so a design maps onto code without translation. There is no shared Figma library yet; when one is made, it follows these names.
+- **Design every state**, not only the default: hover, disabled, error, empty, a long label on a 375px phone, and the navy background where the component can appear.
+- **Use the scales.** Headings come from the type scale (*Foundations/Typography*), colors from the tokens (*Foundations/Colors*), corners from the radius scale (*Foundations/Shape & elevation*). An icon size scale is not decided yet (*Foundations/Iconography*).
+
+## Pull request checklist
+
+- [ ] Ticket number in the branch's commits and the PR
+- [ ] Component changed in one place; new looks are variants, not overrides
+- [ ] Stories added or updated for every variant and state, including phone width
+- [ ] `DESIGN.md` updated if a rule, token or component changed
+- [ ] Checked in Storybook at phone and desktop width, and the Accessibility tab is clean
+- [ ] `pnpm test`, `tsc`, `pnpm build-storybook` and `pnpm build` pass
+- [ ] No secrets or personal data in the diff or the sample data
+
+## Where things live
+
+| What | Where |
+| --- | --- |
+| Atoms and molecules | `components/ui/` |
+| Organisms (navbar, footer, page hero) | `components/layout/` |
+| Homepage sections | `components/sections/` |
+| Page bodies, forms, admin and portal parts | `app/**/_*.tsx`, next to their page |
+| Stories | `*.stories.tsx`, next to each component |
+| Color and font tokens | `app/globals.css` |
+| Design rules | `DESIGN.md` |
+| Storybook setup, Foundations pages, sample data | `.storybook/` |
+| Team workflow (tickets, branches, PRs) | `CLAUDE.md` and `.github/pull_request_template.md` |
+
+**Developer notes.** Tailwind scans the stories into the site's CSS, so stories use only classes the site already has (or inline styles). Server actions are replaced by stubs in Storybook (`.storybook/main.ts`), so forms render and show their pending state but save nothing; components that need data take it as props, and their stories pass samples from `.storybook/fixtures.ts`.
