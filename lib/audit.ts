@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { AuditAction, AuditResourceType } from "@/lib/audit-labels";
 import { auditLog, type NewAuditEntry } from "@/lib/db/schema";
 
 interface WriteAuditOptions {
@@ -8,9 +9,10 @@ interface WriteAuditOptions {
   /** admin_users.id when an admin performed the action; null for public
    *  events like a student submitting the registration form. */
   actorId?: string | null;
-  /** Dotted event name, e.g. "application.submit" or "report.delete". */
-  action: string;
-  resourceType?: string;
+  /** Dotted event name, e.g. "application.submit" or "report.delete". Only
+   *  actions with a label in lib/audit-labels.ts are accepted. */
+  action: AuditAction;
+  resourceType?: AuditResourceType;
   resourceId?: string;
   metadata?: Record<string, unknown>;
 }
