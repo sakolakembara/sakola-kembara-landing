@@ -353,7 +353,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 
 **Class merging** (D8): variants are written with `class-variance-authority`. `cn()` in `lib/cn.ts` (built on `tailwind-merge`) joins classes so that a caller's `className` overrides a conflicting default. Keep overrides to layout (margin, width, position); a different look means a new variant, not an override.
 
-**Display font, written correctly.** Use `font-[family-name:var(--font-display)]`, or simply `<Heading>`. The bare `font-[var(--font-display)]` that most existing pages use compiles to `font-weight` under Tailwind 4.3, so those headings render in Plus Jakarta Sans, not Lora. They get fixed as pages migrate.
+**Display font.** Use `<Heading>`, or write the class as `font-[family-name:var(--font-display)]`. Without the `family-name:` hint, Tailwind 4.3 reads it as a font weight (see section 3).
 
 **Components available** (`components/ui/`, SAKEM-034):
 

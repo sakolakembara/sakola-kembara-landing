@@ -10,8 +10,8 @@ describe("cn", () => {
   });
 
   it("keeps the display font next to a font weight", () => {
-    // The bare `font-[var(--font-display)]` form is read as a font weight and
-    // would be dropped here; the family-name form must survive.
+    // Without the family-name hint the var() form is read as a font weight
+    // and would be dropped here; the hinted form must survive.
     expect(cn("font-[family-name:var(--font-display)]", "font-bold")).toBe(
       "font-[family-name:var(--font-display)] font-bold",
     );
