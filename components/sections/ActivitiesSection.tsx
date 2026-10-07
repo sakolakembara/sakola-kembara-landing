@@ -5,6 +5,11 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Tag } from "@/components/ui/tag";
 import { programs } from "@/lib/data";
 
 export default function ActivitiesSection() {
@@ -19,25 +24,20 @@ export default function ActivitiesSection() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl" />
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-6 relative z-10" ref={ref}>
+      <Container className="relative z-10" ref={ref}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12 md:mb-16"
+          className="mb-12 md:mb-16"
         >
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-            Program Kami
-          </div>
-          <h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-3xl md:text-[40px] leading-tight text-white mb-5 md:mb-6 max-w-[760px] mx-auto text-balance">
-            Apa saja yang dilalui penerima manfaat Sakola Kembara?
-          </h2>
-          <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
-            Program pembinaan komprehensif dari penjangkauan siswa hingga
-            pendampingan alumni untuk memastikan keberhasilan jangka panjang.
-          </p>
+          <SectionHeader
+            tone="dark"
+            eyebrow="Program Kami"
+            title="Apa saja yang dilalui penerima manfaat Sakola Kembara?"
+            lead="Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka panjang."
+          />
         </motion.div>
 
         {/* Programs Grid */}
@@ -58,16 +58,17 @@ export default function ActivitiesSection() {
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <span className="absolute top-4 left-4 bg-primary-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold z-10">
-                    {program.tag}
-                  </span>
+                  <Tag className="absolute top-4 left-4 z-10">{program.tag}</Tag>
                 </div>
 
                 {/* Content */}
                 <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-primary-blue transition-colors">
+                  <Heading
+                    level="card"
+                    className="text-gray-900 mb-4 group-hover:text-primary-blue transition-colors"
+                  >
                     {program.title}
-                  </h3>
+                  </Heading>
                   <ul className="space-y-2 mb-5">
                     {program.points.map((point) => (
                       <li
@@ -81,7 +82,12 @@ export default function ActivitiesSection() {
                   </ul>
                   {/* Inside a card the CTA is filled. The whole card is the
                       link, so this is a styled span, not a nested link. */}
-                  <span className="mt-auto flex h-11 items-center justify-center rounded-lg bg-primary-blue px-5 text-[15px] font-semibold text-white transition-colors group-hover:bg-primary-blue-dark">
+                  <span
+                    className={buttonVariants({
+                      fullWidth: true,
+                      className: "mt-auto group-hover:bg-primary-blue-dark",
+                    })}
+                  >
                     Lihat Detail
                   </span>
                 </div>
@@ -89,7 +95,7 @@ export default function ActivitiesSection() {
             </Link>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

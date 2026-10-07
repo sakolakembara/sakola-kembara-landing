@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Image from "next/image";
+import { Container } from "@/components/ui/container";
+import { SectionHeader } from "@/components/ui/section-header";
 import { activePartners, pastPartners, type Partner } from "@/lib/data";
 
 /**
@@ -75,25 +77,19 @@ export default function PartnersSection() {
 
   return (
     <section className="py-16 md:py-24 bg-[#F5F7FA]" id="partners">
-      <div className="max-w-[1200px] mx-auto px-6" ref={ref}>
+      <Container ref={ref}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="mb-12"
         >
-          <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-            Partner Kami
-          </div>
-          <h2 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl text-gray-900 mb-5 md:mb-6">
-            Bersama Mewujudkan Perubahan
-          </h2>
-          <p className="text-base md:text-lg text-gray-600 max-w-[600px] mx-auto">
-            Terima kasih kepada semua partner yang telah mendukung misi kami
-            untuk pendidikan yang setara.
-          </p>
+          <SectionHeader
+            eyebrow="Partner Kami"
+            title="Bersama Mewujudkan Perubahan"
+            lead="Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara."
+          />
         </motion.div>
 
         <div className="space-y-12 md:space-y-14">
@@ -110,7 +106,7 @@ export default function PartnersSection() {
             delay={0.4}
           />
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

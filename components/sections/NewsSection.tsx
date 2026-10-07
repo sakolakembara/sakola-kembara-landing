@@ -5,6 +5,10 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Tag } from "@/components/ui/tag";
 import type { BlogArticle } from "@/lib/blog-types";
 
 interface NewsSectionProps {
@@ -19,7 +23,7 @@ export default function NewsSection({ articles }: NewsSectionProps) {
 
   return (
     <section className="py-14 md:py-16 bg-white" id="blog">
-      <div className="max-w-[1200px] mx-auto px-6" ref={ref}>
+      <Container ref={ref}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -27,21 +31,10 @@ export default function NewsSection({ articles }: NewsSectionProps) {
           transition={{ duration: 0.6 }}
           className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8"
         >
-          <div>
-            <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-2">
-              <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-              Blog
-            </div>
-            <h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-gray-900">
-              Cerita & Inspirasi
-            </h2>
-          </div>
-          <Link
-            href="/blog"
-            className="text-[15px] font-semibold text-primary-blue hover:underline"
-          >
+          <SectionHeader align="left" eyebrow="Blog" title="Cerita & Inspirasi" />
+          <Button href="/blog" variant="outline" className="self-start sm:self-auto">
             Lihat Semua
-          </Link>
+          </Button>
         </motion.div>
 
         {/* Compact Article List */}
@@ -64,9 +57,9 @@ export default function NewsSection({ articles }: NewsSectionProps) {
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <span className="absolute top-3 left-3 text-[10px] font-semibold text-white bg-primary-blue/90 px-2 py-1 rounded">
+                  <Tag size="sm" className="absolute top-3 left-3">
                     {article.category}
-                  </span>
+                  </Tag>
                 </div>
                 <div className="p-4">
                   <p className="text-xs text-gray-400 mb-2">{article.date}</p>
@@ -78,7 +71,7 @@ export default function NewsSection({ articles }: NewsSectionProps) {
             </motion.article>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

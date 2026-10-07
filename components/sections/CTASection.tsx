@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
+import { Container } from "@/components/ui/container";
+import { SectionHeader } from "@/components/ui/section-header";
 
 const ctaOptions = [
   {
@@ -44,7 +46,7 @@ const ctaOptions = [
     buttonText: "Hubungi Kami",
     href: "/kontak",
     color: "bg-secondary-yellow",
-    hoverColor: "hover:bg-yellow-500",
+    hoverColor: "hover:bg-secondary-yellow/90",
     textColor: "text-gray-900",
   },
 ];
@@ -61,29 +63,24 @@ export default function CTASection() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl" />
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-6 relative z-10" ref={ref}>
+      <Container className="relative z-10" ref={ref}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-10"
+          className="mb-10"
         >
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-3">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-            Bergabung Bersama Kami
-          </div>
-          <h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-white mb-4">
-            Jadilah Bagian dari Perubahan
-          </h2>
-          <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">
-            Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya.
-            Empat peran berikut membuat program kami terus berjalan, dan
-            semuanya terbuka lebar untuk Anda.
-          </p>
+          <SectionHeader
+            tone="dark"
+            eyebrow="Bergabung Bersama Kami"
+            title="Jadilah Bagian dari Perubahan"
+            lead="Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya. Empat peran berikut membuat program kami terus berjalan, dan semuanya terbuka lebar untuk Anda."
+          />
         </motion.div>
 
-        {/* CTA Cards */}
+        {/* CTA Cards. Their colored buttons are a documented exception to the
+            Button variants (DESIGN.md, Color). */}
         <div className="grid md:grid-cols-2 gap-5 max-w-[1000px] mx-auto">
           {ctaOptions.map((option, index) => (
             <motion.div
@@ -121,7 +118,7 @@ export default function CTASection() {
           Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami
           bantu mencarikannya.
         </motion.p>
-      </div>
+      </Container>
     </section>
   );
 }
