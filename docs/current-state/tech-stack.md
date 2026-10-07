@@ -16,6 +16,7 @@ A snapshot of what powers the site today. Keep this in sync with `package.json` 
 - `npm run build` → production build.
 - `npm run start` → serve the production build.
 - `npm run lint` → ESLint v9 with `eslint-config-next`.
+- `pnpm storybook` / `pnpm build-storybook` → Storybook 10 (`@storybook/nextjs-vite`, addons docs and a11y; config in `.storybook/`) for the design-system components. CI publishes the build to GitHub Pages (see [`deployment.md`](deployment.md)).
 - `npm run scrape:blog` → re-scrape WordPress posts into `content/blog/*.md` and `lib/blog-posts.json` (see [`blog-pipeline.md`](blog-pipeline.md)).
 - `npm run blog:sync` → regenerate `lib/blog-posts.json` from edited markdown.
 
@@ -35,7 +36,7 @@ See [`DESIGN.md`](../../DESIGN.md) for how to use the tokens.
 
 ## Fonts
 
-Loaded via `next/font/google` in `app/layout.tsx`:
+Loaded via `next/font/google` in `lib/fonts.ts`; `fontVariables` is set on `<body>` by `app/layout.tsx` and on the Storybook canvas by `.storybook/preview.tsx`:
 
 - **Lora** (`--font-display`) — serif headline font, weights 400/500/600/700. Used everywhere headlines say `font-[family-name:var(--font-display)]`.
 - **Plus Jakarta Sans** (`--font-body`) — sans-serif body, weights 400/500/600/700. Default `body` font.

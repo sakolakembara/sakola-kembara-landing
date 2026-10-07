@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "scrape:blog": "node scripts/scrape-blog.mjs",
     "blog:sync": "node scripts/blog-sync-from-markdown.mjs",
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
@@ -49,6 +51,9 @@
     "postcss": "^8.5.10"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.6.1",
+    "@storybook/addon-docs": "^10.6.1",
+    "@storybook/nextjs-vite": "^10.6.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
@@ -60,6 +65,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
+    "storybook": "^10.6.1",
     "tailwindcss": "^4",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",

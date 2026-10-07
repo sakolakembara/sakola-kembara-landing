@@ -1,0 +1,26 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Introduction" />
+
+# Sakola Kembara design system
+
+The shared components of [sakolakembara.org](https://sakolakembara.org), as they render in the app. Each story is one state that matters: a variant, a size, an error, a long label on a phone, a navy background.
+
+- **Atoms**: `Button`, `Tag`, `Heading`, `Eyebrow`, `Container`, `Alert`.
+- **Molecules**: `SectionHeader`, `Field` (with `Input`, `Select`, `Textarea`), `Table`, `SocialLinks`.
+- **Organisms**: `Navbar`, `Footer`, `PageHero`, `AnnouncementStrip`.
+
+The rules (colors, type scale, spacing, copy, accessibility) are in [`DESIGN.md`](https://github.com/sakolakembara/sakola-kembara-landing/blob/development/DESIGN.md). Storybook shows them; `DESIGN.md` decides them.
+
+## Toolbar
+
+- **Viewport**: check every component at *HP (375)*. Labels may wrap there; they must never overflow.
+- **Backgrounds**: the `*-on-navy` and `tone="dark"` variants are meant for *Navy*.
+- **Accessibility** tab: automatic checks for contrast, labels and roles.
+
+## Adding or changing a component
+
+1. Build it in `components/ui` (atoms, molecules) or `components/layout` (organisms). Make a pattern a component once it is used three or more times.
+2. Put a `*.stories.tsx` file next to it, with one story per variant and per state, including a phone-width story when the layout can wrap.
+3. Update the component table in `DESIGN.md` section 11.
+4. Run `pnpm storybook` locally (port 6006). Every push to `development` publishes Storybook to GitHub Pages.

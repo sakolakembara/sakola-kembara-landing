@@ -129,6 +129,12 @@ node .next/standalone/server.js                  # serves on :3000
 
 This is what every dev should do before pushing a release.
 
+## Storybook (GitHub Pages)
+
+Separate from the site deploy. `.github/workflows/storybook.yml` builds Storybook on every pull request (a broken story fails the check) and, on every push to `development`, publishes it to GitHub Pages at <https://sakolakembara.github.io/sakola-kembara-landing/>. It uses no secrets. Storybook is public, like the repo; it holds components and sample copy only, never real data.
+
+One-time setup by a repo admin: Settings → Pages → Source "GitHub Actions", and allow the `development` branch in the `github-pages` environment (by default only `main` may deploy there).
+
 ## What is NOT in this flow
 
 - **No staging environment yet.** When the dashboard goes live, add a `staging.sakolakembara.org` either on the same VPS (separate Compose project) or a tiny second VPS.

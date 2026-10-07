@@ -17,6 +17,7 @@ Live: <https://sakolakembara.org>
 - **Auth.js v5** — Google OAuth for everyone (students and admins) + email/password (bcryptjs) fallback for admin roles. See [`docs/architecture/authentication.md`](docs/architecture/authentication.md).
 - Public site under `app/(public)/`, admin dashboard under `app/(admin)/admin/`, student portal under `app/(portal)/portal/`, unified login at `app/(auth)/login/`
 - **Vitest** for unit tests (`__tests__/`) — schemas, rate limiter, admin service, auth guards
+- **Storybook 10** for the design-system components (`*.stories.tsx` next to each component), published to GitHub Pages: <https://sakolakembara.github.io/sakola-kembara-landing/>
 - **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
 - **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/portal/daftar` submit, `/register` signup, credential sign-in)
 - **SSO handshake** to the upcoming LMS at `lms.sakolakembara.org` — sidecar `sakem-session` cookie on `.sakolakembara.org` + `/api/sso/{session,register,signout}` endpoints. Contract lives in [`docs/architecture/lms-integration.md`](docs/architecture/lms-integration.md).
@@ -76,6 +77,15 @@ The admin dashboard at `/admin` and the portal at `/portal` both redirect unauth
 | `npm test` | Run the Vitest unit suite once |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run test:coverage` | Vitest with v8 coverage report |
+
+### Design system
+
+The shared components live in `components/ui/` and `components/layout/`; the rules are in [`DESIGN.md`](DESIGN.md). Each component has a `*.stories.tsx` file next to it.
+
+| Command | What it does |
+| --- | --- |
+| `pnpm storybook` | Storybook on `:6006`. Needs no database or env |
+| `pnpm build-storybook` | Static build into `storybook-static/` (what CI publishes to GitHub Pages) |
 
 ### Database
 

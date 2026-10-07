@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# storybook build output (published to GitHub Pages by CI)
+/storybook-static/
+
 # production
 /build
 

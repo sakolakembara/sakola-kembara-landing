@@ -2,7 +2,7 @@
 
 The design system for the public site (`sakolakembara.org`): how it should look, read, and behave. Admin and the student portal follow it where it fits.
 
-- **Values live in code.** Color and font tokens are defined in `app/globals.css` (`:root` vars, published to Tailwind by the `@theme inline` block; there is no `tailwind.config.ts`). Fonts load in `app/layout.tsx`. This file explains how to use them; if the two disagree, fix whichever is wrong in the same PR.
+- **Values live in code.** Color and font tokens are defined in `app/globals.css` (`:root` vars, published to Tailwind by the `@theme inline` block; there is no `tailwind.config.ts`). Fonts load in `lib/fonts.ts`, applied by `app/layout.tsx`. This file explains how to use them; if the two disagree, fix whichever is wrong in the same PR.
 - **Voice lives in [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md).** Section 9 here covers UI microcopy only.
 
 ## Changing the design
@@ -357,7 +357,7 @@ The site is moving from copy-pasted utility strings to shared components, one sm
 
 Make a pattern a component once it is used three or more times. One-offs stay inline.
 
-**Catalog** (D9): `/design` renders every component. It only works when `DESIGN_CATALOG=1` (set on previews); otherwise it is a 404, and it is `noindex`. When you add or change a component, add it to the catalog.
+**Catalog** (SAKEM-048, replaces the `/design` route from D9): Storybook, with one `*.stories.tsx` file next to each component in `components/ui/` and `components/layout/`, grouped as Atoms, Molecules and Organisms. Run it with `pnpm storybook` (port 6006); every push to `development` publishes it to GitHub Pages (https://sakolakembara.github.io/sakola-kembara-landing/). When you add or change a component, add or update its stories: one per variant and per state, plus a phone-width story when the layout can wrap. This file decides the rules; the stories show them.
 
 **Class merging** (D8): variants are written with `class-variance-authority`. `cn()` in `lib/cn.ts` (built on `tailwind-merge`) joins classes so that a caller's `className` overrides a conflicting default. Keep overrides to layout (margin, width, position); a different look means a new variant, not an override.
 
