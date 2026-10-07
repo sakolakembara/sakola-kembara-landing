@@ -357,7 +357,7 @@ The site is moving from copy-pasted utility strings to shared components, one sm
 
 Make a pattern a component once it is used three or more times. One-offs stay inline.
 
-**Catalog** (SAKEM-048, replaces the `/design` route from D9): Storybook, with one `*.stories.tsx` file next to each component in `components/ui/` and `components/layout/`, grouped as Atoms, Molecules and Organisms. Run it locally with `pnpm storybook` (port 6006); CI builds it on every pull request, so a broken story fails the check. It is not hosted yet. When you add or change a component, add or update its stories: one per variant and per state, plus a phone-width story when the layout can wrap. This file decides the rules; the stories show them.
+**Catalog** (SAKEM-048, replaces the `/design` route from D9): Storybook, with one `*.stories.tsx` file next to each component in `components/ui/` and `components/layout/`, grouped as Atoms, Molecules and Organisms. Its Foundations pages (Colors, Typography) read the tokens from `app/globals.css`, Tailwind's palette and the color table in section 2, so they stay current without edits. Run it locally with `pnpm storybook` (port 6006); CI builds it on every pull request, so a broken story fails the check. It is not hosted yet. When you add or change a component, add or update its stories: one per variant and per state, plus a phone-width story when the layout can wrap. This file decides the rules; the stories show them.
 
 **Class merging** (D8): variants are written with `class-variance-authority`. `cn()` in `lib/cn.ts` (built on `tailwind-merge`) joins classes so that a caller's `className` overrides a conflicting default. Keep overrides to layout (margin, width, position); a different look means a new variant, not an override.
 

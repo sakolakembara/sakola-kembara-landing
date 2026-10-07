@@ -1,0 +1,30 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { FontFamilies, HeadingScale, TextStyles } from "./foundations";
+
+<Meta title="Foundations/Typography" />
+
+# Typography
+
+Two families, one heading scale. The sizes below are measured live, so switch the viewport to *HP (375)* to see the phone sizes. Rules (emphasis, eyebrows, line lengths) are in [DESIGN.md section 3](https://github.com/sakolakembara/sakola-kembara-landing/blob/development/DESIGN.md#3-typography).
+
+## Families
+
+<Unstyled>
+  <FontFamilies />
+</Unstyled>
+
+Use `<Heading>` for Lora headings. If you must write the class yourself, write it as `font-[family-name:var(--font-display)]`: the shorter `font-[var(--font-display)]` compiles to a font weight and silently falls back to Plus Jakarta Sans.
+
+## Heading scale
+
+`<Heading level="…">` sets the look and the default element; `as` changes only the element. Color is up to the caller.
+
+<Unstyled>
+  <HeadingScale />
+</Unstyled>
+
+## Text
+
+<Unstyled>
+  <TextStyles />
+</Unstyled>

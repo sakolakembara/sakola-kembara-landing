@@ -7,6 +7,11 @@ const preview: Preview = {
   parameters: {
     nextjs: { appDirectory: true },
     controls: { expanded: true },
+    options: {
+      storySort: {
+        order: ["Introduction", "Foundations", ["Colors", "Typography"], "Atoms", "Molecules", "Organisms"],
+      },
+    },
     backgrounds: {
       options: {
         white: { name: "Putih", value: "#ffffff" },

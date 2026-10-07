@@ -6,7 +6,7 @@ import type { StorybookConfig } from "@storybook/nextjs-vite";
  * Rules live in DESIGN.md; the stories are the living examples.
  */
 const config: StorybookConfig = {
-  stories: ["./introduction.mdx", "../components/**/*.stories.tsx"],
+  stories: ["./*.mdx", "../components/**/*.stories.tsx"],
   addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
   framework: "@storybook/nextjs-vite",
   core: { disableTelemetry: true },
