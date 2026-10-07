@@ -12,6 +12,7 @@ import {
   signAccountToken,
   VERIFY_EMAIL_MAX_AGE_SECONDS,
 } from "@/lib/account-tokens";
+import { tamperSignature } from "./jwt-helpers";
 
 const sampleClaims = {
   sub: "11111111-1111-1111-1111-111111111111",
@@ -54,8 +55,7 @@ describe("signAccountToken / readAccountToken", () => {
 
   test("returns null when tampered", async () => {
     const token = await signAccountToken(sampleClaims);
-    const tampered = token.slice(0, -1) + (token.at(-1) === "A" ? "B" : "A");
-    expect(await readAccountToken(tampered, "verify-email")).toBeNull();
+    expect(await readAccountToken(tamperSignature(token), "verify-email")).toBeNull();
   });
 
   test("returns null when signed with a different secret", async () => {

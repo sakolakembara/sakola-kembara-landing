@@ -25,6 +25,7 @@ import {
   verifySsoToken,
   type SsoClaims,
 } from "@/lib/sso";
+import { tamperSignature } from "./jwt-helpers";
 
 const sampleClaims: SsoClaims = {
   sub: "44444444-4444-4444-4444-444444444444",
@@ -58,9 +59,7 @@ describe("signSsoToken / readSsoToken", () => {
 
   test("returns null when tampered", async () => {
     const token = await signSsoToken(sampleClaims);
-    // Flip the last character of the signature.
-    const tampered = token.slice(0, -1) + (token.at(-1) === "A" ? "B" : "A");
-    expect(await readSsoToken(tampered)).toBeNull();
+    expect(await readSsoToken(tamperSignature(token))).toBeNull();
   });
 
   test("returns null when signed with a different secret", async () => {
