@@ -349,9 +349,23 @@ The site is moving from copy-pasted utility strings to shared components, one sm
 
 Make a pattern a component once it is used three or more times. One-offs stay inline.
 
-**Catalog** (D9): an internal `/design` route that renders every component, enabled only when `DESIGN_CATALOG=1`, so it appears on previews and never in production.
+**Catalog** (D9): `/design` renders every component. It only works when `DESIGN_CATALOG=1` (set on previews); otherwise it is a 404, and it is `noindex`. When you add or change a component, add it to the catalog.
 
-**Class merging** (D8): `class-variance-authority` + `tailwind-merge` behind a `cn()` helper, pending Anggara's agreement. Until then, no component takes a free-form `className` override.
+**Class merging** (D8): variants are written with `class-variance-authority`. `cn()` in `lib/cn.ts` (built on `tailwind-merge`) joins classes so that a caller's `className` overrides a conflicting default. Keep overrides to layout (margin, width, position); a different look means a new variant, not an override.
+
+**Display font, written correctly.** Use `font-[family-name:var(--font-display)]`, or simply `<Heading>`. The bare `font-[var(--font-display)]` that most existing pages use compiles to `font-weight` under Tailwind 4.3, so those headings render in Plus Jakarta Sans, not Lora. They get fixed as pages migrate.
+
+**Components available** (`components/ui/`, SAKEM-034):
+
+| Component | Level | Use |
+| --- | --- | --- |
+| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `subtle` · `neutral`. `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for `/files/`, mail/tel and downloads |
+| `buttonVariants` | style | The same classes for a CTA inside a card that is already one link: `<span className={buttonVariants({ fullWidth: true, className: "group-hover:bg-primary-blue-dark" })}>` |
+| `Eyebrow` | atom | `tone`: `light` (blue text) · `dark` (yellow text, for navy) |
+| `Heading` | atom | `level`: `display` · `page` · `article` · `section` · `subsection` · `panel` · `card` (D3 scale). Sets the default element (h1/h2/h3); `as` overrides it. Color is up to the caller |
+| `Tag` | atom | `tone`: `brand` · `soft`; `size`: `sm` · `md`. Always `rounded-full` |
+| `Container` | atom | `size`: `page` (1200) · `focused` (1000) · `reading` (800); `as` for the element |
+| `SectionHeader` | molecule | `eyebrow`, `title`, `lead`, `tone` (`light`/`dark`), `align` (`center`/`left`), `as` |
 
 **Standards decided, applied as each page is migrated:**
 
