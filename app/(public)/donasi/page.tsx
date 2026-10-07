@@ -4,6 +4,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Copy, Check, QrCode, ClipboardCheck, Mail } from "lucide-react";
 import Link from "next/link";
+import { PageHero } from "@/components/layout/page-hero";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
 import qrisImage from "@/public/images/qris-sakola-kembara.png";
 
 const bankDetails = [
@@ -45,28 +49,14 @@ export default function DonasiPage() {
   return (
     <>
       <main className="min-h-screen bg-gray-50">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] pb-14 md:pb-24">
-          <div className="max-w-[1200px] mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
-                Dukung Perjalanan Mereka
-              </h1>
-              <p className="text-base md:text-xl text-white/90 max-w-[600px]">
-                Setiap donasi Anda membantu siswa dari keluarga kurang mampu untuk
-                mewujudkan impian mereka masuk perguruan tinggi.
-              </p>
-            </motion.div>
-          </div>
-        </section>
+        <PageHero
+          title="Dukung Perjalanan Mereka"
+          lead="Setiap donasi Anda membantu siswa dari keluarga kurang mampu untuk mewujudkan impian mereka masuk perguruan tinggi."
+        />
 
         {/* Main Content */}
         <section className="py-16">
-          <div className="max-w-[1000px] mx-auto px-6">
+          <Container size="focused">
             {/* Heading */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -74,10 +64,10 @@ export default function DonasiPage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-center mb-10"
             >
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+              <Heading level="panel" as="h2" className="text-gray-900 mb-3">
                 Cara Berdonasi
-              </h2>
-              <p className="text-gray-600 max-w-[560px] mx-auto">
+              </Heading>
+              <p className="text-gray-600 max-w-[600px] mx-auto">
                 Pilih salah satu metode di bawah ini. Donasi dengan nominal berapa pun
                 sangat berarti bagi mereka.
               </p>
@@ -92,9 +82,9 @@ export default function DonasiPage() {
             >
               {/* QRIS Card */}
               <div className="bg-white rounded-3xl p-8 shadow-lg flex flex-col">
-                <h3 className="text-xl font-bold text-primary-blue text-center mb-6">
+                <Heading level="card" className="text-primary-blue text-center mb-6">
                   Scan QRIS
-                </h3>
+                </Heading>
 
                 {qrUnavailable ? (
                   <div className="mx-auto mb-6 w-full max-w-[280px] aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-center px-6">
@@ -126,21 +116,24 @@ export default function DonasiPage() {
                   , atau m-banking.
                 </p>
 
-                <a
+                <Button
                   href={QRIS_IMAGE}
                   download="qris-sakola-kembara.png"
-                  className="mt-auto w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 border-primary-blue text-primary-blue font-semibold hover:bg-primary-blue/5 transition-colors"
+                  variant="outline"
+                  size="lg"
+                  fullWidth
+                  className="mt-auto"
                 >
                   <Download size={18} />
                   Download QR
-                </a>
+                </Button>
               </div>
 
               {/* Transfer Bank Card */}
               <div className="bg-white rounded-3xl p-8 shadow-lg flex flex-col">
-                <h3 className="text-xl font-bold text-primary-blue text-center mb-6">
+                <Heading level="card" className="text-primary-blue text-center mb-6">
                   Transfer Bank
-                </h3>
+                </Heading>
 
                 <div className="space-y-5 mb-6">
                   {bankDetails.map((detail) => (
@@ -159,12 +152,13 @@ export default function DonasiPage() {
                   ))}
                 </div>
 
-                <button
+                <Button
                   onClick={handleCopy}
-                  className={`mt-auto w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 font-semibold transition-colors ${
-                    copied
-                      ? "border-secondary-green text-secondary-green"
-                      : "border-primary-blue text-primary-blue hover:bg-primary-blue/5"
+                  variant="outline"
+                  size="lg"
+                  fullWidth
+                  className={`mt-auto ${
+                    copied ? "border-secondary-green text-secondary-green hover:bg-transparent" : ""
                   }`}
                 >
                   {copied ? (
@@ -178,7 +172,7 @@ export default function DonasiPage() {
                       Salin No Rekening
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </motion.div>
 
@@ -194,22 +188,17 @@ export default function DonasiPage() {
                 <div className="w-12 h-12 bg-primary-blue/10 rounded-xl flex items-center justify-center mb-4">
                   <ClipboardCheck className="text-primary-blue" size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <Heading level="card" className="text-gray-900 mb-2">
                   Terima Kasih atas Donasi Anda
-                </h3>
+                </Heading>
                 <p className="text-gray-600 text-sm mb-6 max-w-[360px]">
                   Setelah berdonasi, mohon konfirmasikan melalui formulir berikut agar
                   donasi Anda dapat kami catat dengan baik.
                 </p>
-                <a
-                  href={CONFIRMATION_FORM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-primary-blue text-white font-semibold hover:bg-primary-blue-dark transition-colors"
-                >
+                <Button href={CONFIRMATION_FORM_URL} size="lg" fullWidth className="mt-auto">
                   <ClipboardCheck size={18} />
                   Konfirmasi Donasi
-                </a>
+                </Button>
               </div>
 
               {/* Kontak Kami — donation questions. The volunteer/partnership
@@ -219,11 +208,12 @@ export default function DonasiPage() {
                 <div className="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center mb-4">
                   <Mail className="text-white" size={24} />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Kontak Kami</h3>
+                <Heading level="card" className="mb-2">Kontak Kami</Heading>
                 <p className="text-white/80 text-sm mb-6 max-w-[360px]">
                   Ada pertanyaan seputar donasi, penyaluran dana, atau laporan
                   penggunaannya? Tim kami siap membantu.
                 </p>
+                {/* No Button variant for a light button on navy yet; it is the only one. */}
                 <Link
                   href="/kontak"
                   className="mt-auto w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 text-primary-blue font-semibold rounded-xl text-sm hover:bg-gray-100 transition-colors"
@@ -232,7 +222,7 @@ export default function DonasiPage() {
                 </Link>
               </div>
             </motion.div>
-          </div>
+          </Container>
         </section>
 
       </main>

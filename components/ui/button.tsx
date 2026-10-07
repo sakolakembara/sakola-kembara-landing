@@ -52,22 +52,34 @@ type AsLink = StyleProps &
 export type ButtonProps = AsButton | AsLink;
 
 /**
- * A `<button>`, or a link when `href` is set. App routes go through
- * `next/link`; external URLs open in a new tab; files, mail/tel links and
- * downloads stay plain `<a>` so the router doesn't try to navigate to them.
+ * How a button link is rendered. External URLs open in a new tab. Files (any
+ * path ending in an extension, e.g. `/reports/….pdf`), mail/tel links and
+ * downloads stay a plain `<a>`: through `next/link` the router would prefetch
+ * them as pages. Everything else is an app route.
  */
+export function linkKind(href: string, download?: unknown): "external" | "plain" | "route" {
+  if (/^https?:\/\//.test(href)) return "external";
+  const path = href.split(/[?#]/)[0];
+  if (/^(mailto:|tel:)/.test(href) || /\.[a-z0-9]+$/i.test(path) || download !== undefined) {
+    return "plain";
+  }
+  return "route";
+}
+
+/** A `<button>`, or a link when `href` is set (see `linkKind`). */
 export function Button({ variant, size, fullWidth, className, ...props }: ButtonProps) {
   const classes = cn(buttonVariants({ variant, size, fullWidth }), className);
 
   if (props.href !== undefined) {
     const { href, ...rest } = props;
-    if (/^https?:\/\//.test(href)) {
-      return <a href={href} target="_blank" rel="noopener noreferrer" className={classes} {...rest} />;
+    switch (linkKind(href, rest.download)) {
+      case "external":
+        return <a href={href} target="_blank" rel="noopener noreferrer" className={classes} {...rest} />;
+      case "plain":
+        return <a href={href} className={classes} {...rest} />;
+      case "route":
+        return <Link href={href} className={classes} {...rest} />;
     }
-    if (/^(mailto:|tel:)/.test(href) || href.startsWith("/files/") || rest.download !== undefined) {
-      return <a href={href} className={classes} {...rest} />;
-    }
-    return <Link href={href} className={classes} {...rest} />;
   }
 
   const { type = "button", ...rest } = props;
