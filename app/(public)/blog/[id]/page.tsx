@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Calendar, User } from "lucide-react";
 import BlogPostContent from "@/components/blog/BlogPostContent";
 import { Container } from "@/components/ui/container";
@@ -45,22 +46,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
   const { id } = await params;
   const article = await getBlogArticleBySlug(id);
 
-  if (!article) {
-    return (
-      <>
-        <main className="min-h-screen flex items-center justify-center bg-gray-50 pt-24">
-          <div className="text-center px-6">
-            <Heading level="panel" as="h1" className="text-gray-900 mb-4">
-              Artikel tidak ditemukan
-            </Heading>
-            <Link href="/blog" className="text-primary-blue font-semibold hover:underline">
-              Kembali ke Blog
-            </Link>
-          </div>
-        </main>
-      </>
-    );
-  }
+  if (!article) notFound();
 
   const sorted = await getBlogArticlesSorted();
   const related = sorted

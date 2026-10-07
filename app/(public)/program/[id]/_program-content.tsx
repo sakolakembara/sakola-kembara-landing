@@ -9,43 +9,21 @@ import { Container } from "@/components/ui/container";
 import { Heading } from "@/components/ui/heading";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Tag } from "@/components/ui/tag";
-import { programs } from "@/lib/data";
+import { programs, type Program } from "@/lib/data";
 import type { GalleryPhoto } from "@/lib/gallery";
 
 interface ProgramContentProps {
-  programId: string;
+  /** The page answers 404 for an unknown id, so this is always a real program. */
+  program: Program;
   /** Read from disk by the server page — see lib/gallery.ts. */
   gallery: GalleryPhoto[];
 }
 
 export default function ProgramContent({
-  programId,
+  program,
   gallery,
 }: ProgramContentProps) {
-
-  const program = programs.find((p) => p.id === programId);
-
-  if (!program) {
-    return (
-      <>
-        <main className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <Heading level="panel" as="h1" className="text-gray-900 mb-4">
-              Program tidak ditemukan
-            </Heading>
-            <Link
-              href="/#activities"
-              className="text-primary-blue hover:underline"
-            >
-              Kembali ke halaman utama
-            </Link>
-          </div>
-        </main>
-      </>
-    );
-  }
-
-  const currentIndex = programs.findIndex((p) => p.id === programId);
+  const currentIndex = programs.findIndex((p) => p.id === program.id);
   const nextProgram =
     currentIndex < programs.length - 1 ? programs[currentIndex + 1] : null;
 
