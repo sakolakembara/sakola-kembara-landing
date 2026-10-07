@@ -85,7 +85,7 @@ function Shell({
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             {eyebrow}
           </div>
-          <h1 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 leading-tight mb-3">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 leading-tight mb-3">
             {headline}
           </h1>
           <p className="text-gray-600 leading-relaxed mb-6">{body}</p>

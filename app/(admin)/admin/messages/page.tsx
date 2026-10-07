@@ -30,7 +30,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
   return (
     <div className="p-6 md:p-10">
       <header className="mb-6">
-        <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
           Pesan
         </h1>
         <p className="text-gray-600">

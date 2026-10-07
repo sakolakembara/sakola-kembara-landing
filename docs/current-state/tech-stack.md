@@ -37,7 +37,7 @@ See [`DESIGN.md`](../../DESIGN.md) for how to use the tokens.
 
 Loaded via `next/font/google` in `app/layout.tsx`:
 
-- **Lora** (`--font-display`) — serif headline font, weights 400/500/600/700. Used everywhere headlines say `font-[var(--font-display)]`.
+- **Lora** (`--font-display`) — serif headline font, weights 400/500/600/700. Used everywhere headlines say `font-[family-name:var(--font-display)]`.
 - **Plus Jakarta Sans** (`--font-body`) — sans-serif body, weights 400/500/600/700. Default `body` font.
 
 Both fonts are subsetted to `latin` and load with `display: "swap"`.

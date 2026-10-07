@@ -36,7 +36,7 @@ export default async function ResourcesAdminPage({ searchParams }: PageProps) {
     <div className="p-6 md:p-10">
       <header className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
             Berkas Pendaftaran
           </h1>
           <p className="text-gray-600 max-w-[720px]">

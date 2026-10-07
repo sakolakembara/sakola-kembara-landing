@@ -84,7 +84,7 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
             Batch {batch.year}
           </p>
-          <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
             {batch.name}
           </h1>
           <p className="text-sm text-gray-600 flex items-center gap-1.5">

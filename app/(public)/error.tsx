@@ -21,7 +21,7 @@ export default function PublicError({ error, reset }: Props) {
         <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
           <AlertTriangle className="text-amber-600" size={26} />
         </div>
-        <h1 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-2">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-2">
           Halaman ini bermasalah
         </h1>
         <p className="text-gray-600 leading-relaxed mb-6">

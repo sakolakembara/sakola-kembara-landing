@@ -78,7 +78,7 @@ export default async function ApplicationDetailPage({
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
             Detail pendaftar
           </p>
-          <h1 className="font-[var(--font-display)] text-3xl text-gray-900 mb-1">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
             {application.fullName}
           </h1>
           <p className="text-gray-600">

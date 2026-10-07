@@ -44,7 +44,7 @@ export default async function DocsPage() {
           >
             Kembali ke halaman informasi
           </Link>
-          <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl mb-4">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl mb-4">
             Pusat Dokumen &amp; Berkas
           </h1>
           <p className="text-base md:text-lg text-white/90 max-w-[700px]">
@@ -113,7 +113,7 @@ export default async function DocsPage() {
                 <header className="mb-5">
                   <h2
                     id={`heading-${category}`}
-                    className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900"
+                    className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900"
                   >
                     {RESOURCE_CATEGORY_LABEL[category]}
                   </h2>

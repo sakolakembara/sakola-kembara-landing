@@ -52,7 +52,7 @@ export function Sidebar({ email }: SidebarProps) {
       {/* Mobile top bar — participates in the flex column so it pushes main
           content down. Hidden on desktop. */}
       <div className="md:hidden flex items-center justify-between bg-gray-900 text-white px-4 py-3 shrink-0">
-        <span className="font-[var(--font-display)] text-lg">SK Admin</span>
+        <span className="font-[family-name:var(--font-display)] text-lg">SK Admin</span>
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -80,7 +80,7 @@ export function Sidebar({ email }: SidebarProps) {
         }`}
       >
         <div className="flex items-center justify-between mb-8">
-          <span className="font-[var(--font-display)] text-xl">SK Admin</span>
+          <span className="font-[family-name:var(--font-display)] text-xl">SK Admin</span>
           {/* Close button only visible on mobile, inside the drawer. */}
           <button
             type="button"

@@ -24,7 +24,7 @@ Dark surfaces use the brand navy family (`accent-navy` → `primary-blue`), neve
 
 - Two-column on `lg+`: text left, hero photo right.
 - **Eyebrow**: yellow dot + `Pendidikan Untuk Semua` (text-primary-blue, uppercase, tracked).
-- **H1**: `text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold font-[var(--font-display)]` (Lora serif, 700) — "Membuka Pintu **Pendidikan Tinggi** untuk Setiap Anak Indonesia". The middle phrase is `text-primary-blue`.
+- **H1**: `text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold font-[family-name:var(--font-display)]` (Lora serif, 700) — "Membuka Pintu **Pendidikan Tinggi** untuk Setiap Anak Indonesia". The middle phrase is `text-primary-blue`.
 - **Subhead**: warm body paragraph about removing barriers.
 - **CTAs (two)**: `Lihat Program Kami` (primary blue, `rounded-lg`) → `#activities` · `Dukung Misi Kami` (subtle gray) → `/donasi`.
 - **Stats strip**: 3 hero stats (500+ Siswa Terbantu / 75.88% Berkuliah / 7 Wilayah Jangkauan) with the `+`/`%` suffix colored yellow. It is a `grid grid-cols-3`, **not** a flex row — as a flex row the three items could not shrink below their min-content width and pushed the whole document wider than a phone screen, clipping every line of hero copy.

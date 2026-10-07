@@ -28,7 +28,7 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
+            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
               Laporan
             </h1>
             <p className="text-base md:text-xl text-white/90 max-w-[700px]">
@@ -69,7 +69,7 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
                   transition={{ duration: 0.6, delay: 0.2 + yearIdx * 0.1 }}
                 >
                   <header className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h2 className="font-[var(--font-display)] text-3xl text-gray-900">
+                    <h2 className="font-[family-name:var(--font-display)] text-3xl text-gray-900">
                       {formatAcademicYear(year)}
                     </h2>
                     <span className="text-sm text-gray-500">
@@ -132,7 +132,7 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3">
+            <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3">
               Punya pertanyaan tentang laporan kami?
             </h2>
             <p className="text-gray-600 mb-6">

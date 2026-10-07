@@ -21,7 +21,7 @@ export default function AdminError({ error, reset }: Props) {
         <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
           <AlertTriangle className="text-red-600" size={26} />
         </div>
-        <h1 className="font-[var(--font-display)] text-2xl text-gray-900 mb-2">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl text-gray-900 mb-2">
           Gagal memuat halaman admin
         </h1>
         <p className="text-sm text-gray-600 leading-relaxed mb-6">

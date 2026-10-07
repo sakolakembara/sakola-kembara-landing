@@ -39,7 +39,7 @@ export function ContactForm() {
         <div className="w-14 h-14 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
           <CheckCircle2 className="text-white" size={32} />
         </div>
-        <h3 className="font-[var(--font-display)] text-2xl text-gray-900 mb-2">
+        <h3 className="font-[family-name:var(--font-display)] text-2xl text-gray-900 mb-2">
           Pesan Terkirim
         </h3>
         <p className="text-gray-700 max-w-md mx-auto">

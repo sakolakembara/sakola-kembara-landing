@@ -109,7 +109,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
             <span className="inline-block w-fit text-xs font-semibold text-white bg-primary-blue px-3 py-1 rounded-full mb-3">
               {article.category}
             </span>
-            <h1 className="font-[var(--font-display)] text-3xl md:text-4xl lg:text-5xl text-white leading-tight">
+            <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl lg:text-5xl text-white leading-tight">
               {article.title}
             </h1>
             <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/85">

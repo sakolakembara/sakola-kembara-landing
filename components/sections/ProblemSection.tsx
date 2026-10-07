@@ -24,7 +24,7 @@ export default function ProblemSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="font-[var(--font-display)] text-[28px] sm:text-3xl md:text-4xl text-center mb-10 md:mb-12"
+          className="font-[family-name:var(--font-display)] text-[28px] sm:text-3xl md:text-4xl text-center mb-10 md:mb-12"
         >
           Mengapa Kami Ada?
         </motion.h2>

@@ -32,7 +32,7 @@ export default function NewsSection({ articles }: NewsSectionProps) {
               <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
               Blog
             </div>
-            <h2 className="font-[var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-gray-900">
+            <h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-gray-900">
               Cerita & Inspirasi
             </h2>
           </div>
