@@ -9,10 +9,8 @@ import {
   CONTACT_SUBJECT_LABEL,
   CONTACT_SUBJECT_TONE,
 } from "@/lib/messages";
-import {
-  markMessageAsRead,
-  toggleMessageRead,
-} from "../actions";
+import { toggleMessageRead } from "../actions";
+import { MarkAsRead } from "./_mark-read";
 import { DeleteButton } from "../_delete-button";
 import { AdminPageHeader } from "../../_page-header";
 import { Tag } from "@/components/ui/tag";
@@ -38,18 +36,14 @@ export default async function MessageDetailPage({ params }: PageProps) {
   });
   if (!message) notFound();
 
-  // Mark as read on first open. markMessageAsRead is idempotent; if already
-  // read, this is a cheap no-op. Doing this server-side after the row read
-  // means the admin layout shows the unread count decrementing on next render.
-  if (!message.readAt) {
-    await markMessageAsRead(message.id);
-  }
-
+  // First open marks it as read (client-side, see MarkAsRead); the page still
+  // renders it as unread this time so the admin sees it was new.
   const wasUnread = !message.readAt;
   const mailto = `mailto:${encodeURIComponent(message.email)}?subject=${encodeURIComponent(SUBJECT_LINE[message.subject] ?? "Re: Pesan")}`;
 
   return (
     <div className="p-6 md:p-10 max-w-3xl">
+      {wasUnread && <MarkAsRead id={message.id} />}
       <Link
         href="/admin/messages"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"

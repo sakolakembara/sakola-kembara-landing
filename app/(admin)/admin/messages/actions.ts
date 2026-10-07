@@ -15,9 +15,10 @@ function invalidate() {
 }
 
 /**
- * Mark a single message as read. Called from the detail page render so the
- * first time an admin opens it, readAt gets stamped. Idempotent — if already
- * read, this is a no-op.
+ * Mark a single message as read. Called once from the detail page (via the
+ * client MarkAsRead component, since it revalidates caches) so the first time
+ * an admin opens it, readAt gets stamped. Idempotent — if already read, this
+ * is a no-op.
  */
 export async function markMessageAsRead(id: string): Promise<void> {
   const admin = await requireAdmin();
