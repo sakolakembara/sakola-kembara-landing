@@ -2,7 +2,7 @@
 
 The design system for the public site (`sakolakembara.org`): how it should look, read, and behave. Admin and the student portal follow it where it fits.
 
-- **Values live in code.** Color and font tokens are defined in `app/globals.css` (`:root` vars, published to Tailwind by the `@theme inline` block; there is no `tailwind.config.ts`). Fonts load in `app/layout.tsx`. This file explains how to use them; if the two disagree, fix whichever is wrong in the same PR.
+- **Values live in code.** Color and font tokens are defined in `app/globals.css` (`:root` vars, published to Tailwind by the `@theme inline` block; there is no `tailwind.config.ts`). Fonts load in `lib/fonts.ts`, applied by `app/layout.tsx`. This file explains how to use them; if the two disagree, fix whichever is wrong in the same PR.
 - **Voice lives in [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md).** Section 9 here covers UI microcopy only.
 
 ## Changing the design
@@ -192,6 +192,14 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 - **A clickable card is one link.** The "button" inside it is a styled `<span>`, never a nested link.
 - **External links** get `target="_blank" rel="noopener noreferrer"`.
 
+### Icons
+
+- **One set:** [lucide-react](https://lucide.dev) for every UI icon, outline style at its default 2px stroke. The social brand marks (Instagram, TikTok, X, YouTube) are inline SVGs in `SocialLinks`; don't mix in another icon set or filled icons.
+- **Color follows the text** (`currentColor`): set the color on the parent, not on the icon, except for status icons, which take the status `-fg` color.
+- **A leading icon names the action**; no arrows or chevrons on buttons and text CTAs (see Buttons).
+- **Decorative icons** next to a text label get `aria-hidden`. **Icon-only controls** need an `aria-label` (section 10).
+- **Sizes:** no scale is decided yet. The code uses 12 to 56px, most often 14 (admin), 16 (buttons, inline with `text-sm`) and 12 (small badges). Storybook's *Foundations/Iconography* page lists every icon and size in use.
+
 ### Cards
 
 - **Program card** (`ActivitiesSection`): `group bg-white rounded-2xl overflow-hidden border border-gray-100 h-full flex flex-col hover:-translate-y-2 hover:shadow-xl`. Photo on top with the phase `<Tag>` pill, title, green-dot bullets, then the filled *Lihat Detail*.
@@ -357,7 +365,7 @@ The site is moving from copy-pasted utility strings to shared components, one sm
 
 Make a pattern a component once it is used three or more times. One-offs stay inline.
 
-**Catalog** (D9): `/design` renders every component. It only works when `DESIGN_CATALOG=1` (set on previews); otherwise it is a 404, and it is `noindex`. When you add or change a component, add it to the catalog.
+**Catalog** (SAKEM-048, replaces the `/design` route from D9): Storybook, with one `*.stories.tsx` file next to each component: `components/ui/` and `components/layout/` (grouped as Atoms, Molecules and Organisms), the homepage sections (Sections), and every component under `app/`: page bodies (Public), sign-in forms (Auth), the student portal and registration wizard (Portal), and the admin shell, editors and row actions (Admin). Only the `page.tsx` server components themselves are left out, since they read the database. Server actions are replaced by stubs in Storybook (see `.storybook/main.ts`), so forms render and show their pending state but save nothing; sample data lives in `.storybook/fixtures.ts`. Its Foundations pages (Colors, Typography) read the tokens from `app/globals.css`, Tailwind's palette and the color table in section 2, so they stay current without edits. Run it locally with `pnpm storybook` (port 6006); CI builds it on every pull request, so a broken story fails the check. It is not hosted yet. When you add or change a component, add or update its stories: one per variant and per state, plus a phone-width story when the layout can wrap. This file decides the rules; the stories show them.
 
 **Class merging** (D8): variants are written with `class-variance-authority`. `cn()` in `lib/cn.ts` (built on `tailwind-merge`) joins classes so that a caller's `className` overrides a conflicting default. Keep overrides to layout (margin, width, position); a different look means a new variant, not an override.
 

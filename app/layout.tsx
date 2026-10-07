@@ -1,22 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Lora, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { fontVariables } from "@/lib/fonts";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { MotionProvider } from "@/components/MotionProvider";
-
-const lora = Lora({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const DEFAULT_TITLE = "Sakola Kembara - Pendidikan Untuk Semua";
 const DEFAULT_DESCRIPTION =
@@ -90,9 +76,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className="scroll-smooth">
-      <body
-        className={`${lora.variable} ${plusJakartaSans.variable} antialiased`}
-      >
+      <body className={`${fontVariables} antialiased`}>
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

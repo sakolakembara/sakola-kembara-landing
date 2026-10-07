@@ -135,4 +135,5 @@ This is what every dev should do before pushing a release.
 - **No blue/green or zero-downtime deploys.** The ~5-second swap is fine for a non-profit's traffic; revisit if it becomes user-visible.
 - **No automated host provisioning.** Initial VPS setup is documented in [`../roadmap/infrastructure.md`](../roadmap/infrastructure.md); codify as Ansible / cloud-init if we ever need to recreate the host quickly.
 - **No CDN.** Caddy serves everything directly. Add Cloudflare in front of `sakolakembara.org` if international traffic matters.
+- **No hosted Storybook.** `.github/workflows/storybook.yml` only builds it; people run it locally (`pnpm storybook`). Publishing to GitHub Pages needs a repo admin to enable Pages (Source: GitHub Actions) and allow `development` in the `github-pages` environment, plus an upload-and-deploy job in that workflow.
 - **No secrets manager.** `.env.production` on disk is enough at MVP scale. Move to Doppler / 1Password CLI / Bitwarden Secrets when the team grows.

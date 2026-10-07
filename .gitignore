@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# storybook build output (`pnpm build-storybook`)
+/storybook-static/
+
 # production
 /build
 

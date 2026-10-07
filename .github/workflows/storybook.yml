@@ -1,0 +1,31 @@
+# Builds Storybook (the design-system catalog, see DESIGN.md section 11) so a
+# broken story fails the check. It is not published anywhere yet; run it
+# locally with `pnpm storybook`. No secrets are used.
+
+name: Storybook
+
+on:
+  push:
+    branches: [development]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storybook-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build-storybook

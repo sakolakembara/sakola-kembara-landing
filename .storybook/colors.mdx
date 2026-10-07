@@ -1,0 +1,39 @@
+import { Markdown, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { designSection } from "./design-md";
+import { BrandColors, Neutrals, StatusColors } from "./foundations";
+
+<Meta title="Foundations/Colors" />
+
+# Colors
+
+Read straight from `app/globals.css` (and Tailwind's palette), so this page is always current. Components use only the utility names shown here, e.g. `bg-primary-blue` or `text-danger-fg`. Where each color goes (CTAs, text on light and on navy, dark surfaces) is under Rules at the bottom.
+
+## Brand
+
+Each utility takes its value from a brand-named primitive in `:root` (`--catalina-blue`, `--sunglow`, …). Body text needs at least 4.5:1.
+
+<Unstyled>
+  <BrandColors />
+</Unstyled>
+
+## Status
+
+For errors, success, warnings and notices, instead of raw `red-*`, `green-*` or `amber-*`. Each status has a text color, a background and a border. The `Alert` atom uses them.
+
+<Unstyled>
+  <StatusColors />
+</Unstyled>
+
+## Neutrals
+
+Tailwind's gray scale. `black` is remapped to the brand near-black, shown under Brand.
+
+<Unstyled>
+  <Neutrals />
+</Unstyled>
+
+## Rules
+
+From DESIGN.md section 2.
+
+<Markdown>{designSection("## 2. Color", "**Rules**")}</Markdown>

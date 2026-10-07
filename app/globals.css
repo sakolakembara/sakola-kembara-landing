@@ -6,6 +6,7 @@
 @source not "../README.md";
 @source not "../CLAUDE.md";
 @source not "../docs";
+@source not "../.storybook/*.mdx";
 
 :root {
   /* Primary Colors */
