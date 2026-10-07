@@ -3,6 +3,7 @@
 import { Pencil } from "lucide-react";
 import type { FormValues, StepId } from "@/lib/student-form-types";
 import { StepHeader } from "./identity";
+import { Alert } from "@/components/ui/alert";
 
 type Props = {
   values: FormValues;
@@ -174,11 +175,11 @@ export function ReviewStep({ values, onEditStep }: Props) {
         ]}
       />
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900 leading-relaxed">
+      <Alert tone="info">
         Setelah tombol <b>Kirim Pendaftaran</b> ditekan, kami akan menampilkan
         link grup WhatsApp yang wajib kamu ikuti agar tidak ketinggalan info
         selanjutnya.
-      </div>
+      </Alert>
     </div>
   );
 }

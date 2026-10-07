@@ -8,7 +8,9 @@ import {
   type IdentityValues,
 } from "@/lib/student-form-types";
 import type { StepId } from "@/lib/student-form-types";
-import { Field, RadioGroup, TEXT_INPUT, type FieldErrors } from "../_shared";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { Heading } from "@/components/ui/heading";
+import { RadioGroup, type FieldErrors } from "../_shared";
 
 type Props = {
   values: FormValues;
@@ -36,7 +38,7 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
 
       <Field
         label="Nama Lengkap"
-        htmlFor="fullName"
+        id="fullName"
         required
         hint={
           <>
@@ -46,12 +48,11 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
         }
         error={e.fullName}
       >
-        <input
+        <Input
           id="fullName"
           type="text"
           value={v.fullName}
           onChange={(ev) => bind("fullName")(ev.target.value)}
-          className={TEXT_INPUT}
           placeholder="Contoh: Dadi Dinan Haris"
           data-error={!!e.fullName}
         />
@@ -59,22 +60,21 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
 
       <Field
         label="Nama Panggilan"
-        htmlFor="nickname"
+        id="nickname"
         required
         hint="Isi bebas sesuai nama sehari-hari kamu. Contoh: Dadi, Joy."
         error={e.nickname}
       >
-        <input
+        <Input
           id="nickname"
           type="text"
           value={v.nickname}
           onChange={(ev) => bind("nickname")(ev.target.value)}
-          className={TEXT_INPUT}
           data-error={!!e.nickname}
         />
       </Field>
 
-      <Field label="Jenis Kelamin" required error={e.gender}>
+      <Field group label="Jenis Kelamin" required error={e.gender}>
         <div data-error={!!e.gender}>
           <RadioGroup<"laki-laki" | "perempuan">
             name="gender"
@@ -88,7 +88,7 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
         </div>
       </Field>
 
-      <Field label="Agama" required error={e.religion}>
+      <Field group label="Agama" required error={e.religion}>
         <div data-error={!!e.religion}>
           <RadioGroup
             name="religion"
@@ -102,7 +102,7 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
 
       <Field
         label="Asal Sekolah"
-        htmlFor="schoolName"
+        id="schoolName"
         required
         hint={
           <>
@@ -112,18 +112,17 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
         }
         error={e.schoolName}
       >
-        <input
+        <Input
           id="schoolName"
           type="text"
           value={v.schoolName}
           onChange={(ev) => bind("schoolName")(ev.target.value)}
-          className={TEXT_INPUT}
           placeholder="Contoh: SMAN 1 Cililin"
           data-error={!!e.schoolName}
         />
       </Field>
 
-      <Field label="Cabang Sakola Kembara" required error={e.branch}>
+      <Field group label="Cabang Sakola Kembara" required error={e.branch}>
         <div data-error={!!e.branch}>
           <RadioGroup
             name="branch"
@@ -137,22 +136,22 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
 
       <Field
         label="Alamat Rumah (sesuai KTP/KK)"
-        htmlFor="homeAddress"
+        id="homeAddress"
         required
         error={e.homeAddress}
       >
-        <textarea
+        <Textarea
           id="homeAddress"
           rows={3}
           value={v.homeAddress}
           onChange={(ev) => bind("homeAddress")(ev.target.value)}
-          className={`${TEXT_INPUT} resize-y min-h-[80px]`}
+          className="resize-y min-h-[80px]"
           placeholder="Alamat lengkap: jalan, RT/RW, kelurahan, kecamatan, kota/kabupaten, provinsi"
           data-error={!!e.homeAddress}
         />
       </Field>
 
-      <Field
+      <Field group
         label="Tahun Angkatan Kelulusan"
         required
         hint="Isi sesuai tahun kelulusan SMA. Kalau kamu sekarang kelas 12, pilih 2027."
@@ -171,7 +170,7 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
 
       <Field
         label="Nomor WhatsApp Pribadi"
-        htmlFor="whatsapp"
+        id="whatsapp"
         required
         hint={
           <>
@@ -181,13 +180,12 @@ export function IdentityStep({ values, updateStep, errors, clearFieldError }: Pr
         }
         error={e.whatsapp}
       >
-        <input
+        <Input
           id="whatsapp"
           type="tel"
           inputMode="numeric"
           value={v.whatsapp}
           onChange={(ev) => bind("whatsapp")(ev.target.value.replace(/\s+/g, ""))}
-          className={TEXT_INPUT}
           placeholder="6281392254544"
           data-error={!!e.whatsapp}
         />
@@ -205,9 +203,9 @@ export function StepHeader({
 }) {
   return (
     <header className="border-b border-gray-100 pb-4 mb-2">
-      <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-2">
+      <Heading level="subsection" className="text-gray-900 mb-2">
         {title}
-      </h2>
+      </Heading>
       {subtitle && (
         <p className="text-sm md:text-base text-gray-600 leading-relaxed">
           {subtitle}

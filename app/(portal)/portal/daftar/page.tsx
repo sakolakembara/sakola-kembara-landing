@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, CheckCircle2 } from "lucide-react";
+import { CalendarClock, CheckCircle2 } from "lucide-react";
+import { Container } from "@/components/ui/container";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Heading } from "@/components/ui/heading";
 import { requireStudent } from "@/lib/auth-helpers";
 import { getCurrentOpenBatch } from "@/lib/admission-batches";
 import { getUserApplicationForBatch } from "@/lib/student-applications";
@@ -93,26 +96,23 @@ function PortalGate({
   body: React.ReactNode;
 }) {
   return (
-    <div className="max-w-[720px] mx-auto px-4 md:px-6 py-12 md:py-16">
+    <Container size="reading" className="px-4 md:px-6 py-12 md:py-16">
       <Link
         href="/portal"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-6"
+        className="block w-fit text-sm text-gray-500 hover:text-gray-900 transition-colors mb-6"
       >
-        <ArrowLeft size={14} /> Kembali ke portal
+        Kembali ke portal
       </Link>
       <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-12 text-center shadow-sm">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-5">
           {icon}
         </div>
-        <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary-blue uppercase tracking-wider mb-3">
-          <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-          {eyebrow}
-        </div>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3 leading-tight">
+        <Eyebrow className="mb-3">{eyebrow}</Eyebrow>
+        <Heading level="subsection" as="h1" className="text-gray-900 mb-3">
           {headline}
-        </h1>
+        </Heading>
         <p className="text-gray-600 leading-relaxed">{body}</p>
       </div>
-    </div>
+    </Container>
   );
 }

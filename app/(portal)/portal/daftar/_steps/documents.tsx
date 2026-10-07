@@ -7,12 +7,8 @@ import type {
   FormValues,
   StepId,
 } from "@/lib/student-form-types";
-import {
-  Field,
-  RadioGroup,
-  TEXT_INPUT,
-  type FieldErrors,
-} from "../_shared";
+import { Field, Input } from "@/components/ui/field";
+import { RadioGroup, type FieldErrors } from "../_shared";
 import { StepHeader } from "./identity";
 
 type Props = {
@@ -216,7 +212,7 @@ export function DocumentsStep({
         ))}
       </div>
 
-      <Field
+      <Field group
         label="Apakah kamu terdaftar dalam DTKS?"
         required
         hint="DTKS = Data Terpadu Kesejahteraan Sosial. Jika Ya, wajib unggah SKTM DTKS di kolom di bawah."
@@ -291,7 +287,7 @@ function DocLinkField({
   return (
     <Field
       label={label}
-      htmlFor={id}
+      id={id}
       required={required}
       hint={
         <div className="space-y-1">
@@ -306,12 +302,11 @@ function DocLinkField({
       }
       error={error}
     >
-      <input
+      <Input
         id={id}
         type="url"
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
-        className={TEXT_INPUT}
         placeholder="https://drive.google.com/…"
         data-error={!!error}
       />

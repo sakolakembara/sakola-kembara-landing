@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useId } from "react";
 import { cn } from "@/lib/cn";
 
 type FieldState = { id: string; describedBy?: string; invalid: boolean };
@@ -11,9 +11,13 @@ const FieldContext = createContext<FieldState | null>(null);
  * One form field (molecule): label, control, then a hint or an error. The
  * `Input`, `Textarea` or `Select` inside it picks up the id, `aria-describedby`
  * and `aria-invalid` from here, so the wiring can't drift from the markup.
+ *
+ * With `group`, it is a `<fieldset>` whose `<legend>` names a set of controls
+ * (radio cards, yes/no), and the hint or error describes the whole set.
  */
 export function Field({
   id,
+  group,
   label,
   required,
   hint,
@@ -22,7 +26,9 @@ export function Field({
   className,
   children,
 }: {
-  id: string;
+  /** The control's id; generated when left out. */
+  id?: string;
+  group?: boolean;
   label: React.ReactNode;
   /** Shows the asterisk; the control still needs its own `required`. */
   required?: boolean;
@@ -33,22 +39,54 @@ export function Field({
   className?: string;
   children: React.ReactNode;
 }) {
-  const hintId = hint && !error ? `${id}-hint` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
+  const autoId = useId();
+  const baseId = id ?? autoId;
+  const hintId = hint && !error ? `${baseId}-hint` : undefined;
+  const errorId = error ? `${baseId}-error` : undefined;
+  const describedBy = errorId ?? hintId;
+
+  const asterisk = required && (
+    <span aria-hidden className="ml-0.5 text-danger-fg">
+      *
+    </span>
+  );
+  const messages = (
+    <>
+      {hintId && (
+        <div id={hintId} className="mt-1.5 text-xs leading-relaxed text-gray-500">
+          {hint}
+        </div>
+      )}
+      {errorId && (
+        <p id={errorId} className="mt-1.5 text-xs text-danger-fg">
+          {error}
+        </p>
+      )}
+    </>
+  );
+
+  if (group) {
+    return (
+      <fieldset aria-describedby={describedBy} className={cn("min-w-0", className)}>
+        <legend className="mb-2 block text-sm font-medium text-gray-700">
+          {label}
+          {asterisk}
+        </legend>
+        {children}
+        {messages}
+      </fieldset>
+    );
+  }
 
   const labelEl = (
-    <label htmlFor={id} className={cn("block text-sm font-medium text-gray-700", !labelAside && "mb-2")}>
+    <label htmlFor={baseId} className={cn("block text-sm font-medium text-gray-700", !labelAside && "mb-2")}>
       {label}
-      {required && (
-        <span aria-hidden className="ml-0.5 text-danger-fg">
-          *
-        </span>
-      )}
+      {asterisk}
     </label>
   );
 
   return (
-    <FieldContext.Provider value={{ id, describedBy: errorId ?? hintId, invalid: Boolean(error) }}>
+    <FieldContext.Provider value={{ id: baseId, describedBy, invalid: Boolean(error) }}>
       <div className={className}>
         {labelAside ? (
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -59,16 +97,7 @@ export function Field({
           labelEl
         )}
         {children}
-        {hintId && (
-          <div id={hintId} className="mt-1.5 text-xs leading-relaxed text-gray-500">
-            {hint}
-          </div>
-        )}
-        {errorId && (
-          <p id={errorId} className="mt-1.5 text-xs text-danger-fg">
-            {error}
-          </p>
-        )}
+        {messages}
       </div>
     </FieldContext.Provider>
   );

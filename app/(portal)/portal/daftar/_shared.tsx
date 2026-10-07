@@ -1,57 +1,25 @@
 "use client";
 
 /**
- * Small building blocks shared across every step of the multi-step recruitment
- * wizard. Keeping these here avoids duplicating input/label markup across 7+
- * step files.
+ * Choice controls shared across the steps of the multi-step recruitment
+ * wizard. Labels, inputs and errors come from `components/ui/field`.
  */
 
-import type { ReactNode } from "react";
+import { Input } from "@/components/ui/field";
+import { cn } from "@/lib/cn";
 
-export const TEXT_INPUT =
-  "w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm";
-
-export const TEXTAREA =
-  "w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm resize-y min-h-[120px]";
-
-export type FieldErrors = Record<string, string | undefined>;
-
-export function Field({
-  label,
-  htmlFor,
-  required,
-  hint,
-  error,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  required?: boolean;
-  hint?: ReactNode;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={htmlFor}
-        className="block text-sm font-semibold text-gray-800 mb-2"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {!error && hint && (
-        <div className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-          {hint}
-        </div>
-      )}
-      {error && (
-        <p className="text-xs text-red-600 mt-1.5">{error}</p>
-      )}
-    </div>
+/** Radio card: the input sits inside a bordered label that fills when chosen. */
+function choiceClass(active: boolean, extra?: string) {
+  return cn(
+    "flex items-center gap-2.5 px-4 py-2.5 border-2 rounded-xl cursor-pointer transition-colors text-sm",
+    active
+      ? "border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold"
+      : "border-gray-200 hover:border-gray-300 text-gray-700",
+    extra,
   );
 }
+
+export type FieldErrors = Record<string, string | undefined>;
 
 /** A row of radio buttons rendered as pill-style cards. */
 export function RadioGroup<T extends string>({
@@ -80,11 +48,7 @@ export function RadioGroup<T extends string>({
         return (
           <label
             key={opt.value}
-            className={`flex items-center gap-2.5 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-colors text-sm ${
-              active
-                ? "border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold"
-                : "border-gray-200 hover:border-gray-300 text-gray-700"
-            }`}
+            className={choiceClass(active)}
           >
             <input
               type="radio"
@@ -136,11 +100,7 @@ export function RadioGroupWithOther({
           return (
             <label
               key={opt}
-              className={`flex items-center gap-2.5 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-colors text-sm ${
-                active
-                  ? "border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold"
-                  : "border-gray-200 hover:border-gray-300 text-gray-700"
-              }`}
+              className={choiceClass(active)}
             >
               <input
                 type="radio"
@@ -154,11 +114,7 @@ export function RadioGroupWithOther({
           );
         })}
         <label
-          className={`flex items-center gap-2.5 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-colors text-sm ${
-            otherActive
-              ? "border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold"
-              : "border-gray-200 hover:border-gray-300 text-gray-700"
-          }`}
+          className={choiceClass(otherActive)}
         >
           <input
             type="radio"
@@ -171,12 +127,12 @@ export function RadioGroupWithOther({
         </label>
       </div>
       {otherActive && (
-        <input
+        <Input
           type="text"
           value={value.trim() === "" ? "" : value}
           placeholder={otherPlaceholder}
+          aria-label={otherLabel}
           onChange={(e) => onChange(e.target.value || " ")}
-          className={TEXT_INPUT}
           autoFocus
         />
       )}
@@ -208,11 +164,7 @@ export function YesNoToggle({
         return (
           <label
             key={String(opt.v)}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 border-2 rounded-lg cursor-pointer transition-colors text-sm ${
-              active
-                ? "border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold"
-                : "border-gray-200 hover:border-gray-300 text-gray-700"
-            }`}
+            className={choiceClass(active, "justify-center gap-2")}
           >
             <input
               type="radio"

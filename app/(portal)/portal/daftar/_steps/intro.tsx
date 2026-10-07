@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { StepHeader } from "./identity";
+import { Alert } from "@/components/ui/alert";
 
 const SECTIONS = [
   { label: "Identitas Pribadi", desc: "Data dasar, kontak, cabang" },
@@ -155,10 +156,10 @@ export function IntroStep() {
         </a>
       </section>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900 leading-relaxed">
+      <Alert tone="info">
         Klik <b>Selanjutnya</b> untuk mulai mengisi formulir. Kamu bisa
         kembali ke bagian ini kapan saja lewat menu sidebar.
-      </div>
+      </Alert>
     </div>
   );
 }

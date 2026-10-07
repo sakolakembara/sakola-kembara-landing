@@ -6,7 +6,8 @@ import {
   type InterviewValues,
   type StepId,
 } from "@/lib/student-form-types";
-import { Field, RadioGroup, TEXTAREA, type FieldErrors } from "../_shared";
+import { Field, Textarea } from "@/components/ui/field";
+import { RadioGroup, type FieldErrors } from "../_shared";
 import { StepHeader } from "./identity";
 
 type Props = {
@@ -91,7 +92,7 @@ export function InterviewStep({
       </FormSection>
 
       <FormSection title="Pernyataan">
-        <Field
+        <Field group
           label="Jika diterima, apakah kamu benar-benar siap menandatangani surat pernyataan bermaterai dan menerima segala konsekuensi hukum yang menyertainya?"
           required
           error={e.agreedToSignedStatement}
@@ -146,22 +147,22 @@ function LongField({
   error?: string;
 }) {
   return (
-    <Field label={label} htmlFor={id} required hint={hint} error={error}>
-      <textarea
+    <Field label={label} id={id} required hint={hint} error={error}>
+      <Textarea
         id={id}
         rows={5}
         maxLength={INTERVIEW_MAX_CHARS}
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
-        className={TEXTAREA}
+        className="resize-y min-h-[120px]"
         data-error={!!error}
       />
       <p
         className={`text-xs mt-1 text-right ${
           value.length >= INTERVIEW_MAX_CHARS
-            ? "text-red-600 font-medium"
+            ? "text-danger-fg font-medium"
             : value.length >= INTERVIEW_MAX_CHARS * 0.9
-              ? "text-amber-600"
+              ? "text-warning-fg"
               : "text-gray-400"
         }`}
       >

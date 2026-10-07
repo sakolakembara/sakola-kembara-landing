@@ -11,7 +11,7 @@ export const headingVariants = cva("", {
       page: cn(display, "text-3xl leading-tight sm:text-4xl md:text-5xl lg:text-6xl"),
       article: cn(display, "text-3xl leading-tight md:text-4xl lg:text-5xl"),
       section: cn(display, "text-[26px] leading-tight sm:text-3xl md:text-4xl"),
-      subsection: cn(display, "text-2xl md:text-3xl"),
+      subsection: cn(display, "text-2xl leading-tight md:text-3xl"),
       panel: "text-2xl font-bold",
       card: "text-xl font-bold",
     },
