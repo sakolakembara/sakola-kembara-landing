@@ -11,6 +11,7 @@ const preview: Preview = {
       storySort: {
         order: [
           "Introduction",
+          "Workflow",
           "Foundations",
           ["Logo & brand", "Colors", "Typography", "Iconography", "Layout & spacing", "Shape & elevation", "Motion", "UI copy", "Accessibility"],
           "Atoms",
