@@ -56,6 +56,7 @@ Brand green is too light for text (~3:1 on white), hence the Tailwind scales. Ex
 
 - **Primary CTA:** `bg-primary-blue text-white`, hover `bg-primary-blue-dark`.
 - **Yellow CTA** (`bg-secondary-yellow text-gray-900`) only on navy surfaces: donation box, PitchDeck download, the modal's "Tutup". Never the default on light.
+- **White CTA on navy** (`bg-white text-primary-blue`, `<Button variant="white-on-navy">`): *Daftar Sekarang* on `/gabung-siswa` and the contact card on `/donasi`.
 - **Green CTA** only for volunteering.
 - **Orange** appears only in the `CTASection` card buttons. It is a sectional exception, not a palette color.
 - **Text on light:** `text-gray-900` headings, `text-gray-600` body, `text-gray-500` muted.
@@ -101,7 +102,7 @@ On navy, swap `text-primary-blue` for `text-secondary-yellow`. The dot is always
 
 ## 4. Layout & spacing
 
-**Containers.** `max-w-[1200px] mx-auto px-6` is the default; when in doubt, use it. Narrower containers exist for focused reading: `1000px` (`/donasi` body), `800px` (blog article, closing CTAs on `/tim` and `/laporan`), and `max-w-[600px]` on a lead paragraph. The gabung-siswa documents still use `1100px` until they are migrated (D4 moves them to 1200).
+**Containers.** `max-w-[1200px] mx-auto px-6` is the default; when in doubt, use it. Narrower containers exist for focused reading: `1000px` (`/donasi` body), `800px` (blog article, closing CTAs on `/tim` and `/laporan`), and `max-w-[600px]` on a lead paragraph. `/laporan` and `/gabung-siswa(/docs)` moved from `1100px` to the default 1200 (D4).
 
 **Section spacing.** Each section sets its own padding:
 
@@ -184,6 +185,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 | Outlined ("Lihat Detail" outside a card, "Lanjut ke Tahap N") | `h-11 px-5 rounded-lg border-[1.5px] border-primary-blue text-primary-blue text-[15px] font-semibold hover:bg-primary-blue/5` |
 | Filled in a card ("Lihat Detail" on program cards) | `h-11 px-5 rounded-lg bg-primary-blue text-white text-[15px] font-semibold group-hover:bg-primary-blue-dark` |
 | Outlined on navy | `border-[1.5px] border-white/60 text-white hover:bg-white/10` |
+| White on navy | `bg-white text-primary-blue hover:bg-gray-50` (`<Button variant="white-on-navy">`) |
 | Yellow on navy | `bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-secondary-yellow/90` (`<Button variant="yellow-on-navy">`; *Download PitchDeck* is `size="lg"`) |
 | Subtle | `px-6 py-3 text-[15px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-primary-blue` |
 
@@ -361,7 +363,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 
 | Component | Level | Use |
 | --- | --- | --- |
-| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `subtle` · `neutral`. `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
+| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `white-on-navy` · `subtle` · `neutral`. `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
 | `buttonVariants` | style | The same classes for a CTA inside a card that is already one link: `<span className={buttonVariants({ fullWidth: true, className: "group-hover:bg-primary-blue-dark" })}>` |
 | `Eyebrow` | atom | `tone`: `light` (blue text) · `dark` (yellow text, for navy) |
 | `Heading` | atom | `level`: `display` · `page` · `article` · `section` · `subsection` · `panel` · `card` (D3 scale). Sets the default element (h1/h2/h3); `as` overrides it. Color is up to the caller |
@@ -372,11 +374,13 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
 
-Sub-pages (SAKEM-037): `/tim`, `/laporan`, `/kontak`, `/donasi`, plus the `/blog` hero, use `PageHero`. Headings follow D3: team categories, report years and the `/laporan` closing heading are `subsection`; *Cara Berdonasi* and the `/kontak` column titles are `panel`. Kept inline: the light *Hubungi Kami* button on the navy `/donasi` card (no variant yet), the colored report-category pills, and the contact form (phase 4).
+Sub-pages (SAKEM-037): `/tim`, `/laporan`, `/kontak`, `/donasi`, plus the `/blog` hero, use `PageHero`. Headings follow D3: team categories, report years and the `/laporan` closing heading are `subsection`; *Cara Berdonasi* and the `/kontak` column titles are `panel`. Kept inline: the colored report-category pills and the contact form (phase 4). The light *Hubungi Kami* on the navy `/donasi` card became `white-on-navy` in SAKEM-040.
 
 Program pages (SAKEM-038): `/program/[id]` uses `Container`, `SectionHeader`, `Heading`, `Tag` and `Button` throughout; the stepper card stays custom.
 
 Blog (SAKEM-039): `/blog` and `/blog/[id]` use `Container` (articles `reading`), `Tag` for every category label, `Heading level="article"` for the article H1 and `panel` for the featured post's title. Kept inline: the small uppercase section labels (*Artikel Terbaru*, *Semua Artikel*, *Artikel Lainnya*), the pagination control, the `text-lg` card titles (also on `/laporan`; D3 says `text-xl`, not applied yet) and the markdown body (`.blog-content`).
+
+Gabung Siswa (SAKEM-040): `/gabung-siswa` and `/gabung-siswa/docs` use `Container`, `Heading` (`page` H1s, `subsection` category titles), `SectionHeader` and `Button`; both *Daftar Sekarang* buttons are `white-on-navy`. The heroes stay custom (recruitment chip, CTAs, back link). Kept inline: the recruitment chip, the docs table-of-contents chips and the small *Salin* button (its copied state uses the `success` tokens).
 
 **Standards decided, applied as each page is migrated:**
 

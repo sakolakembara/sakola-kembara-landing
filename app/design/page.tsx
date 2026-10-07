@@ -79,6 +79,7 @@ export default function DesignCatalog() {
       <Block title="Button · on navy" dark>
         <div className={row}>
           <Button variant="yellow-on-navy">Download PitchDeck</Button>
+          <Button variant="white-on-navy">Daftar Sekarang</Button>
           <Button variant="outline-on-navy">Mengapa ini terjadi?</Button>
         </div>
       </Block>

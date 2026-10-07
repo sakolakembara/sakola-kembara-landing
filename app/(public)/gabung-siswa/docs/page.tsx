@@ -13,6 +13,9 @@ import {
   RESOURCE_CATEGORY_LABEL,
   RESOURCE_CATEGORY_ORDER,
 } from "@/lib/site-resources-config";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
 import type { SiteResource } from "@/lib/db/schema";
 import { formatBytes } from "@/lib/report-types";
 import { buildPageMetadata } from "@/lib/seo";
@@ -37,17 +40,17 @@ export default async function DocsPage() {
     <main className="min-h-screen bg-gray-50">
       {/* Hero */}
       <section className="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-12 md:pb-16 pt-[var(--hero-top,8rem)]">
-        <div className="max-w-[1100px] mx-auto px-6">
+        <Container>
           <Link
             href="/gabung-siswa"
             className="inline-block text-sm text-white/80 hover:text-white transition-colors mb-4"
           >
             Kembali ke halaman informasi
           </Link>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl mb-4">
+          <Heading level="page" className="mb-4">
             Pusat Dokumen &amp; Berkas
-          </h1>
-          <p className="text-base md:text-lg text-white/90 max-w-[700px]">
+          </Heading>
+          <p className="text-base md:text-lg text-white/90 max-w-[600px]">
             Semua panduan, template berkas, poster, twibbon, dan bahan lain yang
             perlu kamu siapkan selama proses pendaftaran ada di sini. Kalau kamu
             baru mulai mendaftar, buka{" "}
@@ -59,13 +62,13 @@ export default async function DocsPage() {
             </Link>{" "}
             di tab lain agar bisa lihat berkas + isi formulir bersamaan.
           </p>
-        </div>
+        </Container>
       </section>
 
       {/* Table of contents */}
       {hasAnything && (
         <section className="py-8 bg-white border-b border-gray-100">
-          <div className="max-w-[1100px] mx-auto px-6">
+          <Container>
             <nav
               aria-label="Kategori dokumen"
               className="flex flex-wrap gap-2"
@@ -82,19 +85,19 @@ export default async function DocsPage() {
                 </a>
               ))}
             </nav>
-          </div>
+          </Container>
         </section>
       )}
 
       {/* Content */}
       <section className="py-14 md:py-16">
-        <div className="max-w-[1100px] mx-auto px-6">
+        <Container>
           {!hasAnything && (
             <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
               <FileText size={32} className="mx-auto text-gray-300 mb-4" />
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
+              <Heading level="card" as="h2" className="text-gray-900 mb-2">
                 Dokumen akan segera tersedia
-              </h2>
+              </Heading>
               <p className="text-gray-600 max-w-md mx-auto">
                 Tim kami sedang menyiapkan bahan-bahan pendaftaran. Silakan cek
                 kembali halaman ini dalam beberapa waktu ke depan.
@@ -111,13 +114,14 @@ export default async function DocsPage() {
                 aria-labelledby={`heading-${category}`}
               >
                 <header className="mb-5">
-                  <h2
+                  <Heading
+                    level="subsection"
                     id={`heading-${category}`}
-                    className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900"
+                    className="text-gray-900"
                   >
                     {RESOURCE_CATEGORY_LABEL[category]}
-                  </h2>
-                  <p className="text-sm md:text-base text-gray-600 mt-1 max-w-[720px]">
+                  </Heading>
+                  <p className="text-sm md:text-base text-gray-600 mt-1 max-w-[760px]">
                     {RESOURCE_CATEGORY_DESCRIPTION[category]}
                   </p>
                 </header>
@@ -129,7 +133,7 @@ export default async function DocsPage() {
               </section>
             ))}
           </div>
-        </div>
+        </Container>
       </section>
     </main>
   );
@@ -170,25 +174,20 @@ function ResourceCard({ item }: { item: SiteResource }) {
           )}
         </div>
         {item.contentType === "file" && item.filePath && (
-          <a
+          <Button
             href={item.filePath}
             target="_blank"
             rel="noopener noreferrer"
             download
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-blue text-white text-sm font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors shrink-0"
+            className="shrink-0"
           >
-            <Download size={14} /> Unduh
-          </a>
+            <Download size={16} /> Unduh
+          </Button>
         )}
         {item.contentType === "url" && item.externalUrl && (
-          <a
-            href={item.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-blue text-white text-sm font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors shrink-0"
-          >
-            <ExternalLink size={14} /> Buka
-          </a>
+          <Button href={item.externalUrl} className="shrink-0">
+            <ExternalLink size={16} /> Buka
+          </Button>
         )}
       </div>
       {item.contentType === "text" && item.bodyText && (

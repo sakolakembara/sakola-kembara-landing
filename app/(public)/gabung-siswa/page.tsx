@@ -10,6 +10,10 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
+import { SectionHeader } from "@/components/ui/section-header";
 
 const benefits = [
   {
@@ -66,38 +70,32 @@ export default function GabungSiswaPage() {
     <main className="min-h-screen bg-white">
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-16 md:pb-24 pt-[var(--hero-top,8rem)] overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-6">
+        <Container>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="max-w-[820px]"
+            className="max-w-[760px]"
           >
             <span className="inline-block px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider bg-white/15 rounded-full border border-white/25">
               Open Recruitment Gen 6
             </span>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight">
+            <Heading level="page" className="mb-5">
               Wujudkan Mimpimu Bersama Sakola Kembara
-            </h1>
-            <p className="text-base md:text-xl text-white/90 max-w-[700px] mb-8 leading-relaxed">
+            </Heading>
+            <p className="text-base md:text-lg text-white/90 max-w-[600px] mb-8 leading-relaxed">
               Bergabunglah dengan ratusan siswa lain yang berhasil menembus
               perguruan tinggi terbaik di Indonesia melalui program pembinaan
               intensif gratis dari Sakola Kembara.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <Link
-                href="/portal/daftar"
-                className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-primary-blue font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
-              >
+              <Button href="/portal/daftar" variant="white-on-navy" size="lg">
                 <ClipboardList size={18} />
                 Daftar Sekarang
-              </Link>
-              <a
-                href="#manfaat"
-                className="inline-flex items-center gap-2 px-6 py-3.5 border-2 border-white/40 text-white font-semibold rounded-xl hover:bg-white/10 transition-colors"
-              >
+              </Button>
+              <Button href="#manfaat" variant="outline-on-navy" size="lg">
                 Pelajari Program
-              </a>
+              </Button>
               <Link
                 href="/gabung-siswa/docs"
                 className="inline-flex items-center gap-2 px-6 py-3.5 text-white/90 hover:text-white font-semibold underline underline-offset-4 decoration-white/40 hover:decoration-white transition-colors"
@@ -107,26 +105,23 @@ export default function GabungSiswaPage() {
               </Link>
             </div>
           </motion.div>
-        </div>
+        </Container>
       </section>
 
       {/* Benefits */}
       <section id="manfaat" className="py-20 bg-gray-50">
-        <div className="max-w-[1200px] mx-auto px-6">
+        <Container>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-14"
+            className="mb-14"
           >
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-              Manfaat Bergabung dengan Sakola Kembara
-            </h2>
-            <p className="text-lg text-gray-600 max-w-[640px] mx-auto">
-              Bukan hanya bimbingan belajar. Kami menyiapkan kamu untuk sukses
-              di perguruan tinggi dan kehidupan setelahnya.
-            </p>
+            <SectionHeader
+              title="Manfaat Bergabung dengan Sakola Kembara"
+              lead="Bukan hanya bimbingan belajar. Kami menyiapkan kamu untuk sukses di perguruan tinggi dan kehidupan setelahnya."
+            />
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -142,35 +137,32 @@ export default function GabungSiswaPage() {
                 <div className="w-14 h-14 bg-primary-blue/10 rounded-2xl flex items-center justify-center mb-5">
                   <benefit.icon className="w-7 h-7 text-primary-blue" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <Heading level="card" className="text-gray-900 mb-3">
                   {benefit.title}
-                </h3>
+                </Heading>
                 <p className="text-gray-600 leading-relaxed">
                   {benefit.description}
                 </p>
               </motion.div>
             ))}
           </div>
-        </div>
+        </Container>
       </section>
 
       {/* Flow */}
       <section className="py-20 bg-white">
-        <div className="max-w-[1100px] mx-auto px-6">
+        <Container>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            className="mb-12"
           >
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
-              Alur Pendaftaran
-            </h2>
-            <p className="text-lg text-gray-600 max-w-[600px] mx-auto">
-              Empat langkah singkat dari pendaftaran sampai kamu resmi menjadi
-              bagian dari Sakola Kembara Gen 6.
-            </p>
+            <SectionHeader
+              title="Alur Pendaftaran"
+              lead="Empat langkah singkat dari pendaftaran sampai kamu resmi menjadi bagian dari Sakola Kembara Gen 6."
+            />
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -193,35 +185,30 @@ export default function GabungSiswaPage() {
               </motion.div>
             ))}
           </div>
-        </div>
+        </Container>
       </section>
 
       {/* Bottom CTA */}
       <section className="py-16 bg-gradient-to-br from-primary-blue to-accent-navy text-white">
-        <div className="max-w-[820px] mx-auto px-6 text-center">
+        <Container size="reading" className="text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl mb-4">
-              Siap Bergabung dengan Sakola Kembara?
-            </h2>
-            <p className="text-base md:text-lg text-white/90 mb-8 leading-relaxed">
-              Isi formulir pendaftaran sekarang. Formulir dibagi menjadi
-              beberapa bagian dan progres kamu akan tersimpan otomatis di
-              browser ini.
-            </p>
-            <Link
-              href="/portal/daftar"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary-blue font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-lg"
-            >
+            <SectionHeader
+              tone="dark"
+              title="Siap Bergabung dengan Sakola Kembara?"
+              lead="Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini."
+              className="mb-8"
+            />
+            <Button href="/portal/daftar" variant="white-on-navy" size="lg">
               <ClipboardList size={18} />
               Daftar Sekarang
-            </Link>
+            </Button>
           </motion.div>
-        </div>
+        </Container>
       </section>
     </main>
   );

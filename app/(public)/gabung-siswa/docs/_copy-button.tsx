@@ -40,7 +40,7 @@ export function CopyButton({ text }: { text: string }) {
       onClick={handleClick}
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
         copied
-          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+          ? "bg-success-bg border-success-border text-success-fg"
           : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
       }`}
       aria-live="polite"
