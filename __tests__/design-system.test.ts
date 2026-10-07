@@ -22,7 +22,7 @@ describe("buttonVariants", () => {
   it("defaults to the primary, 44px button", () => {
     const classes = buttonVariants();
     expect(classes).toContain("bg-primary-blue");
-    expect(classes).toContain("h-11");
+    expect(classes).toContain("min-h-11");
   });
 
   it("never renders a pill-shaped button", () => {

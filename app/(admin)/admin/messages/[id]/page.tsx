@@ -67,7 +67,7 @@ export default async function MessageDetailPage({ params }: PageProps) {
               timeStyle: "short",
             })}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button href={mailto} size="sm">
               <Reply size={14} /> Balas via Email
             </Button>

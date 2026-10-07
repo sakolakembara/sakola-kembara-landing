@@ -79,7 +79,7 @@ export default async function ApplicationDetailPage({
 
       <div className="grid lg:grid-cols-5 gap-6 items-start">
         {/* Left: applicant profile */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="lg:col-span-3 min-w-0 bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <ProfileSection
             title="Identitas"
             icon={<User size={14} />}
@@ -411,7 +411,7 @@ export default async function ApplicationDetailPage({
         </div>
 
         {/* Right: sticky status action card */}
-        <aside className="lg:col-span-2 lg:sticky lg:top-10">
+        <aside className="lg:col-span-2 lg:sticky lg:top-10 min-w-0">
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <header className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
               <Settings2 size={14} className="text-gray-500" />

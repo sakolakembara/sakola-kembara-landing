@@ -94,7 +94,9 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
       {error && <Alert className="mb-4">{error}</Alert>}
 
       <div className="grid lg:grid-cols-5 gap-6 items-start">
-        <div className="lg:col-span-3 space-y-6">
+        {/* min-w-0 lets the applicants table scroll inside its card on phones
+            instead of widening the whole column. */}
+        <div className="lg:col-span-3 min-w-0 space-y-6">
           <section className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
               <Users size={14} /> Ringkasan Pendaftar
@@ -187,7 +189,7 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
           </section>
         </div>
 
-        <aside className="lg:col-span-2 lg:sticky lg:top-10 space-y-4">
+        <aside className="lg:col-span-2 lg:sticky lg:top-10 min-w-0 space-y-4">
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-2">
               Publikasi Hasil
