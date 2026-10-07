@@ -5,6 +5,9 @@ import { Calendar } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { PageHero } from "@/components/layout/page-hero";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
+import { Tag } from "@/components/ui/tag";
 import { cleanExcerpt, type BlogArticle } from "@/lib/blog-types";
 
 interface BlogIndexProps {
@@ -29,7 +32,7 @@ export function BlogIndex({
 
       {featured && (
         <section className="py-12">
-          <div className="max-w-[1200px] mx-auto px-6">
+          <Container>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -52,18 +55,19 @@ export function BlogIndex({
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     )}
-                    <span className="absolute top-4 left-4 text-xs font-semibold text-white bg-primary-blue px-3 py-1.5 rounded-full">
-                      {featured.category}
-                    </span>
+                    <Tag className="absolute top-4 left-4">{featured.category}</Tag>
                   </div>
                   <div className="p-8 md:p-10 flex flex-col justify-center">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
                       <Calendar size={14} />
                       {featured.date}
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 group-hover:text-primary-blue transition-colors">
+                    <Heading
+                      level="panel"
+                      className="text-gray-900 mb-4 group-hover:text-primary-blue transition-colors"
+                    >
                       {featured.title}
-                    </h3>
+                    </Heading>
                     <p className="text-gray-600 leading-relaxed mb-6">
                       {cleanExcerpt(featured.excerpt)}
                     </p>
@@ -74,12 +78,12 @@ export function BlogIndex({
                 </div>
               </Link>
             </motion.div>
-          </div>
+          </Container>
         </section>
       )}
 
       <section className="py-12 pb-24 bg-white">
-        <div className="max-w-[1200px] mx-auto px-6">
+        <Container>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -116,9 +120,9 @@ export function BlogIndex({
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     )}
-                    <span className="absolute top-3 left-3 text-[11px] font-semibold text-white bg-primary-blue/90 px-2.5 py-1 rounded-full">
+                    <Tag size="sm" className="absolute top-3 left-3">
                       {article.category}
-                    </span>
+                    </Tag>
                   </div>
                   <div className="p-6">
                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
@@ -145,7 +149,7 @@ export function BlogIndex({
               <Pagination currentPage={currentPage} totalPages={totalPages} />
             )}
           </motion.div>
-        </div>
+        </Container>
       </section>
     </main>
   );
