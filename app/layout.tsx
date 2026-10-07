@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Lora, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { MotionProvider } from "@/components/MotionProvider";
 
 const lora = Lora({
   weight: ["400", "500", "600", "700"],
@@ -92,7 +93,7 @@ export default function RootLayout({
       <body
         className={`${lora.variable} ${plusJakartaSans.variable} antialiased`}
       >
-        {children}
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );
