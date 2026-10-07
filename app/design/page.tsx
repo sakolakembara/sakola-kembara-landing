@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHero } from "@/components/layout/page-hero";
+import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Tag } from "@/components/ui/tag";
@@ -136,6 +138,37 @@ export default function DesignCatalog() {
           lead="Didukung oleh pengurus dan relawan dari berbagai universitas terbaik di Indonesia."
         />
       </section>
+
+      <Block title="Form fields (Field + Input / Select / Textarea)">
+        <div className="grid max-w-[760px] gap-5 md:grid-cols-2">
+          <Field id="design-name" label="Nama Lengkap" required>
+            <Input placeholder="Masukkan nama Anda" />
+          </Field>
+          <Field id="design-email" label="Email" required error="Format email belum benar.">
+            <Input type="email" defaultValue="nama@contoh" />
+          </Field>
+          <Field id="design-subject" label="Subjek" hint="Pilih yang paling dekat.">
+            <Select defaultValue="">
+              <option value="" disabled>
+                Pilih subjek
+              </option>
+              <option>Seputar Donasi</option>
+            </Select>
+          </Field>
+          <Field id="design-message" label="Pesan">
+            <Textarea rows={3} placeholder="Tulis pesan Anda di sini..." />
+          </Field>
+        </div>
+      </Block>
+
+      <Block title="Alert">
+        <div className="grid max-w-[760px] gap-3">
+          <Alert>Email atau password salah.</Alert>
+          <Alert tone="success">Tautan reset sudah dikirim ke email kamu.</Alert>
+          <Alert tone="warning">Tautan reset tidak lengkap.</Alert>
+          <Alert tone="info">Pendaftaran Gen 6 dibuka sampai 30 November.</Alert>
+        </div>
+      </Block>
 
       <Block title="Container sizes">
         <div className="space-y-3">

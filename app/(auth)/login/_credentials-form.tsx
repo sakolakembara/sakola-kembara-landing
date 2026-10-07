@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { credentialsSignIn } from "./actions";
-
-const INPUT =
-  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm";
 
 interface Props {
   from: string | null;
@@ -18,33 +17,21 @@ interface Props {
  */
 export function CredentialsForm({ from }: Props) {
   return (
-    <form action={credentialsSignIn} className="space-y-3">
+    <form action={credentialsSignIn} className="space-y-5">
       {from && <input type="hidden" name="from" value={from} />}
-      <div>
-        <label
-          htmlFor="cred-email"
-          className="block text-xs font-medium text-gray-700 mb-1"
-        >
-          Email
-        </label>
-        <input
-          id="cred-email"
+      <Field id="cred-email" label="Email">
+        <Input
           type="email"
           name="email"
           required
           autoComplete="email"
           placeholder="nama@contoh.com"
-          className={INPUT}
         />
-      </div>
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label
-            htmlFor="cred-password"
-            className="block text-xs font-medium text-gray-700"
-          >
-            Password
-          </label>
+      </Field>
+      <Field
+        id="cred-password"
+        label="Password"
+        labelAside={
           <Link
             href={
               from
@@ -55,16 +42,15 @@ export function CredentialsForm({ from }: Props) {
           >
             Lupa password?
           </Link>
-        </div>
-        <input
-          id="cred-password"
+        }
+      >
+        <Input
           type="password"
           name="password"
           required
           autoComplete="current-password"
-          className={INPUT}
         />
-      </div>
+      </Field>
       <SubmitButton />
     </form>
   );
@@ -73,12 +59,8 @@ export function CredentialsForm({ from }: Props) {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full px-6 py-2.5 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-    >
+    <Button type="submit" size="lg" fullWidth disabled={pending}>
       {pending ? "Memproses…" : "Masuk"}
-    </button>
+    </Button>
   );
 }

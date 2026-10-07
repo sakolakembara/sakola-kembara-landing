@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ResetForm } from "./_form";
+import { Alert } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
   title: "Reset Password",
@@ -40,13 +41,13 @@ export default async function ResetPasswordPage({ searchParams }: PageProps) {
           {token ? (
             <ResetForm token={token} />
           ) : (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-sm text-amber-800">
+            <Alert tone="warning">
               Tautan reset tidak lengkap. Silakan minta tautan baru di{" "}
               <Link href="/forgot-password" className="font-semibold underline">
                 halaman lupa password
               </Link>
               .
-            </div>
+            </Alert>
           )}
 
           <p className="text-center text-xs text-gray-500 pt-2 border-t border-gray-100">
