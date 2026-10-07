@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Copy, Check, QrCode, ClipboardCheck, Mail } from "lucide-react";
-import Link from "next/link";
 import { PageHero } from "@/components/layout/page-hero";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -213,13 +212,9 @@ export default function DonasiPage() {
                   Ada pertanyaan seputar donasi, penyaluran dana, atau laporan
                   penggunaannya? Tim kami siap membantu.
                 </p>
-                {/* No Button variant for a light button on navy yet; it is the only one. */}
-                <Link
-                  href="/kontak"
-                  className="mt-auto w-full inline-flex items-center justify-center px-6 py-3.5 bg-gray-50 text-primary-blue font-semibold rounded-xl text-sm hover:bg-gray-100 transition-colors"
-                >
+                <Button href="/kontak" variant="white-on-navy" size="lg" fullWidth className="mt-auto">
                   Hubungi Kami
-                </Link>
+                </Button>
               </div>
             </motion.div>
           </Container>

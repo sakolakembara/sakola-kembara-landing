@@ -18,6 +18,7 @@ export const buttonVariants = cva(
         "outline-on-navy": "border-[1.5px] border-white/60 text-white hover:bg-white/10",
         "yellow-on-navy":
           "bg-secondary-yellow text-gray-900 hover:bg-secondary-yellow/90",
+        "white-on-navy": "bg-white text-primary-blue hover:bg-gray-50",
         subtle: "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-primary-blue",
         neutral:
           "border border-gray-200 text-gray-700 hover:border-primary-blue/40 hover:bg-primary-blue/5 hover:text-primary-blue",
