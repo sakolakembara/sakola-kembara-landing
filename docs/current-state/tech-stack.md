@@ -16,7 +16,7 @@ A snapshot of what powers the site today. Keep this in sync with `package.json` 
 - `npm run build` → production build.
 - `npm run start` → serve the production build.
 - `npm run lint` → ESLint v9 with `eslint-config-next`.
-- `pnpm storybook` / `pnpm build-storybook` → Storybook 10 (`@storybook/nextjs-vite`, addons docs and a11y; config in `.storybook/`) for the design-system components. CI publishes the build to GitHub Pages (see [`deployment.md`](deployment.md)).
+- `pnpm storybook` / `pnpm build-storybook` → Storybook 10 (`@storybook/nextjs-vite`, addons docs and a11y; config in `.storybook/`) for the design-system components. CI (`.github/workflows/storybook.yml`) builds it on every pull request; it is not hosted yet.
 - `npm run scrape:blog` → re-scrape WordPress posts into `content/blog/*.md` and `lib/blog-posts.json` (see [`blog-pipeline.md`](blog-pipeline.md)).
 - `npm run blog:sync` → regenerate `lib/blog-posts.json` from edited markdown.
 

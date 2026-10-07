@@ -23,4 +23,4 @@ The rules (colors, type scale, spacing, copy, accessibility) are in [`DESIGN.md`
 1. Build it in `components/ui` (atoms, molecules) or `components/layout` (organisms). Make a pattern a component once it is used three or more times.
 2. Put a `*.stories.tsx` file next to it, with one story per variant and per state, including a phone-width story when the layout can wrap.
 3. Update the component table in `DESIGN.md` section 11.
-4. Run `pnpm storybook` locally (port 6006). Every push to `development` publishes Storybook to GitHub Pages.
+4. Run `pnpm storybook` locally (port 6006). CI builds Storybook on every pull request, so a broken story fails the check.

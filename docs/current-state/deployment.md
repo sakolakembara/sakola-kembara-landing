@@ -129,16 +129,11 @@ node .next/standalone/server.js                  # serves on :3000
 
 This is what every dev should do before pushing a release.
 
-## Storybook (GitHub Pages)
-
-Separate from the site deploy. `.github/workflows/storybook.yml` builds Storybook on every pull request (a broken story fails the check) and, on every push to `development`, publishes it to GitHub Pages at <https://sakolakembara.github.io/sakola-kembara-landing/>. It uses no secrets. Storybook is public, like the repo; it holds components and sample copy only, never real data.
-
-One-time setup by a repo admin: Settings → Pages → Source "GitHub Actions", and allow the `development` branch in the `github-pages` environment (by default only `main` may deploy there).
-
 ## What is NOT in this flow
 
 - **No staging environment yet.** When the dashboard goes live, add a `staging.sakolakembara.org` either on the same VPS (separate Compose project) or a tiny second VPS.
 - **No blue/green or zero-downtime deploys.** The ~5-second swap is fine for a non-profit's traffic; revisit if it becomes user-visible.
 - **No automated host provisioning.** Initial VPS setup is documented in [`../roadmap/infrastructure.md`](../roadmap/infrastructure.md); codify as Ansible / cloud-init if we ever need to recreate the host quickly.
 - **No CDN.** Caddy serves everything directly. Add Cloudflare in front of `sakolakembara.org` if international traffic matters.
+- **No hosted Storybook.** `.github/workflows/storybook.yml` only builds it; people run it locally (`pnpm storybook`). Publishing to GitHub Pages needs a repo admin to enable Pages (Source: GitHub Actions) and allow `development` in the `github-pages` environment, plus an upload-and-deploy job in that workflow.
 - **No secrets manager.** `.env.production` on disk is enough at MVP scale. Move to Doppler / 1Password CLI / Bitwarden Secrets when the team grows.

@@ -17,7 +17,7 @@
 /.next/
 /out/
 
-# storybook build output (published to GitHub Pages by CI)
+# storybook build output (`pnpm build-storybook`)
 /storybook-static/
 
 # production

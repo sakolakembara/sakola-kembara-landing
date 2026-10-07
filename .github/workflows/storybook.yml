@@ -1,11 +1,6 @@
-# Builds Storybook (the design-system catalog, see DESIGN.md section 11) and
-# publishes it to GitHub Pages. Pull requests only build it, so a broken story
-# fails the check; pushes to `development` also deploy. No secrets are used.
-#
-# One-time setup by a repo admin:
-#   1. Settings → Pages → Build and deployment → Source: "GitHub Actions".
-#   2. Settings → Environments → github-pages → Deployment branches: add
-#      `development` (by default only the default branch, `main`, may deploy).
+# Builds Storybook (the design-system catalog, see DESIGN.md section 11) so a
+# broken story fails the check. It is not published anywhere yet; run it
+# locally with `pnpm storybook`. No secrets are used.
 
 name: Storybook
 
@@ -20,7 +15,7 @@ permissions:
 
 concurrency:
   group: storybook-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -34,21 +29,3 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build-storybook
-      - if: github.event_name != 'pull_request' && github.ref == 'refs/heads/development'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: storybook-static
-
-  deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/development'
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
