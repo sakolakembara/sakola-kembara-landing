@@ -1,18 +1,15 @@
 "use client";
 
 import { useActionState, useMemo, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Edit3,
   ExternalLink,
   Eye,
   FileText,
   ImagePlus,
-  Save,
   Settings2,
   Upload,
   X,
@@ -24,6 +21,9 @@ import {
   uploadBlogImage,
   type BlogFormState,
 } from "./actions";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { EditorHeader, EditorMessages, SaveButton } from "../_editor";
+import { Button } from "@/components/ui/button";
 
 const initialState: BlogFormState = { status: "idle" };
 
@@ -40,23 +40,6 @@ type TopTab = "detail" | "konten";
 // inside it, so users don't lose validation feedback when on the wrong tab.
 const DETAIL_FIELDS = ["title", "excerpt", "category", "date", "author", "image"] as const;
 const KONTEN_FIELDS = ["body"] as const;
-
-const TEXT_INPUT =
-  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
-
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      <Save size={16} />
-      {pending ? "Menyimpan..." : label}
-    </button>
-  );
-}
 
 export function EditorForm({
   mode,
@@ -153,70 +136,37 @@ export function EditorForm({
           and spans the full width of <main>. Holds navigation, mode/url
           context, and the primary save action so the admin never has to
           scroll to apply changes. */}
-      <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            <Link
-              href="/admin/blog"
-              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft size={14} /> Kembali
-            </Link>
-            <span className="text-gray-300 select-none">·</span>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-              {mode === "create" ? "Tulis Artikel" : "Edit Artikel"}
-            </span>
-            {mode === "edit" && article && (
-              <>
-                <span className="text-gray-300 select-none">·</span>
-                <code
-                  className="px-2 py-1 bg-gray-100 rounded text-gray-800 font-mono text-xs truncate max-w-[260px]"
-                  title={`/blog/${article.id}`}
-                >
-                  /blog/{article.id}
-                </code>
-                <Link
-                  href={`/blog/${article.id}`}
-                  target="_blank"
-                  className="inline-flex items-center gap-1 text-xs text-primary-blue hover:underline whitespace-nowrap"
-                >
-                  Lihat di publik <ExternalLink size={12} />
-                </Link>
-              </>
-            )}
-          </div>
-          <SubmitButton
-            label={mode === "create" ? "Buat Artikel" : "Simpan Perubahan"}
-          />
-        </div>
-      </header>
+      <EditorHeader
+        backHref="/admin/blog"
+        label={mode === "create" ? "Tulis Artikel" : "Edit Artikel"}
+        meta={
+          mode === "edit" && article && (
+            <>
+              <span className="text-gray-300 select-none">·</span>
+              <code
+                className="px-2 py-1 bg-gray-100 rounded text-gray-800 font-mono text-xs truncate max-w-[260px]"
+                title={`/blog/${article.id}`}
+              >
+                /blog/{article.id}
+              </code>
+              <Link
+                href={`/blog/${article.id}`}
+                target="_blank"
+                className="inline-flex items-center gap-1 text-xs text-primary-blue hover:underline whitespace-nowrap"
+              >
+                Lihat di publik <ExternalLink size={12} />
+              </Link>
+            </>
+          )
+        }
+      >
+        <SaveButton
+          label={mode === "create" ? "Buat Artikel" : "Simpan Perubahan"}
+        />
+      </EditorHeader>
 
       <div className="max-w-6xl px-6 md:px-10 pt-6 pb-12">
-        {/* Form-level banners — sit at the top of the content area so a
-            scroll-to-top after an error always reveals them. */}
-        {(state.status === "error" && state.message) ||
-        (state.status === "success" && state.message) ||
-        (successMessage && state.status !== "error" && state.status !== "success") ? (
-          <div className="mb-5">
-            {state.status === "error" && state.message && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                {state.message}
-              </div>
-            )}
-            {state.status === "success" && state.message && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                {state.message}
-              </div>
-            )}
-            {successMessage &&
-              state.status !== "error" &&
-              state.status !== "success" && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                  {successMessage}
-                </div>
-              )}
-          </div>
-        ) : null}
+        <EditorMessages state={state} successMessage={successMessage} />
 
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         {/* Top tabs */}
@@ -252,36 +202,34 @@ export function EditorForm({
           >
             <Field
               label="Judul"
-              name="title"
+              id="title"
               required
-              errors={state.fieldErrors?.title}
+              error={state.fieldErrors?.title?.[0]}
             >
-              <input
+              <Input
                 type="text"
                 id="title"
                 name="title"
                 required
                 defaultValue={article?.title ?? ""}
                 placeholder="Contoh: Cerita Lulusan Sakola Kembara di ITB"
-                className={TEXT_INPUT}
               />
             </Field>
 
             <Field
               label="Excerpt"
-              name="excerpt"
+              id="excerpt"
               required
-              errors={state.fieldErrors?.excerpt}
+              error={state.fieldErrors?.excerpt?.[0]}
               hint="20-500 karakter. Muncul di list artikel dan SEO description."
             >
-              <textarea
+              <Textarea
                 id="excerpt"
                 name="excerpt"
                 required
                 rows={3}
                 defaultValue={article?.excerpt ?? ""}
                 placeholder="Ringkasan singkat artikel..."
-                className={`${TEXT_INPUT} resize-none`}
               />
             </Field>
           </Section>
@@ -293,37 +241,35 @@ export function EditorForm({
             <div className="grid md:grid-cols-2 gap-5">
               <Field
                 label="Kategori"
-                name="category"
+                id="category"
                 required
-                errors={state.fieldErrors?.category}
+                error={state.fieldErrors?.category?.[0]}
               >
-                <select
+                <Select
                   id="category"
                   name="category"
                   required
                   defaultValue={article?.category ?? "Cerita"}
-                  className={`${TEXT_INPUT} bg-white`}
                 >
                   {BLOG_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field
                 label="Tanggal Publikasi"
-                name="date"
+                id="date"
                 required
-                errors={state.fieldErrors?.date}
+                error={state.fieldErrors?.date?.[0]}
               >
-                <input
+                <Input
                   type="date"
                   id="date"
                   name="date"
                   required
                   defaultValue={article?.dateISO ?? todayIso}
-                  className={TEXT_INPUT}
                 />
               </Field>
             </div>
@@ -331,24 +277,23 @@ export function EditorForm({
             <div className="grid md:grid-cols-2 gap-5">
               <Field
                 label="Penulis"
-                name="author"
+                id="author"
                 required
-                errors={state.fieldErrors?.author}
+                error={state.fieldErrors?.author?.[0]}
               >
-                <input
+                <Input
                   type="text"
                   id="author"
                   name="author"
                   required
                   defaultValue={article?.author ?? defaultAuthor}
-                  className={TEXT_INPUT}
                 />
               </Field>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Featured
                 </label>
-                <label className="flex items-center gap-3 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
+                <label className="flex items-center gap-3 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition-colors">
                   <input
                     type="checkbox"
                     name="featured"
@@ -369,14 +314,14 @@ export function EditorForm({
             isLast
           >
             <div className="flex gap-2 flex-wrap">
-              <input
+              <Input
                 type="text"
                 id="image"
                 name="image"
                 value={heroImage}
                 onChange={(e) => setHeroImage(e.target.value)}
                 placeholder="/blog/images/2026/01/cover.jpg"
-                className={`${TEXT_INPUT} flex-1 min-w-[260px]`}
+                className="flex-1 min-w-[260px]"
               />
               <input
                 ref={heroInputRef}
@@ -389,15 +334,16 @@ export function EditorForm({
                   e.target.value = "";
                 }}
               />
-              <button
-                type="button"
+              {/* h-auto + self-stretch: as tall as the path input beside it. */}
+              <Button
+                variant="neutral"
                 onClick={() => heroInputRef.current?.click()}
                 disabled={heroUploading}
-                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="h-auto shrink-0 self-stretch"
               >
                 <Upload size={14} />
                 {heroUploading ? "Mengupload..." : "Upload"}
-              </button>
+              </Button>
               {heroImage && (
                 <button
                   type="button"
@@ -584,6 +530,8 @@ function TopTabButton({
   );
 }
 
+// Blog sections sit in tab panels rather than one stacked card, so the last
+// one in each panel is marked explicitly instead of via :last-child.
 function Section({
   title,
   description,
@@ -609,38 +557,5 @@ function Section({
       </header>
       <div className="space-y-5">{children}</div>
     </section>
-  );
-}
-
-function Field({
-  label,
-  name,
-  required,
-  errors,
-  hint,
-  children,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-  errors?: string[];
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-2"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && !errors?.length && (
-        <p className="text-xs text-gray-500 mt-1">{hint}</p>
-      )}
-      {errors?.[0] && <p className="text-xs text-red-600 mt-1">{errors[0]}</p>}
-    </div>
   );
 }

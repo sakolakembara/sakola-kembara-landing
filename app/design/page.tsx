@@ -59,6 +59,7 @@ export default function DesignCatalog() {
           <Button variant="outline">Lihat Detail</Button>
           <Button variant="subtle">Hubungi Kami</Button>
           <Button variant="neutral">Masuk</Button>
+          <Button variant="danger">Cabut Penerimaan</Button>
           <Button disabled>Mengirim…</Button>
         </div>
       </Block>

@@ -1,9 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
-import Link from "next/link";
-import { ArrowLeft, FileText, Save, Upload } from "lucide-react";
+import { FileText, Upload } from "lucide-react";
 import {
   reportCategory,
   type Report,
@@ -14,6 +12,8 @@ import {
   updateReport,
   type ReportFormState,
 } from "./actions";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { EditorHeader, EditorMessages, FormSection, SaveButton } from "../_editor";
 
 const initialState: ReportFormState = { status: "idle" };
 
@@ -21,23 +21,6 @@ interface EditorFormProps {
   mode: "create" | "edit";
   report?: Report;
   successMessage?: string;
-}
-
-const TEXT_INPUT =
-  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
-
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      <Save size={16} />
-      {pending ? "Menyimpan..." : label}
-    </button>
-  );
 }
 
 export function EditorForm({
@@ -56,118 +39,81 @@ export function EditorForm({
     <form action={formAction}>
       {report && <input type="hidden" name="id" value={report.id} />}
 
-      <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            <Link
-              href="/admin/reports"
-              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft size={14} /> Kembali
-            </Link>
-            <span className="text-gray-300 select-none">·</span>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-              {mode === "create" ? "Upload Laporan" : "Edit Metadata"}
-            </span>
-          </div>
-          <SubmitButton
-            label={mode === "create" ? "Upload Laporan" : "Simpan Perubahan"}
-          />
-        </div>
-      </header>
+      <EditorHeader
+        backHref="/admin/reports"
+        label={mode === "create" ? "Upload Laporan" : "Edit Metadata"}
+      >
+        <SaveButton
+          label={mode === "create" ? "Upload Laporan" : "Simpan Perubahan"}
+        />
+      </EditorHeader>
 
       <div className="max-w-4xl px-6 md:px-10 pt-6 pb-12">
-        {(state.status === "error" && state.message) ||
-        (state.status === "success" && state.message) ||
-        (successMessage &&
-          state.status !== "error" &&
-          state.status !== "success") ? (
-          <div className="mb-5">
-            {state.status === "error" && state.message && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                {state.message}
-              </div>
-            )}
-            {state.status === "success" && state.message && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                {state.message}
-              </div>
-            )}
-            {successMessage &&
-              state.status !== "error" &&
-              state.status !== "success" && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                  {successMessage}
-                </div>
-              )}
-          </div>
-        ) : null}
+        <EditorMessages state={state} successMessage={successMessage} />
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 space-y-6">
-          <Section
+          <FormSection
             title="Metadata"
             description="Informasi yang muncul di list publik dan admin."
           >
             <Field
               label="Judul"
-              name="title"
+              id="title"
               required
-              errors={state.fieldErrors?.title}
+              error={state.fieldErrors?.title?.[0]}
             >
-              <input
+              <Input
                 type="text"
                 id="title"
                 name="title"
                 required
                 defaultValue={report?.title ?? ""}
                 placeholder="Contoh: Laporan Tahunan Sakola Kembara 2025/2026"
-                className={TEXT_INPUT}
               />
             </Field>
             <Field
               label="Deskripsi"
-              name="description"
-              errors={state.fieldErrors?.description}
+              id="description"
+              error={state.fieldErrors?.description?.[0]}
               hint="Ringkasan isi laporan. Muncul di kartu laporan publik."
             >
-              <textarea
+              <Textarea
                 id="description"
                 name="description"
                 rows={3}
                 defaultValue={report?.description ?? ""}
                 placeholder="Contoh: Ringkasan kegiatan, pencapaian, dan tantangan sepanjang tahun ajaran 2025/2026."
-                className={`${TEXT_INPUT} resize-y min-h-[80px]`}
+                className="resize-y min-h-[80px]"
               />
             </Field>
             <div className="grid md:grid-cols-2 gap-5">
               <Field
                 label="Kategori"
-                name="category"
+                id="category"
                 required
-                errors={state.fieldErrors?.category}
+                error={state.fieldErrors?.category?.[0]}
               >
-                <select
+                <Select
                   id="category"
                   name="category"
                   required
                   defaultValue={report?.category ?? "yearly"}
-                  className={`${TEXT_INPUT} bg-white`}
                 >
                   {reportCategory.map((c) => (
                     <option key={c} value={c}>
                       {REPORT_CATEGORY_LABEL[c]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field
                 label="Tahun"
-                name="year"
+                id="year"
                 required
-                errors={state.fieldErrors?.year}
+                error={state.fieldErrors?.year?.[0]}
                 hint={`Tahun laporan. Gunakan format tahun ajaran (${currentYear}/${currentYear + 1}) atau tahun tunggal (${currentYear}).`}
               >
-                <input
+                <Input
                   type="text"
                   id="year"
                   name="year"
@@ -176,13 +122,12 @@ export function EditorForm({
                   pattern="\d{4}(/\d{4})?"
                   defaultValue={defaultYear}
                   placeholder={`${currentYear}/${currentYear + 1}`}
-                  className={TEXT_INPUT}
                 />
               </Field>
             </div>
-          </Section>
+          </FormSection>
 
-          <Section
+          <FormSection
             title="File"
             description={
               mode === "create"
@@ -215,9 +160,9 @@ export function EditorForm({
             ) : (
               <Field
                 label="File PDF"
-                name="file"
+                id="file"
                 required
-                errors={state.fieldErrors?.file}
+                error={state.fieldErrors?.file?.[0]}
               >
                 <label
                   htmlFor="file"
@@ -259,66 +204,10 @@ export function EditorForm({
                 />
               </Field>
             )}
-          </Section>
+          </FormSection>
         </div>
       </div>
     </form>
   );
 }
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-      <header className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-          {title}
-        </h2>
-        {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
-        )}
-      </header>
-      <div className="space-y-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  name,
-  required,
-  errors,
-  hint,
-  children,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-  errors?: string[];
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-2"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && !errors?.length && (
-        <p className="text-xs text-gray-500 mt-1">{hint}</p>
-      )}
-      {errors?.[0] && <p className="text-xs text-red-600 mt-1">{errors[0]}</p>}
-    </div>
-  );
-}
