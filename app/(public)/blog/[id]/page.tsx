@@ -3,6 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Calendar, User } from "lucide-react";
 import BlogPostContent from "@/components/blog/BlogPostContent";
+import { Container } from "@/components/ui/container";
+import { Heading } from "@/components/ui/heading";
+import { Tag } from "@/components/ui/tag";
 import {
   getAllArticles,
   getBlogArticleBySlug,
@@ -47,9 +50,9 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
       <>
         <main className="min-h-screen flex items-center justify-center bg-gray-50 pt-24">
           <div className="text-center px-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            <Heading level="panel" as="h1" className="text-gray-900 mb-4">
               Artikel tidak ditemukan
-            </h1>
+            </Heading>
             <Link href="/blog" className="text-primary-blue font-semibold hover:underline">
               Kembali ke Blog
             </Link>
@@ -99,19 +102,20 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
               tall content stack (back link + category + multi-line title +
               meta) cannot bleed into the navbar zone. min-h ensures the hero
               keeps its visual weight when the title is short. */}
-          <div className="relative max-w-[800px] mx-auto px-6 pb-10 min-h-[420px] md:min-h-[500px] flex flex-col justify-end pt-[var(--hero-top,8rem)]">
+          <Container
+            size="reading"
+            className="relative pb-10 min-h-[420px] md:min-h-[500px] flex flex-col justify-end pt-[var(--hero-top,8rem)]"
+          >
             <Link
               href="/blog"
               className="text-white/90 text-sm font-medium mb-4 hover:text-white transition-colors w-fit"
             >
               Kembali ke Blog
             </Link>
-            <span className="inline-block w-fit text-xs font-semibold text-white bg-primary-blue px-3 py-1 rounded-full mb-3">
-              {article.category}
-            </span>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl lg:text-5xl text-white leading-tight">
+            <Tag className="w-fit mb-3">{article.category}</Tag>
+            <Heading level="article" className="text-white">
               {article.title}
-            </h1>
+            </Heading>
             <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/85">
               <span className="inline-flex items-center gap-1.5">
                 <Calendar size={14} />
@@ -122,20 +126,20 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
                 {article.author}
               </span>
             </div>
-          </div>
+          </Container>
         </section>
 
         <article className="py-12 pb-16">
-          <div className="max-w-[800px] mx-auto px-6">
+          <Container size="reading">
             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-10 -mt-8 relative z-10">
               <BlogPostContent markdown={article.contentMarkdown} />
             </div>
-          </div>
+          </Container>
         </article>
 
         {relatedArticles.length > 0 && (
           <section className="py-12 pb-24 bg-white border-t border-gray-100">
-            <div className="max-w-[1200px] mx-auto px-6">
+            <Container>
               <h2 className="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">
                 Artikel Lainnya
               </h2>
@@ -157,9 +161,9 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
                       ) : (
                         <div className="absolute inset-0 bg-primary-blue/10" />
                       )}
-                      <span className="absolute top-3 left-3 text-[10px] font-semibold text-white bg-primary-blue/90 px-2 py-1 rounded">
+                      <Tag size="sm" className="absolute top-3 left-3">
                         {item.category}
-                      </span>
+                      </Tag>
                     </div>
                     <div className="p-4">
                       <p className="text-xs text-gray-400 mb-2">{item.date}</p>
@@ -170,7 +174,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
                   </Link>
                 ))}
               </div>
-            </div>
+            </Container>
           </section>
         )}
       </main>

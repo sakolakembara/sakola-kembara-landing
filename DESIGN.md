@@ -376,6 +376,8 @@ Sub-pages (SAKEM-037): `/tim`, `/laporan`, `/kontak`, `/donasi`, plus the `/blog
 
 Program pages (SAKEM-038): `/program/[id]` uses `Container`, `SectionHeader`, `Heading`, `Tag` and `Button` throughout; the stepper card stays custom.
 
+Blog (SAKEM-039): `/blog` and `/blog/[id]` use `Container` (articles `reading`), `Tag` for every category label, `Heading level="article"` for the article H1 and `panel` for the featured post's title. Kept inline: the small uppercase section labels (*Artikel Terbaru*, *Semua Artikel*, *Artikel Lainnya*), the pagination control, the `text-lg` card titles (also on `/laporan`; D3 says `text-xl`, not applied yet) and the markdown body (`.blog-content`).
+
 **Standards decided, applied as each page is migrated:**
 
 | Decision | Standard | Visible change when applied |
