@@ -224,7 +224,7 @@ export default async function AdminHomePage() {
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <section className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <header className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Pendaftar terbaru</h2>
+            <h2 className="text-base font-semibold text-gray-900">Pendaftar terbaru</h2>
             <Link
               href="/admin/applications"
               className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
@@ -275,7 +275,7 @@ export default async function AdminHomePage() {
 
         <section className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <header className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Pesan terbaru</h2>
+            <h2 className="text-base font-semibold text-gray-900">Pesan terbaru</h2>
             <Link
               href="/admin/messages"
               className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
@@ -345,7 +345,7 @@ export default async function AdminHomePage() {
 
       <section className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <header className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Aktivitas terakhir</h2>
+          <h2 className="text-base font-semibold text-gray-900">Aktivitas terakhir</h2>
         </header>
         {stats.recentAudit.length === 0 ? (
           <p className="px-6 py-10 text-sm text-gray-500 text-center">

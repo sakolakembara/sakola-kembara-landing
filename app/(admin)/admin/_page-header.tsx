@@ -30,7 +30,8 @@ export function AdminPageHeader({
         </Heading>
         {children}
       </div>
-      {actions}
+      {/* Actions keep their width; the description wraps instead. */}
+      {actions && <div className="shrink-0">{actions}</div>}
     </header>
   );
 }

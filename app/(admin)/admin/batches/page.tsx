@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { getAllBatches } from "@/lib/admission-batches";
 import { TableHint } from "../_table-hint";
@@ -106,9 +106,9 @@ export default async function BatchesPage() {
                     <Td>
                       <Link
                         href={`/admin/batches/${b.id}`}
-                        className="inline-flex items-center gap-1 text-primary-blue font-medium hover:underline"
+                        className="text-primary-blue font-medium hover:underline"
                       >
-                        Kelola <ArrowRight size={14} />
+                        Kelola
                       </Link>
                     </Td>
                   </tr>
