@@ -1,9 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+
 import type { User } from "@/lib/db/schema";
 import { adminRoles } from "@/lib/db/schema";
 import {
@@ -11,11 +9,10 @@ import {
   updateAdminUser,
   type AdminFormState,
 } from "./actions";
+import { Field, Input } from "@/components/ui/field";
+import { EditorHeader, EditorMessages, FormSection, SaveButton } from "../_editor";
 
 const initialState: AdminFormState = { status: "idle" };
-
-const TEXT_INPUT =
-  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
 
 const ROLE_HINTS: Record<(typeof adminRoles)[number], string> = {
   super_admin: "Akses penuh, termasuk mengelola admin lain.",
@@ -35,20 +32,6 @@ interface EditorFormProps {
   successMessage?: string;
 }
 
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      <Save size={16} />
-      {pending ? "Menyimpan..." : label}
-    </button>
-  );
-}
-
 export function EditorForm({
   mode,
   user,
@@ -61,70 +44,35 @@ export function EditorForm({
     <form action={formAction}>
       {user && <input type="hidden" name="id" value={user.id} />}
 
-      <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            <Link
-              href="/admin/settings"
-              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft size={14} /> Kembali
-            </Link>
-            <span className="text-gray-300 select-none">·</span>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-              {mode === "create" ? "Admin Baru" : "Edit Admin"}
-            </span>
-          </div>
-          <SubmitButton
-            label={mode === "create" ? "Buat Admin" : "Simpan Perubahan"}
-          />
-        </div>
-      </header>
+      <EditorHeader
+        backHref="/admin/settings"
+        label={mode === "create" ? "Admin Baru" : "Edit Admin"}
+      >
+        <SaveButton
+          label={mode === "create" ? "Buat Admin" : "Simpan Perubahan"}
+        />
+      </EditorHeader>
 
       <div className="max-w-4xl px-6 md:px-10 pt-6 pb-12">
-        {(state.status === "error" && state.message) ||
-        (state.status === "success" && state.message) ||
-        (successMessage &&
-          state.status !== "error" &&
-          state.status !== "success") ? (
-          <div className="mb-5">
-            {state.status === "error" && state.message && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                {state.message}
-              </div>
-            )}
-            {state.status === "success" && state.message && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                {state.message}
-              </div>
-            )}
-            {successMessage &&
-              state.status !== "error" &&
-              state.status !== "success" && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                  {successMessage}
-                </div>
-              )}
-          </div>
-        ) : null}
+        <EditorMessages state={state} successMessage={successMessage} />
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 space-y-6">
-          <Section
+          <FormSection
             title="Identitas"
             description="Email yang dipakai untuk login admin. Bisa dipakai untuk login Google atau email + password."
           >
             <Field
               label="Email"
-              name="email"
+              id="email"
               required={mode === "create"}
-              errors={state.fieldErrors?.email}
+              error={state.fieldErrors?.email?.[0]}
               hint={
                 mode === "edit"
                   ? "Email tidak dapat diubah setelah admin dibuat."
                   : "Gunakan email yang aktif untuk login."
               }
             >
-              <input
+              <Input
                 type="email"
                 id="email"
                 name="email"
@@ -132,35 +80,34 @@ export function EditorForm({
                 readOnly={mode === "edit"}
                 defaultValue={user?.email ?? ""}
                 placeholder="nama@contoh.com"
-                className={`${TEXT_INPUT} ${mode === "edit" ? "bg-gray-50 cursor-not-allowed" : ""}`}
+                className={`${mode === "edit" ? "bg-gray-50 cursor-not-allowed" : ""}`}
               />
             </Field>
             <Field
               label="Nama"
-              name="name"
-              errors={state.fieldErrors?.name}
+              id="name"
+              error={state.fieldErrors?.name?.[0]}
               hint="Opsional. Muncul sebagai pengirim di log aktivitas."
             >
-              <input
+              <Input
                 type="text"
                 id="name"
                 name="name"
                 defaultValue={user?.name ?? ""}
                 placeholder="Contoh: Ahmad Fadillah"
-                className={TEXT_INPUT}
               />
             </Field>
             <Field
               label="Password"
-              name="password"
-              errors={state.fieldErrors?.password}
+              id="password"
+              error={state.fieldErrors?.password?.[0]}
               hint={
                 mode === "edit"
                   ? "Kosongkan untuk tidak mengubah. Admin yang login lewat Google tidak perlu password."
                   : "Opsional, hanya jika admin ingin login email + password. Admin Google bisa dikosongkan."
               }
             >
-              <input
+              <Input
                 type="password"
                 id="password"
                 name="password"
@@ -170,26 +117,25 @@ export function EditorForm({
                     ? "Kosongkan untuk tidak mengubah"
                     : "Password admin (opsional, hanya jika admin ingin login email + password)"
                 }
-                className={TEXT_INPUT}
               />
             </Field>
-          </Section>
+          </FormSection>
 
-          <Section
+          <FormSection
             title="Peran"
             description="Menentukan apa saja yang bisa diakses oleh admin ini."
           >
-            <Field
+            <Field group
               label="Peran"
-              name="role"
+              id="role"
               required
-              errors={state.fieldErrors?.role}
+              error={state.fieldErrors?.role?.[0]}
             >
               <div className="space-y-2">
                 {adminRoles.map((role) => (
                   <label
                     key={role}
-                    className="flex items-start gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-primary-blue transition-colors has-[:checked]:border-primary-blue has-[:checked]:bg-primary-blue/5"
+                    className="flex items-start gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-primary-blue transition-colors has-[:checked]:border-primary-blue has-[:checked]:bg-primary-blue/5"
                   >
                     <input
                       type="radio"
@@ -213,66 +159,10 @@ export function EditorForm({
                 ))}
               </div>
             </Field>
-          </Section>
+          </FormSection>
         </div>
       </div>
     </form>
   );
 }
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-      <header className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-          {title}
-        </h2>
-        {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
-        )}
-      </header>
-      <div className="space-y-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  name,
-  required,
-  errors,
-  hint,
-  children,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-  errors?: string[];
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-2"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && !errors?.length && (
-        <p className="text-xs text-gray-500 mt-1">{hint}</p>
-      )}
-      {errors?.[0] && <p className="text-xs text-red-600 mt-1">{errors[0]}</p>}
-    </div>
-  );
-}

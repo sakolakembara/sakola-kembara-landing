@@ -367,7 +367,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 
 | Component | Level | Use |
 | --- | --- | --- |
-| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `white-on-navy` · `subtle` · `neutral`. `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
+| `Button` | atom | `variant`: `primary` · `outline` · `outline-on-navy` · `yellow-on-navy` · `white-on-navy` · `subtle` · `neutral` · `danger` (destructive, irreversible: *Cabut Penerimaan*). `size`: `sm` (40px, desktop header only) · `md` (44px, default) · `lg` (big CTA). `fullWidth`. With `href` it renders a link: `next/link` for app routes, new tab for external URLs, plain `<a>` for files (any path ending in an extension, e.g. `/reports/….pdf`), mail/tel and downloads (`linkKind`) |
 | `buttonVariants` | style | The same classes for a CTA inside a card that is already one link: `<span className={buttonVariants({ fullWidth: true, className: "group-hover:bg-primary-blue-dark" })}>` |
 | `Eyebrow` | atom | `tone`: `light` (blue text) · `dark` (yellow text, for navy) |
 | `Heading` | atom | `level`: `display` · `page` · `article` · `section` · `subsection` · `panel` · `card` (D3 scale). Sets the default element (h1/h2/h3); `as` overrides it. Color is up to the caller |
@@ -381,6 +381,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `Input` · `Textarea` · `Select` | atoms | The form controls; inside a `Field` they are labelled automatically. `size="sm"` (40px, 14px) only for the filter rows above admin tables |
 | `TableCard` · `Table` · `THead` · `Th` · `TBody` · `Td` | molecule | Admin data tables: white card, sideways scroll on phones, uppercase column labels, `px-4 py-3` cells |
 | `AdminPageHeader` | organism (`app/(admin)/admin/_page-header.tsx`) | `title`, `overline`, `actions`, description as children. Admin-only |
+| `EditorHeader` · `SaveButton` · `EditorMessages` · `FormSection` | admin editor parts (`app/(admin)/admin/_editor.tsx`) | The sticky top bar of an editor (back link, label, `meta`, actions), its save button, the save-result banners, and the titled field groups |
 | `Alert` | atom | `tone`: `danger` · `success` · `warning` · `info`. Message banner in the status colors |
 
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
@@ -398,6 +399,8 @@ Layout (SAKEM-041): `Navbar`, `Footer`, `AuthNavButton` and `AnnouncementStrip` 
 Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. The student registration wizard (`/portal/daftar`, SAKEM-043) uses the same `Field` and controls in every step, `Field group` for its radio-card questions, `Alert` for its notices and submit error, and lg `Button`s without arrows; its closed-batch and success screens use `Eyebrow` and `Heading`. Kept inline there: the intro's program card and amber notices, the document-step notice, the organisation add/remove controls, the review's *Ubah* links and the WhatsApp button on the success screen.
 
 Admin lists (SAKEM-044): every admin list page (and the headers of the dashboard and detail pages) uses `AdminPageHeader`, `Alert` for its flash messages, the `Table` parts, `Tag` hues for every category/status pill, `Button` for the header action, and `size="sm"` controls with a `sm` `Button` in its filter row. The admin title is the `subsection` heading level (24px on phones, 30px from `md`). Next: the admin editor forms (phase 5b), then the dashboard, detail pages and student portal (phase 5c).
+
+Admin editors (SAKEM-045): the eight editor forms (blog, team, reports, resources, announcements, shortlinks, settings, batches) and the application review form use `EditorHeader`, `SaveButton`, `EditorMessages`, `FormSection` (the blog keeps its own section helper for its tab panels), `Field` (`group` for radio-card questions) and the standard 48px controls; the team history rows use `size="sm"`. Selectable cards (severity, role, content type, the "Aktifkan" checkbox rows) are `rounded-xl` like the inputs. Upload buttons are `neutral` Buttons instead of black.
 
 **Standards decided, applied as each page is migrated:**
 

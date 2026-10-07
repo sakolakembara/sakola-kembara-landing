@@ -1,9 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
-import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+
 import {
   announcementSeverity,
   type Announcement,
@@ -14,6 +12,8 @@ import {
   updateAnnouncement,
   type AnnouncementFormState,
 } from "./actions";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { EditorHeader, EditorMessages, FormSection, SaveButton } from "../_editor";
 
 const initialState: AnnouncementFormState = { status: "idle" };
 
@@ -34,23 +34,6 @@ const SEVERITY_HINT: Record<AnnouncementSeverity, string> = {
   warning: "Kuning — perhatian, tapi tidak mendesak",
   urgent: "Merah — perlu segera diperhatikan",
 };
-
-const TEXT_INPUT =
-  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none";
-
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      <Save size={16} />
-      {pending ? "Menyimpan..." : label}
-    </button>
-  );
-}
 
 function toLocalDatetimeValue(d: Date | null | undefined): string {
   if (!d) return "";
@@ -74,99 +57,62 @@ export function EditorForm({
     <form action={formAction}>
       {announcement && <input type="hidden" name="id" value={announcement.id} />}
 
-      <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            <Link
-              href="/admin/announcements"
-              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft size={14} /> Kembali
-            </Link>
-            <span className="text-gray-300 select-none">·</span>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-              {mode === "create" ? "Pengumuman Baru" : "Edit Pengumuman"}
-            </span>
-          </div>
-          <SubmitButton
-            label={mode === "create" ? "Buat Pengumuman" : "Simpan Perubahan"}
-          />
-        </div>
-      </header>
+      <EditorHeader
+        backHref="/admin/announcements"
+        label={mode === "create" ? "Pengumuman Baru" : "Edit Pengumuman"}
+      >
+        <SaveButton
+          label={mode === "create" ? "Buat Pengumuman" : "Simpan Perubahan"}
+        />
+      </EditorHeader>
 
       <div className="max-w-4xl px-6 md:px-10 pt-6 pb-12">
-        {(state.status === "error" && state.message) ||
-        (state.status === "success" && state.message) ||
-        (successMessage &&
-          state.status !== "error" &&
-          state.status !== "success") ? (
-          <div className="mb-5">
-            {state.status === "error" && state.message && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                {state.message}
-              </div>
-            )}
-            {state.status === "success" && state.message && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                {state.message}
-              </div>
-            )}
-            {successMessage &&
-              state.status !== "error" &&
-              state.status !== "success" && (
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-                  {successMessage}
-                </div>
-              )}
-          </div>
-        ) : null}
+        <EditorMessages state={state} successMessage={successMessage} />
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 space-y-6">
-          <Section title="Konten" description="Pesan yang muncul di strip pengumuman.">
+          <FormSection title="Konten" description="Pesan yang muncul di strip pengumuman.">
             <Field
               label="Judul"
-              name="title"
+              id="title"
               required
-              errors={state.fieldErrors?.title}
+              error={state.fieldErrors?.title?.[0]}
             >
-              <input
+              <Input
                 type="text"
                 id="title"
                 name="title"
                 required
                 defaultValue={announcement?.title ?? ""}
                 placeholder="Contoh: Pendaftaran Angkatan 2026 Dibuka"
-                className={TEXT_INPUT}
               />
             </Field>
             <Field
               label="Isi"
-              name="body"
+              id="body"
               required
-              errors={state.fieldErrors?.body}
+              error={state.fieldErrors?.body?.[0]}
               hint="Pesan singkat (5-500 karakter)."
             >
-              <textarea
+              <Textarea
                 id="body"
                 name="body"
                 required
                 rows={3}
                 defaultValue={announcement?.body ?? ""}
                 placeholder="Penjelasan singkat..."
-                className={`${TEXT_INPUT} resize-none`}
               />
             </Field>
-          </Section>
+          </FormSection>
 
-          <Section
+          <FormSection
             title="Tampilan"
             description="Warna dan ikon strip menyesuaikan severity."
           >
-            <Field
+            <Field group
               label="Severity"
-              name="severity"
+              id="severity"
               required
-              errors={state.fieldErrors?.severity}
+              error={state.fieldErrors?.severity?.[0]}
             >
               <div className="grid grid-cols-3 gap-2">
                 {announcementSeverity.map((s) => {
@@ -179,7 +125,7 @@ export function EditorForm({
                   return (
                     <label
                       key={s}
-                      className={`relative cursor-pointer px-4 py-3 rounded-lg border-2 transition-all ${
+                      className={`relative cursor-pointer px-4 py-3 rounded-xl border-2 transition-all ${
                         severity === s
                           ? `ring-2 ${ringClass}`
                           : "border-gray-200 hover:border-gray-300 bg-white"
@@ -208,43 +154,41 @@ export function EditorForm({
             <div className="grid md:grid-cols-2 gap-5">
               <Field
                 label="Label CTA"
-                name="ctaLabel"
-                errors={state.fieldErrors?.ctaLabel}
+                id="ctaLabel"
+                error={state.fieldErrors?.ctaLabel?.[0]}
                 hint="Kosongkan jika tidak ada tombol."
               >
-                <input
+                <Input
                   type="text"
                   id="ctaLabel"
                   name="ctaLabel"
                   defaultValue={announcement?.ctaLabel ?? ""}
                   placeholder="Contoh: Daftar Sekarang"
-                  className={TEXT_INPUT}
                 />
               </Field>
               <Field
                 label="URL CTA"
-                name="ctaUrl"
-                errors={state.fieldErrors?.ctaUrl}
+                id="ctaUrl"
+                error={state.fieldErrors?.ctaUrl?.[0]}
                 hint="/gabung-siswa atau URL lengkap (https://...)."
               >
-                <input
+                <Input
                   type="text"
                   id="ctaUrl"
                   name="ctaUrl"
                   defaultValue={announcement?.ctaUrl ?? ""}
                   placeholder="/gabung-siswa"
-                  className={TEXT_INPUT}
                 />
               </Field>
             </div>
-          </Section>
+          </FormSection>
 
-          <Section
+          <FormSection
             title="Jadwal"
             description="Kapan pengumuman aktif tampil di publik."
           >
             <div>
-              <label className="flex items-center gap-3 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
+              <label className="flex items-center gap-3 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition-colors">
                 <input
                   type="checkbox"
                   name="active"
@@ -261,93 +205,35 @@ export function EditorForm({
             <div className="grid md:grid-cols-2 gap-5">
               <Field
                 label="Mulai (opsional)"
-                name="startsAt"
-                errors={state.fieldErrors?.startsAt}
+                id="startsAt"
+                error={state.fieldErrors?.startsAt?.[0]}
                 hint="Kosongkan untuk segera tampil saat aktif."
               >
-                <input
+                <Input
                   type="datetime-local"
                   id="startsAt"
                   name="startsAt"
                   defaultValue={toLocalDatetimeValue(announcement?.startsAt)}
-                  className={TEXT_INPUT}
                 />
               </Field>
               <Field
                 label="Berakhir (opsional)"
-                name="endsAt"
-                errors={state.fieldErrors?.endsAt}
+                id="endsAt"
+                error={state.fieldErrors?.endsAt?.[0]}
                 hint="Kosongkan untuk tampil tanpa batas waktu."
               >
-                <input
+                <Input
                   type="datetime-local"
                   id="endsAt"
                   name="endsAt"
                   defaultValue={toLocalDatetimeValue(announcement?.endsAt)}
-                  className={TEXT_INPUT}
                 />
               </Field>
             </div>
-          </Section>
+          </FormSection>
         </div>
       </div>
     </form>
   );
 }
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-      <header className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-          {title}
-        </h2>
-        {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
-        )}
-      </header>
-      <div className="space-y-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  name,
-  required,
-  errors,
-  hint,
-  children,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-  errors?: string[];
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-2"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && !errors?.length && (
-        <p className="text-xs text-gray-500 mt-1">{hint}</p>
-      )}
-      {errors?.[0] && <p className="text-xs text-red-600 mt-1">{errors[0]}</p>}
-    </div>
-  );
-}

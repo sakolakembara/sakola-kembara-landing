@@ -1,13 +1,9 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
-import Link from "next/link";
 import {
-  ArrowLeft,
   FileText,
   Link as LinkIcon,
-  Save,
   Type,
   Upload,
 } from "lucide-react";
@@ -26,25 +22,11 @@ import {
   updateResource,
   type ResourceFormState,
 } from "./actions";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { EditorHeader, EditorMessages, FormSection, SaveButton } from "../_editor";
+import { Button } from "@/components/ui/button";
 
 const initialState: ResourceFormState = { status: "idle" };
-
-const TEXT_INPUT =
-  "w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm";
-
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-    >
-      <Save size={16} />
-      {pending ? "Menyimpan…" : label}
-    </button>
-  );
-}
 
 const CONTENT_TYPE_META: Record<
   ResourceContentType,
@@ -95,103 +77,81 @@ export function EditorForm({
       <input type="hidden" name="contentType" value={contentType} />
       {removeFile && <input type="hidden" name="removeFile" value="on" />}
 
-      <header className="sticky top-0 z-20 px-6 md:px-10 py-3 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            <Link
-              href="/admin/resources"
-              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft size={14} /> Kembali
-            </Link>
-            <span className="text-gray-300 select-none">·</span>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-              {mode === "create" ? "Berkas Baru" : "Edit Berkas"}
-            </span>
-          </div>
-          <SubmitButton
-            label={mode === "create" ? "Buat Berkas" : "Simpan Perubahan"}
-          />
-        </div>
-      </header>
+      <EditorHeader
+        backHref="/admin/resources"
+        label={mode === "create" ? "Berkas Baru" : "Edit Berkas"}
+      >
+        <SaveButton
+          label={mode === "create" ? "Buat Berkas" : "Simpan Perubahan"}
+        />
+      </EditorHeader>
 
       <div className="max-w-4xl px-6 md:px-10 pt-6 pb-12">
-        {state.status === "error" && state.message && (
-          <div className="mb-5 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-            {state.message}
-          </div>
-        )}
-        {state.status === "success" && state.message && (
-          <div className="mb-5 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-            {state.message}
-          </div>
-        )}
+        <EditorMessages state={state} />
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 space-y-6">
-          <Section title="Metadata">
+          <FormSection title="Metadata">
             <Field
               label="Judul"
-              name="title"
+              id="title"
               required
-              errors={state.fieldErrors?.title}
+              error={state.fieldErrors?.title?.[0]}
             >
-              <input
+              <Input
                 id="title"
                 type="text"
                 name="title"
                 required
                 defaultValue={resource?.title ?? ""}
                 placeholder="Contoh: Panduan Pendaftaran Sakola Kembara Gen 6"
-                className={TEXT_INPUT}
               />
             </Field>
 
             <Field
               label="Deskripsi"
-              name="description"
-              errors={state.fieldErrors?.description}
+              id="description"
+              error={state.fieldErrors?.description?.[0]}
               hint="Muncul di bawah judul di /gabung-siswa/docs. Boleh dikosongkan."
             >
-              <textarea
+              <Textarea
                 id="description"
                 name="description"
                 rows={3}
                 defaultValue={resource?.description ?? ""}
                 placeholder="Ringkas isi atau instruksi penggunaan berkas ini."
-                className={`${TEXT_INPUT} resize-y min-h-[80px]`}
+                className="resize-y min-h-[80px]"
               />
             </Field>
 
             <div className="grid md:grid-cols-2 gap-5">
               <Field
                 label="Kategori"
-                name="category"
+                id="category"
                 required
-                errors={state.fieldErrors?.category}
+                error={state.fieldErrors?.category?.[0]}
                 hint="Menentukan section di halaman /gabung-siswa/docs."
               >
-                <select
+                <Select
                   id="category"
                   name="category"
                   required
                   defaultValue={resource?.category ?? "berkas-pendaftaran"}
-                  className={`${TEXT_INPUT} bg-white`}
                 >
                   {RESOURCE_CATEGORY_ORDER.map((c) => (
                     <option key={c} value={c}>
                       {RESOURCE_CATEGORY_LABEL[c]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field
                 label="Urutan Tampil"
-                name="displayOrder"
+                id="displayOrder"
                 required
-                errors={state.fieldErrors?.displayOrder}
+                error={state.fieldErrors?.displayOrder?.[0]}
                 hint="Lebih kecil = lebih dulu di dalam kategori."
               >
-                <input
+                <Input
                   id="displayOrder"
                   type="number"
                   name="displayOrder"
@@ -199,13 +159,12 @@ export function EditorForm({
                   min={0}
                   max={9999}
                   defaultValue={resource?.displayOrder ?? 100}
-                  className={TEXT_INPUT}
                 />
               </Field>
             </div>
-          </Section>
+          </FormSection>
 
-          <Section
+          <FormSection
             title="Tipe Konten"
             description="Setiap berkas hanya salah satu tipe: file, link, atau teks."
           >
@@ -216,7 +175,7 @@ export function EditorForm({
                 return (
                   <label
                     key={t}
-                    className={`flex flex-col gap-2 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex flex-col gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
                       active
                         ? "border-primary-blue bg-primary-blue/5"
                         : "border-gray-200 hover:border-gray-300"
@@ -250,10 +209,10 @@ export function EditorForm({
                 );
               })}
             </div>
-          </Section>
+          </FormSection>
 
           {contentType === "file" && (
-            <Section title="File">
+            <FormSection title="File">
               {showExistingFile && (
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
                   <FileText size={18} className="text-gray-500 shrink-0" />
@@ -294,10 +253,10 @@ export function EditorForm({
                 className="hidden"
               />
               <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
+                <Button
+                  variant="neutral"
+                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 border-2 border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-semibold rounded-lg transition-colors"
                 >
                   <Upload size={14} />
                   {selectedFile
@@ -305,7 +264,7 @@ export function EditorForm({
                     : resource?.filePath
                       ? "Upload File Pengganti"
                       : "Pilih File"}
-                </button>
+                </Button>
                 {selectedFile && (
                   <>
                     <span className="text-xs text-gray-600 font-mono truncate max-w-[280px]">
@@ -331,133 +290,74 @@ export function EditorForm({
                 </p>
               )}
               <p className="text-xs text-gray-500 mt-2">Maksimal 25 MB.</p>
-            </Section>
+            </FormSection>
           )}
 
           {contentType === "url" && (
-            <Section title="Link Eksternal">
+            <FormSection title="Link Eksternal">
               <Field
                 label="URL"
-                name="externalUrl"
+                id="externalUrl"
                 required
-                errors={state.fieldErrors?.externalUrl}
+                error={state.fieldErrors?.externalUrl?.[0]}
                 hint="Contoh: https://drive.google.com/…, https://youtube.com/…"
               >
-                <input
+                <Input
                   id="externalUrl"
                   type="url"
                   name="externalUrl"
                   defaultValue={resource?.externalUrl ?? ""}
                   placeholder="https://…"
-                  className={TEXT_INPUT}
                 />
               </Field>
-            </Section>
+            </FormSection>
           )}
 
           {contentType === "text" && (
-            <Section
+            <FormSection
               title="Teks Isi"
               description="Muncul di /gabung-siswa/docs dalam blok kode dengan tombol Salin."
             >
               <Field
                 label="Teks"
-                name="bodyText"
+                id="bodyText"
                 required
-                errors={state.fieldErrors?.bodyText}
+                error={state.fieldErrors?.bodyText?.[0]}
                 hint="Contoh: caption Instagram, template pesan broadcast."
               >
-                <textarea
+                <Textarea
                   id="bodyText"
                   name="bodyText"
                   rows={10}
                   defaultValue={resource?.bodyText ?? ""}
                   placeholder="Tulis teks yang ingin bisa disalin calon siswa…"
-                  className={`${TEXT_INPUT} resize-y min-h-[200px] font-mono text-xs`}
+                  className="resize-y min-h-[200px] font-mono text-xs"
                 />
               </Field>
-            </Section>
+            </FormSection>
           )}
 
-          <Section
+          <FormSection
             title="Catatan Internal"
             description="Tidak ditampilkan ke publik. Untuk keperluan tim admin saja."
           >
             <Field
               label="Catatan"
-              name="notes"
-              errors={state.fieldErrors?.notes}
+              id="notes"
+              error={state.fieldErrors?.notes?.[0]}
             >
-              <input
+              <Input
                 id="notes"
                 type="text"
                 name="notes"
                 defaultValue={resource?.notes ?? ""}
                 placeholder="Sumber asli, kredit desain, dsb."
-                className={TEXT_INPUT}
               />
             </Field>
-          </Section>
+          </FormSection>
         </div>
       </div>
     </form>
-  );
-}
-
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-      <header className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-          {title}
-        </h2>
-        {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
-        )}
-      </header>
-      <div className="space-y-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({
-  label,
-  name,
-  required,
-  errors,
-  hint,
-  children,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-  errors?: string[];
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-2"
-      >
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && !errors?.length && (
-        <p className="text-xs text-gray-500 mt-1">{hint}</p>
-      )}
-      {errors?.[0] && <p className="text-xs text-red-600 mt-1">{errors[0]}</p>}
-    </div>
   );
 }
 

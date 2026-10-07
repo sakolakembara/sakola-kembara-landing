@@ -19,6 +19,8 @@ export const buttonVariants = cva(
         "yellow-on-navy":
           "bg-secondary-yellow text-gray-900 hover:bg-secondary-yellow/90",
         "white-on-navy": "bg-white text-primary-blue hover:bg-gray-50",
+        /** Destructive and irreversible, e.g. revoking an acceptance. */
+        danger: "bg-red-600 text-white hover:bg-red-700",
         subtle: "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-primary-blue",
         neutral:
           "border border-gray-200 text-gray-700 hover:border-primary-blue/40 hover:bg-primary-blue/5 hover:text-primary-blue",
