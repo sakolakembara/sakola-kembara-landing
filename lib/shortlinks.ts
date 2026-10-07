@@ -35,6 +35,7 @@ export const RESERVED_SLUGS = new Set([
   "laporan",
   "program",
   "tim",
+  "design", // component catalog, only enabled on previews (DESIGN_CATALOG=1)
   // Generated routes
   "robots",
   "sitemap",

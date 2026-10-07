@@ -14,6 +14,7 @@ Defined under `app/` (Next.js App Router):
 | `/kontak` | `app/kontak/page.tsx` | Contact form + info + socials |
 | `/program/[id]` | `app/program/[id]/page.tsx` | Per-phase program detail (Pra/Pembinaan/Pasca) — client component |
 | `/tim` | `app/tim/page.tsx` | Team grid + volunteer CTA |
+| `/design` | `app/design/page.tsx` | Design-system component catalog (SAKEM-034). Renders only when `DESIGN_CATALOG=1` (previews); otherwise 404. `noindex`, reserved as a shortlink slug |
 
 There is **no** `/tentang-kami`, `/siswa`, `/laporan`, or `/team`.
 

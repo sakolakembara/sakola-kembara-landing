@@ -25,6 +25,7 @@
     "@sentry/nextjs": "^10.70.0",
     "@types/leaflet": "^1.9.21",
     "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.27.1",
     "gray-matter": "^4.0.3",
@@ -41,6 +42,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.19.0",
+    "tailwind-merge": "^3.7.0",
     "zod": "^3.23.8"
   },
   "overrides": {
