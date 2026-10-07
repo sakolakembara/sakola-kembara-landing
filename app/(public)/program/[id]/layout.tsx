@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { programs } from "@/lib/data";
-import { buildPageMetadata, jsonLdScript, programJsonLd } from "@/lib/seo";
+import { buildPageMetadata, jsonLdScript, pageTitle, programJsonLd } from "@/lib/seo";
 
 interface ProgramLayoutProps {
   params: Promise<{ id: string }>;
@@ -15,7 +15,7 @@ export async function generateMetadata({
   const { id } = await params;
   const program = programs.find((p) => p.id === id);
   if (!program) {
-    return { title: "Program tidak ditemukan" };
+    return { title: pageTitle("Program tidak ditemukan") };
   }
   return buildPageMetadata({
     title: `Program ${program.title}`,

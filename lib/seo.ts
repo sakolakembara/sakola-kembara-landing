@@ -3,6 +3,19 @@ import type { Metadata } from "next";
 // Canonical site identity — single source of truth for SEO surfaces.
 export const SITE_URL = "https://sakolakembara.org";
 export const SITE_NAME = "Sakola Kembara";
+
+/** How every page title reads in the browser tab: "<page> | Sakola Kembara". */
+export const TITLE_TEMPLATE = `%s | ${SITE_NAME}`;
+
+/**
+ * A page title with the site suffix, as an absolute title. Next drops the
+ * root layout's title template for pages under a layout that sets its own
+ * title (a blog post under /blog, /gabung-siswa/docs under /gabung-siswa),
+ * so the suffix is added here instead of being left to the template.
+ */
+export function pageTitle(title: string): { absolute: string } {
+  return { absolute: TITLE_TEMPLATE.replace("%s", title) };
+}
 export const LEGAL_NAME = "Yayasan Sakola Kembara Indonesia";
 export const SITE_TAGLINE = "Pendidikan Untuk Semua";
 
@@ -52,7 +65,7 @@ export function buildPageMetadata({
 }): Metadata {
   const images = ogImage ? [{ url: ogImage }] : [{ url: DEFAULT_OG_IMAGE }];
   return {
-    title,
+    title: pageTitle(title),
     description,
     alternates: { canonical: path },
     openGraph: {

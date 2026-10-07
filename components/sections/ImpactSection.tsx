@@ -143,7 +143,7 @@ export default function ImpactSection() {
               onClick={prevSlide}
               disabled={totalSlides <= 1}
               className="hidden sm:flex absolute top-1/2 -translate-y-1/2 left-2 md:-left-5 z-20 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-blue hover:text-primary-blue hover:scale-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              aria-label="Previous testimonials"
+              aria-label="Testimoni sebelumnya"
             >
               <ChevronLeft size={22} />
             </button>
@@ -153,7 +153,7 @@ export default function ImpactSection() {
               onClick={nextSlide}
               disabled={totalSlides <= 1}
               className="hidden sm:flex absolute top-1/2 -translate-y-1/2 right-2 md:-right-5 z-20 w-11 h-11 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-blue hover:text-primary-blue hover:scale-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              aria-label="Next testimonials"
+              aria-label="Testimoni berikutnya"
             >
               <ChevronRight size={22} />
             </button>
@@ -235,7 +235,7 @@ export default function ImpactSection() {
                         ? "bg-primary-blue w-8"
                         : "bg-gray-300 hover:bg-gray-400 w-2.5"
                     }`}
-                    aria-label={`Go to slide ${index + 1}`}
+                    aria-label={`Tampilkan testimoni ${index + 1}`}
                   />
                 ))}
               </div>

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Heading } from "@/components/ui/heading";
+import { pageTitle } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Halaman tidak ditemukan",
+  title: pageTitle("Halaman tidak ditemukan"),
 };
 
 /**

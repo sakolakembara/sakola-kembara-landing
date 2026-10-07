@@ -37,7 +37,7 @@ export const PhoneMenuOpen: Story = {
   globals: { viewport: { value: "mobile", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Toggle menu" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Buka menu" }));
     await expect(canvas.getAllByRole("link", { name: "Masuk" }).length).toBeGreaterThan(0);
   },
 };

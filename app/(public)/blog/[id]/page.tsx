@@ -13,7 +13,7 @@ import {
   getBlogArticlesSorted,
   cleanExcerpt,
 } from "@/lib/blog";
-import { articleJsonLd, buildPageMetadata, jsonLdScript } from "@/lib/seo";
+import { articleJsonLd, buildPageMetadata, jsonLdScript, pageTitle } from "@/lib/seo";
 
 interface BlogDetailPageProps {
   params: Promise<{ id: string }>;
@@ -32,7 +32,7 @@ export async function generateMetadata({
   const { id } = await params;
   const article = await getBlogArticleBySlug(id);
   if (!article) {
-    return { title: "Artikel tidak ditemukan" };
+    return { title: pageTitle("Artikel tidak ditemukan") };
   }
   return buildPageMetadata({
     title: article.title,
