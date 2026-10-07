@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { TableHint } from "@/app/(admin)/admin/_table-hint";
 import { Table, TableCard, TBody, Td, Th, THead } from "./table";
 import { Tag } from "./tag";
 
@@ -17,6 +18,7 @@ const meta = {
   render: () => (
     <TableCard>
       <Table>
+        <TableHint />
         <THead>
           <tr>
             <Th>Nama</Th>
@@ -56,7 +58,10 @@ type Story = StoryObj<typeof meta>;
 /** Admin data tables (`TableCard`, `Table`, `THead`, `Th`, `TBody`, `Td`). */
 export const Default: Story = {};
 
-/** On a phone every column stays; the table scrolls sideways inside its card. */
+/**
+ * On a phone every column stays; the table scrolls sideways inside its card,
+ * and the admin `TableHint` caption says so (hidden from `md` up).
+ */
 export const OnPhone: Story = {
   globals: { viewport: { value: "mobile", isRotated: false } },
 };
