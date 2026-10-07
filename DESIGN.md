@@ -224,11 +224,13 @@ A shared navy hero (`<SectionHeader tone="dark" as="p">`: *Program Kami* + *Apa 
 Build forms from `components/ui/field.tsx` and `alert.tsx` (SAKEM-042):
 
 - `<form className="space-y-5">`.
-- `<Field id label required hint error labelAside>` wraps one control: label `block text-sm font-medium text-gray-700 mb-2`, required asterisk in `text-danger-fg` (hidden from screen readers; the control keeps its own `required`), then a hint (`text-xs text-gray-500 mt-1.5`) or an error (`text-xs text-danger-fg mt-1.5`). It gives the control its id, `aria-describedby` and `aria-invalid`.
+- `<Field id label required hint error labelAside>` wraps one control: label `block text-sm font-medium text-gray-700 mb-2`, required asterisk in `text-danger-fg` (hidden from screen readers; the control keeps its own `required`), then a hint (`text-xs text-gray-500 mt-1.5`) or an error (`text-xs text-danger-fg mt-1.5`). It gives the control its id (generated when `id` is left out), `aria-describedby` and `aria-invalid`.
+- `<Field group>` is for a set of controls (radio cards, yes/no): a `<fieldset>` whose `<legend>` carries the label, with the hint or error describing the set.
+- Radio cards (the wizard's `RadioGroup`, `YesNoToggle`, `RadioGroupWithOther` in `app/(portal)/portal/daftar/_shared.tsx`): `px-4 py-2.5 border-2 rounded-xl text-sm`, gray border, filled `border-primary-blue bg-primary-blue/5 text-primary-blue font-semibold` when chosen.
 - `<Input>`, `<Textarea>`, `<Select>`: `w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none`, 16px text (smaller text makes iOS zoom in on focus). Textareas don't resize unless given `resize-y`; selects are white.
 - Placeholders are example-style (`email@example.com`), not instructions.
-- Banners: `<Alert tone>` (`danger` by default, `success`, `warning`, `info`) in the status colors, `rounded-lg px-4 py-3 text-sm`. Errors use `role="alert"`, the rest `role="status"`.
-- Submit: `<Button type="submit" size="lg">`, with a leading icon where one names the action. In the narrow auth cards it is `fullWidth`.
+- Banners: `<Alert tone>` (`danger` by default, `success`, `warning`, `info`) in the status colors, `rounded-lg px-4 py-3 text-sm leading-relaxed`. Errors use `role="alert"`, the rest `role="status"`.
+- Submit: `<Button type="submit" size="lg">`, with a leading icon where one names the action. In the narrow auth cards it is `fullWidth`. The wizard's *Sebelumnya* / *Selanjutnya* / *Kirim Pendaftaran* row is lg too (`neutral` for back).
 
 ### Modals
 
@@ -391,7 +393,7 @@ Gabung Siswa (SAKEM-040): `/gabung-siswa` and `/gabung-siswa/docs` use `Containe
 
 Layout (SAKEM-041): `Navbar`, `Footer`, `AuthNavButton` and `AnnouncementStrip` live in `components/layout/` and use `Container`; `SocialLinks` is a molecule in `components/ui/`. Kept as they are: the nav links, the footer column labels, the announcement strip's per-severity colors and its pill CTA (an exception to "no pill buttons", admin-configured), and the 36px social icons.
 
-Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. The student registration wizard (`/portal/daftar`) is next (phase 4b).
+Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. The student registration wizard (`/portal/daftar`, SAKEM-043) uses the same `Field` and controls in every step, `Field group` for its radio-card questions, `Alert` for its notices and submit error, and lg `Button`s without arrows; its closed-batch and success screens use `Eyebrow` and `Heading`. Kept inline there: the intro's program card and amber notices, the document-step notice, the organisation add/remove controls, the review's *Ubah* links and the WhatsApp button on the success screen.
 
 **Standards decided, applied as each page is migrated:**
 

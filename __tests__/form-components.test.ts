@@ -37,6 +37,17 @@ describe("Field", () => {
   });
 });
 
+describe("Field group", () => {
+  it("names a set of controls with a legend and describes the set", () => {
+    const html = renderToStaticMarkup(
+      h(Field, { group: true, id: "gender", label: "Jenis Kelamin", error: "Wajib diisi.", children: "…" }),
+    );
+    expect(html).toContain("<fieldset");
+    expect(html).toContain("<legend");
+    expect(html).toContain('aria-describedby="gender-error"');
+  });
+});
+
 describe("Alert", () => {
   it("announces errors immediately and other tones politely", () => {
     expect(renderToStaticMarkup(h(Alert, { children: "Gagal" }))).toContain('role="alert"');

@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, CircleDot, Lock } from "lucide-react";
+import { Check, CircleDot, Lock } from "lucide-react";
 import { z } from "zod";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Heading } from "@/components/ui/heading";
 import {
   STEPS,
   documentsSchema,
@@ -315,22 +320,20 @@ export function Wizard({ batch, user }: WizardProps) {
 
   return (
     <div className="py-8 md:py-12">
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6">
+      {/* px-4 on phones: the form needs the width more than the margin. */}
+      <Container className="px-4 md:px-6">
         <header className="mb-6 md:mb-8">
           <Link
             href="/portal"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-3"
+            className="block w-fit text-sm text-gray-500 hover:text-gray-900 transition-colors mb-3"
           >
-            <ArrowLeft size={14} /> Kembali ke portal
+            Kembali ke portal
           </Link>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary-blue uppercase tracking-wider mb-3">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-            Formulir Pendaftaran · {batch.name}
-          </div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2 leading-tight">
+          <Eyebrow className="mb-3">Formulir Pendaftaran · {batch.name}</Eyebrow>
+          <Heading level="article" className="text-gray-900 mb-2">
             Ceritakan tentang dirimu, {user.name?.split(" ")[0] ?? "Sakemers"}
-          </h1>
-          <p className="text-gray-600 max-w-[720px]">
+          </Heading>
+          <p className="text-gray-600 max-w-[760px]">
             Isi seluruh bagian dengan jujur dan lengkap. Data yang kamu kirim
             akan dijaga kerahasiaannya dan hanya digunakan untuk seleksi.
             Progres kamu tersimpan otomatis di browser ini.
@@ -382,7 +385,7 @@ export function Wizard({ batch, user }: WizardProps) {
                             isCurrent
                               ? "bg-primary-blue text-white"
                               : isVisited
-                                ? "bg-emerald-100 text-emerald-700"
+                                ? "bg-success-bg text-success-fg"
                                 : "bg-gray-100 text-gray-500"
                           }`}
                         >
@@ -442,47 +445,33 @@ export function Wizard({ batch, user }: WizardProps) {
             </div>
 
             {submitState.status === "error" && (
-              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-                {submitState.message}
-              </div>
+              <Alert className="mt-4">{submitState.message}</Alert>
             )}
 
             {/* Nav footer */}
             <div className="mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={goPrev}
-                disabled={stepIdx === 0}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ArrowLeft size={16} />
+              <Button variant="neutral" size="lg" onClick={goPrev} disabled={stepIdx === 0}>
                 Sebelumnya
-              </button>
+              </Button>
               {currentStep.id === "review" ? (
-                <button
-                  type="button"
+                <Button
+                  size="lg"
                   onClick={handleSubmit}
                   disabled={submitState.status === "submitting"}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
                   {submitState.status === "submitting"
                     ? "Mengirim…"
                     : "Kirim Pendaftaran"}
-                </button>
+                </Button>
               ) : (
-                <button
-                  type="button"
-                  onClick={goNext}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
-                >
+                <Button size="lg" onClick={goNext}>
                   Selanjutnya
-                  <ArrowRight size={16} />
-                </button>
+                </Button>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 }

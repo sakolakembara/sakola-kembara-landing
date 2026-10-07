@@ -9,13 +9,8 @@ import {
   type HouseholdValues,
   type StepId,
 } from "@/lib/student-form-types";
-import {
-  Field,
-  RadioGroupWithOther,
-  TEXT_INPUT,
-  YesNoToggle,
-  type FieldErrors,
-} from "../_shared";
+import { Field, Input, Select } from "@/components/ui/field";
+import { RadioGroupWithOther, YesNoToggle, type FieldErrors } from "../_shared";
 import { StepHeader } from "./identity";
 
 type Props = {
@@ -61,7 +56,7 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
       />
 
       {/* Tinggal bersama */}
-      <Field
+      <Field group
         label="Kamu tinggal bersama siapa?"
         required
         hint="Centang keduanya jika masih tinggal dengan ayah dan ibu. Kalau tinggal dengan wali lain, isi kolom 'Lainnya'."
@@ -91,12 +86,11 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
               );
             })}
           </div>
-          <input
+          <Input
             type="text"
             value={livingWithOther ?? ""}
             onChange={(ev) => setLivingWithOther(ev.target.value)}
             placeholder="Lainnya (mis. Nenek, Paman) — kosongkan jika tidak ada"
-            className={TEXT_INPUT}
           />
         </div>
       </Field>
@@ -105,21 +99,20 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
       <FormSection title="Data Ayah">
         <Field
           label="Nama Ayah (sesuai KTP/KK)"
-          htmlFor="fatherName"
+          id="fatherName"
           required
           error={e.fatherName}
         >
-          <input
+          <Input
             id="fatherName"
             type="text"
             value={v.fatherName}
             onChange={(ev) => bind("fatherName")(ev.target.value)}
-            className={TEXT_INPUT}
             data-error={!!e.fatherName}
           />
         </Field>
 
-        <Field
+        <Field group
           label="Pekerjaan Ayah"
           required
           hint='Pilih "Lainnya" hanya jika pekerjaan tidak ada di opsi.'
@@ -150,21 +143,20 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
       <FormSection title="Data Ibu">
         <Field
           label="Nama Ibu (sesuai KTP/KK)"
-          htmlFor="motherName"
+          id="motherName"
           required
           error={e.motherName}
         >
-          <input
+          <Input
             id="motherName"
             type="text"
             value={v.motherName}
             onChange={(ev) => bind("motherName")(ev.target.value)}
-            className={TEXT_INPUT}
             data-error={!!e.motherName}
           />
         </Field>
 
-        <Field
+        <Field group
           label="Pekerjaan Ibu"
           required
           hint='Pilih "Lainnya" hanya jika pekerjaan tidak ada di opsi.'
@@ -193,7 +185,7 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
 
       {/* Anggota keluarga lain yang bekerja */}
       <FormSection title="Anggota Keluarga Lain yang Bekerja (Opsional)">
-        <Field
+        <Field group
           label="Apakah ada anggota keluarga lain (selain ayah dan ibu) yang bekerja?"
           required={false}
         >
@@ -218,7 +210,7 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Anggota 1
             </p>
-            <Field
+            <Field group
               label="Hubungan dengan Kamu"
               required
               error={e.earner1Relation}
@@ -243,7 +235,7 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
             />
 
             <div className="pt-3 border-t border-gray-200">
-              <Field
+              <Field group
                 label="Ada anggota keluarga kedua yang bekerja?"
                 required={false}
               >
@@ -266,7 +258,7 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Anggota 2
                 </p>
-                <Field
+                <Field group
                   label="Hubungan dengan Kamu"
                   required
                   error={e.earner2Relation}
@@ -298,16 +290,16 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
       {/* Jumlah anggota */}
       <Field
         label="Jumlah Anggota Keluarga (termasuk kamu)"
-        htmlFor="familySize"
+        id="familySize"
         required
         hint="Termasuk dirimu, adik/kakak, dan siapa pun yang tinggal serumah atau dinafkahi dari penghasilan keluarga. Tidak mungkin nol."
         error={e.familySize}
       >
-        <select
+        <Select
           id="familySize"
           value={String(v.familySize ?? "")}
           onChange={(ev) => bind("familySize")(Number(ev.target.value) as HouseholdValues["familySize"])}
-          className={`${TEXT_INPUT} bg-white max-w-[200px]`}
+          className="max-w-[200px]"
           data-error={!!e.familySize}
         >
           <option value="">— Pilih —</option>
@@ -316,7 +308,7 @@ export function HouseholdStep({ values, updateStep, errors, clearFieldError }: P
               {n} orang
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
     </div>
   );
@@ -349,7 +341,7 @@ function IncomeField({
   return (
     <Field
       label={label}
-      htmlFor={id}
+      id={id}
       required
       hint={
         <>
@@ -360,13 +352,12 @@ function IncomeField({
       }
       error={error}
     >
-      <input
+      <Input
         id={id}
         type="text"
         inputMode="numeric"
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
-        className={TEXT_INPUT}
         placeholder="1.200.000"
         data-error={!!error}
       />

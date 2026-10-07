@@ -7,7 +7,8 @@ import type {
   MarketingValues,
   StepId,
 } from "@/lib/student-form-types";
-import { Field, TEXT_INPUT, type FieldErrors } from "../_shared";
+import { Field, Input } from "@/components/ui/field";
+import { type FieldErrors } from "../_shared";
 import { StepHeader } from "./identity";
 
 type Props = {
@@ -126,7 +127,7 @@ export function MarketingStep({
 
       <Field
         label="Username Instagram (akun utama, tidak boleh diprivat)"
-        htmlFor="instagramUsername"
+        id="instagramUsername"
         required
         hint="Tulis tanpa @ di depan. Kami akan verifikasi bukti follow, twibbon, dan story yang kamu upload di akun ini."
         error={e.instagramUsername}
@@ -137,12 +138,12 @@ export function MarketingStep({
             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
             aria-hidden
           />
-          <input
+          <Input
             id="instagramUsername"
             type="text"
             value={v.instagramUsername}
             onChange={(ev) => bind("instagramUsername")(ev.target.value)}
-            className={`${TEXT_INPUT} pl-9`}
+            className="pl-9"
             placeholder="username_kamu"
             autoComplete="off"
             data-error={!!e.instagramUsername}
@@ -155,17 +156,16 @@ export function MarketingStep({
           <Field
             key={proof.key}
             label={proof.label}
-            htmlFor={proof.key}
+            id={proof.key}
             required
             hint={proof.note}
             error={e[proof.key]}
           >
-            <input
+            <Input
               id={proof.key}
               type="url"
               value={v[proof.key]}
               onChange={(ev) => bind(proof.key)(ev.target.value)}
-              className={TEXT_INPUT}
               placeholder="https://drive.google.com/…"
               data-error={!!e[proof.key]}
             />

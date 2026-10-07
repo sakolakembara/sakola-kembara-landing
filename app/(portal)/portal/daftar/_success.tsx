@@ -1,25 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, MessageCircle } from "lucide-react";
+import { CheckCircle2, MessageCircle } from "lucide-react";
+import { Container } from "@/components/ui/container";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Heading } from "@/components/ui/heading";
 
 const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/JUt4yzFtUQW5ttFVmF9iY6";
 
 export function SuccessScreen({ applicationId }: { applicationId: string }) {
   return (
     <div className="py-10 md:py-16">
-      <div className="max-w-[720px] mx-auto px-4 md:px-6">
+      <Container size="reading" className="px-4 md:px-6">
         <div className="bg-white rounded-3xl border border-gray-100 p-8 md:p-12 text-center shadow-sm">
           <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-secondary-green/10 flex items-center justify-center">
             <CheckCircle2 size={32} className="text-secondary-green" />
           </div>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary-blue uppercase tracking-wider mb-3">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-            Terkirim
-          </div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-3 leading-tight">
+          <Eyebrow className="mb-3">Terkirim</Eyebrow>
+          <Heading level="article" className="text-gray-900 mb-3">
             Pendaftaran kamu sudah kami terima
-          </h1>
+          </Heading>
           <p className="text-gray-600 leading-relaxed mb-2 max-w-[520px] mx-auto">
             Terima kasih sudah mengisi formulir pendaftaran. Tim kesiswaan akan
             meninjau berkas kamu dan menghubungi lewat WhatsApp jika ada
@@ -52,9 +52,9 @@ export function SuccessScreen({ applicationId }: { applicationId: string }) {
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
             <Link
               href="/portal/status"
-              className="inline-flex items-center gap-1.5 text-primary-blue font-semibold hover:underline"
+              className="text-primary-blue font-semibold hover:underline"
             >
-              Lihat status pendaftaran <ArrowRight size={14} />
+              Lihat status pendaftaran
             </Link>
             <span className="text-gray-300">·</span>
             <Link href="/portal" className="text-gray-600 hover:text-gray-900">
@@ -62,7 +62,7 @@ export function SuccessScreen({ applicationId }: { applicationId: string }) {
             </Link>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 }

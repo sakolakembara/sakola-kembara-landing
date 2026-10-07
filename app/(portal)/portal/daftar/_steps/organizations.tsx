@@ -6,12 +6,8 @@ import type {
   OrganizationsValues,
   StepId,
 } from "@/lib/student-form-types";
-import {
-  Field,
-  TEXT_INPUT,
-  YesNoToggle,
-  type FieldErrors,
-} from "../_shared";
+import { Field, Input } from "@/components/ui/field";
+import { YesNoToggle, type FieldErrors } from "../_shared";
 import { StepHeader } from "./identity";
 
 type Props = {
@@ -58,7 +54,7 @@ export function OrganizationsStep({
         subtitle="Ceritakan pengalaman organisasi, kepanitiaan, komunitas, atau kegiatan sosial yang pernah kamu ikuti — di sekolah maupun di luar sekolah. Kalau belum pernah, tidak masalah."
       />
 
-      <Field
+      <Field group
         label="Pernah mengikuti organisasi atau kepanitiaan?"
         required={false}
       >
@@ -102,32 +98,30 @@ export function OrganizationsStep({
               </div>
               <Field
                 label="Nama Organisasi"
-                htmlFor={`org-name-${i}`}
+                id={`org-name-${i}`}
                 required
                 error={e[`entries.${i}.name`]}
               >
-                <input
+                <Input
                   id={`org-name-${i}`}
                   type="text"
                   value={entry.name ?? ""}
                   onChange={(ev) => updateEntry(i, { name: ev.target.value })}
-                  className={TEXT_INPUT}
                   placeholder="Contoh: OSIS SMAN 1 Cililin"
                   data-error={!!e[`entries.${i}.name`]}
                 />
               </Field>
               <Field
                 label="Jabatan / Posisi"
-                htmlFor={`org-position-${i}`}
+                id={`org-position-${i}`}
                 required
                 error={e[`entries.${i}.position`]}
               >
-                <input
+                <Input
                   id={`org-position-${i}`}
                   type="text"
                   value={entry.position ?? ""}
                   onChange={(ev) => updateEntry(i, { position: ev.target.value })}
-                  className={TEXT_INPUT}
                   placeholder="Contoh: Ketua, Anggota Divisi Humas"
                   data-error={!!e[`entries.${i}.position`]}
                 />
