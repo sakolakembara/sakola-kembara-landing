@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { and, count, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
@@ -199,7 +198,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
                       href={`/admin/applications/${row.id}`}
                       className="inline-flex items-center gap-1 text-primary-blue font-medium hover:underline"
                     >
-                      Lihat <ArrowRight size={14} />
+                      Lihat
                     </Link>
                   </Td>
                 </tr>

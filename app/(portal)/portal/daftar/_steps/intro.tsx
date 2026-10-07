@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  ArrowUpRight,
   BookOpen,
   CheckCircle2,
   ClipboardList,
@@ -66,7 +65,6 @@ export function IntroStep() {
             </p>
             <span className="inline-flex items-center gap-1.5 text-sm font-bold underline underline-offset-4 decoration-white/50 group-hover:decoration-white transition-colors">
               Buka Pusat Dokumen
-              <ArrowUpRight size={16} />
             </span>
           </div>
         </div>
