@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, Reply } from "lucide-react";
+import { Mail, Reply } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { contactMessages } from "@/lib/db/schema";
@@ -13,6 +12,7 @@ import { toggleMessageRead } from "../actions";
 import { MarkAsRead } from "./_mark-read";
 import { DeleteButton } from "../_delete-button";
 import { AdminPageHeader } from "../../_page-header";
+import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 
 export const metadata: Metadata = {
@@ -44,14 +44,8 @@ export default async function MessageDetailPage({ params }: PageProps) {
   return (
     <div className="p-6 md:p-10 max-w-3xl">
       {wasUnread && <MarkAsRead id={message.id} />}
-      <Link
-        href="/admin/messages"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"
-      >
-        <ArrowLeft size={14} /> Kembali ke daftar
-      </Link>
-
       <AdminPageHeader
+        back={{ href: "/admin/messages", label: "Kembali ke daftar" }}
         title={message.fullName}
         overline="Detail pesan"
         className="md:items-start"
@@ -74,12 +68,9 @@ export default async function MessageDetailPage({ params }: PageProps) {
             })}
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href={mailto}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-blue text-white text-sm font-medium rounded-lg hover:bg-primary-blue-dark transition-colors"
-            >
+            <Button href={mailto} size="sm">
               <Reply size={14} /> Balas via Email
-            </a>
+            </Button>
             <form action={toggleMessageRead}>
               <input type="hidden" name="id" value={message.id} />
               <button

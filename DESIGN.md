@@ -345,7 +345,7 @@ The mission sentence (*Yayasan Sakola Kembara berkomitmen untuk memberikan kesem
 - **Modals** use `<dialog>` (section 6).
 - **Text contrast:** at least 4.5:1. On navy, use `white/70` or stronger for text.
 
-## 11. Atomic design system (in progress)
+## 11. Atomic design system
 
 The site is moving from copy-pasted utility strings to shared components, one small ticket and PR at a time (plan agreed in SAKEM-031). Until a page is migrated, its current classes stay as documented above.
 
@@ -380,7 +380,7 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `Field` | molecule | `id`, `label`, `required`, `hint`, `error`, `labelAside`. Label + control + hint/error, with the aria wiring (see Forms) |
 | `Input` · `Textarea` · `Select` | atoms | The form controls; inside a `Field` they are labelled automatically. `size="sm"` (40px, 14px) only for the filter rows above admin tables |
 | `TableCard` · `Table` · `THead` · `Th` · `TBody` · `Td` | molecule | Admin data tables: white card, sideways scroll on phones, uppercase column labels, `px-4 py-3` cells |
-| `AdminPageHeader` | organism (`app/(admin)/admin/_page-header.tsx`) | `title`, `overline`, `actions`, description as children. Admin-only |
+| `AdminPageHeader` | organism (`app/(admin)/admin/_page-header.tsx`) | `title`, `back` (`{ href, label }`, the "Kembali ke daftar" link on detail pages), `overline`, `actions`, description as children. Admin-only |
 | `EditorHeader` · `SaveButton` · `EditorMessages` · `FormSection` | admin editor parts (`app/(admin)/admin/_editor.tsx`) | The sticky top bar of an editor (back link, label, `meta`, actions), its save button, the save-result banners, and the titled field groups |
 | `Alert` | atom | `tone`: `danger` · `success` · `warning` · `info`. Message banner in the status colors |
 
@@ -401,6 +401,8 @@ Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`,
 Admin lists (SAKEM-044): every admin list page (and the headers of the dashboard and detail pages) uses `AdminPageHeader`, `Alert` for its flash messages, the `Table` parts, `Tag` hues for every category/status pill, `Button` for the header action, and `size="sm"` controls with a `sm` `Button` in its filter row. The admin title is the `subsection` heading level (24px on phones, 30px from `md`). Next: the admin editor forms (phase 5b), then the dashboard, detail pages and student portal (phase 5c).
 
 Admin editors (SAKEM-045): the eight editor forms (blog, team, reports, resources, announcements, shortlinks, settings, batches) and the application review form use `EditorHeader`, `SaveButton`, `EditorMessages`, `FormSection` (the blog keeps its own section helper for its tab panels), `Field` (`group` for radio-card questions) and the standard 48px controls; the team history rows use `size="sm"`. Selectable cards (severity, role, content type, the "Aktifkan" checkbox rows) are `rounded-xl` like the inputs. Upload buttons are `neutral` Buttons instead of black.
+
+Dashboard, detail pages and portal (SAKEM-047): admin detail pages take their back link from `AdminPageHeader`; the dashboard, detail and portal links lose their arrows; detail-page actions (*Publikasikan Hasil*, *Batalkan Publikasi*, *Balas via Email*) and the error pages' buttons are `Button`s. The student portal (`/portal`, `/portal/status`) uses `Container` (status page at `focused` 1000px), `Eyebrow`, `Heading` (`page` H1 on the home, `subsection` on status, `section` for the open-batch title), `Alert` and `Button`. Kept as they are: the admin sidebar and portal nav (app shells), the dashboard stat and quick-action tiles, the portal's small Lora card titles (`text-xl md:text-2xl`, not on the D3 scale) and verdict cards, and the email-verification banner (now on the `warning`/`success`/`danger` tokens). With this the plan from SAKEM-031 is complete.
 
 **Standards decided, applied as each page is migrated:**
 

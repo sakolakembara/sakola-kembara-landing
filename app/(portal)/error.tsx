@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { AlertTriangle, Home, RotateCw } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
+import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 
 interface Props {
   error: Error & { digest?: string };
@@ -21,9 +22,9 @@ export default function PortalError({ error, reset }: Props) {
         <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
           <AlertTriangle className="text-amber-600" size={26} />
         </div>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl text-gray-900 mb-2">
+        <Heading level="subsection" as="h1" className="text-gray-900 mb-2">
           Portal siswa bermasalah
-        </h1>
+        </Heading>
         <p className="text-sm text-gray-600 leading-relaxed mb-6">
           Tenang, pendaftaran kamu tidak terhapus. Data tersimpan di server dan
           bisa dibuka lagi setelah halaman berhasil dimuat.
@@ -34,19 +35,12 @@ export default function PortalError({ error, reset }: Props) {
           </p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
-          >
+          <Button onClick={reset}>
             <RotateCw size={14} /> Coba lagi
-          </button>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-          >
+          </Button>
+          <Button href="/" variant="neutral">
             <Home size={14} /> Ke beranda
-          </Link>
+          </Button>
         </div>
       </div>
     </div>

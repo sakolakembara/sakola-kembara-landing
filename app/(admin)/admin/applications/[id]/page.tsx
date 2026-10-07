@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   Briefcase,
   Calendar,
   ExternalLink,
@@ -53,15 +51,8 @@ export default async function ApplicationDetailPage({
 
   return (
     <div className="p-6 md:p-10 max-w-6xl">
-      <Link
-        href="/admin/applications"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-4"
-      >
-        <ArrowLeft size={14} />
-        Kembali ke daftar
-      </Link>
-
       <AdminPageHeader
+        back={{ href: "/admin/applications", label: "Kembali ke daftar" }}
         title={application.fullName}
         overline="Detail pendaftar"
         className="md:items-start"

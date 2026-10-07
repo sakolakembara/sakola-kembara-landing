@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowRight,
   CalendarClock,
   CheckCircle2,
   Clock,
@@ -15,6 +14,11 @@ import {
   getUserApplicationForBatch,
   type PortalApplication,
 } from "@/lib/student-applications";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Heading } from "@/components/ui/heading";
 import { VerifyEmailBanner } from "./_verify-email-banner";
 
 export const metadata: Metadata = {
@@ -59,30 +63,26 @@ export default async function PortalHomePage({ searchParams }: PageProps) {
           className="absolute -bottom-32 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full pointer-events-none"
         />
 
-        <div className="relative max-w-[1200px] mx-auto px-4 md:px-6">
-          <div className="inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-secondary-yellow uppercase tracking-wider mb-4">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
+        <Container className="relative px-4 md:px-6">
+          <Eyebrow tone="dark" className="mb-4">
             Portal Siswa
-          </div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-5xl lg:text-6xl leading-tight mb-3">
+          </Eyebrow>
+          <Heading level="page" className="mb-3">
             Selamat datang, {firstName}
-          </h1>
-          <p className="text-base md:text-lg text-white/85 max-w-[620px] leading-relaxed">
+          </Heading>
+          <p className="text-base md:text-lg text-white/85 max-w-[600px] leading-relaxed">
             Dari sini kamu bisa mendaftar sebagai calon siswa Sakola Kembara
             dan mengecek status pendaftaran ketika hasilnya diumumkan.
           </p>
-        </div>
+        </Container>
       </section>
 
       {/* Content — pulled up over the hero for a subtle overlap effect.
           Explicit `relative z-10` so it always paints on top of the hero
           band regardless of stacking-context quirks. */}
-      <div className="relative z-10 max-w-[1200px] mx-auto px-4 md:px-6 -mt-10 md:-mt-14 pb-16 md:pb-24 space-y-6 md:space-y-8">
+      <Container className="relative z-10 px-4 md:px-6 -mt-10 md:-mt-14 pb-16 md:pb-24 space-y-6 md:space-y-8">
         {error === "admin-only" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
-            <span aria-hidden className="mt-0.5">⚠</span>
-            <span>Halaman itu hanya untuk pengurus yayasan.</span>
-          </div>
+          <Alert tone="warning">Halaman itu hanya untuk pengurus yayasan.</Alert>
         )}
 
         {!student.emailVerifiedAt && (
@@ -98,7 +98,7 @@ export default async function PortalHomePage({ searchParams }: PageProps) {
 
         {/* History card. */}
         <HistoryCard applications={applications} />
-      </div>
+      </Container>
     </>
   );
 }
@@ -124,11 +124,11 @@ function CurrentBatchCard({
             <Clock size={22} className="text-gray-500" />
           </div>
           <div>
-            <SectionEyebrow>Pendaftaran</SectionEyebrow>
+            <Eyebrow>Pendaftaran</Eyebrow>
             <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
               Belum ada batch yang dibuka
             </h2>
-            <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
+            <p className="text-gray-600 mt-2 leading-relaxed max-w-[600px]">
               Pendaftaran Sakola Kembara dibuka sekali dalam setahun. Panitia
               akan memberi tahu di halaman ini begitu batch berikutnya mulai.
               Sementara itu, kamu bisa cek program di halaman{" "}
@@ -154,11 +154,11 @@ function CurrentBatchCard({
             <CheckCircle2 size={22} className="text-secondary-green" />
           </div>
           <div className="flex-1">
-            <SectionEyebrow>Batch {openBatch.year}</SectionEyebrow>
+            <Eyebrow>Batch {openBatch.year}</Eyebrow>
             <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
               Pendaftaran kamu untuk {openBatch.name} sudah kami terima
             </h2>
-            <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
+            <p className="text-gray-600 mt-2 leading-relaxed max-w-[600px]">
               Kami akan mengabari hasilnya di halaman{" "}
               <Link
                 href="/portal/status"
@@ -193,19 +193,14 @@ function CurrentBatchCard({
         className="absolute inset-y-0 left-0 w-1.5 bg-secondary-yellow"
       />
       <div className="relative">
-        <div className="inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-primary-blue uppercase tracking-wider mb-3">
-          <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-          Batch {openBatch.year} · Pendaftaran Dibuka
-        </div>
-        <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight mb-3">
-          {openBatch.name}
-        </h2>
-        <p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-[560px] mb-6">
+        <Eyebrow className="mb-3">Batch {openBatch.year} · Pendaftaran Dibuka</Eyebrow>
+        <Heading className="text-gray-900 mb-3">{openBatch.name}</Heading>
+        <p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-[600px] mb-6">
           Isi formulir pendaftaran untuk mengajukan diri sebagai calon siswa.
           Progres kamu tersimpan otomatis, jadi bisa dilanjutkan kapan saja.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-[560px] mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-[600px] mb-8">
           <MetaChip
             label="Tutup pendaftaran"
             value={openBatch.closesAt.toLocaleDateString("id-ID", {
@@ -229,15 +224,16 @@ function CurrentBatchCard({
           />
         </div>
 
-        <Link
+        <Button
           href="/portal/daftar"
-          className="inline-flex items-center gap-2 px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
+          size="lg"
+          className="transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30"
         >
-          Mulai daftar <ArrowRight size={18} />
-        </Link>
+          Mulai daftar
+        </Button>
 
         {openBatch.description && (
-          <p className="text-sm text-gray-500 mt-6 max-w-[560px] whitespace-pre-wrap">
+          <p className="text-sm text-gray-500 mt-6 max-w-[600px] whitespace-pre-wrap">
             {openBatch.description}
           </p>
         )}
@@ -290,7 +286,7 @@ function HistoryCard({ applications }: { applications: PortalApplication[] }) {
           {published ? <Sparkles size={22} /> : <FileText size={22} />}
         </div>
         <div className="flex-1 min-w-0">
-          <SectionEyebrow>Riwayat</SectionEyebrow>
+          <Eyebrow>Riwayat</Eyebrow>
           <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
             {applications.length === 0
               ? "Riwayat pendaftaran"
@@ -300,13 +296,13 @@ function HistoryCard({ applications }: { applications: PortalApplication[] }) {
           </h2>
 
           {applications.length === 0 ? (
-            <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
+            <p className="text-gray-600 mt-2 leading-relaxed max-w-[600px]">
               Kamu belum pernah mengirim pendaftaran. Setelah kirim, setiap
               pendaftaran yang kamu kirim akan tercatat di sini.
             </p>
           ) : (
             <>
-              <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
+              <p className="text-gray-600 mt-2 leading-relaxed max-w-[600px]">
                 {published
                   ? "Panitia sudah mengumumkan keputusan batch kamu. Silakan buka halaman Status Pendaftaran untuk melihat hasilnya."
                   : "Panitia masih menilai seluruh pendaftar batch ini. Hasilnya akan muncul di halaman Status Pendaftaran begitu diumumkan."}
@@ -330,17 +326,18 @@ function HistoryCard({ applications }: { applications: PortalApplication[] }) {
                 ))}
               </ul>
 
-              <Link
-                href="/portal/status"
-                className={`inline-flex items-center gap-2 mt-6 font-semibold rounded-xl transition-all ${
-                  published
-                    ? "px-6 py-3 bg-primary-blue text-white hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30"
-                    : "text-sm text-primary-blue hover:underline"
-                }`}
-              >
-                {published ? "Lihat hasil" : "Buka Status Pendaftaran"}
-                <ArrowRight size={published ? 18 : 14} />
-              </Link>
+              {published ? (
+                <Button href="/portal/status" className="mt-6">
+                  Lihat hasil
+                </Button>
+              ) : (
+                <Link
+                  href="/portal/status"
+                  className="mt-6 inline-block text-sm font-semibold text-primary-blue hover:underline"
+                >
+                  Buka Status Pendaftaran
+                </Link>
+              )}
             </>
           )}
         </div>
@@ -349,11 +346,3 @@ function HistoryCard({ applications }: { applications: PortalApplication[] }) {
   );
 }
 
-function SectionEyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary-blue uppercase tracking-wider">
-      <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-      {children}
-    </div>
-  );
-}

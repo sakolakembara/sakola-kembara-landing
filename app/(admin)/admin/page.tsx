@@ -3,7 +3,6 @@ import Link from "next/link";
 import { count, desc, eq, isNull } from "drizzle-orm";
 import {
   AlertCircle,
-  ArrowRight,
   CircleDot,
   Edit3,
   FilePlus2,
@@ -227,9 +226,9 @@ export default async function AdminHomePage() {
             <h2 className="text-base font-semibold text-gray-900">Pendaftar terbaru</h2>
             <Link
               href="/admin/applications"
-              className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
+              className="text-xs font-medium text-primary-blue hover:underline"
             >
-              Semua <ArrowRight size={12} />
+              Semua
             </Link>
           </header>
           {stats.recentApps.length === 0 ? (
@@ -278,9 +277,9 @@ export default async function AdminHomePage() {
             <h2 className="text-base font-semibold text-gray-900">Pesan terbaru</h2>
             <Link
               href="/admin/messages"
-              className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
+              className="text-xs font-medium text-primary-blue hover:underline"
             >
-              Semua <ArrowRight size={12} />
+              Semua
             </Link>
           </header>
           {stats.recentMessages.length === 0 ? (

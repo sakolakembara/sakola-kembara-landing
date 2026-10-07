@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowRight,
   CheckCircle2,
   Clock,
   HeartHandshake,
@@ -10,6 +9,10 @@ import {
 import { requireStudent } from "@/lib/auth-helpers";
 import { getApplicationsForUser } from "@/lib/student-applications";
 import type { ApplicationStatus } from "@/lib/db/schema";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Heading } from "@/components/ui/heading";
 
 export const metadata: Metadata = {
   title: "Status Pendaftaran",
@@ -150,24 +153,23 @@ export default async function StatusPage() {
           aria-hidden
           className="absolute -top-24 -right-24 w-96 h-96 bg-secondary-yellow/20 blur-3xl rounded-full pointer-events-none"
         />
-        <div className="relative max-w-[1040px] mx-auto px-4 md:px-6">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-secondary-yellow uppercase tracking-wider mb-3">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
+        <Container size="focused" className="relative px-4 md:px-6">
+          <Eyebrow tone="dark" className="mb-3">
             Status Pendaftaran
-          </div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl leading-tight mb-2">
+          </Eyebrow>
+          <Heading level="subsection" as="h1" className="mb-2">
             Rekap perjalanan pendaftaranmu
-          </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-[620px] leading-relaxed">
+          </Heading>
+          <p className="text-sm md:text-base text-white/80 max-w-[600px] leading-relaxed">
             Hasil hanya muncul setelah panitia mengumumkan keputusan seluruh
             batch.
           </p>
-        </div>
+        </Container>
       </section>
 
-      <div className="relative z-10 max-w-[1040px] mx-auto px-4 md:px-6 -mt-8 md:-mt-12 pb-16 md:pb-24 space-y-6">
+      <Container size="focused" className="relative z-10 px-4 md:px-6 -mt-8 md:-mt-12 pb-16 md:pb-24 space-y-6">
         {applications.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-gray-100 p-10 md:p-14 text-center shadow-sm max-w-[720px] mx-auto">
+          <div className="bg-white rounded-3xl border border-gray-100 p-10 md:p-14 text-center shadow-sm max-w-[760px] mx-auto">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-100 mb-5">
               <Inbox size={26} className="text-gray-500" />
             </div>
@@ -178,12 +180,7 @@ export default async function StatusPage() {
               Kamu belum pernah mengirim pendaftaran ke Sakola Kembara. Kembali
               ke portal untuk melihat batch yang sedang dibuka.
             </p>
-            <Link
-              href="/portal"
-              className="inline-flex items-center gap-1.5 px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
-            >
-              Ke beranda portal <ArrowRight size={16} />
-            </Link>
+            <Button href="/portal">Ke beranda portal</Button>
           </div>
         ) : (
           <ul className="space-y-6">
@@ -268,10 +265,9 @@ export default async function StatusPage() {
                     {view.tone === "rejected" && (
                       <Link
                         href="/portal"
-                        className="inline-flex items-center gap-1 mt-5 text-sm text-primary-blue font-semibold hover:underline"
+                        className="mt-5 inline-block text-sm text-primary-blue font-semibold hover:underline"
                       >
-                        Lihat batch pendaftaran berikutnya{" "}
-                        <ArrowRight size={14} />
+                        Lihat batch pendaftaran berikutnya
                       </Link>
                     )}
                   </div>
@@ -280,7 +276,7 @@ export default async function StatusPage() {
             })}
           </ul>
         )}
-      </div>
+      </Container>
     </>
   );
 }
