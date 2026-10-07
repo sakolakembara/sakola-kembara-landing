@@ -23,7 +23,7 @@
 | Hero images | `heroImages` in `lib/data.ts` | `main` local, `badge1`/`badge2` external Unsplash |
 | Donation tiers | `donationTiers` in `lib/data.ts` | Bronze / Silver / Gold / Custom |
 | Contact info | `contactInfo` in `lib/data.ts` | Currently uses emoji icons — should migrate to lucide-react |
-| Footer link groups (currently unused) | `footerLinks` in `lib/data.ts` | Not referenced by `Footer.tsx`; the footer is hard-coded |
+| Footer links | `footerLinks` in `lib/data.ts` | The footer's *Jelajahi* column (`components/layout/footer.tsx`) |
 | CTA cards (4-up) | Inline in `components/sections/CTASection.tsx` | Move to `lib/data.ts` if it ever needs CMS control |
 | Blog posts | `content/blog/<slug>.md` → `lib/blog-posts.json` via `scripts/blog-sync-from-markdown.mjs` | See [`blog-pipeline.md`](blog-pipeline.md) |
 | Donasi page bank/QRIS/CTAs | Inline in `app/donasi/page.tsx` | `ACCOUNT_NUMBER`, `QRIS_IMAGE`, `CONFIRMATION_FORM_URL` constants |
@@ -38,7 +38,7 @@ The following strings are calibrated and donor-facing — get product sign-off b
 - Problem section stats and closing line (`ProblemSection.tsx` + `problemStats`)
 - Impact metrics (`impactMetrics`)
 - Donation tier amounts (`donationTiers`, `app/donasi/page.tsx` bank details)
-- Footer copyright / legal name (`Footer.tsx`)
+- Footer copyright / legal name (`components/layout/footer.tsx`)
 - Any text in `lib/data.ts` describing programs, partners, or impact
 
 The following are editorially safe to refine without sign-off (still mind the tone-of-voice doc):
@@ -70,8 +70,8 @@ These live in code, not in any config file:
 - **`CONFIRMATION_FORM_URL`** in `app/donasi/page.tsx` — donation confirmation Google Form.
 - **`https://sakolakembara.org/daftar`** in `app/gabung-siswa/page.tsx` — legacy student registration link (will be replaced by an on-site form).
 - **`https://linktr.ee/JoinSakolaKembara`** in `app/tim/page.tsx` — volunteer signup Linktree.
-- **Social URLs** in `components/SocialLinks.tsx` — IG, TikTok, X, YouTube (all `@sakolakembara`).
-- **Contact email** in `components/Footer.tsx` — `contact@sakolakembara.org`.
+- **Social URLs** in `components/ui/social-links.tsx` — IG, TikTok, X, YouTube (all `@sakolakembara`).
+- **Contact email** in `components/layout/footer.tsx` — `contact@sakolakembara.org`.
 
 Consider consolidating these into `lib/data.ts` when more pages need to reference them.
 

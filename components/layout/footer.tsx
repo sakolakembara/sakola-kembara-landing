@@ -3,13 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin } from "lucide-react";
-import SocialLinks from "@/components/SocialLinks";
+import { Container } from "@/components/ui/container";
+import { SocialLinks } from "@/components/ui/social-links";
 import { footerLinks } from "@/lib/data";
 // Same mark as the navbar logo, with the black wordmark recoloured white so
 // it reads on the navy footer.
 import brandLogo from "@/public/images/logo-sakola-kembara-light.png";
 
-export default function Footer() {
+/** Site footer (organism): brand, site links, contact and social links. */
+export function Footer() {
   return (
     <footer className="bg-gradient-to-b from-accent-navy to-primary-blue text-white">
       {/* Sunglow hairline — the brand accent, and it stops the footer from
@@ -17,7 +19,7 @@ export default function Footer() {
       <div aria-hidden className="h-1 bg-secondary-yellow" />
 
       {/* Main Footer */}
-      <div className="max-w-[1200px] mx-auto px-6 pt-12 md:pt-16 pb-8 md:pb-10">
+      <Container className="pt-12 md:pt-16 pb-8 md:pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))] gap-10 md:gap-12">
           {/* Logo, description & location */}
           <div>
@@ -88,16 +90,16 @@ export default function Footer() {
             <SocialLinks theme="dark" />
           </div>
         </div>
-      </div>
+      </Container>
 
       {/* Copyright */}
       <div className="border-t border-white/15">
-        <div className="max-w-[1200px] mx-auto px-6 py-5">
+        <Container className="py-5">
           <p className="text-xs text-white/70 text-center">
             © {new Date().getFullYear()} Yayasan Sakola Kembara Indonesia. All
             rights reserved.
           </p>
-        </div>
+        </Container>
       </div>
     </footer>
   );

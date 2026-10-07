@@ -156,14 +156,14 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 
 ## 6. Components
 
-### Header (`components/Navbar.tsx`)
+### Header (`components/layout/navbar.tsx`)
 
 - `fixed` white bar (`bg-white/95 backdrop-blur-md border-b border-gray-100`). Container `max-w-[1200px] mx-auto px-6 py-4`.
 - From `md`: a `grid-cols-[1fr_auto_1fr]` grid, so the menu sits centred on the page (not in the space the logo and button leave). Logo left (`h-10`), menu centre, auth button right.
 - Menu (`navLinks` in `lib/data.ts`): Home · Team · Siswa · Donasi · Laporan · Blog. Kontak lives in the footer. There is no donation button in the header.
-- Auth button (`AuthNavButton`): outlined grey, text only, `h-10` (40px) on desktop. *Masuk* when signed out, *Portal* or *Dashboard* once the session resolves. The mobile menu variant stays ≥44px tall.
+- Auth button (`AuthNavButton`, `components/layout/auth-nav-button.tsx`): `<Button variant="neutral">`, text only, `sm` (40px) on desktop and `md` (44px) in the mobile menu. *Masuk* when signed out, *Portal* or *Dashboard* once the session resolves.
 
-### Footer (`components/Footer.tsx`)
+### Footer (`components/layout/footer.tsx`)
 
 - Navy gradient under a 4px `bg-secondary-yellow` hairline.
 - Four columns from `lg` (`grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]`):
@@ -371,6 +371,8 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `Container` | atom | `size`: `page` (1200) · `focused` (1000) · `reading` (800); `as` for the element |
 | `SectionHeader` | molecule | `eyebrow`, `title`, `lead`, `tone` (`light`/`dark`), `align` (`center`/`left`), `as` |
 | `PageHero` | organism (`components/layout/`) | `title`, `lead`. The navy hero that opens a sub-page; the title is the page's H1 (`page` level) |
+| `Navbar` · `Footer` | organisms (`components/layout/`) | Site header (with `AnnouncementStrip` and `AuthNavButton`) and footer, mounted by `app/(public)/layout.tsx` |
+| `SocialLinks` | molecule | `theme`: `dark` (navy) · `light`. The four social profiles as round icon links |
 
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
 
@@ -381,6 +383,8 @@ Program pages (SAKEM-038): `/program/[id]` uses `Container`, `SectionHeader`, `H
 Blog (SAKEM-039): `/blog` and `/blog/[id]` use `Container` (articles `reading`), `Tag` for every category label, `Heading level="article"` for the article H1 and `panel` for the featured post's title. Kept inline: the small uppercase section labels (*Artikel Terbaru*, *Semua Artikel*, *Artikel Lainnya*), the pagination control, the `text-lg` card titles (also on `/laporan`; D3 says `text-xl`, not applied yet) and the markdown body (`.blog-content`).
 
 Gabung Siswa (SAKEM-040): `/gabung-siswa` and `/gabung-siswa/docs` use `Container`, `Heading` (`page` H1s, `subsection` category titles), `SectionHeader` and `Button`; both *Daftar Sekarang* buttons are `white-on-navy`. The heroes stay custom (recruitment chip, CTAs, back link). Kept inline: the recruitment chip, the docs table-of-contents chips and the small *Salin* button (its copied state uses the `success` tokens).
+
+Layout (SAKEM-041): `Navbar`, `Footer`, `AuthNavButton` and `AnnouncementStrip` live in `components/layout/` and use `Container`; `SocialLinks` is a molecule in `components/ui/`. Kept as they are: the nav links, the footer column labels, the announcement strip's per-severity colors and its pill CTA (an exception to "no pill buttons", admin-configured), and the 36px social icons.
 
 **Standards decided, applied as each page is migrated:**
 

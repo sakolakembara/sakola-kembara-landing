@@ -6,7 +6,7 @@ import { PageHero } from "@/components/layout/page-hero";
 import { Container } from "@/components/ui/container";
 import { Heading } from "@/components/ui/heading";
 import { contactInfo } from "@/lib/data";
-import SocialLinks from "@/components/SocialLinks";
+import { SocialLinks } from "@/components/ui/social-links";
 import { ContactForm } from "./_contact-form";
 
 const contactIcons = [

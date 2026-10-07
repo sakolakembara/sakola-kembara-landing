@@ -40,7 +40,7 @@ The current header (`navLinks` in `lib/data.ts`) is already donor/partner-led:
 | **Blog** | `/blog` | SEO and public communication |
 | **Kontak** | `/kontak` | Contact info and channels |
 
-> The "Donasi Sekarang" CTA in the right of the header points to `/donasi` (`components/Navbar.tsx`), not to an external form. Keep it that way — the dedicated donation page is the brand-owned donor experience.
+> The "Donasi Sekarang" CTA in the right of the header points to `/donasi` (`components/layout/navbar.tsx`), not to an external form. Keep it that way — the dedicated donation page is the brand-owned donor experience.
 
 **Header item naming**: the report page label was originally locked to **"Impact & Reports"** during the strategy discussion. Once it shipped (Phase 6) we relaxed that to a plain Indonesian **"Laporan"** — the site is otherwise Indonesian-first and the English label felt out of place next to "Tim", "Siswa", "Donasi", "Blog", "Kontak". Subtitle on the page ("Komitmen kami untuk transparansi…") carries the impact + accountability framing instead. Alternatives considered (*Transparency*, *Reports*, *Accountability*, *Impact*, *Transparency & Impact*) were all rejected as too narrow or too clinical.
 
