@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { verifyEmailByToken } from "@/lib/account-service";
 import { writeAudit } from "@/lib/audit";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 export const metadata: Metadata = {
   title: "Verifikasi Email",
@@ -81,20 +82,12 @@ function Shell({
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-5">
             {icon}
           </div>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary-blue uppercase tracking-wider mb-3">
-            <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-            {eyebrow}
-          </div>
+          <Eyebrow className="mb-3">{eyebrow}</Eyebrow>
           <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 leading-tight mb-3">
             {headline}
           </h1>
           <p className="text-gray-600 leading-relaxed mb-6">{body}</p>
-          <Link
-            href={primaryHref}
-            className="inline-flex items-center justify-center px-6 py-3 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
-          >
-            {primaryLabel}
-          </Link>
+          <Button href={primaryHref}>{primaryLabel}</Button>
         </div>
       </div>
     </main>

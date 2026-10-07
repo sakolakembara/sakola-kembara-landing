@@ -1,18 +1,15 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
 
 export function GoogleButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full inline-flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-gray-200 text-gray-800 font-semibold rounded-lg hover:border-primary-blue hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
+    <Button type="submit" variant="neutral" size="lg" fullWidth disabled={pending}>
       <GoogleGlyph />
       {pending ? "Mengalihkan…" : "Masuk dengan Google"}
-    </button>
+    </Button>
   );
 }
 

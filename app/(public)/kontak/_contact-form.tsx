@@ -3,6 +3,9 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, Send } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import {
   submitContactMessage,
   type ContactFormState,
@@ -10,20 +13,13 @@ import {
 
 const initialState: ContactFormState = { status: "idle" };
 
-const TEXT_INPUT =
-  "w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none";
-
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
+    <Button type="submit" size="lg" disabled={pending}>
       <Send size={18} />
       {pending ? "Mengirim..." : "Kirim Pesan"}
-    </button>
+    </Button>
   );
 }
 
@@ -35,8 +31,8 @@ export function ContactForm() {
 
   if (state.status === "success") {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
-        <div className="w-14 h-14 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+      <div className="bg-success-bg border border-success-border rounded-2xl p-8 text-center">
+        <div className="w-14 h-14 bg-success-fg rounded-full mx-auto mb-4 flex items-center justify-center">
           <CheckCircle2 className="text-white" size={32} />
         </div>
         <h3 className="font-[family-name:var(--font-display)] text-2xl text-gray-900 mb-2">
@@ -50,13 +46,11 @@ export function ContactForm() {
     );
   }
 
+  const errors = state.fieldErrors;
+
   return (
     <form action={formAction} className="space-y-5" noValidate>
-      {state.status === "error" && state.message && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-          {state.message}
-        </div>
-      )}
+      {state.status === "error" && state.message && <Alert>{state.message}</Alert>}
 
       {/* Honeypot — hidden from humans by clip + tab-out */}
       <div
@@ -76,100 +70,44 @@ export function ContactForm() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-5">
-        <div>
-          <label
-            htmlFor="fullName"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Nama Lengkap <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <input
+        <Field id="fullName" label="Nama Lengkap" required error={errors?.fullName?.[0]}>
+          <Input
             type="text"
-            id="fullName"
             name="fullName"
             required
             placeholder="Masukkan nama Anda"
-            className={TEXT_INPUT}
           />
-          {state.fieldErrors?.fullName?.[0] && (
-            <p className="text-xs text-red-600 mt-1">
-              {state.fieldErrors.fullName[0]}
-            </p>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Email <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <input
+        </Field>
+        <Field id="email" label="Email" required error={errors?.email?.[0]}>
+          <Input
             type="email"
-            id="email"
             name="email"
             required
             autoComplete="email"
             placeholder="email@example.com"
-            className={TEXT_INPUT}
           />
-          {state.fieldErrors?.email?.[0] && (
-            <p className="text-xs text-red-600 mt-1">
-              {state.fieldErrors.email[0]}
-            </p>
-          )}
-        </div>
+        </Field>
       </div>
 
-      <div>
-        <label
-          htmlFor="subject"
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
-          Subjek <span className="text-red-500 ml-0.5">*</span>
-        </label>
-        <select
-          id="subject"
-          name="subject"
-          required
-          defaultValue=""
-          className={`${TEXT_INPUT} bg-white`}
-        >
+      <Field id="subject" label="Subjek" required error={errors?.subject?.[0]}>
+        <Select name="subject" required defaultValue="">
           <option value="" disabled>
             Pilih subjek
           </option>
           <option value="partnership">Kerjasama/Partnership</option>
           <option value="donation">Seputar Donasi</option>
           <option value="other">Lainnya</option>
-        </select>
-        {state.fieldErrors?.subject?.[0] && (
-          <p className="text-xs text-red-600 mt-1">
-            {state.fieldErrors.subject[0]}
-          </p>
-        )}
-      </div>
+        </Select>
+      </Field>
 
-      <div>
-        <label
-          htmlFor="message"
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
-          Pesan <span className="text-red-500 ml-0.5">*</span>
-        </label>
-        <textarea
-          id="message"
+      <Field id="message" label="Pesan" required error={errors?.message?.[0]}>
+        <Textarea
           name="message"
           required
           rows={5}
           placeholder="Tulis pesan Anda di sini..."
-          className={`${TEXT_INPUT} resize-none`}
         />
-        {state.fieldErrors?.message?.[0] && (
-          <p className="text-xs text-red-600 mt-1">
-            {state.fieldErrors.message[0]}
-          </p>
-        )}
-      </div>
+      </Field>
 
       <div className="pt-1">
         <SubmitButton />

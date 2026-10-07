@@ -221,12 +221,14 @@ A shared navy hero (`<SectionHeader tone="dark" as="p">`: *Program Kami* + *Apa 
 
 ### Forms
 
+Build forms from `components/ui/field.tsx` and `alert.tsx` (SAKEM-042):
+
 - `<form className="space-y-5">`.
-- Label: `block text-sm font-medium text-gray-700 mb-2`.
-- Input, textarea, select: `w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none` (add `resize-none` on textareas).
+- `<Field id label required hint error labelAside>` wraps one control: label `block text-sm font-medium text-gray-700 mb-2`, required asterisk in `text-danger-fg` (hidden from screen readers; the control keeps its own `required`), then a hint (`text-xs text-gray-500 mt-1.5`) or an error (`text-xs text-danger-fg mt-1.5`). It gives the control its id, `aria-describedby` and `aria-invalid`.
+- `<Input>`, `<Textarea>`, `<Select>`: `w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none`, 16px text (smaller text makes iOS zoom in on focus). Textareas don't resize unless given `resize-y`; selects are white.
 - Placeholders are example-style (`email@example.com`), not instructions.
-- Errors: banner `bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700`; per-field `text-xs text-red-600 mt-1`.
-- Submit: the big-CTA pattern with a leading icon.
+- Banners: `<Alert tone>` (`danger` by default, `success`, `warning`, `info`) in the status colors, `rounded-lg px-4 py-3 text-sm`. Errors use `role="alert"`, the rest `role="status"`.
+- Submit: `<Button type="submit" size="lg">`, with a leading icon where one names the action. In the narrow auth cards it is `fullWidth`.
 
 ### Modals
 
@@ -373,6 +375,9 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `PageHero` | organism (`components/layout/`) | `title`, `lead`. The navy hero that opens a sub-page; the title is the page's H1 (`page` level) |
 | `Navbar` · `Footer` | organisms (`components/layout/`) | Site header (with `AnnouncementStrip` and `AuthNavButton`) and footer, mounted by `app/(public)/layout.tsx` |
 | `SocialLinks` | molecule | `theme`: `dark` (navy) · `light`. The four social profiles as round icon links |
+| `Field` | molecule | `id`, `label`, `required`, `hint`, `error`, `labelAside`. Label + control + hint/error, with the aria wiring (see Forms) |
+| `Input` · `Textarea` · `Select` | atoms | The form controls; inside a `Field` they are labelled automatically |
+| `Alert` | atom | `tone`: `danger` · `success` · `warning` · `info`. Message banner in the status colors |
 
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
 
@@ -385,6 +390,8 @@ Blog (SAKEM-039): `/blog` and `/blog/[id]` use `Container` (articles `reading`),
 Gabung Siswa (SAKEM-040): `/gabung-siswa` and `/gabung-siswa/docs` use `Container`, `Heading` (`page` H1s, `subsection` category titles), `SectionHeader` and `Button`; both *Daftar Sekarang* buttons are `white-on-navy`. The heroes stay custom (recruitment chip, CTAs, back link). Kept inline: the recruitment chip, the docs table-of-contents chips and the small *Salin* button (its copied state uses the `success` tokens).
 
 Layout (SAKEM-041): `Navbar`, `Footer`, `AuthNavButton` and `AnnouncementStrip` live in `components/layout/` and use `Container`; `SocialLinks` is a molecule in `components/ui/`. Kept as they are: the nav links, the footer column labels, the announcement strip's per-severity colors and its pill CTA (an exception to "no pill buttons", admin-configured), and the 36px social icons.
+
+Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. The student registration wizard (`/portal/daftar`) is next (phase 4b).
 
 **Standards decided, applied as each page is migrated:**
 

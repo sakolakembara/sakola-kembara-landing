@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { authStatus, signIn } from "@/auth";
+import { Alert } from "@/components/ui/alert";
 import { CredentialsForm } from "./_credentials-form";
 import { GoogleButton } from "./_google-button";
 
@@ -65,11 +66,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           </div>
 
-          {errorMessage && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          )}
+          {errorMessage && <Alert>{errorMessage}</Alert>}
 
           {authStatus.googleConfigured && (
             <form action={signInWithGoogle}>
