@@ -11,7 +11,12 @@ The shared components of [sakolakembara.org](https://sakolakembara.org), as they
 - **Molecules**: `SectionHeader`, `Field` (with `Input`, `Select`, `Textarea`), `Table`, `SocialLinks`.
 - **Organisms**: `Navbar`, `Footer`, `PageHero`, `AnnouncementStrip`, `BlogPostContent`.
 - **Sections**: the seven homepage sections.
-- **Admin** and **Portal**: the shared parts in `app/` (page header, editor parts, the wizard's choice controls, the email-verification banner).
+- **Public**: page bodies such as the program page, team, reports and blog index, and the contact form.
+- **Auth**: login, register and password forms.
+- **Portal**: the student nav, the registration wizard and each of its steps, and the email-verification banner.
+- **Admin**: the sidebar, page header, every editor form and the table row actions.
+
+Forms work but save nothing: server actions are stubbed, and the data is sample data named *Contoh …*.
 
 The rules (colors, type scale, spacing, copy, accessibility) are in [`DESIGN.md`](https://github.com/sakolakembara/sakola-kembara-landing/blob/development/DESIGN.md). Storybook shows them; `DESIGN.md` decides them.
 
