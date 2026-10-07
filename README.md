@@ -210,7 +210,7 @@ Index: [`docs/README.md`](docs/README.md).
 
 ## Contributing
 
-- Branch from `main`, push to your branch, open a PR.
+- Branch from `development` (the team integration branch), push your branch, and open a PR into `development`. `main` only receives releases from `development`.
 - **Start from a ticket.** Every change has a `SAKEM-NNN` ticket in Saung (ask a maintainer for access). Put the ID in commit messages (`fix(map): align legend (SAKEM-NNN)`) and in the PR description. Tickets are not stored in this repo — see [`CLAUDE.md`](CLAUDE.md).
 - Use conventional-commit prefixes when it helps (`feat:`, `fix:`, `docs:`, `build:`, `ci:`). Mixed style is fine; check `git log` for examples.
 - **If your change is structural** (new route, new dep, new deploy step, new data model), update the relevant file under `docs/current-state/` in the same PR. Stale docs are worse than missing docs.
