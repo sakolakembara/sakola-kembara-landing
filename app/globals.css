@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Tailwind scans every file in the repo, docs included, so a class that is
+   only mentioned in documentation still ends up in the production CSS. */
+@source not "../DESIGN.md";
+@source not "../README.md";
+@source not "../CLAUDE.md";
+@source not "../docs";
+
 :root {
   /* Primary Colors */
   --catalina-blue: #122E76;

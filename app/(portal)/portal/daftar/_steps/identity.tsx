@@ -205,7 +205,7 @@ export function StepHeader({
 }) {
   return (
     <header className="border-b border-gray-100 pb-4 mb-2">
-      <h2 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-2">
+      <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-2">
         {title}
       </h2>
       {subtitle && (

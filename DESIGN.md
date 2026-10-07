@@ -66,8 +66,10 @@ Brand green is too light for text (~3:1 on white), hence the Tailwind scales. Ex
 
 | Role | Family | How |
 | --- | --- | --- |
-| H1s and big H2s | **Lora** (400–700) | `font-[var(--font-display)]` |
+| H1s and big H2s | **Lora** (400–700) | `font-[family-name:var(--font-display)]` |
 | Everything else | **Plus Jakarta Sans** (400–700) | Default on `body`; nothing to add |
+
+**Write the Lora class exactly as `font-[family-name:var(--font-display)]`.** The shorter `font-[var(--font-display)]` looks right but Tailwind 4.3 compiles it to `font-weight`, so the heading silently falls back to Plus Jakarta Sans. Every heading on the site rendered that way until SAKEM-035 (2026-10-07).
 
 H3/H4 and UI text stay on Plus Jakarta Sans for tightness.
 

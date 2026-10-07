@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
         <div className="mb-6 text-center">
           <Link
             href="/"
-            className="inline-block font-[var(--font-display)] text-2xl text-gray-900 hover:opacity-80 transition-opacity"
+            className="inline-block font-[family-name:var(--font-display)] text-2xl text-gray-900 hover:opacity-80 transition-opacity"
           >
             Sakola Kembara
           </Link>
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
 
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-5">
           <div>
-            <h1 className="font-[var(--font-display)] text-xl text-gray-900 mb-1">
+            <h1 className="font-[family-name:var(--font-display)] text-xl text-gray-900 mb-1">
               Lupa password?
             </h1>
             <p className="text-sm text-gray-600">

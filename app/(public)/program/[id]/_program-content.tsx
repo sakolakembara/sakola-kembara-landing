@@ -55,7 +55,7 @@ export default function ProgramContent({
               <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
               Program Kami
             </div>
-            <p className="font-[var(--font-display)] text-[28px] sm:text-4xl md:text-[44px] leading-tight max-w-[760px] mx-auto text-balance">
+            <p className="font-[family-name:var(--font-display)] text-[28px] sm:text-4xl md:text-[44px] leading-tight max-w-[760px] mx-auto text-balance">
               Apa saja yang dilalui penerima manfaat Sakola Kembara?
             </p>
           </div>
@@ -137,7 +137,7 @@ export default function ProgramContent({
               <span className="bg-primary-blue text-white px-3 py-1.5 rounded-md text-sm font-semibold">
                 Tahap {currentIndex + 1} · {program.tag}
               </span>
-              <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-[40px] leading-tight text-gray-900">
+              <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-[40px] leading-tight text-gray-900">
                 {program.title}
               </h1>
               <p className="text-base md:text-lg text-gray-700 leading-relaxed">
@@ -161,7 +161,7 @@ export default function ProgramContent({
         {/* Sub Programs Section */}
         <section className="py-12 md:py-16">
           <div className="max-w-[1200px] mx-auto px-6">
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-8 md:mb-10">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-8 md:mb-10">
               Kegiatan
             </h2>
 
@@ -233,7 +233,7 @@ export default function ProgramContent({
         {/* Timeline Placeholder */}
         <section className="py-16 bg-gray-50">
           <div className="max-w-[1200px] mx-auto px-6 text-center">
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
               Timeline Kegiatan
             </h2>
             <p className="text-gray-600 mb-8">
@@ -248,7 +248,7 @@ export default function ProgramContent({
         {/* Gallery */}
         <section className="py-16">
           <div className="max-w-[1200px] mx-auto px-6">
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
               Galeri Foto
             </h2>
             <p className="text-gray-600 mb-8">

@@ -87,7 +87,7 @@ export default function PartnersSection() {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Partner Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl text-gray-900 mb-5 md:mb-6">
+          <h2 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl text-gray-900 mb-5 md:mb-6">
             Bersama Mewujudkan Perubahan
           </h2>
           <p className="text-base md:text-lg text-gray-600 max-w-[600px] mx-auto">

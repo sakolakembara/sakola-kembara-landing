@@ -108,7 +108,7 @@ function PortalGate({
           <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
           {eyebrow}
         </div>
-        <h1 className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3 leading-tight">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 mb-3 leading-tight">
           {headline}
         </h1>
         <p className="text-gray-600 leading-relaxed">{body}</p>

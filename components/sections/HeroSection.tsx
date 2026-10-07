@@ -27,7 +27,7 @@ export default function HeroSection() {
               Pendidikan Untuk Semua
             </div>
 
-            <h1 className="font-[var(--font-display)] font-bold text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-[1.2] md:leading-tight mb-5 md:mb-6">
+            <h1 className="font-[family-name:var(--font-display)] font-bold text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-[1.2] md:leading-tight mb-5 md:mb-6">
               Membuka Pintu{" "}
               <span className="text-primary-blue">Pendidikan Tinggi</span> untuk
               Setiap Anak Indonesia

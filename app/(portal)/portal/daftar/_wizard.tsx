@@ -327,7 +327,7 @@ export function Wizard({ batch, user }: WizardProps) {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Formulir Pendaftaran · {batch.name}
           </div>
-          <h1 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2 leading-tight">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2 leading-tight">
             Ceritakan tentang dirimu, {user.name?.split(" ")[0] ?? "Sakemers"}
           </h1>
           <p className="text-gray-600 max-w-[720px]">

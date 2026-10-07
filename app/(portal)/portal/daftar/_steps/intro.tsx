@@ -54,7 +54,7 @@ export function IntroStep() {
                 Wajib dibuka
               </span>
             </div>
-            <h3 className="font-[var(--font-display)] text-xl md:text-2xl mb-1.5 leading-tight">
+            <h3 className="font-[family-name:var(--font-display)] text-xl md:text-2xl mb-1.5 leading-tight">
               Buka Pusat Dokumen &amp; Berkas dulu
             </h3>
             <p className="text-sm md:text-base text-white/90 leading-relaxed mb-3">

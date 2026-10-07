@@ -76,7 +76,7 @@ export default function GabungSiswaPage() {
             <span className="inline-block px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider bg-white/15 rounded-full border border-white/25">
               Open Recruitment Gen 6
             </span>
-            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight">
+            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight">
               Wujudkan Mimpimu Bersama Sakola Kembara
             </h1>
             <p className="text-base md:text-xl text-white/90 max-w-[700px] mb-8 leading-relaxed">
@@ -120,7 +120,7 @@ export default function GabungSiswaPage() {
             transition={{ duration: 0.6 }}
             className="text-center mb-14"
           >
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
               Manfaat Bergabung dengan Sakola Kembara
             </h2>
             <p className="text-lg text-gray-600 max-w-[640px] mx-auto">
@@ -164,7 +164,7 @@ export default function GabungSiswaPage() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
               Alur Pendaftaran
             </h2>
             <p className="text-lg text-gray-600 max-w-[600px] mx-auto">
@@ -183,7 +183,7 @@ export default function GabungSiswaPage() {
                 transition={{ duration: 0.5, delay: 0.1 + i * 0.1 }}
                 className="rounded-2xl border border-gray-200 p-6 bg-gray-50/60"
               >
-                <div className="text-primary-blue font-[var(--font-display)] text-3xl mb-3">
+                <div className="text-primary-blue font-[family-name:var(--font-display)] text-3xl mb-3">
                   {f.step}
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
@@ -205,7 +205,7 @@ export default function GabungSiswaPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl mb-4">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl mb-4">
               Siap Bergabung dengan Sakola Kembara?
             </h2>
             <p className="text-base md:text-lg text-white/90 mb-8 leading-relaxed">

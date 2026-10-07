@@ -17,7 +17,7 @@ export function SuccessScreen({ applicationId }: { applicationId: string }) {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Terkirim
           </div>
-          <h1 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-3 leading-tight">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-3 leading-tight">
             Pendaftaran kamu sudah kami terima
           </h1>
           <p className="text-gray-600 leading-relaxed mb-2 max-w-[520px] mx-auto">

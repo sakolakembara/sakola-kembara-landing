@@ -52,7 +52,7 @@ export function TimContent({ members }: TimContentProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-6">
+            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-6">
               Pahlawan di Balik Sakola Kembara
             </h1>
             <p className="text-base md:text-lg text-white/90 max-w-[600px]">
@@ -81,7 +81,7 @@ export function TimContent({ members }: TimContentProps) {
             list.length === 0 ? null : (
               <section key={category}>
                 <header className="mb-6">
-                  <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2">
+                  <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-2">
                     {TEAM_CATEGORY_LABEL[category]}
                   </h2>
                   <p className="text-gray-600 max-w-[700px]">
@@ -140,7 +140,7 @@ export function TimContent({ members }: TimContentProps) {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-[var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl text-gray-900 mb-4">
               Ingin Bergabung dengan Tim?
             </h2>
             <p className="text-lg text-gray-600 mb-8">
@@ -259,7 +259,7 @@ function MemberDrawer({
                 </div>
                 <h2
                   id={`member-${member.id}-name`}
-                  className="font-[var(--font-display)] text-2xl md:text-3xl text-gray-900"
+                  className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900"
                 >
                   {member.name}
                 </h2>

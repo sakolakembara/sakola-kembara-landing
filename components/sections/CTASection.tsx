@@ -73,7 +73,7 @@ export default function CTASection() {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Bergabung Bersama Kami
           </div>
-          <h2 className="font-[var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-white mb-4">
+          <h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-3xl md:text-4xl text-white mb-4">
             Jadilah Bagian dari Perubahan
           </h2>
           <p className="text-base md:text-lg text-white/80 max-w-[600px] mx-auto">

@@ -28,7 +28,7 @@ export function BlogIndex({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="font-[var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
+            <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4">
               Blog & Cerita
             </h1>
             <p className="text-base md:text-xl text-white/90 max-w-[600px]">

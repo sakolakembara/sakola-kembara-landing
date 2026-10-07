@@ -64,7 +64,7 @@ export default async function PortalHomePage({ searchParams }: PageProps) {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Portal Siswa
           </div>
-          <h1 className="font-[var(--font-display)] text-3xl md:text-5xl lg:text-6xl leading-tight mb-3">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl md:text-5xl lg:text-6xl leading-tight mb-3">
             Selamat datang, {firstName}
           </h1>
           <p className="text-base md:text-lg text-white/85 max-w-[620px] leading-relaxed">
@@ -125,7 +125,7 @@ function CurrentBatchCard({
           </div>
           <div>
             <SectionEyebrow>Pendaftaran</SectionEyebrow>
-            <h2 className="font-[var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
+            <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
               Belum ada batch yang dibuka
             </h2>
             <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
@@ -155,7 +155,7 @@ function CurrentBatchCard({
           </div>
           <div className="flex-1">
             <SectionEyebrow>Batch {openBatch.year}</SectionEyebrow>
-            <h2 className="font-[var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
+            <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
               Pendaftaran kamu untuk {openBatch.name} sudah kami terima
             </h2>
             <p className="text-gray-600 mt-2 leading-relaxed max-w-[560px]">
@@ -197,7 +197,7 @@ function CurrentBatchCard({
           <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
           Batch {openBatch.year} · Pendaftaran Dibuka
         </div>
-        <h2 className="font-[var(--font-display)] text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight mb-3">
+        <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl lg:text-4xl text-gray-900 leading-tight mb-3">
           {openBatch.name}
         </h2>
         <p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-[560px] mb-6">
@@ -291,7 +291,7 @@ function HistoryCard({ applications }: { applications: PortalApplication[] }) {
         </div>
         <div className="flex-1 min-w-0">
           <SectionEyebrow>Riwayat</SectionEyebrow>
-          <h2 className="font-[var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
+          <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mt-1">
             {applications.length === 0
               ? "Riwayat pendaftaran"
               : published

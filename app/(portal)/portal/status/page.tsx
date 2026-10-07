@@ -155,7 +155,7 @@ export default async function StatusPage() {
             <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
             Status Pendaftaran
           </div>
-          <h1 className="font-[var(--font-display)] text-2xl md:text-3xl leading-tight mb-2">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl leading-tight mb-2">
             Rekap perjalanan pendaftaranmu
           </h1>
           <p className="text-sm md:text-base text-white/80 max-w-[620px] leading-relaxed">
@@ -171,7 +171,7 @@ export default async function StatusPage() {
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-100 mb-5">
               <Inbox size={26} className="text-gray-500" />
             </div>
-            <h2 className="font-[var(--font-display)] text-xl md:text-2xl text-gray-900 mb-2">
+            <h2 className="font-[family-name:var(--font-display)] text-xl md:text-2xl text-gray-900 mb-2">
               Belum ada pendaftaran
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed max-w-[420px] mx-auto mb-6">
@@ -223,7 +223,7 @@ export default async function StatusPage() {
                           )}
                         </div>
                         <h2
-                          className={`font-[var(--font-display)] mt-2 leading-tight ${TONE_HEADLINE[view.tone]}`}
+                          className={`font-[family-name:var(--font-display)] mt-2 leading-tight ${TONE_HEADLINE[view.tone]}`}
                         >
                           {view.headline}
                         </h2>
