@@ -26,18 +26,31 @@ Four moves define the look:
 
 ## 2. Color
 
-| Tailwind token (alias) | Hex | Use |
+Two layers: brand-named primitives in `:root` (`--catalina-blue`, `--sunglow`, `--may-green`, `--space-cadet`, …) hold the values, and `@theme` publishes them under the names components use. Use only these utility names (SAKEM-031 D1).
+
+| Tailwind token | Hex | Use |
 | --- | --- | --- |
-| `primary-blue` (`catalina-blue`) | `#122E76` | Primary buttons, links, eyebrow text on light, headline emphasis, gradient start |
+| `primary-blue` | `#122E76` | Primary buttons, links, eyebrow text on light, headline emphasis, gradient start |
 | `primary-blue-dark` | `#0D1F52` | Hover for primary buttons and filled card CTAs |
-| `accent-navy` (`space-cadet`) | `#233656` | Gradient end on navy surfaces, modal surface |
-| `secondary-yellow` (`sunglow`) | `#FAD02B` | Eyebrow dot (always), figures and emphasis on navy, yellow CTAs on navy |
-| `secondary-green` (`may-green`) | `#4BA442` | Bullet dots, volunteer CTA, success states |
-| `celtic-blue` | `#306FCC` | Link hover variants |
-| `light-blue` | `#B4D9DB` | The global focus ring |
+| `accent-navy` | `#233656` | Gradient end on navy surfaces, modal surface |
+| `secondary-yellow` | `#FAD02B` | Eyebrow dot (always), figures and emphasis on navy, yellow CTAs on navy |
+| `secondary-green` | `#4BA442` | Bullet dots, volunteer CTA |
 | `blue-yonder` | `#51799A` | Gradient start of the "dark" impact metric card |
 
-**Neutrals are Tailwind's grey scale** (`gray-50` … `gray-900`). The custom neutrals in `globals.css` (`light-gray`, `medium-gray`, `dark-gray`, `black`) only back the body text color and the legacy CSS classes (section 6, Legacy CSS); don't reach for them in components.
+CSS-only variables (not utilities): `--light-blue` `#B4D9DB` is the global focus ring; `--celtic-blue` `#306FCC` is the blog link hover.
+
+**Neutrals are Tailwind's grey scale** (`gray-50` … `gray-900`). `black` is remapped to the brand near-black `#1F2937`. A few neutrals stay as plain CSS variables for the blog styles and body text (`--dark-gray`, `--light-gray`, `--medium-gray`); they are not utilities.
+
+**Status colors** (SAKEM-031 D2). Use these for errors, success, warnings and notices instead of raw `red-*`/`green-*`/`amber-*`. Each status has a text color, a subtle background, and a border:
+
+| Status | Text | Background | Border | Based on |
+| --- | --- | --- | --- | --- |
+| Success | `text-success-fg` | `bg-success-bg` | `border-success-border` | green 700 / 50 / 200 |
+| Warning | `text-warning-fg` | `bg-warning-bg` | `border-warning-border` | amber 800 / 50 / 200 |
+| Danger | `text-danger-fg` | `bg-danger-bg` | `border-danger-border` | red 700 / 50 / 200 |
+| Info | `text-info-fg` | `bg-info-bg` | `border-info-border` | blue 900 / 50 / 200 |
+
+Brand green is too light for text (~3:1 on white), hence the Tailwind scales. Existing components still use raw palette classes; they move to these tokens as they are migrated.
 
 **Rules**
 
@@ -224,10 +237,6 @@ Use the native `<dialog>` opened with `showModal()`. The browser supplies the fo
   - A full-width yellow *Tutup* inside `<form method="dialog">`.
   - A click handler that closes when the click lands on the dialog element itself, which is the backdrop.
 
-### Legacy CSS
-
-`globals.css` still defines `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-accent`, `.card`, `.input`, `.label`, `.text-body*`, `.text-caption` and `.image-placeholder`. No component uses them. Don't start using them; style with utilities.
-
 ## 7. Imagery & logo
 
 | Asset | File | Notes |
@@ -253,7 +262,12 @@ Restrained:
 
 No scroll-jacking, parallax, long reveal sequences, page transitions, or motion libraries other than framer-motion.
 
-**Reduced motion: known gap.** `globals.css` collapses CSS transitions and animations under `prefers-reduced-motion: reduce`, but the framer-motion reveals are JavaScript-driven and still play: nothing uses `MotionConfig reducedMotion="user"` or `useReducedMotion`, despite what the CSS comment says. New motion must respect the setting.
+**Reduced motion is handled in two places:**
+
+- `<MotionProvider>` (`components/MotionProvider.tsx`, mounted in `app/layout.tsx`) wraps the app in `MotionConfig reducedMotion="user"`. Every framer-motion animation then skips transforms and layout animation when the OS asks for less motion; opacity fades still run.
+- The blanket `prefers-reduced-motion` rule in `globals.css` collapses CSS transitions and animations.
+
+New motion gets both for free. Don't bypass them with `reducedMotion="never"` or hand-rolled JS animation.
 
 ## 9. UI copy
 
@@ -299,7 +313,7 @@ Voice and canonical copy: [`docs/context/tone-of-voice.md`](docs/context/tone-of
 
 ### Tags
 
-Category and phase tags: white on `bg-primary-blue`, `text-xs font-semibold`. The shape is not settled yet: program/phase tags are `rounded-md`, blog category tags are `rounded-full`. Blog categories from the WordPress migration stay in English (*News*, *Tips*).
+Category and phase tags: white on `bg-primary-blue`, `text-xs font-semibold`, `rounded-full` (SAKEM-031 D5). Program/phase tags are still `rounded-md` until their pages are migrated. Blog categories from the WordPress migration stay in English (*News*, *Tips*).
 
 ### English
 
@@ -322,3 +336,29 @@ The mission sentence (*Yayasan Sakola Kembara berkomitmen untuk memberikan kesem
   - Each page has exactly one `<h1>`.
 - **Modals** use `<dialog>` (section 6).
 - **Text contrast:** at least 4.5:1. On navy, use `white/70` or stronger for text.
+
+## 11. Atomic design system (in progress)
+
+The site is moving from copy-pasted utility strings to shared components, one small ticket and PR at a time (plan agreed in SAKEM-031). Until a page is migrated, its current classes stay as documented above.
+
+**Structure** (D10):
+- `components/ui/`: atoms and molecules (`Button`, `Eyebrow`, `Heading`, `Tag`, `Container`, `SectionHeader`, `Card`, form fields).
+- `components/layout/`: structural organisms (`Navbar`, `Footer`, `PageHero`).
+- `components/sections/`: page organisms, as today.
+- `app/`: templates (layouts) and pages.
+
+Make a pattern a component once it is used three or more times. One-offs stay inline.
+
+**Catalog** (D9): an internal `/design` route that renders every component, enabled only when `DESIGN_CATALOG=1`, so it appears on previews and never in production.
+
+**Class merging** (D8): `class-variance-authority` + `tailwind-merge` behind a `cn()` helper, pending Anggara's agreement. Until then, no component takes a free-form `className` override.
+
+**Standards decided, applied as each page is migrated:**
+
+| Decision | Standard | Visible change when applied |
+| --- | --- | --- |
+| D3 Headings | Page H1 `text-3xl sm:text-4xl md:text-5xl lg:text-6xl` (article H1 `text-3xl md:text-4xl lg:text-5xl`). Section H2 `text-[26px] sm:text-3xl md:text-4xl`. Sub-section H2 `text-2xl md:text-3xl`. Card titles stay sans `text-xl`, panel titles sans `text-2xl` | Impact and Partners H2 shrink from `md:text-5xl` |
+| D4 Containers | Containers `1200` (default) / `1000` (focused two-column) / `800` (reading). Text measures `760` (long headline) / `600` (lead) | `1100` pages widen to 1200; 820/720/700 move to 800 or 760 |
+| D5 Tags | `rounded-full` | Program/phase tags become pills |
+| D6 Yellow button hover | `hover:bg-secondary-yellow/90` | PitchDeck hover |
+| D7 Text CTAs | "Lihat Semua" becomes an outlined button; "Baca Selengkapnya" stays a text link | News section header |

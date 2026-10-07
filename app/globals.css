@@ -26,63 +26,42 @@
   --secondary-green: #4BA442;
   --accent-navy: #233656;
 
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
-  --space-20: 80px;
-  --space-24: 96px;
-
-  /* Border Radius */
+  /* Radii used by the blog and map CSS below */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(18, 46, 118, 0.05);
-  --shadow-md: 0 2px 8px rgba(18, 46, 118, 0.08);
-  --shadow-lg: 0 4px 16px rgba(18, 46, 118, 0.12);
-
-  /* Transitions */
-  --transition-fast: 150ms ease-out;
-  --transition-normal: 250ms ease-in-out;
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme inline {
-  /* Primary Colors */
-  --color-catalina-blue: var(--catalina-blue);
-  --color-may-green: var(--may-green);
-  --color-sunglow: var(--sunglow);
-
-  /* Secondary Colors */
-  --color-space-cadet: var(--space-cadet);
-  --color-blue-yonder: var(--blue-yonder);
-  --color-celtic-blue: var(--celtic-blue);
-  --color-light-blue: var(--light-blue);
-
-  /* Neutrals */
-  --color-white: var(--white);
-  --color-light-gray: var(--light-gray);
-  --color-medium-gray: var(--medium-gray);
-  --color-dark-gray: var(--dark-gray);
-  --color-black: var(--black);
-
-  /* Legacy mappings */
+  /* Brand colors as Tailwind utilities (bg-primary-blue, text-secondary-yellow,
+     …). The brand-named values in :root (--catalina-blue, --sunglow, …) are the
+     source; components use only these names (SAKEM-031 D1). */
   --color-primary-blue: var(--catalina-blue);
   --color-primary-blue-dark: var(--primary-blue-dark);
+  --color-accent-navy: var(--space-cadet);
   --color-secondary-yellow: var(--sunglow);
   --color-secondary-green: var(--may-green);
-  --color-accent-navy: var(--space-cadet);
+  --color-blue-yonder: var(--blue-yonder);
+
+  /* Tailwind's white/black, remapped: black is the brand near-black. */
+  --color-white: var(--white);
+  --color-black: var(--black);
+
+  /* Status colors (SAKEM-031 D2): text on light, subtle background, border.
+     Brand green is too light for text (~3:1), so these use Tailwind scales. */
+  --color-success-fg: var(--color-green-700);
+  --color-success-bg: var(--color-green-50);
+  --color-success-border: var(--color-green-200);
+  --color-warning-fg: var(--color-amber-800);
+  --color-warning-bg: var(--color-amber-50);
+  --color-warning-border: var(--color-amber-200);
+  --color-danger-fg: var(--color-red-700);
+  --color-danger-bg: var(--color-red-50);
+  --color-danger-border: var(--color-red-200);
+  --color-info-fg: var(--color-blue-900);
+  --color-info-bg: var(--color-blue-50);
+  --color-info-border: var(--color-blue-200);
 
   /* Typography */
   --font-display: "Lora", serif;
@@ -117,8 +96,9 @@ html {
   }
 }
 
-/* Site-wide motion opt-out. Framer Motion respects this via useReducedMotion,
-   but CSS transitions/animations need the blanket rule. */
+/* Site-wide motion opt-out for CSS transitions and animations. Framer Motion
+   is covered separately by <MotionProvider> (MotionConfig reducedMotion="user")
+   in app/layout.tsx. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -198,127 +178,6 @@ body {
   }
 }
 
-.text-body-lg {
-  font-size: 18px;
-  line-height: 160%;
-}
-
-.text-body {
-  font-size: 16px;
-  line-height: 160%;
-}
-
-.text-body-sm {
-  font-size: 14px;
-  line-height: 160%;
-}
-
-.text-caption {
-  font-size: 12px;
-  line-height: 150%;
-  letter-spacing: 0.005em;
-}
-
-/* Button Styles */
-.btn {
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 100%;
-  letter-spacing: 0.005em;
-  padding: 16px 24px;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-normal);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-primary {
-  background-color: var(--catalina-blue);
-  color: var(--white);
-}
-
-.btn-primary:hover {
-  background-color: #0D2460;
-}
-
-.btn-primary:active {
-  background-color: #091C4A;
-}
-
-.btn-secondary {
-  background-color: transparent;
-  border: 2px solid var(--catalina-blue);
-  color: var(--catalina-blue);
-}
-
-.btn-secondary:hover {
-  background-color: rgba(18, 46, 118, 0.05);
-}
-
-.btn-accent {
-  background-color: var(--sunglow);
-  color: var(--space-cadet);
-}
-
-.btn-accent:hover {
-  background-color: #E5BC27;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn:focus {
-  outline: 3px solid var(--light-blue);
-  outline-offset: 2px;
-}
-
-/* Card Styles */
-.card {
-  background: var(--white);
-  border: 1px solid #F0F0F0;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: var(--space-6);
-  transition: all var(--transition-normal);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-
-/* Form Elements */
-.input {
-  border: 1px solid var(--blue-yonder);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  font-family: var(--font-body);
-  font-size: 16px;
-  transition: all var(--transition-fast);
-  width: 100%;
-}
-
-.input:focus {
-  outline: none;
-  border-color: var(--celtic-blue);
-  box-shadow: 0 0 0 3px rgba(48, 111, 204, 0.1);
-}
-
-.label {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--dark-gray);
-  margin-bottom: var(--space-2);
-  display: block;
-}
-
 /* Custom animation for map markers */
 @keyframes pulse {
   0% {
@@ -344,33 +203,6 @@ body {
 .leaflet-popup-content-wrapper {
   border-radius: var(--radius-lg);
   font-family: var(--font-body);
-}
-
-/* Image placeholder style */
-.image-placeholder {
-  background: linear-gradient(135deg, var(--light-gray) 0%, #E5E5E5 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--medium-gray);
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: var(--radius-lg);
-  position: relative;
-  overflow: hidden;
-}
-
-.image-placeholder::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 10px,
-    rgba(255,255,255,0.1) 10px,
-    rgba(255,255,255,0.1) 20px
-  );
 }
 
 /* Focus visible for accessibility */

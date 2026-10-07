@@ -23,13 +23,13 @@ A snapshot of what powers the site today. Keep this in sync with `package.json` 
 
 - **Tailwind CSS v4** via `@tailwindcss/postcss` (see `postcss.config.mjs`).
 - **No `tailwind.config.ts`** — design tokens are declared in `app/globals.css` via `@theme inline { ... }`. Add new tokens there, not in a JS config.
-- Tokens published as Tailwind utilities include:
-  - **Primary**: `catalina-blue` / `may-green` / `sunglow` (+ aliases `primary-blue`, `primary-blue-dark`, `secondary-green`, `secondary-yellow`).
-  - **Secondary**: `space-cadet`, `blue-yonder`, `celtic-blue`, `light-blue`, plus alias `accent-navy`.
-  - **Neutrals**: `white`, `light-gray`, `medium-gray`, `dark-gray`, `black`.
+- Tokens published as Tailwind utilities (SAKEM-031/032):
+  - **Brand**: `primary-blue`, `primary-blue-dark`, `accent-navy`, `secondary-yellow`, `secondary-green`, `blue-yonder`. Their values come from brand-named primitives in `:root` (`--catalina-blue`, `--sunglow`, …), which are not utilities.
+  - **Status**: `success-*`, `warning-*`, `danger-*`, `info-*`, each with `-fg` / `-bg` / `-border`.
+  - **Neutrals**: Tailwind's grey scale; `white`, and `black` remapped to `#1F2937`.
   - **Type**: `var(--font-display)` (Lora) and `var(--font-body)` (Plus Jakarta Sans).
-- Component classes defined in `app/globals.css`: `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-accent`, `.card`, `.input`, `.label`, `.blog-content`, `.image-placeholder`, `.animate-pulse-marker`.
-  > In practice most components inline Tailwind utilities directly (e.g. `bg-primary-blue rounded-lg`) rather than using these classes. No component uses these classes any more (`/kontak` inlines utilities too); see [`DESIGN.md`](../../DESIGN.md) › Legacy CSS.
+- Global CSS classes in `app/globals.css`: `.blog-content` (scraped/markdown posts), `.animate-pulse-marker` (map), `.nav-clearance` (hero top padding). The old `.btn*`, `.card`, `.input`, `.label`, `.text-body*` and `.image-placeholder` classes were unused and were removed in SAKEM-032; style with utilities (and, as they land, the components in `components/ui/`).
+- Reduced motion: `components/MotionProvider.tsx` wraps the app in framer-motion's `MotionConfig reducedMotion="user"`; CSS transitions are covered by the `prefers-reduced-motion` rule in `globals.css`.
 
 See [`DESIGN.md`](../../DESIGN.md) for how to use the tokens.
 
