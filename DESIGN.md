@@ -80,13 +80,13 @@ H3/H4 and UI text stay on Plus Jakarta Sans for tightness.
 | Use | Classes |
 | --- | --- |
 | Homepage hero H1 | `font-bold text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] leading-[1.2] md:leading-tight` |
-| Section H2 | `text-[26px] sm:text-3xl md:text-4xl` (or `text-[28px]` base). A long H2 may go `md:text-[40px]` with `max-w-[760px] text-balance`, like *Apa saja yang dilalui…* |
+| Section H2 | `text-[26px] leading-tight sm:text-3xl md:text-4xl` with `max-w-[760px] text-balance` (`<Heading level="section">` / `<SectionHeader>`). Some unmigrated pages still use `text-[28px]` base or `md:text-[40px]` |
 | Card H3 | `text-xl font-bold text-gray-900` |
 | Big figure on navy | `text-5xl md:text-[56px] font-extrabold text-secondary-yellow` |
 
 **Body.** Default `text-base text-gray-600` (line-height 1.6 from `body`). Lead paragraph: `text-lg`, often `max-w-[600px] mx-auto`. Supporting text: `text-sm text-gray-500`.
 
-**Eyebrow** (inline JSX, no utility class):
+**Eyebrow:** `<Eyebrow>` (`tone="dark"` on navy), or `<SectionHeader eyebrow=…>` with the heading. Unmigrated pages still inline it:
 
 ```tsx
 <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
@@ -95,7 +95,7 @@ H3/H4 and UI text stay on Plus Jakarta Sans for tightness.
 </div>
 ```
 
-On navy, swap `text-primary-blue` for `text-secondary-yellow`. The dot is always yellow.
+On navy, swap `text-primary-blue` for `text-secondary-yellow`. The dot is always yellow. In a section header, eyebrow → heading is `mb-4` and heading → lead `mb-5 md:mb-6`.
 
 **Emphasis.** One phrase per headline may take a brand color (*Membuka Pintu **Pendidikan Tinggi** untuk Setiap Anak Indonesia* in `text-primary-blue`). On navy, the punchline takes `text-secondary-yellow` (*Kami hadir untuk **mengubah realitas ini.***).
 
@@ -178,7 +178,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 
 | Variant | Classes |
 | --- | --- |
-| Primary | `px-6 py-3 text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark` (the hero adds `hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30`) |
+| Primary | `px-6 py-3 text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark` on unmigrated pages; `<Button>` (`h-11 px-5`) on migrated ones. The homepage hero adds `transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30` |
 | Big standalone CTA | `px-8 py-4 bg-primary-blue text-white font-semibold rounded-xl hover:bg-primary-blue-dark` |
 | Big outlined (pairs with the big CTA, e.g. `/tim`) | `px-8 py-4 border-2 border-primary-blue text-primary-blue font-semibold rounded-xl hover:bg-primary-blue/5` |
 | Outlined ("Lihat Detail" outside a card, "Lanjut ke Tahap N") | `h-11 px-5 rounded-lg border-[1.5px] border-primary-blue text-primary-blue text-[15px] font-semibold hover:bg-primary-blue/5` |
@@ -192,7 +192,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 
 ### Cards
 
-- **Program card** (`ActivitiesSection`): `group bg-white rounded-2xl overflow-hidden border border-gray-100 h-full flex flex-col hover:-translate-y-2 hover:shadow-xl`. Photo on top with the phase tag pill (`bg-primary-blue text-white px-3 py-1.5 rounded-md text-xs font-semibold`), title, green-dot bullets, then the filled *Lihat Detail*.
+- **Program card** (`ActivitiesSection`): `group bg-white rounded-2xl overflow-hidden border border-gray-100 h-full flex flex-col hover:-translate-y-2 hover:shadow-xl`. Photo on top with the phase `<Tag>` pill, title, green-dot bullets, then the filled *Lihat Detail*.
 - **Infographic card** (`ProblemSection`): `flex flex-col gap-4 p-6 md:p-7 bg-white/[0.07] rounded-2xl border border-white/15`. From top to bottom:
   - a 124px chart slot;
   - the figure;
@@ -315,7 +315,7 @@ Voice and canonical copy: [`docs/context/tone-of-voice.md`](docs/context/tone-of
 
 ### Tags
 
-Category and phase tags: white on `bg-primary-blue`, `text-xs font-semibold`, `rounded-full` (SAKEM-031 D5). Program/phase tags are still `rounded-md` until their pages are migrated. Blog categories from the WordPress migration stay in English (*News*, *Tips*).
+Category and phase tags: `<Tag>`, white on `bg-primary-blue`, `text-xs font-semibold`, `rounded-full` (SAKEM-031 D5). Program/phase tags outside the homepage are still `rounded-md` until their pages are migrated. Blog categories from the WordPress migration stay in English (*News*, *Tips*).
 
 ### English
 
@@ -368,6 +368,8 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `Tag` | atom | `tone`: `brand` · `soft`; `size`: `sm` · `md`. Always `rounded-full` |
 | `Container` | atom | `size`: `page` (1200) · `focused` (1000) · `reading` (800); `as` for the element |
 | `SectionHeader` | molecule | `eyebrow`, `title`, `lead`, `tone` (`light`/`dark`), `align` (`center`/`left`), `as` |
+
+**Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
 
 **Standards decided, applied as each page is migrated:**
 

@@ -3,6 +3,10 @@
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { Fragment, useId, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { headingVariants } from "@/components/ui/heading";
+import { cn } from "@/lib/cn";
 import { problemStats, type ProblemChart, type ProblemStat } from "@/lib/data";
 
 export default function ProblemSection() {
@@ -19,12 +23,12 @@ export default function ProblemSection() {
         }}
       />
 
-      <div className="max-w-[1200px] mx-auto px-6 relative z-10" ref={ref}>
+      <Container className="relative z-10" ref={ref}>
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="font-[family-name:var(--font-display)] text-[28px] sm:text-3xl md:text-4xl text-center mb-10 md:mb-12"
+          className={cn(headingVariants({ level: "section" }), "text-center mb-10 md:mb-12")}
         >
           Mengapa Kami Ada?
         </motion.h2>
@@ -59,7 +63,7 @@ export default function ProblemSection() {
           Kami hadir untuk{" "}
           <span className="text-secondary-yellow">mengubah realitas ini.</span>
         </motion.p>
-      </div>
+      </Container>
     </section>
   );
 }
@@ -75,14 +79,14 @@ function StatDetail({ stat }: { stat: ProblemStat }) {
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="outline-on-navy"
+        fullWidth
         aria-haspopup="dialog"
         onClick={() => dialogRef.current?.showModal()}
-        className="w-full h-10 px-4 rounded-lg border-[1.5px] border-white/60 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
       >
         Mengapa ini terjadi?
-      </button>
+      </Button>
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
@@ -105,9 +109,9 @@ function StatDetail({ stat }: { stat: ProblemStat }) {
             <p className="text-white/85 leading-relaxed text-sm">{stat.detail}</p>
           </div>
           <form method="dialog">
-            <button className="mt-6 w-full py-3 bg-secondary-yellow text-gray-900 font-semibold rounded-xl hover:bg-secondary-yellow/90 transition-colors">
+            <Button type="submit" variant="yellow-on-navy" fullWidth className="mt-6">
               Tutup
-            </button>
+            </Button>
           </form>
         </div>
       </dialog>

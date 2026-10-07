@@ -1,8 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Heading } from "@/components/ui/heading";
 import { heroStats, heroImages } from "@/lib/data";
 
 export default function HeroSection() {
@@ -14,7 +17,7 @@ export default function HeroSection() {
         className="absolute -top-1/2 -right-1/5 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(30,136,229,0.08)_0%,transparent_70%)] rounded-full"
       />
 
-      <div className="max-w-[1200px] mx-auto px-6">
+      <Container>
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Text Content */}
           <motion.div
@@ -22,16 +25,13 @@ export default function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary-blue uppercase tracking-wider mb-4">
-              <span className="w-2 h-2 bg-secondary-yellow rounded-full" />
-              Pendidikan Untuk Semua
-            </div>
+            <Eyebrow className="mb-4">Pendidikan Untuk Semua</Eyebrow>
 
-            <h1 className="font-[family-name:var(--font-display)] font-bold text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] text-gray-900 leading-[1.2] md:leading-tight mb-5 md:mb-6">
+            <Heading level="display" className="text-gray-900 mb-5 md:mb-6">
               Membuka Pintu{" "}
               <span className="text-primary-blue">Pendidikan Tinggi</span> untuk
               Setiap Anak Indonesia
-            </h1>
+            </Heading>
 
             <p className="text-base md:text-lg text-gray-600 mb-7 md:mb-8 leading-relaxed">
               Kami hadir untuk mendobrak hambatan ekonomi dan geografis yang
@@ -40,18 +40,16 @@ export default function HeroSection() {
             </p>
 
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
-              <Link
+              {/* The lift on hover is the hero's own touch (DESIGN.md, Buttons). */}
+              <Button
                 href="#activities"
-                className="px-6 py-3.5 sm:py-3 text-center text-[15px] font-semibold text-white bg-primary-blue rounded-lg hover:bg-primary-blue-dark hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30 transition-all"
+                className="transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30"
               >
                 Lihat Program Kami
-              </Link>
-              <Link
-                href="/donasi"
-                className="px-6 py-3.5 sm:py-3 text-center text-[15px] font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-primary-blue transition-all"
-              >
+              </Button>
+              <Button href="/donasi" variant="subtle">
                 Dukung Misi Kami
-              </Link>
+              </Button>
             </div>
 
             {/* Stats — a grid, not a flex row. As a flex row the three items
@@ -105,7 +103,7 @@ export default function HeroSection() {
             </div>
           </motion.div>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

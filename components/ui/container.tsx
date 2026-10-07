@@ -12,7 +12,10 @@ const containerVariants = cva("mx-auto w-full px-6", {
   defaultVariants: { size: "page" },
 });
 
-/** Horizontal page container (atom): 1200 default, 1000 focused, 800 reading (SAKEM-031 D4). */
+/**
+ * Horizontal page container (atom): 1200 default, 1000 focused, 800 reading (SAKEM-031 D4).
+ * Takes a `ref`, which sections use as their `useInView` target.
+ */
 export function Container({
   size,
   as: Tag = "div",
@@ -20,6 +23,7 @@ export function Container({
   ...rest
 }: VariantProps<typeof containerVariants> & {
   as?: "div" | "section" | "header" | "footer" | "main" | "nav";
+  ref?: React.Ref<HTMLDivElement>;
 } & React.HTMLAttributes<HTMLElement>) {
   return <Tag className={cn(containerVariants({ size }), className)} {...rest} />;
 }
