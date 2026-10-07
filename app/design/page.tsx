@@ -8,6 +8,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { SectionHeader } from "@/components/ui/section-header";
+import { Table, TableCard, TBody, Td, Th, THead } from "@/components/ui/table";
 import { Tag } from "@/components/ui/tag";
 
 /**
@@ -125,6 +126,36 @@ export default function DesignCatalog() {
           <Tag size="sm">News</Tag>
           <Tag tone="soft">290+ jam belajar setahun</Tag>
         </div>
+        <div className={`${row} mt-4`}>
+          <Tag tone="blue" size="sm">Laporan Tahunan</Tag>
+          <Tag tone="amber" size="sm">Pending</Tag>
+          <Tag tone="green" size="sm">Diterima</Tag>
+          <Tag tone="red" size="sm">Ditolak</Tag>
+          <Tag tone="purple" size="sm">Kerjasama</Tag>
+          <Tag tone="gray" size="sm">Lainnya</Tag>
+          <Tag tone="amber" size="lg">Pending (lg)</Tag>
+        </div>
+      </Block>
+
+      <Block title="Table (admin lists)">
+        <TableCard>
+          <Table>
+            <THead>
+              <tr>
+                <Th>Nama</Th>
+                <Th>Status</Th>
+              </tr>
+            </THead>
+            <TBody>
+              <tr>
+                <Td className="font-medium text-gray-900">Contoh Pendaftar</Td>
+                <Td>
+                  <Tag tone="blue" size="sm">Dalam Review</Tag>
+                </Td>
+              </tr>
+            </TBody>
+          </Table>
+        </TableCard>
       </Block>
 
       <section>
@@ -141,6 +172,9 @@ export default function DesignCatalog() {
 
       <Block title="Form fields (Field + Input / Select / Textarea)">
         <div className="grid max-w-[760px] gap-5 md:grid-cols-2">
+          <Field id="design-search" label="Kontrol kecil (filter admin)">
+            <Input size="sm" type="search" placeholder="Cari judul…" />
+          </Field>
           <Field id="design-name" label="Nama Lengkap" required>
             <Input placeholder="Masukkan nama Anda" />
           </Field>

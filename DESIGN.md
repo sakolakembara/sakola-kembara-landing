@@ -371,14 +371,16 @@ Make a pattern a component once it is used three or more times. One-offs stay in
 | `buttonVariants` | style | The same classes for a CTA inside a card that is already one link: `<span className={buttonVariants({ fullWidth: true, className: "group-hover:bg-primary-blue-dark" })}>` |
 | `Eyebrow` | atom | `tone`: `light` (blue text) · `dark` (yellow text, for navy) |
 | `Heading` | atom | `level`: `display` · `page` · `article` · `section` · `subsection` · `panel` · `card` (D3 scale). Sets the default element (h1/h2/h3); `as` overrides it. Color is up to the caller |
-| `Tag` | atom | `tone`: `brand` · `soft`; `size`: `sm` · `md`. Always `rounded-full` |
+| `Tag` | atom | `tone`: `brand` · `soft`, plus the bordered hues `blue` · `amber` · `green` · `red` · `purple` · `gray` for categories and statuses (maps in `lib/` name the tone, e.g. `REPORT_CATEGORY_TONE`, `APPLICATION_STATUS_TONE`); `size`: `sm` · `md` · `lg` (next to a detail page's title). Always `rounded-full` |
 | `Container` | atom | `size`: `page` (1200) · `focused` (1000) · `reading` (800); `as` for the element |
 | `SectionHeader` | molecule | `eyebrow`, `title`, `lead`, `tone` (`light`/`dark`), `align` (`center`/`left`), `as` |
 | `PageHero` | organism (`components/layout/`) | `title`, `lead`. The navy hero that opens a sub-page; the title is the page's H1 (`page` level) |
 | `Navbar` · `Footer` | organisms (`components/layout/`) | Site header (with `AnnouncementStrip` and `AuthNavButton`) and footer, mounted by `app/(public)/layout.tsx` |
 | `SocialLinks` | molecule | `theme`: `dark` (navy) · `light`. The four social profiles as round icon links |
 | `Field` | molecule | `id`, `label`, `required`, `hint`, `error`, `labelAside`. Label + control + hint/error, with the aria wiring (see Forms) |
-| `Input` · `Textarea` · `Select` | atoms | The form controls; inside a `Field` they are labelled automatically |
+| `Input` · `Textarea` · `Select` | atoms | The form controls; inside a `Field` they are labelled automatically. `size="sm"` (40px, 14px) only for the filter rows above admin tables |
+| `TableCard` · `Table` · `THead` · `Th` · `TBody` · `Td` | molecule | Admin data tables: white card, sideways scroll on phones, uppercase column labels, `px-4 py-3` cells |
+| `AdminPageHeader` | organism (`app/(admin)/admin/_page-header.tsx`) | `title`, `overline`, `actions`, description as children. Admin-only |
 | `Alert` | atom | `tone`: `danger` · `success` · `warning` · `info`. Message banner in the status colors |
 
 **Migrated so far:** homepage (SAKEM-036): all seven sections use `Container`, `SectionHeader`/`Heading`, `Button`/`buttonVariants` and `Tag`. Exceptions kept inline: the `CTASection` card buttons (per-role colors), the Impact sub-headings (*Peta Penyebaran*, *Cerita Sukses Alumni*, not on the D3 scale yet) and the carousel's icon-only controls.
@@ -394,6 +396,8 @@ Gabung Siswa (SAKEM-040): `/gabung-siswa` and `/gabung-siswa/docs` use `Containe
 Layout (SAKEM-041): `Navbar`, `Footer`, `AuthNavButton` and `AnnouncementStrip` live in `components/layout/` and use `Container`; `SocialLinks` is a molecule in `components/ui/`. Kept as they are: the nav links, the footer column labels, the announcement strip's per-severity colors and its pill CTA (an exception to "no pill buttons", admin-configured), and the 36px social icons.
 
 Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. The student registration wizard (`/portal/daftar`, SAKEM-043) uses the same `Field` and controls in every step, `Field group` for its radio-card questions, `Alert` for its notices and submit error, and lg `Button`s without arrows; its closed-batch and success screens use `Eyebrow` and `Heading`. Kept inline there: the intro's program card and amber notices, the document-step notice, the organisation add/remove controls, the review's *Ubah* links and the WhatsApp button on the success screen.
+
+Admin lists (SAKEM-044): every admin list page (and the headers of the dashboard and detail pages) uses `AdminPageHeader`, `Alert` for its flash messages, the `Table` parts, `Tag` hues for every category/status pill, `Button` for the header action, and `size="sm"` controls with a `sm` `Button` in its filter row. The admin title is the `subsection` heading level (24px on phones, 30px from `md`). Next: the admin editor forms (phase 5b), then the dashboard, detail pages and student portal (phase 5c).
 
 **Standards decided, applied as each page is migrated:**
 

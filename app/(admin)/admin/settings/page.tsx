@@ -8,6 +8,11 @@ import { users, type AdminRole } from "@/lib/db/schema";
 import { countSuperAdmins, getAllAdmins } from "@/lib/users";
 import { DeleteButton } from "./_delete-button";
 import { TableHint } from "../_table-hint";
+import { Table, TableCard, THead, Th, TBody, Td } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "../_page-header";
+import { Alert } from "@/components/ui/alert";
+import { Tag, type TagTone } from "@/components/ui/tag";
 
 export const metadata: Metadata = {
   title: "Pengaturan",
@@ -19,10 +24,10 @@ const ROLE_LABEL: Record<AdminRole, string> = {
   viewer: "Viewer",
 };
 
-const ROLE_PILL: Record<AdminRole, string> = {
-  super_admin: "bg-primary-blue/10 text-primary-blue",
-  editor: "bg-emerald-50 text-emerald-700",
-  viewer: "bg-gray-100 text-gray-600",
+const ROLE_TONE: Record<AdminRole, TagTone> = {
+  super_admin: "soft",
+  editor: "green",
+  viewer: "gray",
 };
 
 interface PageProps {
@@ -47,30 +52,26 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-            Pengaturan
-          </h1>
-          <p className="text-gray-600">
-            Kelola admin yang dapat mengakses dashboard.
-          </p>
-        </div>
-        {isSuperAdmin && (
-          <Link
-            href="/admin/settings/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
-          >
-            <Plus size={16} /> Tambah Admin
-          </Link>
-        )}
-      </header>
+      <AdminPageHeader
+        title="Pengaturan"
+        actions={
+          isSuperAdmin && (
+            <Button href="/admin/settings/new">
+              <Plus size={16} /> Tambah Admin
+            </Button>
+          )
+        }
+      >
+        <p className="text-gray-600">
+          Kelola admin yang dapat mengakses dashboard.
+        </p>
+      </AdminPageHeader>
 
       {created && (
-        <Banner tone="success">Admin berhasil ditambahkan.</Banner>
+        <Alert tone="success" className="mb-4">Admin berhasil ditambahkan.</Alert>
       )}
-      {deleted && <Banner tone="success">Admin berhasil dihapus.</Banner>}
-      {error && <Banner tone="error">{error}</Banner>}
+      {deleted && <Alert tone="success" className="mb-4">Admin berhasil dihapus.</Alert>}
+      {error && <Alert className="mb-4">{error}</Alert>}
 
       {!isSuperAdmin && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800 flex items-start gap-2">
@@ -82,132 +83,104 @@ export default async function SettingsPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <TableCard>
         {admins.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             Belum ada admin terdaftar.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <TableHint />
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <Th>Email</Th>
-                  <Th>Nama</Th>
-                  <Th>Peran</Th>
-                  <Th>Login Terakhir</Th>
-                  <Th />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {admins.map((u) => {
-                  const isSelf = u.id === currentRow?.id;
-                  const isLastSuper =
-                    u.role === "super_admin" && superAdminCount <= 1;
-                  return (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 align-middle">
-                        <div className="flex items-center gap-2">
-                          {u.role === "super_admin" ? (
-                            <ShieldCheck
-                              size={16}
-                              className="text-primary-blue shrink-0"
-                            />
-                          ) : (
-                            <UserIcon
-                              size={16}
-                              className="text-gray-400 shrink-0"
-                            />
-                          )}
-                          <span className="font-medium text-gray-900">
-                            {u.email}
-                          </span>
-                          {isSelf && (
-                            <span className="text-[10px] uppercase tracking-wide font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                              Anda
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 align-middle text-gray-700">
-                        {u.name ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <span
-                          className={`inline-block text-xs font-semibold px-2 py-1 rounded-full ${ROLE_PILL[u.role as AdminRole]}`}
-                        >
-                          {ROLE_LABEL[u.role as AdminRole]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 align-middle text-gray-500 text-xs">
-                        {u.lastLoginAt
-                          ? u.lastLoginAt.toLocaleString("id-ID", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })
-                          : "Belum pernah"}
-                      </td>
-                      <td className="px-4 py-3 align-middle text-right whitespace-nowrap">
-                        {isSuperAdmin ? (
-                          <>
-                            <Link
-                              href={`/admin/settings/${u.id}/edit`}
-                              className="inline-flex items-center gap-1 text-primary-blue text-sm font-medium hover:underline mr-3"
-                            >
-                              <Edit size={14} /> Edit
-                            </Link>
-                            <DeleteButton
-                              id={u.id}
-                              email={u.email}
-                              disabled={isSelf || isLastSuper}
-                              disabledReason={
-                                isSelf
-                                  ? "Tidak dapat menghapus akun sendiri"
-                                  : "Tidak dapat menghapus super admin terakhir"
-                              }
-                            />
-                          </>
+          <Table>
+            <TableHint />
+            <THead>
+              <tr>
+                <Th>Email</Th>
+                <Th>Nama</Th>
+                <Th>Peran</Th>
+                <Th>Login Terakhir</Th>
+                <Th />
+              </tr>
+            </THead>
+            <TBody>
+              {admins.map((u) => {
+                const isSelf = u.id === currentRow?.id;
+                const isLastSuper =
+                  u.role === "super_admin" && superAdminCount <= 1;
+                return (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <Td className="align-middle">
+                      <div className="flex items-center gap-2">
+                        {u.role === "super_admin" ? (
+                          <ShieldCheck
+                            size={16}
+                            className="text-primary-blue shrink-0"
+                          />
                         ) : (
-                          <span className="text-gray-300 text-xs">
-                            Read-only
+                          <UserIcon
+                            size={16}
+                            className="text-gray-400 shrink-0"
+                          />
+                        )}
+                        <span className="font-medium text-gray-900">
+                          {u.email}
+                        </span>
+                        {isSelf && (
+                          <span className="text-[10px] uppercase tracking-wide font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                            Anda
                           </span>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </Td>
+                    <Td className="align-middle text-gray-700">
+                      {u.name ?? "—"}
+                    </Td>
+                    <Td className="align-middle">
+                      <Tag tone={ROLE_TONE[u.role as AdminRole]} size="sm">
+                        {ROLE_LABEL[u.role as AdminRole]}
+                      </Tag>
+                    </Td>
+                    <Td className="align-middle text-gray-500 text-xs">
+                      {u.lastLoginAt
+                        ? u.lastLoginAt.toLocaleString("id-ID", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        : "Belum pernah"}
+                    </Td>
+                    <Td className="align-middle text-right whitespace-nowrap">
+                      {isSuperAdmin ? (
+                        <>
+                          <Link
+                            href={`/admin/settings/${u.id}/edit`}
+                            className="inline-flex items-center gap-1 text-primary-blue text-sm font-medium hover:underline mr-3"
+                          >
+                            <Edit size={14} /> Edit
+                          </Link>
+                          <DeleteButton
+                            id={u.id}
+                            email={u.email}
+                            disabled={isSelf || isLastSuper}
+                            disabledReason={
+                              isSelf
+                                ? "Tidak dapat menghapus akun sendiri"
+                                : "Tidak dapat menghapus super admin terakhir"
+                            }
+                          />
+                        </>
+                      ) : (
+                        <span className="text-gray-300 text-xs">
+                          Read-only
+                        </span>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
+            </TBody>
+          </Table>
+        
         )}
-      </div>
+      </TableCard>
     </div>
   );
 }
 
-function Th({ children }: { children?: React.ReactNode }) {
-  return (
-    <th className="text-left text-xs font-semibold uppercase tracking-wide px-4 py-3">
-      {children}
-    </th>
-  );
-}
-
-function Banner({
-  tone,
-  children,
-}: {
-  tone: "success" | "error";
-  children: React.ReactNode;
-}) {
-  const cls =
-    tone === "success"
-      ? "bg-green-50 border-green-200 text-green-700"
-      : "bg-red-50 border-red-200 text-red-700";
-  return (
-    <div className={`border rounded-lg px-4 py-2 mb-4 text-sm ${cls}`}>
-      {children}
-    </div>
-  );
-}

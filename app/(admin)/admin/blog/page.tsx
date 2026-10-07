@@ -5,6 +5,11 @@ import { getBlogArticlesSorted } from "@/lib/blog";
 import { BLOG_CATEGORIES, cleanExcerpt } from "@/lib/blog-types";
 import { DeleteButton } from "./_delete-button";
 import { TableHint } from "../_table-hint";
+import { Table, TableCard, THead, Th, TBody, Td } from "@/components/ui/table";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "../_page-header";
+import { Input, Select } from "@/components/ui/field";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -41,32 +46,28 @@ export default async function BlogAdminPage({ searchParams }: PageProps) {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-            Blog
-          </h1>
-          <p className="text-gray-600">
-            {all.length} total artikel · {filtered.length} ditampilkan
-          </p>
-        </div>
-        <Link
-          href="/admin/blog/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors"
-        >
-          <Plus size={16} /> Tulis Artikel Baru
-        </Link>
-      </header>
+      <AdminPageHeader
+        title="Blog"
+        actions={
+          <Button href="/admin/blog/new">
+            <Plus size={16} /> Tulis Artikel Baru
+          </Button>
+        }
+      >
+        <p className="text-gray-600">
+          {all.length} total artikel · {filtered.length} ditampilkan
+        </p>
+      </AdminPageHeader>
 
       {deleted && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 mb-4 text-sm text-green-700">
+        <Alert tone="success" className="mb-4">
           Artikel berhasil dihapus.
-        </div>
+        </Alert>
       )}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-4 text-sm text-red-700">
+        <Alert className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       <form
@@ -74,17 +75,21 @@ export default async function BlogAdminPage({ searchParams }: PageProps) {
         action="/admin/blog"
         method="get"
       >
-        <input
+        <Input
+          size="sm"
           type="search"
           name="q"
           defaultValue={q ?? ""}
           placeholder="Cari judul atau excerpt..."
-          className="flex-1 min-w-[200px] px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm"
+          aria-label="Cari artikel"
+          className="flex-1 min-w-[200px] w-auto"
         />
-        <select
+        <Select
+          size="sm"
           name="category"
           defaultValue={category ?? ""}
-          className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none bg-white text-sm"
+          aria-label="Kategori"
+          className="w-auto"
         >
           <option value="">Semua kategori</option>
           {BLOG_CATEGORIES.map((c) => (
@@ -92,13 +97,10 @@ export default async function BlogAdminPage({ searchParams }: PageProps) {
               {c}
             </option>
           ))}
-        </select>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800"
-        >
+        </Select>
+        <Button type="submit" size="sm" variant="neutral">
           Filter
-        </button>
+        </Button>
         {(needle || validCategory) && (
           <Link
             href="/admin/blog"
@@ -109,78 +111,70 @@ export default async function BlogAdminPage({ searchParams }: PageProps) {
         )}
       </form>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <TableCard>
         {filtered.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             Tidak ada artikel yang cocok.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <TableHint />
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <Th>Judul</Th>
-                  <Th>Kategori</Th>
-                  <Th>Tanggal</Th>
-                  <Th />
+          <Table>
+            <TableHint />
+            <THead>
+              <tr>
+                <Th>Judul</Th>
+                <Th>Kategori</Th>
+                <Th>Tanggal</Th>
+                <Th />
+              </tr>
+            </THead>
+            <TBody>
+              {filtered.map((article) => (
+                <tr
+                  key={article.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <Td className="align-top max-w-[400px]">
+                    <Link
+                      href={`/admin/blog/${article.id}/edit`}
+                      className="font-medium text-gray-900 hover:text-primary-blue"
+                    >
+                      {article.title}
+                    </Link>
+                    {article.featured && (
+                      <span className="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                        Featured
+                      </span>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                      {cleanExcerpt(article.excerpt)}
+                    </p>
+                  </Td>
+                  <Td className="align-top text-gray-600">
+                    {article.category}
+                  </Td>
+                  <Td className="align-top text-gray-500 text-xs whitespace-nowrap">
+                    {article.date}
+                  </Td>
+                  <Td className="align-top text-right whitespace-nowrap">
+                    <Link
+                      href={`/admin/blog/${article.id}/edit`}
+                      className="inline-flex items-center gap-1 text-primary-blue text-sm font-medium hover:underline mr-3"
+                    >
+                      <Edit size={14} /> Edit
+                    </Link>
+                    <DeleteButton
+                      slug={article.id}
+                      title={article.title}
+                    />
+                  </Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((article) => (
-                  <tr
-                    key={article.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 py-3 align-top max-w-[400px]">
-                      <Link
-                        href={`/admin/blog/${article.id}/edit`}
-                        className="font-medium text-gray-900 hover:text-primary-blue"
-                      >
-                        {article.title}
-                      </Link>
-                      {article.featured && (
-                        <span className="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">
-                          Featured
-                        </span>
-                      )}
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                        {cleanExcerpt(article.excerpt)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top text-gray-600">
-                      {article.category}
-                    </td>
-                    <td className="px-4 py-3 align-top text-gray-500 text-xs whitespace-nowrap">
-                      {article.date}
-                    </td>
-                    <td className="px-4 py-3 align-top text-right whitespace-nowrap">
-                      <Link
-                        href={`/admin/blog/${article.id}/edit`}
-                        className="inline-flex items-center gap-1 text-primary-blue text-sm font-medium hover:underline mr-3"
-                      >
-                        <Edit size={14} /> Edit
-                      </Link>
-                      <DeleteButton
-                        slug={article.id}
-                        title={article.title}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </TBody>
+          </Table>
+        
         )}
-      </div>
+      </TableCard>
     </div>
   );
 }
 
-function Th({ children }: { children?: React.ReactNode }) {
-  return (
-    <th className="text-left text-xs font-semibold uppercase tracking-wide px-4 py-3">
-      {children}
-    </th>
-  );
-}

@@ -4,6 +4,7 @@
 // public links can safely reference `#berkas-marketing` anchors.
 
 import type { ResourceCategory, ResourceContentType } from "@/lib/db/schema";
+import type { TagTone } from "@/components/ui/tag";
 
 export const RESOURCE_CATEGORY_ORDER: readonly ResourceCategory[] = [
   "panduan",
@@ -33,12 +34,12 @@ export const RESOURCE_CATEGORY_DESCRIPTION: Record<ResourceCategory, string> = {
   lainnya: "Dokumen tambahan yang tidak masuk kategori di atas.",
 };
 
-export const RESOURCE_CATEGORY_PILL: Record<ResourceCategory, string> = {
-  panduan: "bg-blue-50 text-blue-700 border-blue-200",
-  "berkas-pendaftaran": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "berkas-marketing": "bg-purple-50 text-purple-700 border-purple-200",
-  tutorial: "bg-amber-50 text-amber-700 border-amber-200",
-  lainnya: "bg-gray-50 text-gray-700 border-gray-200",
+export const RESOURCE_CATEGORY_TONE: Record<ResourceCategory, TagTone> = {
+  panduan: "blue",
+  "berkas-pendaftaran": "green",
+  "berkas-marketing": "purple",
+  tutorial: "amber",
+  lainnya: "gray",
 };
 
 export const RESOURCE_CONTENT_TYPE_LABEL: Record<ResourceContentType, string> = {

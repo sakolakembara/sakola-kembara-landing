@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useId } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 
 type FieldState = { id: string; describedBy?: string; invalid: boolean };
@@ -103,9 +104,25 @@ export function Field({
   );
 }
 
-/** Shared look of text inputs, textareas and selects (DESIGN.md, Forms). */
-export const controlClass =
-  "w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-primary-blue focus:outline-none";
+/**
+ * Shared look of text inputs, textareas and selects (DESIGN.md, Forms). `md`
+ * (48px, 16px text) is the default everywhere; `sm` (40px, 14px) is for the
+ * filter rows above admin tables, next to `Button size="sm"`.
+ */
+export const controlVariants = cva(
+  "w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none",
+  {
+    variants: {
+      size: {
+        md: "rounded-xl px-4 py-3",
+        sm: "rounded-lg px-4 py-2 text-sm",
+      },
+    },
+    defaultVariants: { size: "md" },
+  },
+);
+
+type ControlSize = VariantProps<typeof controlVariants>;
 
 function useFieldProps(props: { id?: string; "aria-describedby"?: string; "aria-invalid"?: React.AriaAttributes["aria-invalid"] }) {
   const field = useContext(FieldContext);
@@ -117,16 +134,18 @@ function useFieldProps(props: { id?: string; "aria-describedby"?: string; "aria-
 }
 
 /** Text input (atom). Inside a `Field` it is labelled and described automatically. */
-export function Input({ className, ...props }: React.ComponentProps<"input">) {
-  return <input {...props} {...useFieldProps(props)} className={cn(controlClass, className)} />;
+export function Input({ size, className, ...props }: Omit<React.ComponentProps<"input">, "size"> & ControlSize) {
+  return <input {...props} {...useFieldProps(props)} className={cn(controlVariants({ size }), className)} />;
 }
 
 /** Multi-line input (atom). Not resizable by default; pass `resize-y` where long answers are expected. */
-export function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
-  return <textarea {...props} {...useFieldProps(props)} className={cn(controlClass, "resize-none", className)} />;
+export function Textarea({ size, className, ...props }: React.ComponentProps<"textarea"> & ControlSize) {
+  return (
+    <textarea {...props} {...useFieldProps(props)} className={cn(controlVariants({ size }), "resize-none", className)} />
+  );
 }
 
 /** Native select (atom), white so it matches the inputs in every browser. */
-export function Select({ className, ...props }: React.ComponentProps<"select">) {
-  return <select {...props} {...useFieldProps(props)} className={cn(controlClass, "bg-white", className)} />;
+export function Select({ size, className, ...props }: Omit<React.ComponentProps<"select">, "size"> & ControlSize) {
+  return <select {...props} {...useFieldProps(props)} className={cn(controlVariants({ size }), "bg-white", className)} />;
 }

@@ -9,26 +9,18 @@ import {
   getBatchStatusCounts,
 } from "@/lib/admission-batches";
 import { db } from "@/lib/db";
-import { applicationStatus, studentApplications, type ApplicationStatus } from "@/lib/db/schema";
+import { applicationStatus, studentApplications } from "@/lib/db/schema";
 import { BatchEditorForm } from "../_editor-form";
 import { publishBatchResults, unpublishBatchResults } from "../actions";
 import { TableHint } from "../../_table-hint";
+import { Table, THead, Th, TBody, Td } from "@/components/ui/table";
+import { AdminPageHeader } from "../../_page-header";
+import { Alert } from "@/components/ui/alert";
+import { Tag } from "@/components/ui/tag";
+import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_TONE } from "@/lib/application-status";
 
 export const metadata: Metadata = {
   title: "Detail Batch",
-};
-
-const STATUS_LABEL: Record<ApplicationStatus, string> = {
-  pending: "Pending",
-  under_review: "Dalam Review",
-  accepted: "Diterima",
-  rejected: "Ditolak",
-};
-const STATUS_PILL: Record<ApplicationStatus, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  under_review: "bg-blue-50 text-blue-700 border-blue-200",
-  accepted: "bg-green-50 text-green-700 border-green-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
 };
 
 interface PageProps {
@@ -79,34 +71,32 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
         ← Kembali ke daftar batch
       </Link>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-            Batch {batch.year}
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-            {batch.name}
-          </h1>
-          <p className="text-sm text-gray-600 flex items-center gap-1.5">
-            <CalendarDays size={14} />
-            {batch.opensAt.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
-            {" — "}
-            {batch.closesAt.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
-          </p>
-        </div>
-        {batch.resultsPublishedAt ? (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border bg-primary-blue/10 text-primary-blue border-primary-blue/30">
-            <CheckCircle size={14} />
-            Hasil dipublikasikan{" "}
-            {batch.resultsPublishedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
-          </span>
-        ) : null}
-      </header>
+      <AdminPageHeader
+        title={batch.name}
+        overline={<>Batch {batch.year}</>}
+        className="md:items-start"
+        actions={
+          batch.resultsPublishedAt && (
+            <Tag tone="soft" size="lg">
+              <CheckCircle size={14} />
+              Hasil dipublikasikan{" "}
+              {batch.resultsPublishedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+            </Tag>
+          )
+        }
+      >
+        <p className="text-sm text-gray-600 flex items-center gap-1.5">
+          <CalendarDays size={14} />
+          {batch.opensAt.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
+          {" — "}
+          {batch.closesAt.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
+        </p>
+      </AdminPageHeader>
 
-      {created && <Banner tone="success">Batch berhasil dibuat.</Banner>}
-      {published && <Banner tone="success">Hasil batch berhasil dipublikasikan.</Banner>}
-      {unpublished && <Banner tone="success">Publikasi hasil dibatalkan.</Banner>}
-      {error && <Banner tone="error">{error}</Banner>}
+      {created && <Alert tone="success" className="mb-4">Batch berhasil dibuat.</Alert>}
+      {published && <Alert tone="success" className="mb-4">Hasil batch berhasil dipublikasikan.</Alert>}
+      {unpublished && <Alert tone="success" className="mb-4">Publikasi hasil dibatalkan.</Alert>}
+      {error && <Alert className="mb-4">{error}</Alert>}
 
       <div className="grid lg:grid-cols-5 gap-6 items-start">
         <div className="lg:col-span-3 space-y-6">
@@ -120,7 +110,7 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
                   key={s}
                   className="rounded-lg border border-gray-100 p-4 bg-gray-50"
                 >
-                  <div className="text-xs text-gray-500">{STATUS_LABEL[s]}</div>
+                  <div className="text-xs text-gray-500">{APPLICATION_STATUS_LABEL[s]}</div>
                   <div className="text-2xl font-semibold text-gray-900 mt-1">
                     {counts[s]}
                   </div>
@@ -146,50 +136,47 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
                 Belum ada pendaftar untuk batch ini.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <TableHint />
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <Th>Nama</Th>
-                      <Th>Sekolah</Th>
-                      <Th>Status</Th>
-                      <Th>Dikirim</Th>
+              <Table>
+                <TableHint />
+                <THead>
+                  <tr>
+                    <Th>Nama</Th>
+                    <Th>Sekolah</Th>
+                    <Th>Status</Th>
+                    <Th>Dikirim</Th>
+                  </tr>
+                </THead>
+                <TBody>
+                  {applications.map((a) => (
+                    <tr key={a.id} className="hover:bg-gray-50">
+                      <Td>
+                        <Link
+                          href={`/admin/applications/${a.id}`}
+                          className="font-medium text-gray-900 hover:text-primary-blue"
+                        >
+                          {a.fullName}
+                        </Link>
+                        {a.email && (
+                          <div className="text-xs text-gray-500">{a.email}</div>
+                        )}
+                      </Td>
+                      <Td className="text-gray-700">{a.schoolName}</Td>
+                      <Td>
+                        <Tag tone={APPLICATION_STATUS_TONE[a.status]} size="sm">
+                          {APPLICATION_STATUS_LABEL[a.status]}
+                        </Tag>
+                      </Td>
+                      <Td className="text-xs text-gray-500">
+                        {a.submittedAt.toLocaleString("id-ID", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </Td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {applications.map((a) => (
-                      <tr key={a.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`/admin/applications/${a.id}`}
-                            className="font-medium text-gray-900 hover:text-primary-blue"
-                          >
-                            {a.fullName}
-                          </Link>
-                          {a.email && (
-                            <div className="text-xs text-gray-500">{a.email}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">{a.schoolName}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_PILL[a.status]}`}
-                          >
-                            {STATUS_LABEL[a.status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">
-                          {a.submittedAt.toLocaleString("id-ID", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </TBody>
+              </Table>
+            
             )}
           </section>
 
@@ -265,28 +252,3 @@ export default async function BatchDetailPage({ params, searchParams }: PageProp
   );
 }
 
-function Banner({
-  tone,
-  children,
-}: {
-  tone: "success" | "error";
-  children: React.ReactNode;
-}) {
-  const cls =
-    tone === "success"
-      ? "bg-green-50 border-green-200 text-green-700"
-      : "bg-red-50 border-red-200 text-red-700";
-  return (
-    <div className={`border rounded-lg px-4 py-2 mb-4 text-sm ${cls}`}>
-      {children}
-    </div>
-  );
-}
-
-function Th({ children }: { children?: React.ReactNode }) {
-  return (
-    <th className="text-left text-xs font-semibold uppercase tracking-wide px-4 py-3">
-      {children}
-    </th>
-  );
-}

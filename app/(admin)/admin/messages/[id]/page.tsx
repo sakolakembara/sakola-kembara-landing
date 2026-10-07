@@ -7,13 +7,15 @@ import { db } from "@/lib/db";
 import { contactMessages } from "@/lib/db/schema";
 import {
   CONTACT_SUBJECT_LABEL,
-  CONTACT_SUBJECT_PILL,
+  CONTACT_SUBJECT_TONE,
 } from "@/lib/messages";
 import {
   markMessageAsRead,
   toggleMessageRead,
 } from "../actions";
 import { DeleteButton } from "../_delete-button";
+import { AdminPageHeader } from "../../_page-header";
+import { Tag } from "@/components/ui/tag";
 
 export const metadata: Metadata = {
   title: "Detail Pesan",
@@ -55,22 +57,18 @@ export default async function MessageDetailPage({ params }: PageProps) {
         <ArrowLeft size={14} /> Kembali ke daftar
       </Link>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-            Detail pesan
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-            {message.fullName}
-          </h1>
-          <p className="text-gray-600 text-sm">{message.email}</p>
-        </div>
-        <span
-          className={`inline-flex items-center text-sm font-medium px-3 py-1.5 rounded-full border ${CONTACT_SUBJECT_PILL[message.subject]}`}
-        >
-          {CONTACT_SUBJECT_LABEL[message.subject]}
-        </span>
-      </header>
+      <AdminPageHeader
+        title={message.fullName}
+        overline="Detail pesan"
+        className="md:items-start"
+        actions={
+          <Tag tone={CONTACT_SUBJECT_TONE[message.subject]} size="lg">
+            {CONTACT_SUBJECT_LABEL[message.subject]}
+          </Tag>
+        }
+      >
+        <p className="text-gray-600 text-sm">{message.email}</p>
+      </AdminPageHeader>
 
       <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap text-sm">
