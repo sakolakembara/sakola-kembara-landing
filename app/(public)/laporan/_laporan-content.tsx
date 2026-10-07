@@ -11,8 +11,9 @@ import {
   formatBytes,
   formatAcademicYear,
   REPORT_CATEGORY_LABEL,
-  REPORT_CATEGORY_PILL,
+  REPORT_CATEGORY_TONE,
 } from "@/lib/report-types";
+import { Tag } from "@/components/ui/tag";
 
 interface LaporanContentProps {
   grouped: { year: string; reports: Report[] }[];
@@ -71,11 +72,9 @@ export function LaporanContent({ grouped }: LaporanContentProps) {
                         className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all"
                       >
                         <div className="flex items-start justify-between gap-3 mb-3">
-                          <span
-                            className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${REPORT_CATEGORY_PILL[r.category]}`}
-                          >
+                          <Tag tone={REPORT_CATEGORY_TONE[r.category]} size="sm">
                             {REPORT_CATEGORY_LABEL[r.category]}
-                          </span>
+                          </Tag>
                           <FileText
                             size={20}
                             className="text-gray-300 shrink-0"

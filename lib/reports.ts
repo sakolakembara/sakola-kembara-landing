@@ -7,7 +7,7 @@ import { reports, type Report } from "@/lib/db/schema";
 export {
   formatBytes,
   REPORT_CATEGORY_LABEL,
-  REPORT_CATEGORY_PILL,
+  REPORT_CATEGORY_TONE,
   formatAcademicYear,
 } from "@/lib/report-types";
 

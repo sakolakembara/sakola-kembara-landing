@@ -21,6 +21,10 @@ import {
   auditHref,
 } from "@/lib/audit-labels";
 import { TableHint } from "../_table-hint";
+import { Table, TableCard, THead, Th, TBody, Td } from "@/components/ui/table";
+import { AdminPageHeader } from "../_page-header";
+import { Input, Select } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Aktivitas",
@@ -98,82 +102,71 @@ export default async function AuditPage({ searchParams }: PageProps) {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-            Aktivitas
-          </h1>
-          <p className="text-gray-600">
-            Catatan semua aksi yang dilakukan admin. Total{" "}
-            <strong>{total.toLocaleString("id-ID")}</strong> entri.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Aktivitas"
+      >
+        <p className="text-gray-600">
+          Catatan semua aksi yang dilakukan admin. Total{" "}
+          <strong>{total.toLocaleString("id-ID")}</strong> entri.
+        </p>
+      </AdminPageHeader>
 
       <form
         method="get"
         className="bg-white rounded-xl border border-gray-100 p-4 md:p-5 mb-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end"
       >
         <Filter label="Aksi">
-          <select
+          <Select size="sm"
             name="action"
             defaultValue={action ?? ""}
-            className={SELECT_CLS}
-          >
+            >
             <option value="">Semua aksi</option>
             {KNOWN_ACTIONS.map((k) => (
               <option key={k} value={k}>
                 {AUDIT_LABEL[k] ?? k}
               </option>
             ))}
-          </select>
+          </Select>
         </Filter>
         <Filter label="Tipe resource">
-          <select
+          <Select size="sm"
             name="resource"
             defaultValue={resource ?? ""}
-            className={SELECT_CLS}
-          >
+            >
             <option value="">Semua tipe</option>
             {KNOWN_RESOURCE_TYPES.map((r) => (
               <option key={r} value={r}>
                 {RESOURCE_TYPE_LABEL[r] ?? r}
               </option>
             ))}
-          </select>
+          </Select>
         </Filter>
         <Filter label="Aktor (email)">
-          <input
+          <Input size="sm"
             type="text"
             name="actor"
             defaultValue={actor ?? ""}
             placeholder="cari email…"
-            className={INPUT_CLS}
-          />
+            />
         </Filter>
         <Filter label="Dari">
-          <input
+          <Input size="sm"
             type="date"
             name="from"
             defaultValue={params.from ?? ""}
-            className={INPUT_CLS}
-          />
+            />
         </Filter>
         <Filter label="Sampai">
-          <input
+          <Input size="sm"
             type="date"
             name="to"
             defaultValue={params.to ?? ""}
-            className={INPUT_CLS}
-          />
+            />
         </Filter>
         <div className="flex gap-2">
-          <button
-            type="submit"
-            className="flex-1 px-4 py-2 bg-primary-blue text-white font-semibold rounded-lg hover:bg-primary-blue-dark transition-colors text-sm"
-          >
+          <Button type="submit" size="sm" className="flex-1">
             Terapkan
-          </button>
+          </Button>
           {hasAnyFilter && (
             <Link
               href="/admin/audit"
@@ -186,7 +179,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
         </div>
       </form>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <TableCard>
         {rows.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             {hasAnyFilter
@@ -194,94 +187,93 @@ export default async function AuditPage({ searchParams }: PageProps) {
               : "Belum ada aktivitas."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <TableHint />
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <Th className="w-[180px]">Waktu</Th>
-                  <Th>Aksi</Th>
-                  <Th>Aktor</Th>
-                  <Th>Resource</Th>
-                  <Th>Detail</Th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {rows.map((row) => {
-                  const label = AUDIT_LABEL[row.action] ?? row.action;
-                  const href = auditHref(
-                    row.action,
-                    row.resourceType,
-                    row.resourceId,
-                  );
-                  const resourceTypeLabel = row.resourceType
-                    ? RESOURCE_TYPE_LABEL[row.resourceType] ?? row.resourceType
-                    : null;
-                  return (
-                    <tr key={row.id} className="hover:bg-gray-50 align-top">
-                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                        <time dateTime={row.createdAt.toISOString()}>
-                          {row.createdAt.toLocaleString("id-ID", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </time>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{label}</div>
-                        <code className="text-[11px] text-gray-400 font-mono">
-                          {row.action}
-                        </code>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 break-all">
-                        {row.actorEmail}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {resourceTypeLabel ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs text-gray-500">
-                              {resourceTypeLabel}
+          <Table>
+            <TableHint />
+            <THead>
+              <tr>
+                <Th className="w-[180px]">Waktu</Th>
+                <Th>Aksi</Th>
+                <Th>Aktor</Th>
+                <Th>Resource</Th>
+                <Th>Detail</Th>
+              </tr>
+            </THead>
+            <TBody>
+              {rows.map((row) => {
+                const label = AUDIT_LABEL[row.action] ?? row.action;
+                const href = auditHref(
+                  row.action,
+                  row.resourceType,
+                  row.resourceId,
+                );
+                const resourceTypeLabel = row.resourceType
+                  ? RESOURCE_TYPE_LABEL[row.resourceType] ?? row.resourceType
+                  : null;
+                return (
+                  <tr key={row.id} className="hover:bg-gray-50 align-top">
+                    <Td className="text-xs text-gray-500 whitespace-nowrap">
+                      <time dateTime={row.createdAt.toISOString()}>
+                        {row.createdAt.toLocaleString("id-ID", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </time>
+                    </Td>
+                    <Td>
+                      <div className="font-medium text-gray-900">{label}</div>
+                      <code className="text-[11px] text-gray-400 font-mono">
+                        {row.action}
+                      </code>
+                    </Td>
+                    <Td className="text-gray-700 break-all">
+                      {row.actorEmail}
+                    </Td>
+                    <Td className="text-gray-700">
+                      {resourceTypeLabel ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs text-gray-500">
+                            {resourceTypeLabel}
+                          </span>
+                          {row.resourceId && (
+                            <span className="font-mono text-[11px] text-gray-700 truncate max-w-[200px]">
+                              {row.resourceId}
                             </span>
-                            {row.resourceId && (
-                              <span className="font-mono text-[11px] text-gray-700 truncate max-w-[200px]">
-                                {row.resourceId}
-                              </span>
-                            )}
-                            {href && (
-                              <Link
-                                href={href}
-                                className="text-[11px] text-primary-blue font-medium hover:underline inline-flex items-center gap-1 mt-0.5"
-                              >
-                                Buka <ArrowRight size={10} />
-                              </Link>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 max-w-[300px]">
-                        {row.metadata ? (
-                          <details className="text-xs text-gray-600">
-                            <summary className="cursor-pointer text-gray-500 hover:text-gray-900 select-none">
-                              Metadata
-                            </summary>
-                            <pre className="mt-2 bg-gray-50 border border-gray-100 rounded p-2 overflow-x-auto text-[11px] leading-relaxed">
-                              {JSON.stringify(row.metadata, null, 2)}
-                            </pre>
-                          </details>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          )}
+                          {href && (
+                            <Link
+                              href={href}
+                              className="text-[11px] text-primary-blue font-medium hover:underline inline-flex items-center gap-1 mt-0.5"
+                            >
+                              Buka <ArrowRight size={10} />
+                            </Link>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </Td>
+                    <Td className="max-w-[300px]">
+                      {row.metadata ? (
+                        <details className="text-xs text-gray-600">
+                          <summary className="cursor-pointer text-gray-500 hover:text-gray-900 select-none">
+                            Metadata
+                          </summary>
+                          <pre className="mt-2 bg-gray-50 border border-gray-100 rounded p-2 overflow-x-auto text-[11px] leading-relaxed">
+                            {JSON.stringify(row.metadata, null, 2)}
+                          </pre>
+                        </details>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
+            </TBody>
+          </Table>
+        
         )}
-      </div>
+      </TableCard>
 
       {totalPages > 1 && (
         <Pagination
@@ -294,10 +286,6 @@ export default async function AuditPage({ searchParams }: PageProps) {
   );
 }
 
-const SELECT_CLS =
-  "w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm bg-white";
-const INPUT_CLS =
-  "w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-primary-blue focus:outline-none text-sm";
 
 function Filter({
   label,
@@ -316,21 +304,6 @@ function Filter({
   );
 }
 
-function Th({
-  children,
-  className,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th
-      className={`text-left text-xs font-semibold uppercase tracking-wide px-4 py-3 ${className ?? ""}`}
-    >
-      {children}
-    </th>
-  );
-}
 
 function Pagination({
   currentPage,

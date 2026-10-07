@@ -19,28 +19,16 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   studentApplications,
-  type ApplicationStatus,
   type StudentApplicationFormData,
 } from "@/lib/db/schema";
 import { formatRupiah } from "@/lib/student-form-types";
 import { ReviewForm } from "./_review-form";
+import { AdminPageHeader } from "../../_page-header";
+import { Tag } from "@/components/ui/tag";
+import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_TONE } from "@/lib/application-status";
 
 export const metadata: Metadata = {
   title: "Detail Pendaftar",
-};
-
-const STATUS_LABEL: Record<ApplicationStatus, string> = {
-  pending: "Pending",
-  under_review: "Dalam Review",
-  accepted: "Diterima",
-  rejected: "Ditolak",
-};
-
-const STATUS_PILL: Record<ApplicationStatus, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  under_review: "bg-blue-50 text-blue-700 border-blue-200",
-  accepted: "bg-green-50 text-green-700 border-green-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
 };
 
 interface PageProps {
@@ -73,34 +61,30 @@ export default async function ApplicationDetailPage({
         Kembali ke daftar
       </Link>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-            Detail pendaftar
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-            {application.fullName}
-          </h1>
-          <p className="text-gray-600">
-            {application.email ?? (
-              <a
-                href={`https://wa.me/${application.whatsapp.replace(/[^\d]/g, "")}`}
-                className="inline-flex items-center gap-1 text-primary-blue hover:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageCircle size={12} />
-                {application.whatsapp}
-              </a>
-            )}
-          </p>
-        </div>
-        <span
-          className={`inline-flex items-center text-sm font-medium px-3 py-1.5 rounded-full border ${STATUS_PILL[application.status]}`}
-        >
-          {STATUS_LABEL[application.status]}
-        </span>
-      </header>
+      <AdminPageHeader
+        title={application.fullName}
+        overline="Detail pendaftar"
+        className="md:items-start"
+        actions={
+          <Tag tone={APPLICATION_STATUS_TONE[application.status]} size="lg">
+            {APPLICATION_STATUS_LABEL[application.status]}
+          </Tag>
+        }
+      >
+        <p className="text-gray-600">
+          {application.email ?? (
+            <a
+              href={`https://wa.me/${application.whatsapp.replace(/[^\d]/g, "")}`}
+              className="inline-flex items-center gap-1 text-primary-blue hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={12} />
+              {application.whatsapp}
+            </a>
+          )}
+        </p>
+      </AdminPageHeader>
 
       <div className="grid lg:grid-cols-5 gap-6 items-start">
         {/* Left: applicant profile */}

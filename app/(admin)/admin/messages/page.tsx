@@ -3,9 +3,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import {
   CONTACT_SUBJECT_LABEL,
-  CONTACT_SUBJECT_PILL,
+  CONTACT_SUBJECT_TONE,
   getAllMessages,
 } from "@/lib/messages";
+import { TableCard } from "@/components/ui/table";
+import { Alert } from "@/components/ui/alert";
+import { AdminPageHeader } from "../_page-header";
+import { Tag } from "@/components/ui/tag";
 
 export const metadata: Metadata = {
   title: "Pesan",
@@ -29,24 +33,23 @@ export default async function MessagesPage({ searchParams }: PageProps) {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="mb-6">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-          Pesan
-        </h1>
+      <AdminPageHeader
+        title="Pesan"
+      >
         <p className="text-gray-600">
           {all.length} total · {unreadCount} belum dibaca.
         </p>
-      </header>
+      </AdminPageHeader>
 
       {deleted && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 mb-4 text-sm text-green-700">
+        <Alert tone="success" className="mb-4">
           Pesan berhasil dihapus.
-        </div>
+        </Alert>
       )}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-4 text-sm text-red-700">
+        <Alert className="mb-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       <nav className="flex flex-wrap gap-2 mb-6">
@@ -63,7 +66,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
         />
       </nav>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <TableCard>
         {filtered.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             {filter === "unread"
@@ -99,11 +102,9 @@ export default async function MessagesPage({ searchParams }: PageProps) {
                           {m.fullName}
                         </span>
                         <span className="text-xs text-gray-500">{m.email}</span>
-                        <span
-                          className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${CONTACT_SUBJECT_PILL[m.subject]}`}
-                        >
+                        <Tag tone={CONTACT_SUBJECT_TONE[m.subject]} size="sm">
                           {CONTACT_SUBJECT_LABEL[m.subject]}
-                        </span>
+                        </Tag>
                       </div>
                       <p
                         className={`text-sm mt-1 line-clamp-1 ${unread ? "text-gray-700" : "text-gray-500"}`}
@@ -129,7 +130,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
             })}
           </ul>
         )}
-      </div>
+      </TableCard>
     </div>
   );
 }

@@ -29,26 +29,16 @@ import {
 import { getAllArticles } from "@/lib/blog";
 import {
   CONTACT_SUBJECT_LABEL,
-  CONTACT_SUBJECT_PILL,
+  CONTACT_SUBJECT_TONE,
 } from "@/lib/messages";
 import { AUDIT_LABEL, auditHref } from "@/lib/audit-labels";
+import { AdminPageHeader } from "./_page-header";
+import { Tag } from "@/components/ui/tag";
+import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_TONE } from "@/lib/application-status";
+import type { ApplicationStatus } from "@/lib/db/schema";
 
 export const metadata: Metadata = {
   title: "Dashboard",
-};
-
-const APP_STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  under_review: "Sedang ditinjau",
-  accepted: "Diterima",
-  rejected: "Ditolak",
-};
-
-const APP_STATUS_PILL: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  under_review: "bg-blue-50 text-blue-700 border-blue-200",
-  accepted: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
 };
 
 async function getStats() {
@@ -150,14 +140,14 @@ export default async function AdminHomePage() {
 
   return (
     <div className="p-6 md:p-10">
-      <header className="mb-8">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl text-gray-900 mb-1">
-          Halo, {greeting}
-        </h1>
+      <AdminPageHeader
+        title={<>Halo, {greeting}</>}
+        className="mb-8"
+      >
         <p className="text-gray-600">
           Ringkasan aktivitas Sakola Kembara hari ini.
         </p>
-      </header>
+      </AdminPageHeader>
 
       <section
         aria-label="Ringkasan"
@@ -234,7 +224,7 @@ export default async function AdminHomePage() {
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <section className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <header className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Pendaftar terbaru</h2>
+            <h2 className="text-base font-semibold text-gray-900">Pendaftar terbaru</h2>
             <Link
               href="/admin/applications"
               className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
@@ -263,11 +253,9 @@ export default async function AdminHomePage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end shrink-0">
-                      <span
-                        className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border rounded-full ${APP_STATUS_PILL[a.status] ?? APP_STATUS_PILL.pending}`}
-                      >
-                        {APP_STATUS_LABEL[a.status] ?? a.status}
-                      </span>
+                      <Tag tone={APPLICATION_STATUS_TONE[a.status as ApplicationStatus] ?? "amber"} size="sm">
+                        {APPLICATION_STATUS_LABEL[a.status as ApplicationStatus] ?? a.status}
+                      </Tag>
                       <time
                         className="text-[11px] text-gray-400 mt-1"
                         dateTime={a.submittedAt.toISOString()}
@@ -287,7 +275,7 @@ export default async function AdminHomePage() {
 
         <section className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <header className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Pesan terbaru</h2>
+            <h2 className="text-base font-semibold text-gray-900">Pesan terbaru</h2>
             <Link
               href="/admin/messages"
               className="text-xs font-medium text-primary-blue hover:underline inline-flex items-center gap-1"
@@ -307,10 +295,10 @@ export default async function AdminHomePage() {
                   CONTACT_SUBJECT_LABEL[
                     m.subject as keyof typeof CONTACT_SUBJECT_LABEL
                   ] ?? m.subject;
-                const subjectPill =
-                  CONTACT_SUBJECT_PILL[
-                    m.subject as keyof typeof CONTACT_SUBJECT_PILL
-                  ] ?? CONTACT_SUBJECT_PILL.other;
+                const subjectTone =
+                  CONTACT_SUBJECT_TONE[
+                    m.subject as keyof typeof CONTACT_SUBJECT_TONE
+                  ] ?? CONTACT_SUBJECT_TONE.other;
                 return (
                   <li key={m.id}>
                     <Link
@@ -329,11 +317,9 @@ export default async function AdminHomePage() {
                           >
                             {m.fullName}
                           </span>
-                          <span
-                            className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 border rounded-full ${subjectPill}`}
-                          >
+                          <Tag tone={subjectTone} size="sm">
                             {subjectLabel}
-                          </span>
+                          </Tag>
                         </div>
                         <div className="text-xs text-gray-500 truncate mt-0.5">
                           {m.message}
@@ -359,7 +345,7 @@ export default async function AdminHomePage() {
 
       <section className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <header className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Aktivitas terakhir</h2>
+          <h2 className="text-base font-semibold text-gray-900">Aktivitas terakhir</h2>
         </header>
         {stats.recentAudit.length === 0 ? (
           <p className="px-6 py-10 text-sm text-gray-500 text-center">
