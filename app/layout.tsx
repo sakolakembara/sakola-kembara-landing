@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { fontVariables } from "@/lib/fonts";
-import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, TITLE_TEMPLATE } from "@/lib/seo";
 import { MotionProvider } from "@/components/MotionProvider";
 
 const DEFAULT_TITLE = "Sakola Kembara - Pendidikan Untuk Semua";
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: DEFAULT_TITLE,
-    template: `%s | ${SITE_NAME}`,
+    template: TITLE_TEMPLATE,
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
