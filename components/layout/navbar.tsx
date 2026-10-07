@@ -5,12 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { navLinks } from "@/lib/data";
-import { AnnouncementStrip } from "@/components/AnnouncementStrip";
-import { AuthNavButton } from "@/components/AuthNavButton";
+import { AnnouncementStrip } from "@/components/layout/announcement-strip";
+import { AuthNavButton } from "@/components/layout/auth-nav-button";
+import { Container } from "@/components/ui/container";
 import type { Announcement } from "@/lib/db/schema";
 import brandLogo from "@/public/images/logo-sakola-kembara.png";
 
-export default function Navbar() {
+/** Fixed site header (organism): announcement strip, logo, menu and the auth button. */
+export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
 
@@ -40,7 +42,7 @@ export default function Navbar() {
       {announcement && <AnnouncementStrip announcement={announcement} />}
       {/* From md up, equal 1fr side columns keep the menu centred on the page
           rather than in whatever space the logo and the auth button leave. */}
-      <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]">
+      <Container className="py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]">
         {/* Logo */}
         <Link href="/" aria-label="Sakola Kembara" className="flex items-center justify-self-start">
           <Image
@@ -80,7 +82,7 @@ export default function Navbar() {
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
-      </div>
+      </Container>
 
       {/* Mobile Menu */}
       {isMenuOpen && (

@@ -169,7 +169,8 @@ auth.config.ts             Edge-safe Auth.js config (Google-only; used by proxy.
 auth.ts                    Node Auth.js (adds admin Credentials provider)
 proxy.ts                   Middleware — gates /admin/* (admin roles) and /portal/* (any signed-in user)
 components/                React components
-  Navbar.tsx, Footer.tsx, SocialLinks.tsx
+  layout/                  Navbar, Footer, PageHero, announcement strip, auth button
+  ui/                      Design-system atoms + molecules (Button, Heading, Tag, SocialLinks, …)
   Map/GISMap.tsx           Leaflet, dynamically imported (ssr: false)
   blog/BlogPostContent.tsx Markdown renderer
   sections/                Homepage + reusable sections

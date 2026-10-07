@@ -21,7 +21,8 @@ const socials = [
   },
 ];
 
-export default function SocialLinks({ theme = "dark" }: { theme?: "dark" | "light" }) {
+/** The four social profiles as round icon links (molecule). `theme="dark"` is for navy. */
+export function SocialLinks({ theme = "dark" }: { theme?: "dark" | "light" }) {
   const linkClass =
     theme === "dark"
       ? "bg-white/10 text-white hover:bg-primary-blue"

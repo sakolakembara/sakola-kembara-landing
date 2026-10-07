@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 /** Admin roles — mirrors `adminRoles` in lib/db/schema/users.ts. */
 const ADMIN_ROLES = ["viewer", "editor", "super_admin"];
@@ -51,20 +51,15 @@ export function AuthNavButton({
     return () => controller.abort();
   }, []);
 
-  const base =
-    "inline-flex items-center font-semibold rounded-lg border border-gray-200 text-gray-700 hover:text-primary-blue hover:border-primary-blue/40 hover:bg-primary-blue/5 transition-colors";
-
+  // 40px on the desktop header; the mobile menu needs the 44px touch size.
   return (
-    <Link
+    <Button
       href={target.href}
       onClick={onNavigate}
-      className={
-        variant === "desktop"
-          ? `${base} h-10 px-4 text-[15px]`
-          : `${base} justify-center px-6 py-3 text-[15px]`
-      }
+      variant="neutral"
+      size={variant === "desktop" ? "sm" : "md"}
     >
       {target.label}
-    </Link>
+    </Button>
   );
 }

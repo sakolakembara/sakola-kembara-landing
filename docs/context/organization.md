@@ -115,6 +115,6 @@ Only ITB currently has a real logo URL; the others render as text tiles until lo
 - **QRIS**: `public/images/qris-sakola-kembara.png`.
 - **Email**: `contact@sakolakembara.org` (footer) / `hello@sakolakembara.org` (`contactInfo`).
 - **Office**: Bandung, Jawa Barat, Indonesia.
-- **Social**: Instagram, TikTok, X (Twitter), YouTube — all `@sakolakembara` (see `components/SocialLinks.tsx`).
+- **Social**: Instagram, TikTok, X (Twitter), YouTube — all `@sakolakembara` (see `components/ui/social-links.tsx`).
 
 > The legacy site lived on WordPress at `sakolakembara.org`. Blog content has been migrated into this repo as markdown under `content/blog/`; see [`current-state/blog-pipeline.md`](../current-state/blog-pipeline.md).
