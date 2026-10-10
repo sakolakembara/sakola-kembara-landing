@@ -96,6 +96,27 @@ Live in `/opt/sakem/.env.production` on the VPS (mode 600, owned by `deploy`). S
 
 `.env.production` is **never** committed; it's hand-edited on the server. The repo carries only `.env.example`.
 
+## Client IP and rate limiting
+
+`lib/rate-limit.ts` buckets requests by client IP. The app cannot read the socket address, so it depends on headers set by the proxy chain in front of it.
+
+Production as deployed (`compose.yml`, `.github/workflows/deploy.yml`): Cloudflare → `nginx-app-1` on the `ipat-bridge` network → `sakola-kembara-landing:3000`. The nginx config lives on the server, not in this repo. The Caddy stack in `docker-compose.yml` is the earlier target described above.
+
+The client IP is taken from, in order:
+
+1. `CF-Connecting-IP`, which Cloudflare sets on every request it forwards.
+2. The **rightmost** `X-Forwarded-For` entry: the address the nearest proxy saw as its peer. Fallback for setups without Cloudflare (the Caddy stack, a local proxy).
+3. Neither: one shared `unknown` bucket for all such requests, and a one-time warning in the app log (`[rate-limit] no cf-connecting-ip / x-forwarded-for ...`). Seeing that line in production means the proxy chain is not passing the headers through.
+
+The left side of `X-Forwarded-For` and `X-Real-IP` are never used: proxies append to what the client sent, so those values are not set by infrastructure.
+
+What must be true on the server for this to hold:
+
+- The origin accepts web traffic from Cloudflare only (firewall or nginx allow-list of Cloudflare ranges). A request that reaches the origin another way can carry any `CF-Connecting-IP`.
+- nginx passes `CF-Connecting-IP` through to the app unchanged, and sets or appends `X-Forwarded-For` (`$proxy_add_x_forwarded_for`).
+- Cloudflare's "Remove visitor IP headers" managed transform stays off.
+- The app container is reachable only through nginx (`compose.yml` publishes no host port).
+
 ## Offsite backup
 
 A cron on the VPS host (not inside any container):
