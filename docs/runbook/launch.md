@@ -149,6 +149,8 @@ GHCR auth uses the workflow's built-in `GITHUB_TOKEN` — no extra secret needed
 
 ## Phase 4 — `.env.production` on the VPS
 
+> **Current deploy differs.** The workflow in `.github/workflows/deploy.yml` generates the server's `.env.local` from the `production` GitHub environment on every deploy (and overwrites it), so on that path nothing is hand-edited on the server. The variable names, which of them are GitHub variables or secrets, and what happens when one is blank are in [`../current-state/deployment.md`](../current-state/deployment.md#environment-variables). The steps below describe the Caddy-stack layout.
+
 The compose stack reads `/opt/sakem/.env.production`. The repo carries only `.env.example`; the production file is hand-edited on the server and **never** committed.
 
 As `deploy@vps`:

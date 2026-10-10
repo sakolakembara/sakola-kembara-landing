@@ -86,15 +86,38 @@ docker system df -v
 
 ## Environment variables
 
-Live in `/opt/sakem/.env.production` on the VPS (mode 600, owned by `deploy`). Same shape as `.env.example` at the repo root. Includes:
+> This section describes what the current deploy (`.github/workflows/deploy.yml` + `compose.yml`) does. The `/opt/sakem/.env.production` file of the Caddy stack described earlier on this page is the superseded plan.
 
-- `DATABASE_URL` → `postgres://sakem:<password>@postgres:5432/sakola_kembara` (note the hostname is the Compose service name).
-- `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_TRUST_HOST=true`, `NEXTAUTH_URL=https://sakolakembara.org` — see [`../architecture/authentication.md`](../architecture/authentication.md).
-- `SEED_SUPER_ADMIN_EMAIL`, `SEED_SUPER_ADMIN_PASSWORD`, `SEED_SUPER_ADMIN_NAME` — only needed while bootstrapping the first admin (`npm run seed:super-admin`). Safe to remove from the file after Phase 6 of the launch runbook.
-- `SENTRY_DSN`.
-- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` for the `postgres` + `backup` services.
+**The server's `.env.local` is generated, and overwritten on every deploy.** The `ENV_FILE_CONTENT` block in `.github/workflows/deploy.yml` is written to `.env.local` next to `compose.yml` (mode 600) at the end of each run, and the app container reads it through `env_file`. Anything edited by hand on the VPS is lost on the next deploy. To change a value, change it in the **`production` environment** of the GitHub repo (Settings → Environments → `production`, "Variables" or "Secrets") and deploy again; the container reads the file only when it starts, so a change takes effect once the deploy has recreated it. To add a variable the app reads, add a line to the block as well, otherwise the value never reaches the server.
 
-`.env.production` is **never** committed; it's hand-edited on the server. The repo carries only `.env.example`.
+A variable or secret that is **not set** in the environment becomes an empty `KEY=` line. `lib/env.ts` treats an empty value as unset, so a missing optional value switches its feature off instead of stopping the app. A value that **is** set but malformed (see "Shape" below) fails validation and the container exits at boot with `Invalid environment variables` in `docker compose logs app`.
+
+Written by the workflow (names only; values live in GitHub):
+
+| Variable | Kind | Needed? | Shape | If blank |
+| --- | --- | --- | --- | --- |
+| `NODE_ENV`, `AUTH_TRUST_HOST`, `PORT` | fixed in the workflow | yes | — | — |
+| `NEXTAUTH_URL` | variable | **required** | full URL | app does not boot |
+| `AUTH_URL` | variable | optional | full URL | Auth.js uses the request's own host (`AUTH_TRUST_HOST=true`); when set it overrides the request origin. It does not fall back to `NEXTAUTH_URL`. |
+| `DATABASE_URL` | secret | **required** | Postgres URL, host `postgres_16` on the `ipat-bridge` network | app does not boot |
+| `AUTH_SECRET` | secret | **required** | at least 32 characters | app does not boot |
+| `AUTH_GOOGLE_ID` | variable | for Google sign-in | non-empty | no Google button |
+| `AUTH_GOOGLE_SECRET` | secret | for Google sign-in | non-empty | no Google button (both Google values are needed) |
+| `SSO_JWT_SECRET` | secret | for the LMS handshake | at least 32 characters, same value as the LMS | SSO cookie is never created |
+| `SSO_COOKIE_DOMAIN` | variable | for the LMS handshake | must start with a dot | host-only cookie, the LMS does not see it |
+| `SSO_ALLOWED_ORIGINS` | variable | for the LMS handshake | comma-separated origins, no wildcard | `POST /api/sso/register` and `/signout` reject every request (fails closed in production) |
+| `RESEND_API_KEY` | secret | for email | non-empty | verification and reset emails are not sent; the flows report failure |
+| `EMAIL_FROM` | variable | optional | `Name <address>`, no surrounding quotes | falls back to the Resend sandbox sender |
+| `APP_URL` | variable | optional | full URL | links in emails use `NEXTAUTH_URL` |
+| `SENTRY_DSN` | secret | optional | URL | server-side error reporting is off |
+
+Secret values must not contain `$` or start and end with quotes: Compose parses `env_file` and would alter them.
+
+Read by other steps of the workflow, not written to `.env.local`: `DOCKERHUB_TOKEN` and `DATABASE_URL_CI` (secrets, used to push the image and to run migrations from the runner) and the `DEPLOY_SSH_*` connection settings.
+
+Not in the block on purpose: `SEED_SUPER_ADMIN_*` (read only by the one-off `seed:super-admin` script, not by the running app), `POSTGRES_*` (used only by the Caddy stack's `docker-compose.yml`), and `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` (build-time only; the Docker build does not receive them). Variables of the old Microsoft Entra ID sign-in and the SharePoint integration are gone from the code and from the block.
+
+How these variables are used: [`../architecture/authentication.md`](../architecture/authentication.md) (Google), [`../architecture/lms-integration.md`](../architecture/lms-integration.md) and [`../runbook/sso-email-launch.md`](../runbook/sso-email-launch.md) (SSO and email). `.env.example` at the repo root is the template for local development only.
 
 ## Client IP and rate limiting
 
