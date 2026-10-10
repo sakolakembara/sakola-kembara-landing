@@ -9,9 +9,10 @@ import { sendVerificationEmail } from "@/lib/email";
  * (e.g. the signup path) can proceed even if the vendor is temporarily
  * down. Logs failures for later investigation via Sentry.
  *
- * Returns true when the send succeeded (or was logged in dev fallback),
- * false when the vendor call failed. Callers can use this to decide
- * whether to nudge the user to hit "resend" immediately.
+ * Returns true when the send succeeded (or was logged by the
+ * non-production console fallback), false when it failed — including
+ * production without an email provider key. Callers can use this to
+ * decide whether to nudge the user to hit "resend" immediately.
  */
 export async function sendUserVerificationEmail(
   userId: string,
