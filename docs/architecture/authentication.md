@@ -180,6 +180,15 @@ Sign in at `http://localhost:3000/login` with your seeded email + password (the 
 3. **First boot** — `docker compose up -d`, then `docker compose exec app npm run seed:super-admin`. This upserts a super_admin row so someone can sign in immediately via the admin password form.
 4. **After first sign-in** — remove the `SEED_SUPER_ADMIN_*` values from `.env.production` if you don't intend to rotate through the CLI. The row stays; only the env vars go.
 
+## Rate limiting
+
+Credential sign-in is throttled twice (`app/(auth)/login/actions.ts`, limiter in `lib/rate-limit.ts`):
+
+- **5 attempts / 5 min per client IP + email.** Stops one client from guessing.
+- **20 attempts / 15 min per email, any IP.** Bounds guesses against one account when they come from many addresses. Only attempts that pass the per-IP check count toward it, so a single client cannot use it up alone. When it trips, the real user also sees "RateLimited" until the window ends.
+
+Both buckets are keyed on the client IP the proxy chain reports. How that IP is derived, and what production must guarantee for it to be trustworthy, is in [`../current-state/deployment.md`](../current-state/deployment.md#client-ip-and-rate-limiting).
+
 ## Email verification + password reset
 
 Local-password accounts must verify their email before submitting the registration wizard, resetting a password, or (via LMS) registering for events or reaching course content. Google users are auto-verified because Google has already confirmed the address.
