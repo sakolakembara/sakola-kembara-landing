@@ -30,8 +30,12 @@ const schema = z.object({
   SEED_SUPER_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
 
   // ----- Transactional email (Resend) -----
-  // Optional in dev — when unset, lib/email.ts logs the outbound message
-  // to the console instead of hitting the vendor. Prod must set it.
+  // Optional outside production — when unset, lib/email.ts logs the
+  // outbound message to the console instead of hitting the vendor. In
+  // production, when unset, lib/email.ts refuses to send (returns
+  // `{ ok: false }`) and logs nothing about the message. Deliberately not
+  // enforced here: this schema is parsed at runtime boot, and a hard
+  // requirement would stop the whole app from starting.
   RESEND_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   // The From address on outbound mail. Resend defaults to
   // "onboarding@resend.dev" (their sandbox domain) which works without

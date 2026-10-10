@@ -7,10 +7,13 @@ import { env } from "@/lib/env";
 // tagging, throttle, or wire deliverability metrics later.
 //
 // Vendor: Resend. Free tier is 3k emails / month, more than the org
-// needs at MVP scale. When RESEND_API_KEY is unset (dev / staging that
-// hasn't been wired), the helpers log outbound messages to stdout
-// instead of hitting the vendor — lets local sign-up flows exercise the
-// email path without spam.
+// needs at MVP scale. When RESEND_API_KEY is unset outside production
+// (local dev / test), the helpers log outbound messages to stdout instead
+// of hitting the vendor — lets local sign-up flows exercise the email path
+// without spam. In production a missing key is a hard failure: nothing is
+// sent, nothing about the message is logged (verification and reset links
+// carry live tokens), and the helpers return `{ ok: false }` so callers can
+// report the failure.
 
 const resendClient = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
@@ -23,7 +26,10 @@ export interface SendResult {
   ok: boolean;
   /** Vendor message id when the mail was actually sent. */
   id?: string;
-  /** Debug-only reason a send was skipped or failed. Never surface to users. */
+  /**
+   * Debug-only reason a send was skipped or failed. Never surface to users.
+   * Must not contain message content (links carry live tokens).
+   */
   reason?: string;
 }
 
@@ -38,8 +44,17 @@ interface SendArgs {
 
 async function send({ to, subject, html, text, purpose }: SendArgs): Promise<SendResult> {
   if (!resendClient) {
+    if (env.NODE_ENV === "production") {
+      // Fail hard: no key means no delivery. Log only the purpose tag, never
+      // the recipient, subject or body — those contain tokenized links.
+      console.error(
+        `[email] RESEND_API_KEY is not set; ${purpose} email was not sent.`,
+      );
+      return { ok: false, reason: "provider_not_configured" };
+    }
     // Dev fallback — print the mail to stdout so a developer can copy
     // any verification link out of the logs without setting up Resend.
+    // Non-production only: the body includes the tokenized link.
     console.log("═══ [email:dev-fallback] ═══");
     console.log("To:      ", to);
     console.log("From:    ", env.EMAIL_FROM);

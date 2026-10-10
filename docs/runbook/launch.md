@@ -204,7 +204,9 @@ SENTRY_DSN=
 # and self-service email flows, follow the focused runbook at
 # ./sso-email-launch.md. Those vars are SSO_JWT_SECRET,
 # SSO_COOKIE_DOMAIN, SSO_ALLOWED_ORIGINS, RESEND_API_KEY, EMAIL_FROM,
-# APP_URL. Code paths are dormant when these are unset.
+# APP_URL. The SSO code paths are dormant when these are unset. Email is not:
+# in production without RESEND_API_KEY, verification and reset emails are
+# not sent and the flows report failure.
 ```
 
 Generate `AUTH_SECRET` on the VPS so it never lands on your laptop:

@@ -889,7 +889,7 @@ milestone so the SSO handshake can ship independently from the email work.
 
 - [x] Vendor: Resend (`resend` npm package). Free tier's 3k emails/mo covers the org's scale for the foreseeable future.
 - [ ] Sending domain verified (SPF + DKIM + DMARC on `sakolakembara.org`) — **ops step, not code.** Set up in the Resend dashboard before prod launch. See [`runbook/launch.md`](../runbook/launch.md).
-- [x] `lib/email.ts` — Resend wrapper with typed helpers (`sendVerificationEmail`, `sendPasswordResetEmail`), inline-styled HTML shell + plain-text fallback, dev-fallback that prints to stdout when `RESEND_API_KEY` is unset.
+- [x] `lib/email.ts` — Resend wrapper with typed helpers (`sendVerificationEmail`, `sendPasswordResetEmail`), inline-styled HTML shell + plain-text fallback, non-production fallback that prints to stdout when `RESEND_API_KEY` is unset (in production a missing key makes `send()` return `{ ok: false }` and log nothing about the message).
 - [x] Migration 0011: `users.email_verified_at timestamptz` + index; existing rows backfilled to `now()` in the same migration (`drizzle/0011_users_email_verified_at.sql`).
 - [x] Google `signIn` callback stamps `email_verified_at = now()` on account creation (and lifts a legacy password user's unverified state on Google link).
 - [x] `POST /api/account/resend-verification` — signed-in user requests a fresh link. Rate-limited 2/hour/user. (`app/api/account/resend-verification/route.ts`)
