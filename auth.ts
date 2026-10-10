@@ -13,6 +13,7 @@ import {
   type UserRole,
 } from "@/lib/db/schema";
 import { env } from "@/lib/env";
+import { decideGoogleLink } from "@/lib/google-account-linking";
 import { buildSsoClaims } from "@/lib/sso-claims";
 import {
   clearSsoCookieOptions,
@@ -74,7 +75,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Google sign-in: upsert the users row and (provider, providerAccountId)
       // linkage so subsequent sign-ins skip account creation. New accounts
       // default to the "student" role — admins are promoted manually via
-      // /admin/settings.
+      // /admin/settings. Whether the identity may be linked at all, and what
+      // happens to a stored password, is decided by decideGoogleLink.
       if (account?.provider === "google") {
         const email = String(profile?.email ?? user?.email ?? "").toLowerCase();
         if (!email) return false;
@@ -83,19 +85,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: eq(users.email, email),
         });
 
+        const decision = decideGoogleLink({
+          googleEmailVerified: profile?.email_verified,
+          existing,
+        });
+        if (decision.action === "reject") return false;
+
         let userId: string;
         if (existing) {
           userId = existing.id;
           // Keep name/image fresh from Google, but never demote role.
           // Also stamp email_verified_at if the pre-existing row was an
           // unverified local-password user who just linked Google — Google
-          // has now confirmed the email, so lift the verification hold.
+          // has now confirmed the email, so lift the verification hold. When
+          // the row was unverified, its password is dropped in the same
+          // update (see lib/google-account-linking.ts).
           await db
             .update(users)
             .set({
               name: existing.name ?? (profile?.name as string | null) ?? null,
               image: existing.image ?? (profile?.picture as string | null) ?? null,
               emailVerifiedAt: existing.emailVerifiedAt ?? new Date(),
+              ...(decision.action === "link" && decision.clearPasswordHash
+                ? { passwordHash: null }
+                : {}),
               updatedAt: new Date(),
             })
             .where(eq(users.id, existing.id));
