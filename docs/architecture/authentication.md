@@ -98,14 +98,28 @@ All three re-read the `users` row so a demoted user loses access mid-session eve
 
 ### Google — new user
 1. Click "Masuk dengan Google" on `/login`.
-2. Google returns to `/api/auth/callback/google` with `profile.email`.
-3. `signIn` callback in `auth.ts` looks up the email in `users` — no match, so inserts a new row with `role: "student"`, copies `name` + `image` from Google.
-4. Upserts an `accounts` row keyed on `(provider="google", providerAccountId)`.
-5. `jwt` callback stamps `sub`, `email`, `role="student"` onto the token.
-6. `redirectTo` (from `/login`'s server action) is `safeFrom ?? "/portal"` — new students land on `/portal`.
+2. Google returns to `/api/auth/callback/google` with `profile.email` and `profile.email_verified`.
+3. `signIn` callback in `auth.ts` looks up the email in `users` and asks `decideGoogleLink()` (`lib/google-account-linking.ts`) what to do. `email_verified` must be exactly `true`; otherwise the sign-in is refused before anything is written (see [Google — linking rules](#google--linking-rules)).
+4. No matching row, so it inserts a new one with `role: "student"` and `email_verified_at` set, copying `name` + `image` from Google.
+5. Upserts an `accounts` row keyed on `(provider="google", providerAccountId)`.
+6. `jwt` callback stamps `sub`, `email`, `role="student"` onto the token.
+7. `redirectTo` (from `/login`'s server action) is `safeFrom ?? "/portal"` — new students land on `/portal`.
 
 ### Google — existing user
-Same flow, but the `users` row already exists. `name` / `image` are refreshed from Google, `role` is **never demoted**. If the account had been promoted to `editor` or `super_admin`, that stays.
+Same flow, but the `users` row already exists. `name` / `image` are refreshed from Google, `role` is **never demoted**. If the account had been promoted to `editor` or `super_admin`, that stays. Whether the stored password survives depends on the linking rules below.
+
+### Google — linking rules
+`decideGoogleLink()` is a pure function so each case is testable without the NextAuth stack (`__tests__/google-account-linking.test.ts`; the callback wiring is covered by `__tests__/auth-google-signin.test.ts`).
+
+| Situation | Result |
+| --- | --- |
+| Google reports `email_verified` as anything but `true` | Refused (`signIn` returns `false`). No row is created, updated or linked. The user lands on `/login?error=AccessDenied`, which shows the generic "Gagal masuk" message. |
+| Verified Google email, no `users` row | New student row, `email_verified_at` set. |
+| Verified Google email, existing **local student** row with `email_verified_at` empty | Linked. `email_verified_at` is set and `password_hash` is cleared in the same update. Self-registration does not require verification before sign-in, so a password on an unverified row is not proof that the address owner chose it. The account becomes Google-only; `/forgot-password` only serves accounts that have a password. |
+| Verified Google email, existing local student row already verified | Linked. `password_hash` is kept: the owner already proved control of the address through the verification link, so the password is theirs. |
+| Verified Google email, existing **admin** row (`viewer` / `editor` / `super_admin`) | Linked, role untouched, `password_hash` kept even when `email_verified_at` is empty. Admin rows are only created by `createAdmin` and `seed-super-admin`; both leave `email_verified_at` empty and any password on them is set by the operator, so dropping it would silently break the seeded password login. Refusing to link unverified admin rows was considered and left out: it would also block admins created without a password, whose only way in is Google. |
+
+Open point: sessions are stateless JWTs (see [Sessions](#sessions)) and there is no revocation mechanism yet, so changing a password or linking an account does not end sessions that were already issued. Tracked separately in SAKEM-014.
 
 ### Email + password
 Works for anyone with a `password_hash` — students who registered locally, or admins seeded via `npm run seed:super-admin`. The form on `/login` is deliberately neutral (no "admin" label) so the admin path isn't signposted to the public.
@@ -191,7 +205,7 @@ Both buckets are keyed on the client IP the proxy chain reports. How that IP is 
 
 ## Email verification + password reset
 
-Local-password accounts must verify their email before submitting the registration wizard, resetting a password, or (via LMS) registering for events or reaching course content. Google users are auto-verified because Google has already confirmed the address.
+Local-password accounts must verify their email before submitting the registration wizard, resetting a password, or (via LMS) registering for events or reaching course content. Google users are auto-verified because Google has already confirmed the address (`email_verified === true` is required to sign in with Google at all).
 
 - **Column**: `users.email_verified_at timestamptz NULL`. Null = unverified.
 - **Signup path**: `student-signup-service.ts` inserts the row; the caller (`/register` action or `/api/sso/register`) then fires `sendUserVerificationEmail` — best-effort, signup still succeeds if the vendor is down.
