@@ -66,7 +66,9 @@ v=DMARC1; p=none; rua=mailto:dmarc@sakolakembara.org; adkim=r; aspf=r
 
 ## Phase C — Env vars on the VPS
 
-SSH in as `deploy@vps` and edit the production env:
+> **On the current deploy, do not edit a file on the server.** `.env.local` there is generated from the `ENV_FILE_CONTENT` block of `.github/workflows/deploy.yml` and overwritten on every deploy, so a hand edit disappears at the next release. Set the same names in the `production` environment of the GitHub repo instead (Settings → Environments → `production`): variables `SSO_COOKIE_DOMAIN`, `SSO_ALLOWED_ORIGINS`, `EMAIL_FROM`, `APP_URL`, and secrets `SSO_JWT_SECRET`, `RESEND_API_KEY` (plus `AUTH_GOOGLE_ID` as a variable and `AUTH_GOOGLE_SECRET` as a secret for the Google button), then deploy. The values below stay the reference for what each one should contain; the full table, with what happens when one is blank, is in [`../current-state/deployment.md`](../current-state/deployment.md#environment-variables). Backing a variable out works the same way: clear it in the environment and deploy again.
+
+SSH in as `deploy@vps` and edit the production env (the Caddy-stack layout; on the current deploy read it as the list of names and values to enter in GitHub):
 
 ```bash
 cd /opt/sakem

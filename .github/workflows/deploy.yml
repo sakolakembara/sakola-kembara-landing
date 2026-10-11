@@ -36,8 +36,8 @@ jobs:
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
-      # Migrations run from the runner against the DB's PUBLIC endpoint
-      # (62.72.46.54:51112) — drizzle-kit is a devDependency and isn't in the
+      # Migrations run from the runner against the DB's public endpoint (the
+      # DATABASE_URL_CI secret) — drizzle-kit is a devDependency and isn't in the
       # runtime image, so it can't run inside the container on the server.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -57,8 +57,15 @@ jobs:
           DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
           DEPLOY_DIR: /opt/app/sakola-kembara-landing
-          # .env.local written on the server. App reaches Postgres over the
-          # internal ipat-bridge network at postgres_16:5432.
+          # .env.local written on the server. It is OVERWRITTEN on every deploy,
+          # so a hand edit on the VPS is lost: set values in the `production`
+          # environment of this repo (Settings > Environments), never on the
+          # server. A variable or secret that is not set there renders as an
+          # empty `KEY=` line: fine for the optional ones (lib/env.ts treats an
+          # empty value as unset), fatal for NEXTAUTH_URL, DATABASE_URL and
+          # AUTH_SECRET. Add a line here for every variable the app reads.
+          # App reaches Postgres over the internal ipat-bridge network at
+          # postgres_16:5432.
           ENV_FILE_CONTENT: |
             NODE_ENV=production
             NEXTAUTH_URL=${{ vars.NEXTAUTH_URL }}
@@ -66,13 +73,14 @@ jobs:
             AUTH_TRUST_HOST=true
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-            AUTH_MICROSOFT_ENTRA_ID_ID=${{ vars.AUTH_MICROSOFT_ENTRA_ID_ID }}
-            AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=${{ vars.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID }}
-            AUTH_MICROSOFT_ENTRA_ID_SECRET=${{ secrets.AUTH_MICROSOFT_ENTRA_ID_SECRET }}
-            AUTH_DEV_PROVIDER_ENABLED=
+            AUTH_GOOGLE_ID=${{ vars.AUTH_GOOGLE_ID }}
+            AUTH_GOOGLE_SECRET=${{ secrets.AUTH_GOOGLE_SECRET }}
+            SSO_JWT_SECRET=${{ secrets.SSO_JWT_SECRET }}
+            SSO_COOKIE_DOMAIN=${{ vars.SSO_COOKIE_DOMAIN }}
+            SSO_ALLOWED_ORIGINS=${{ vars.SSO_ALLOWED_ORIGINS }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            EMAIL_FROM=${{ vars.EMAIL_FROM }}
+            APP_URL=${{ vars.APP_URL }}
             SENTRY_DSN=${{ secrets.SENTRY_DSN }}
             PORT=3000
-            SHAREPOINT_SITE_ID=${{ vars.SHAREPOINT_SITE_ID }}
-            SHAREPOINT_DRIVE_ID=${{ vars.SHAREPOINT_DRIVE_ID }}
-            SHAREPOINT_FOLDER_PATH=${{ vars.SHAREPOINT_FOLDER_PATH }}
         run: bash .github/scripts/deploy.sh
