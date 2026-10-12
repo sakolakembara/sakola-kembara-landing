@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { adminUserRoutes } from "./api/admin-users";
 import { announcementRoutes } from "./api/announcements";
+import { serveDevUpload } from "./api/dev-uploads";
 import { createPublicApp } from "./api/public";
+import { uploadRoutes } from "./api/uploads";
 import { AUTH_BASE_PATH } from "./auth/factory";
 import { authGate } from "./auth/gate";
 import { loadAccess } from "./auth/guard";
@@ -85,8 +87,13 @@ app.get("/api/dev/mailbox", (c) => {
   return c.json({ messages: mailbox.messages });
 });
 
+// Local development only: files of the local R2 emulation (404 in production, where R2's own
+// public domain serves them and no Worker runs per download). Not under /api.
+app.get("/uploads/*", serveDevUpload);
+
 app.route("/api/announcements", announcementRoutes);
 app.route("/api/admin/users", adminUserRoutes);
+app.route("/api/admin/uploads", uploadRoutes);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 

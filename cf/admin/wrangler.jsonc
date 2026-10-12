@@ -31,7 +31,11 @@
     // assets layer, which costs no Worker CPU and no Worker request. (The
     // Assafar studio uses `true` because it also serves /oauth/* and
     // /.well-known/*; this app has nothing outside /api.)
-    "run_worker_first": ["/api/*"]
+    // "/uploads/*" is the one extra: the local-only route that serves the local R2
+    // emulation (src/api/dev-uploads.ts). In production it answers 404, and visitors
+    // never ask this host for uploads (R2's public domain serves them), so a request
+    // here is a stray one and gets a JSON 404 instead of the SPA's index.html.
+    "run_worker_first": ["/api/*", "/uploads/*"]
   },
 
   "d1_databases": [
@@ -41,6 +45,14 @@
       "migrations_dir": "migrations"
     }
   ],
+
+  // R2: the files the admin uploads (team photos, report PDFs, documents, blog images),
+  // SAKEM-082. `bucket_name` is a PLACEHOLDER and there is no id: nothing is created from
+  // this file. Locally (`wrangler dev`, tests) the binding is an emulated bucket kept in
+  // .wrangler/state, so it works without an account. Visitors get the files from the
+  // bucket's own public domain, not from this Worker; the owner's steps (bucket, custom
+  // domain, UPLOADS_BASE_URL on the public site) are in docs/cloudflare/uploads.md.
+  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "sakem-files" }],
 
   // Cloudflare rate limit bindings, one per concern (SAKEM-081, auth). Counted
   // per Cloudflare location and eventually consistent, period 10 or 60 seconds
@@ -70,7 +82,11 @@
     // binding): 5 per minute per visitor address, key "contact:<address>" from
     // X-Sakem-Client-Ip. The one limiter of that route (src/public/contact-deps.ts);
     // it replaces the PUBLIC_CONTACT_LIMIT binding (namespace 7811) of the first public API PR.
-    { "name": "RL_CONTACT", "namespace_id": "7808", "simple": { "limit": 5, "period": 60 } }
+    { "name": "RL_CONTACT", "namespace_id": "7808", "simple": { "limit": 5, "period": 60 } },
+    // Admin uploads and their deletes (src/api/uploads.ts): 20 per minute per signed-in user.
+    // Key: "upload:<user id>". Keeps a stuck client or a stolen session from burning the R2
+    // Class A budget (1M operations a month on Free) or the CPU of many multipart parses.
+    { "name": "RL_UPLOAD", "namespace_id": "7821", "simple": { "limit": 20, "period": 60 } }
   ],
 
   // Daily cleanup (src/cron/cleanup.ts): expired sessions and verification

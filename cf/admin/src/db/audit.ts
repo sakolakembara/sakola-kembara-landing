@@ -10,6 +10,9 @@ export type Db = DrizzleD1Database<typeof schema>;
  * ported. Rows keep their action as free text, so old names stay readable.
  */
 export type AuditAction =
+  // Uploads to R2 (src/uploads/store.ts). New names: the legacy app wrote one per kind (blog.upload_image, team.upload_photo).
+  | "upload.create"
+  | "upload.delete"
   | "announcement.create"
   | "announcement.update"
   | "announcement.delete"
@@ -27,7 +30,7 @@ export type AuditAction =
   | "user.password_reset";
 
 /** Resource types written so far (legacy names, see RESOURCE_TYPES in lib/audit-labels.ts). */
-export type AuditResourceType = "announcement" | "admin_user" | "user";
+export type AuditResourceType = "media" | "announcement" | "admin_user" | "user";
 
 export interface AuditEntry {
   action: AuditAction;
