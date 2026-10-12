@@ -11,6 +11,14 @@ import { toUnderscoreRedirects } from './redirects.config.mjs';
 // writes the manifest the blog plugin reads. See docs/cloudflare/web-skeleton.md.
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
+// Where the blog comes from: `api` (default, the content API at request time) or
+// `markdown` (the root content/blog rendered at build time and bundled: local
+// development without the fixture API, never a deploy). See src/lib/blog.ts.
+const blogSource = process.env.BLOG_SOURCE ?? 'api';
+if (blogSource !== 'api' && blogSource !== 'markdown') {
+  throw new Error(`BLOG_SOURCE must be "api" or "markdown", got "${blogSource}"`);
+}
+
 /**
  * Writes the WordPress/legacy redirect table to dist/client/_redirects, where
  * the Workers assets layer answers it before the Worker is invoked. Astro's own
@@ -57,6 +65,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   server: { host: true, port: process.env.PORT ? Number(process.env.PORT) : 4321 },
   vite: {
+    define: { __BLOG_SOURCE__: JSON.stringify(blogSource) },
     plugins: [
       tailwindcss(),
       blogContent({

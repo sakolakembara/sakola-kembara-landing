@@ -11,6 +11,14 @@ declare namespace Cloudflare {
     TEAM_CACHE_FRESH_SECONDS?: string;
     /** Same for the other lists (reports, resources): default 60, the contract's `s-maxage`. */
     CONTENT_CACHE_FRESH_SECONDS?: string;
+    /** Seconds a fetched blog page or article is served from the cache before the API is asked again (default 60). */
+    BLOG_CACHE_FRESH_SECONDS?: string;
+    /** Local/CI only: where the contact form posts instead of the `API` service binding (scripts/fixture-api.mjs). Unset in production. */
+    CONTACT_API_URL?: string;
+    /** Service binding to the API Worker (wrangler.jsonc `services`); the contact form and, without CONTENT_API_URL, the read endpoints go through it. */
+    API?: { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
+    /** Rate-limit binding for the contact form (wrangler.jsonc, see its comment). Absent: an in-memory limiter answers instead. */
+    CONTACT_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
   }
 }
 

@@ -1,0 +1,41 @@
+---
+import Base from '~/layouts/Base.astro';
+import Button from './Button.astro';
+import Container from './Container.astro';
+import PageHero from './PageHero.astro';
+
+/**
+ * What /blog and /blog/<slug> show when the content API cannot be reached and there
+ * is no earlier copy to serve (lib/api-cache.ts): the site shell and a plain notice,
+ * under a 503 that the page sets (a crawler is told to come back, not that the page
+ * is gone). No legacy counterpart: the old pages read a local file and could not
+ * be in this state. The sentence is new copy, in the voice of docs/context/tone-of-voice.md.
+ */
+interface Props {
+  /** The URL the visitor asked for, so the button retries the same page. */
+  path: string;
+}
+const { path } = Astro.props;
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: 'Blog & Cerita',
+    description:
+      'Cerita dan inspirasi dari Sakola Kembara — kisah alumni, kegiatan, dan update tentang gerakan pemerataan akses pendidikan tinggi di Indonesia.',
+    path,
+  }}
+>
+  <main class="min-h-screen bg-gray-50">
+    <PageHero title="Blog & Cerita" />
+    <section class="py-16 bg-white">
+      <Container size="reading" class="text-center">
+        <p class="text-gray-600 mb-6" role="status">
+          Artikel belum dapat dimuat saat ini. Silakan coba lagi beberapa saat lagi.
+        </p>
+        <Button href={path}>Coba Lagi</Button>
+      </Container>
+    </section>
+  </main>
+</Base>

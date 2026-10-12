@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { galleryAlt, getProgramGallery } from '~/lib/gallery';
 import { programs } from '~/lib/programs';
-import { PROGRAM_IDS } from '~/lib/sitemap';
+import { PROGRAM_IDS, STATIC_ROUTES } from '~/lib/sitemap';
 import { importRoot, readRoot, webRoot } from './helpers';
 
 // Checks on the pages `pnpm build` generates for /program/<id> and /donasi (dist/client/*.html).
@@ -38,10 +38,10 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     expect(readdirSync(path.join(client, 'program')).sort()).toEqual(programs.map((p) => `${p.id}.html`).sort());
   });
 
-  it('the sitemap still lists the three program URLs', () => {
-    const xml = read('sitemap.xml');
-    for (const id of PROGRAM_IDS) expect(xml).toContain(`<loc>https://sakolakembara.org/program/${id}</loc>`);
-    expect(xml).toContain('<loc>https://sakolakembara.org/donasi</loc>');
+  it('the sitemap still lists the three program URLs and /donasi (the sitemap is rendered by the Worker now: its output is checked in scripts/e2e.mjs)', () => {
+    expect(PROGRAM_IDS).toEqual(programs.map((p) => p.id));
+    expect(STATIC_ROUTES.map((r) => r.path)).toContain('/donasi');
+    expect(existsSync(path.join(client, 'sitemap.xml'))).toBe(false);
   });
 
   describe.each(programs)('$id', (program) => {

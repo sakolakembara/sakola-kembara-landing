@@ -8,6 +8,8 @@ const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 // Unit tests run in plain Node. The blog virtual modules come from the same
 // plugin the build uses, so the tests see exactly what the pages see.
 export default defineConfig({
+  // Tests run on the build-time markdown adapter (the API client is tested against fakes and the fixture server).
+  define: { __BLOG_SOURCE__: JSON.stringify('markdown') },
   plugins: [blogContent({ contentDir: `${repoRoot}content/blog`, manifestFile: `${root}src/generated/image-manifest.json` })],
   // '@' is the legacy app's own path prefix; the tests import a few of its files.
   resolve: { alias: { '~': `${root}src`, '@root': repoRoot.replace(/\/$/, ''), '@': repoRoot.replace(/\/$/, '') } },

@@ -292,7 +292,10 @@ describe('dist audit (the build guard)', () => {
   it.skipIf(!existsSync(path.join(dist, 'index.html')))('the built dist/client has no problems and lists its images', () => {
     const audit = auditDist(dist);
     expect(audit.problems).toEqual([]);
-    expect(audit.imgs.length).toBeGreaterThan(300);
+    // The prerendered pages only: the home page and the program pages. The 80 articles are rendered by the Worker from the
+    // API now, so their <img> are audited where they can be: every cover and inline image of the markdown fixture exists in the
+    // manifest (above), and scripts/e2e.mjs requests every image of a served article.
+    expect(audit.imgs.length).toBeGreaterThan(40);
     expect(audit.files).toBeLessThan(LIMITS.budgetFiles);
   });
 });
