@@ -9,7 +9,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | Part | Where |
 | --- | --- |
 | Drizzle schema, one file per concern, re-exported from `src/db/schema.ts` | `cf/admin/src/db/schema/` |
-| Four SQL migrations, one per concern | `cf/admin/migrations/` |
+| Four SQL migrations, one per concern, and `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)) | `cf/admin/migrations/` |
 | Permission model (pure) and the `requireArea` guard | `src/auth/permissions.ts`, `src/auth/guard.ts` |
 | Super-admin routes to grant and revoke an editor's areas | `src/api/admin-users.ts` |
 | Dev seed for every table | `scripts/seed-data.ts`, `scripts/seed.ts` |
@@ -147,7 +147,7 @@ Follows the "Illustrative D1 mapping" of [`content-api.md`](content-api.md).
 | `wp_id` (unique, many NULLs allowed), `source_url` | For the 80 imported WordPress articles; NULL for articles written in the admin. Never exposed. |
 | `created_by`, `updated_by`, `created_at`, `updated_at` | Audit columns, never exposed. |
 
-Index `(status, published_at)` serves the public list (published, newest first).
+Index `(status, published_at)` serves the public list (published, newest first). Index `(status, featured, published_at)` (migration `0004`) makes the featured article of the blog index an index seek instead of a sort of every article, and serves the published count.
 
 ### `media`
 

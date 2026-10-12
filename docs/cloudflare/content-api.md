@@ -1,6 +1,6 @@
 # Public content API: contract for the Worker API
 
-> **Status: contract, not implemented (SAKEM-076, epic SAKEM-074).** This page defines what the public content API of the new Worker (`cf/api`, Hono + D1) must serve and accept, so that the Astro site (`cf/web`) can be written against it now and the Worker can be built to match. Decisions are recorded here so they are not re-litigated in the implementing PR. The contract is **neutral about transport**: how the Astro Worker (or a browser) reaches the API is a deployment choice, see [Contact](#post-apipubliccontact).
+> **Status: contract (SAKEM-076, epic SAKEM-074), implemented in the Worker `cf/admin` (SAKEM-081, part C): how it is built, measured and run is in [`public-api.md`](public-api.md). Option C (HMAC) is not implemented; transport A (service binding) is.** This page defines what the public content API of the new Worker (`cf/api`, Hono + D1) must serve and accept, so that the Astro site (`cf/web`) can be written against it now and the Worker can be built to match. Decisions are recorded here so they are not re-litigated in the implementing PR. The contract is **neutral about transport**: how the Astro Worker (or a browser) reaches the API is a deployment choice, see [Contact](#post-apipubliccontact).
 
 ## Provenance: legacy or new
 

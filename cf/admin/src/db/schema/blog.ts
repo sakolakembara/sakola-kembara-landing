@@ -69,6 +69,8 @@ export const blogPosts = sqliteTable(
     uniqueIndex("blog_posts_wp_id_idx").on(t.wpId),
     // The public list: published only, newest first.
     index("blog_posts_status_published_idx").on(t.status, t.publishedAt),
+    // The index's featured article: `ORDER BY featured DESC, published_at DESC LIMIT 1` over published rows is a seek, not a sort of every article (SAKEM-081, public API).
+    index("blog_posts_status_featured_published_idx").on(t.status, t.featured, t.publishedAt),
     enumCheck("blog_posts_category_check", t.category, blogCategories),
     enumCheck("blog_posts_status_check", t.status, blogStatus),
     check(

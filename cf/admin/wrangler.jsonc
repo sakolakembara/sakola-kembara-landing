@@ -44,6 +44,8 @@
     // One account attacked from many addresses: 20 per minute per route+email.
     { "name": "AUTH_EMAIL_LIMIT", "namespace_id": "7802", "simple": { "limit": 20, "period": 60 } },
     // One address flooding the routes that send email: 10 per minute per route+IP.
-    { "name": "AUTH_IP_LIMIT", "namespace_id": "7803", "simple": { "limit": 10, "period": 60 } }
+    { "name": "AUTH_IP_LIMIT", "namespace_id": "7803", "simple": { "limit": 10, "period": 60 } },
+    // Public contact form (SAKEM-081): 5 submissions per minute per visitor address.
+    { "name": "PUBLIC_CONTACT_LIMIT", "namespace_id": "7811", "simple": { "limit": 5, "period": 60 } }
   ]
 }
