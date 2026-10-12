@@ -78,7 +78,7 @@ pnpm exec wrangler whoami         # lists the accounts you can reach
 - **Zone and DNS.** Staging does not need the zone. When the date is agreed: add `sakolakembara.org` to the account, compare the imported records with the current ones, export them (**DNS, Records, Export**) to a private place **outside the repo**, keep the existing records DNS-only, and change nameservers only on cutover day. The WordPress site and mail keep working until then.
 - **Resend.** Create the account, add the domain, publish the SPF and DKIM records it shows, wait for "verified". The API key is created with sending access only and goes to the Worker as a secret (`wrangler secret put`), never into the repo.
 - **Turnstile.** Create a widget for the production and staging hostnames. The site key is public, the secret key goes to the Worker as a secret.
-- **R2 public domain.** A `files.` subdomain on the bucket, created at cutover (needs the zone).
+- **R2 public domain.** A `files.` subdomain on the bucket, created at cutover (needs the zone). The steps, the bucket binding and `UPLOADS_BASE_URL`: [`uploads.md`](uploads.md#owner-steps-bucket-domain-variable).
 - **Rollback notes.** Written in SAKEM-084 with the DNS export and the old VPS kept alive until cutover is verified.
 
 ## Report back (no values)
