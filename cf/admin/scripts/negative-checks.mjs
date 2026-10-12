@@ -17,6 +17,7 @@ import { sistemChecks } from "./negative-checks-sistem.mjs";
 import { komunikasiChecks } from "./negative-checks-komunikasi.mjs";
 import { kontenMiscChecks } from "./negative-checks-konten-misc.mjs";
 import { pendaftaranChecks } from "./negative-checks-pendaftaran.mjs";
+import { blogChecks } from "./negative-checks-blog.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -49,6 +50,9 @@ const checks = [
   ...kontenMiscChecks,
   // Pendaftaran: Batch, Pendaftar, Pusat Dokumen (SAKEM-082): scripts/negative-checks-pendaftaran.mjs.
   ...pendaftaranChecks,
+
+  // The blog (SAKEM-082): scripts/negative-checks-blog.mjs.
+  ...blogChecks,
 
   // ---------------------------------------------------------------- auth
   {

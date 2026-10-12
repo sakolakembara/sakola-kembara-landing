@@ -352,6 +352,8 @@ A route the generic store cannot answer (a verb such as `POST /:id/publish`, or 
 
 **When the generic store is not enough** (a verb route such as `POST /:id/deactivate`, a list with a cursor, an answer that depends on state across routes) add one file `spa/src/mock/handlers/<name>.ts` with a `default` export of a `MockHandler` (`mock/handlers.ts`: it receives the method, the URL, the init, `accessOf` and who the persona is, and returns a `Response` or `null` for a request that is not its own). It is picked up by `import.meta.glob` like `mock/resources/`, and `mock/transport.ts` asks the handlers after the resource store; `mock/handlers/sistem.ts` is the worked one (Aktivitas and Pengaturan, [`admin-sistem.md`](admin-sistem.md#5-the-mock)).
 
+**Routes the five of the contract do not cover** (a verb below an item, a verb of the collection, a create that makes more than its body says): a resource may give an optional `custom(request)` function. It is called first for every request under its `path` with `{ method, rest, url, init, rows, access }` (`rest` is the path below the collection: `""`, `"<id>"`, `"<id>/publish"`, `"preview"`; `rows` is the store's own array; `access` is what the persona may do in the area), and returns a `Response` (built with the exported `mockJson` and `mockError`) or `null` to let the generic store answer. The access check is the function's own. `mock/resources/blog.ts` uses it for create, update, publish, unpublish and the preview ([`admin-blog.md`](admin-blog.md)).
+
 ## 17. Tests and negative checks
 
 Worker (`cf/admin/test/`, workerd, real D1):

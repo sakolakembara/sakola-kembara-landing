@@ -138,7 +138,7 @@ Follows the "Illustrative D1 mapping" of [`content-api.md`](content-api.md).
 
 | Column | Notes |
 | --- | --- |
-| `id`, `slug` (unique, `blog_posts_slug_idx`) | `slug` is the URL: lowercase letters, digits, single hyphens, up to 160 characters (CHECK). Immutable once published: enforced by the blog API, not by the database. All 80 current slugs satisfy the CHECK. |
+| `id`, `slug` (unique, `blog_posts_slug_idx`) | `slug` is the URL: lowercase letters, digits, single hyphens, up to 160 characters (CHECK). Immutable once published: enforced by the blog API, not by the database (it can change while the article is a draft; [`admin-blog.md`](admin-blog.md#6-states-and-rules)). All 80 current slugs satisfy the CHECK. |
 | `title`, `excerpt`, `author` | |
 | `content_markdown`, `content_html` | The markdown is the source of truth. HTML is rendered **at save time** and stored beside it, so both are written together; never rendered on read. |
 | `image`, `image_width`, `image_height` | Hero image path and its pixel size, recorded at upload; both or neither, positive (CHECK). |

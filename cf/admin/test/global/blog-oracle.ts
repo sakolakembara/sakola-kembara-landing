@@ -74,7 +74,18 @@ function ensureWebReady(): void {
   }
 }
 
+/**
+ * A run that names test files, none of them a blog one (the negative checks of another area do this), does not need
+ * the oracle: skipping it saves its few seconds on every one of those runs. A run that names nothing, or a blog file,
+ * builds it, and a blog test that finds no oracle says so by failing.
+ */
+function neededByThisRun(): boolean {
+  const named = process.argv.slice(2).filter((arg) => /\.test\.tsx?$|^test\//.test(arg));
+  return named.length === 0 || named.some((arg) => /blog/.test(arg));
+}
+
 export default async function setup(project: TestProject): Promise<void> {
+  if (!neededByThisRun()) return;
   ensureWebReady();
 
   const { createBlogReader } = await nativeImport(path.join(webRoot, "plugins/blog-content.mjs"));

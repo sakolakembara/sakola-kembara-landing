@@ -275,6 +275,11 @@ describe("the kinds table", () => {
     for (const kind of uploadKinds) expect(areaOfPurpose(KIND_RULES[kind].purpose), kind).toBe(KIND_RULES[kind].area);
   });
 
+  test("only the blog's images take a GIF (the legacy blog did, the team form did not)", () => {
+    expect(KIND_RULES["blog-image"].types).toEqual(["png", "jpeg", "webp", "gif"]);
+    for (const kind of uploadKinds.filter((candidate) => candidate !== "blog-image")) expect(KIND_RULES[kind].types, kind).not.toContain("gif");
+  });
+
   test("the limits are the legacy app's: team 5 MB, blog image 5 MB, report 20 MB, resource 25 MB", () => {
     expect(KIND_RULES["team-photo"].maxBytes).toBe(5_000_000);
     expect(KIND_RULES["blog-image"].maxBytes).toBe(5_000_000);
