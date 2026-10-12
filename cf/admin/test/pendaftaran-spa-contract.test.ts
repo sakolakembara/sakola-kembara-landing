@@ -106,6 +106,15 @@ describe("the list queries the SPA builds are what the Worker's lists accept", (
     });
   }
 
+  test("every sort the spec lists, ascending and descending, is a sort the Worker has", async () => {
+    over(await viewer());
+    for (const [path, spec] of [[BATCHES, BATCH_SPEC], [APPLICATIONS, APPLICATION_SPEC], [RESOURCES, RESOURCE_SPEC]] as const) {
+      for (const name of spec.sorts ?? []) {
+        for (const sort of [name, `-${name}`]) expect((await api(`${path}?sort=${sort}`)).ok, `${path} ${sort}`).toBe(true);
+      }
+    }
+  });
+
   test("the names the spec lists are all there is: a sort or filter the spec does not list is refused by the Worker", async () => {
     over(await viewer());
     for (const [path, spec] of [[BATCHES, BATCH_SPEC], [APPLICATIONS, APPLICATION_SPEC], [RESOURCES, RESOURCE_SPEC]] as const) {

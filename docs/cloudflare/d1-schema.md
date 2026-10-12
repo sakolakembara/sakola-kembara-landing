@@ -9,7 +9,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | Part | Where |
 | --- | --- |
 | Drizzle schema, one file per concern, re-exported from `src/db/schema.ts` | `cf/admin/src/db/schema/` |
-| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), `0007_audit_viewer_indexes` (the indexes of the Aktivitas filters; [`admin-sistem.md`](admin-sistem.md)), and `0008_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0008)) | `cf/admin/migrations/` |
+| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), `0007_audit_viewer_indexes` (the indexes of the Aktivitas filters; [`admin-sistem.md`](admin-sistem.md)), and `0008_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0008)), and `0009_applications_name_search` (one index, for the prefix search of Pendaftar: [`admin-pendaftaran.md`](admin-pendaftaran.md)) | `cf/admin/migrations/` |
 | Permission model (pure) and the `requireArea` guard | `src/auth/permissions.ts`, `src/auth/guard.ts` |
 | Super-admin routes to grant and revoke an editor's areas | `src/api/admin-users.ts` |
 | Dev seed for every table | `scripts/seed-data.ts`, `scripts/seed.ts` |
@@ -96,7 +96,7 @@ Indexes: unique on `year` kept; legacy `admission_batches_year_idx` dropped (a s
 | `status` enum, default `pending` | same + CHECK | |
 | `reviewedBy` FK `SET NULL` | same | |
 
-Indexes: `status`, `submitted_at`, `email`, `batch_id` kept; unique `(user_id, batch_id)` kept (several rows with a NULL user are allowed, as in Postgres); legacy `student_applications_user_id_idx` dropped (the unique index starts with `user_id`).
+Indexes: `status`, `submitted_at`, `email`, `batch_id` kept; unique `(user_id, batch_id)` kept (several rows with a NULL user are allowed, as in Postgres); legacy `student_applications_user_id_idx` dropped (the unique index starts with `user_id`); `student_applications_full_name_idx` on `full_name COLLATE NOCASE` added (migration `0007`) so the admin's name search, a prefix match (`LIKE 'abc%'`, which SQLite serves from an index only when it is NOCASE), never scans the table.
 
 ### `announcements`
 

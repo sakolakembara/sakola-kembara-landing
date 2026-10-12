@@ -468,6 +468,51 @@ describe("applications: the review", () => {
     expect((await audit()).filter((row) => row.action !== "application.under_review")).toHaveLength(1);
   });
 
+  // The version is in the UPDATE too, not only in the early check: a decision made by somebody else after this one
+  // read the application must not be overwritten. Negative test (scripts/negative-checks-pendaftaran.mjs): take the
+  // version out of the UPDATE's WHERE and this one is accepted over the other.
+  test("a decision made between this review's read and its write is not overwritten: 409, nothing written, no audit row", async () => {
+    const cookie = await editor();
+    const batch = await addBatch();
+    const application = await addApplication(batch.id);
+    const version = await etagOfRow("student_applications", application.id);
+
+    // Right after the route reads the application (the one statement that joins its batch), somebody else decides.
+    let interfered = false;
+    const wrapStatement = (statement: D1PreparedStatement, sql: string): D1PreparedStatement =>
+      new Proxy(statement, {
+        get(target, property) {
+          const value = Reflect.get(target, property, target) as unknown;
+          if (property === "bind") return (...args: unknown[]) => wrapStatement((value as (...a: unknown[]) => D1PreparedStatement).apply(target, args), sql);
+          if ((property === "raw" || property === "all" || property === "first") && sql.includes('inner join "admission_batches"') && sql.includes("limit")) {
+            return async (...args: unknown[]) => {
+              const result = await (value as (...a: unknown[]) => Promise<unknown>).apply(target, args);
+              if (!interfered) {
+                interfered = true;
+                await env.DB.prepare("UPDATE student_applications SET status = 'rejected', review_notes = 'Orang lain', updated_at = updated_at + 5 WHERE id = ?").bind(application.id).run();
+              }
+              return result;
+            };
+          }
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    const db = new Proxy(env.DB, {
+      get(target, property) {
+        const value = Reflect.get(target, property, target) as unknown;
+        if (property === "prepare") return (sql: string) => wrapStatement(target.prepare(sql), sql);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+
+    const res = await call(`${LIST}/${application.id}/status`, { method: "POST", cookie, headers: version, json: { status: "accepted", reviewNotes: "Punya saya." }, env: { DB: db } });
+    expect(interfered).toBe(true);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: "stale" });
+    expect(await rowOf("student_applications", application.id)).toMatchObject({ status: "rejected", review_notes: "Orang lain" });
+    expect(await count("audit_log")).toBe(0);
+  });
+
   test("an application that does not exist is 404 in the legacy words; the body is checked first", async () => {
     const cookie = await editor();
     const res = await call(`${LIST}/tidak-ada/status`, { method: "POST", cookie, headers: { "if-match": '"2026-01-01T00:00:00.000Z"' }, json: { status: "pending" } });
