@@ -3,11 +3,16 @@ import { adminUserRoutes } from "./api/admin-users";
 import { announcementRoutes } from "./api/announcements";
 import { createPublicApp } from "./api/public";
 import { AUTH_BASE_PATH } from "./auth/factory";
+import { authGate } from "./auth/gate";
 import { loadAccess } from "./auth/guard";
 import { visibleAreas, writableAreas } from "./auth/permissions";
-import { authRateLimit } from "./auth/rate-limit";
+import { registerStudent } from "./auth/register";
 import { authContext } from "./auth/session";
 import type { AppEnv } from "./context";
+import { scheduledCleanup } from "./cron/cleanup";
+import { mailbox } from "./email/send";
+import type { Bindings } from "./env";
+import { sameOriginGuard } from "./security/csrf";
 
 // Only /api/* reaches this Worker (`run_worker_first` in wrangler.jsonc). The
 // SPA and its assets are served by the assets layer without running any code.
@@ -15,23 +20,39 @@ import type { AppEnv } from "./context";
 const app = new Hono<AppEnv>();
 
 // The public read API (/api/public/*, docs/cloudflare/public-api.md). Mounted
-// before the middleware below on purpose: it needs no session, builds no auth
-// and sets its own Cache-Control, which the blanket no-store must not replace.
+// before the middleware below on purpose: it needs no session, builds no auth,
+// sends no cookie and sets its own Cache-Control, which the blanket no-store
+// must not replace. It is GET only, so the same-origin guard has nothing to
+// guard there; the contact form is not on this app at all (see
+// src/api/public/internal.ts) and is protected by src/public/contact-deps.ts.
 app.route("/", createPublicApp());
 
-app.use("/api/*", authContext, async (c, next) => {
+app.use("/api/*", async (c, next) => {
   await next();
   // Session-dependent answers must never be cached by the browser or an edge.
+  // Outermost, so the refusals below carry it too.
   c.header("Cache-Control", "no-store");
 });
 
-// Better Auth owns everything under /api/auth. Its Response (including every
-// Set-Cookie) is returned as is.
-app.use(`${AUTH_BASE_PATH}/*`, authRateLimit);
+// Before anything reads a cookie or the database: a state-changing request
+// must come from this origin (src/security/csrf.ts).
+app.use("/api/*", sameOriginGuard);
+
+app.use("/api/*", authContext);
+
+// Public auth surface (src/auth/gate.ts): only the routes in its table exist,
+// each with its rate limits and Turnstile. Registration is ours; the rest is
+// Better Auth's, whose Response (including every Set-Cookie) is returned as is.
+app.use(`${AUTH_BASE_PATH}/*`, authGate);
+app.post(`${AUTH_BASE_PATH}/register`, registerStudent);
 app.on(["GET", "POST"], `${AUTH_BASE_PATH}/*`, (c) => c.get("auth")().handler(c.req.raw));
 
 app.get("/api/config", (c) =>
-  c.json({ google: Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) }),
+  c.json({
+    google: Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET),
+    // The widget's site key is public by design; the secret never leaves the Worker.
+    turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
+  }),
 );
 
 // Who is signed in and what they may do. `areas` is computed by the same
@@ -52,6 +73,15 @@ app.get("/api/me", async (c) => {
   });
 });
 
+// Local development only (exactly ENVIRONMENT=development, from an untracked
+// .dev.vars): the emails this isolate "sent". There is nothing to read from the
+// console because tokenised links are never logged. Not in production, not in
+// tests (they read `mailbox` directly).
+app.get("/api/dev/mailbox", (c) => {
+  if (c.env.ENVIRONMENT !== "development") return c.json({ error: "not_found" }, 404);
+  return c.json({ messages: mailbox.messages });
+});
+
 app.route("/api/announcements", announcementRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 
@@ -63,7 +93,11 @@ app.onError((error, c) => {
   return c.json({ error: "internal" }, 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  // Cron Trigger (wrangler.jsonc `triggers.crons`): expired sessions and tokens, old audit rows.
+  scheduled: (controller, env, _ctx) => scheduledCleanup(controller, env),
+} satisfies ExportedHandler<Bindings>;
 
 // The service-binding face of the public API (read endpoints + the contact
 // form). Not reachable from the internet: see src/api/public/internal.ts.

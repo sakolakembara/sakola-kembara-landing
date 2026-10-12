@@ -23,11 +23,17 @@ export const authContext: MiddlewareHandler<AppEnv> = async (c, next) => {
  * The signed-in user for this request, or null. Better Auth reads the session
  * and the user row from D1 on every call (no cookie cache), so a role changed
  * in the database applies to the very next request.
+ *
+ * A deactivated account is null even if a session row is still around:
+ * deactivating deletes the sessions and the session hook refuses new ones, and
+ * this check is the third line (it closes the window where a sign-in that
+ * started before the deactivation finishes after it).
  */
 export async function currentUser(c: Context<AppEnv>): Promise<AuthUser | null> {
   const session = await c.get("auth")().api.getSession({ headers: c.req.raw.headers });
   if (!session) return null;
   const { id, email, name, emailVerified } = session.user;
+  if ((session.user as { deactivatedAt?: unknown }).deactivatedAt) return null;
   const role: unknown = (session.user as { role?: unknown }).role;
   // An unknown role is treated as the least privileged one.
   return { id, email, name, emailVerified, role: isUserRole(role) ? role : "student" };

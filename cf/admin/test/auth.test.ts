@@ -1,17 +1,21 @@
 import { env } from "cloudflare:workers";
+import { createEmailVerificationToken } from "better-auth/api";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   call,
-  captureEmails,
+  CAPTCHA,
   cookiesOf,
   createVerifiedUser,
+  emailsTo,
+  fakeNetwork,
   linkIn,
   ORIGIN,
   PASSWORD,
+  productionLike,
+  resetTokenIn,
   signIn,
   signUp,
   uniqueEmail,
-  withEmail,
 } from "./helpers";
 
 afterEach(() => {
@@ -24,24 +28,28 @@ async function userRow(email: string) {
     .first<{ id: string; email: string; emailVerified: number; role: string }>();
 }
 
-describe("sign-up and email verification", () => {
-  test("sign-up does not log the user in and sends one verification email through Resend", async () => {
-    const { sent } = captureEmails();
+async function auditActions(): Promise<string[]> {
+  const { results } = await env.DB.prepare("SELECT action FROM audit_log ORDER BY created_at, rowid").all<{ action: string }>();
+  return results.map((row) => row.action);
+}
+
+describe("registration and email verification", () => {
+  test("registering does not log the user in and sends one verification email", async () => {
     const email = uniqueEmail();
     const res = await signUp(email);
 
     expect(res.status).toBe(200);
     expect(res.headers.getSetCookie()).toEqual([]); // no session before verification
+    const sent = emailsTo(email);
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: email, subject: "Verifikasi email Sakola Kembara" });
+    expect(sent[0]).toMatchObject({ purpose: "verify-email", subject: "Verifikasi email Sakola Kembara" });
     expect(sent[0]!.html).toContain("/api/auth/verify-email?token=");
     expect((await userRow(email))?.emailVerified).toBe(0);
   });
 
-  // Negative test: remove `requireEmailVerification: true` from src/auth/factory.ts
+  // Negative check: remove `requireEmailVerification: true` from src/auth/factory.ts
   // and this test fails (sign-in returns 200 with a session cookie).
   test("an unverified account cannot sign in, even with the right password", async () => {
-    captureEmails();
     const email = uniqueEmail();
     await signUp(email);
 
@@ -52,22 +60,20 @@ describe("sign-up and email verification", () => {
   });
 
   test("a correct password on an unverified account sends a fresh verification link", async () => {
-    const { sent } = captureEmails();
     const email = uniqueEmail();
     await signUp(email);
-    expect(sent).toHaveLength(1);
+    expect(emailsTo(email)).toHaveLength(1);
 
-    await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: PASSWORD }, env: withEmail });
-    expect(sent).toHaveLength(2);
-    expect(sent[1]!.subject).toBe("Verifikasi email Sakola Kembara");
+    await signIn(email);
+    expect(emailsTo(email)).toHaveLength(2);
+    expect(emailsTo(email)[1]!.subject).toBe("Verifikasi email Sakola Kembara");
   });
 
   test("following the emailed link verifies the email, then sign-in works", async () => {
-    const { sent } = captureEmails();
     const email = uniqueEmail();
     await signUp(email);
 
-    const verify = await call(linkIn(sent[0]!), { env: withEmail });
+    const verify = await call(linkIn(emailsTo(email)[0]!));
     expect(verify.status).toBe(302);
     expect(verify.headers.get("location")).toBe("/login?verified=1");
     expect((await userRow(email))?.emailVerified).toBe(1);
@@ -82,17 +88,62 @@ describe("sign-up and email verification", () => {
     expect(await me.json()).toMatchObject({ user: { email, role: "student", emailVerified: true } });
   });
 
-  test("a tampered verification token verifies nothing", async () => {
-    const { sent } = captureEmails();
+  test("registering and verifying are written to the audit log, with the person as the actor", async () => {
     const email = uniqueEmail();
     await signUp(email);
-    const link = linkIn(sent[0]!);
+    await call(linkIn(emailsTo(email)[0]!));
+    expect(await auditActions()).toEqual(["student.register", "user.email_verified"]);
+    const row = await env.DB.prepare("SELECT actor_email, resource_type, metadata FROM audit_log WHERE action = 'student.register'").first<{
+      actor_email: string;
+      resource_type: string;
+      metadata: string;
+    }>();
+    expect(row).toMatchObject({ actor_email: email, resource_type: "user" });
+    expect(JSON.parse(row!.metadata)).toEqual({ via: "email" }); // never the password
+  });
 
-    const res = await call(link.replace(/token=([^&]+)/, (_, t: string) => `token=${t.slice(0, -3)}abc`), { env: withEmail });
+  test("a tampered verification token verifies nothing", async () => {
+    const email = uniqueEmail();
+    await signUp(email);
+    const link = linkIn(emailsTo(email)[0]!);
+
+    const res = await call(link.replace(/token=([^&]+)/, (_, t: string) => `token=${t.slice(0, -3)}abc`));
     // With a callbackURL the failure goes back to it, and the login page reads `error`.
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/login?verified=1&error=INVALID_TOKEN");
     expect((await userRow(email))?.emailVerified).toBe(0);
+  });
+
+  test("an expired verification token verifies nothing", async () => {
+    const email = uniqueEmail();
+    await signUp(email);
+    const expired = await createEmailVerificationToken(env.BETTER_AUTH_SECRET!, email, undefined, -60);
+
+    const res = await call(`/api/auth/verify-email?token=${expired}&callbackURL=${encodeURIComponent("/login?verified=1")}`);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/login?verified=1&error=TOKEN_EXPIRED");
+    expect((await userRow(email))?.emailVerified).toBe(0);
+    expect((await signIn(email)).status).toBe(403);
+  });
+
+  test("the link can be opened twice: the second time changes nothing and is not audited again", async () => {
+    const email = uniqueEmail();
+    await signUp(email);
+    const link = linkIn(emailsTo(email)[0]!);
+
+    expect((await call(link)).headers.get("location")).toBe("/login?verified=1");
+    const second = await call(link);
+    expect(second.status).toBe(302);
+    expect(second.headers.get("location")).toBe("/login?verified=1");
+    expect((await userRow(email))?.emailVerified).toBe(1);
+    expect((await auditActions()).filter((action) => action === "user.email_verified")).toHaveLength(1);
+  });
+
+  test("the verification link sets no cookie: opening it signs nobody in", async () => {
+    const email = uniqueEmail();
+    await signUp(email);
+    const res = await call(linkIn(emailsTo(email)[0]!));
+    expect(res.headers.getSetCookie()).toEqual([]);
   });
 
   test("a failed OAuth callback lands on the SPA error route, not Better Auth's page", async () => {
@@ -102,22 +153,10 @@ describe("sign-up and email verification", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toMatch(/^\/auth\/error\?error=/);
 
-    // Better Auth's own error page is not served either.
+    // Better Auth's own error page is not served either (it is not in the route table).
     const page = await call("/api/auth/error?error=boom", { env: on });
+    expect(page.status).toBe(404);
     expect(page.headers.get("content-type") ?? "").not.toContain("text/html");
-  });
-
-  test("a client cannot choose its own role at sign-up", async () => {
-    captureEmails();
-    const email = uniqueEmail();
-    const res = await call("/api/auth/sign-up/email", {
-      method: "POST",
-      json: { email, password: PASSWORD, name: "Sneaky", role: "super_admin" },
-      env: withEmail,
-    });
-    // Either refused or ignored; never stored.
-    expect((await userRow(email))?.role ?? "student").toBe("student");
-    expect([200, 400, 422]).toContain(res.status);
   });
 
   test("the stored password is the PBKDF2 string, never the plain password", async () => {
@@ -131,7 +170,7 @@ describe("sign-up and email verification", () => {
   });
 });
 
-describe("sign-in", () => {
+describe("sign-in and the session cookie", () => {
   test("wrong password and unknown email give the same answer", async () => {
     const email = uniqueEmail();
     await createVerifiedUser(email);
@@ -144,7 +183,7 @@ describe("sign-in", () => {
     expect(wrong.headers.getSetCookie()).toEqual([]);
   });
 
-  test("the session cookie is forwarded intact and responses are not cacheable", async () => {
+  test("development: a host-only, HttpOnly, SameSite=Lax cookie, not cacheable", async () => {
     const email = uniqueEmail();
     await createVerifiedUser(email);
     const res = await signIn(email);
@@ -153,17 +192,35 @@ describe("sign-in", () => {
     expect(cookie).toContain("better-auth.session_token=");
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("SameSite=Lax");
-    expect(cookie).not.toContain("Secure"); // plain http locally, see the production test below
+    expect(cookie).toContain("Path=/");
+    expect(cookie).not.toContain("Secure"); // plain http locally
+    expect(cookie).not.toContain("Domain=");
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
 
-  test("production cookies are Secure and scoped to the configured parent domain", async () => {
+  // The default for production, decided in docs/cloudflare/auth.md#cookies.
+  test("production with Turnstile configured: __Host-better-auth.session_token, Secure, Path=/, HttpOnly, SameSite=Lax, no Domain", async () => {
     const email = uniqueEmail();
     await createVerifiedUser(email);
+    fakeNetwork();
+    const res = await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: PASSWORD }, env: productionLike, captcha: CAPTCHA });
+    expect(res.status).toBe(200);
+    const [cookie] = res.headers.getSetCookie();
+    expect(cookie).toMatch(/^__Host-better-auth\.session_token=/);
+    for (const attribute of ["Secure", "HttpOnly", "SameSite=Lax", "Path=/"]) expect(cookie).toContain(attribute);
+    expect(cookie).not.toContain("Domain=");
+    expect(cookie).toContain("Max-Age=604800"); // 7 days
+  });
+
+  test("production with COOKIE_DOMAIN set (opt-in): __Secure- prefix and the Domain attribute", async () => {
+    const email = uniqueEmail();
+    await createVerifiedUser(email);
+    fakeNetwork();
     const res = await call("/api/auth/sign-in/email", {
       method: "POST",
       json: { email, password: PASSWORD },
-      env: { ENVIRONMENT: "production", COOKIE_DOMAIN: ".example.test" },
+      env: { ...productionLike, COOKIE_DOMAIN: ".example.test" },
+      captcha: CAPTCHA,
     });
     expect(res.status).toBe(200);
     const [cookie] = res.headers.getSetCookie();
@@ -187,6 +244,16 @@ describe("sign-in", () => {
     expect(out.status).toBe(200);
     expect((await call("/api/me", { cookie })).status).toBe(401);
   });
+
+  test("an expired session is refused, and sign-in makes a new one", async () => {
+    const email = uniqueEmail();
+    const id = await createVerifiedUser(email);
+    const cookie = cookiesOf(await signIn(email));
+    await env.DB.prepare("UPDATE session SET expires_at = ? WHERE user_id = ?").bind(Date.now() - 1000, id).run();
+
+    expect((await call("/api/me", { cookie })).status).toBe(401);
+    expect((await signIn(email)).status).toBe(200);
+  });
 });
 
 describe("password reset", () => {
@@ -196,15 +263,11 @@ describe("password reset", () => {
     const oldCookie = cookiesOf(await signIn(email));
     expect((await call("/api/me", { cookie: oldCookie })).status).toBe(200);
 
-    const { sent } = captureEmails();
-    const request = await call("/api/auth/request-password-reset", {
-      method: "POST",
-      json: { email, redirectTo: "/reset-password" },
-      env: withEmail,
-    });
+    const request = await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
     expect(request.status).toBe(200);
+    const sent = emailsTo(email).filter((message) => message.purpose === "reset-password");
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: email, subject: "Reset password akun Sakola Kembara" });
+    expect(sent[0]).toMatchObject({ subject: "Reset password akun Sakola Kembara" });
 
     // The emailed link redirects to the SPA with the token.
     const landing = await call(linkIn(sent[0]!));
@@ -224,14 +287,82 @@ describe("password reset", () => {
     // Single use.
     const again = await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: "yet another one 99" } });
     expect(again.status).toBe(400);
+    expect((await signIn(email, "yet another one 99")).status).toBe(401);
+  });
+
+  // Negative check: set `revokeSessionsOnPasswordReset: false` in src/auth/factory.ts.
+  test("a reset ends the sessions of every device, not only the one that asked", async () => {
+    const email = uniqueEmail();
+    await createVerifiedUser(email);
+    const phone = cookiesOf(await signIn(email));
+    const laptop = cookiesOf(await signIn(email));
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
+    const token = resetTokenIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
+
+    expect((await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: "a brand new passphrase 42" } })).status).toBe(200);
+    expect((await call("/api/me", { cookie: phone })).status).toBe(401);
+    expect((await call("/api/me", { cookie: laptop })).status).toBe(401);
+  });
+
+  test("an expired reset link does nothing, and the token cannot be redeemed", async () => {
+    const email = uniqueEmail();
+    await createVerifiedUser(email);
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
+    const link = linkIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
+    const token = resetTokenIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
+
+    // 30 minutes pass.
+    await env.DB.prepare("UPDATE verification SET expires_at = ?").bind(Date.now() - 1000).run();
+
+    const landing = await call(link);
+    expect(landing.status).toBe(302);
+    expect(landing.headers.get("location")).toBe(`${ORIGIN}/reset-password?error=INVALID_TOKEN`);
+    const reset = await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: "a brand new passphrase 42" } });
+    expect(reset.status).toBe(400);
+    expect((await signIn(email, PASSWORD)).status).toBe(200); // the old password still works
+  });
+
+  test("the reset link lives 30 minutes", async () => {
+    const email = uniqueEmail();
+    await createVerifiedUser(email);
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
+    const row = await env.DB.prepare("SELECT expires_at AS expiresAt FROM verification").first<{ expiresAt: number }>();
+    const minutes = (row!.expiresAt - Date.now()) / 60_000;
+    expect(minutes).toBeGreaterThan(29);
+    expect(minutes).toBeLessThanOrEqual(30);
+  });
+
+  test("a new password shorter than 8 characters is refused and the token is not used up", async () => {
+    const email = uniqueEmail();
+    await createVerifiedUser(email);
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
+    const token = resetTokenIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
+
+    const weak = await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: "short" } });
+    expect(weak.status).toBe(400);
+    expect((await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: "long enough now" } })).status).toBe(200);
+  });
+
+  test("redeeming a reset link proves the mailbox: it verifies the address and writes the audit row", async () => {
+    const email = uniqueEmail();
+    await signUp(email, "password chosen by someone else"); // never verified
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
+    const token = resetTokenIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
+    expect((await signIn(email, "password chosen by someone else")).status).toBe(403);
+
+    expect((await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: "the owner's own password" } })).status).toBe(200);
+    expect((await userRow(email))?.emailVerified).toBe(1);
+    // The squatter's password is gone; the owner's works.
+    expect((await signIn(email, "password chosen by someone else")).status).toBe(401);
+    expect((await signIn(email, "the owner's own password")).status).toBe(200);
+    expect(await auditActions()).toContain("user.password_reset");
   });
 
   test("the reset token is stored hashed", async () => {
     const email = uniqueEmail();
     await createVerifiedUser(email);
-    const { sent } = captureEmails();
-    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" }, env: withEmail });
-    const token = linkIn(sent[0]!).match(/reset-password\/([^?]+)/)![1]!;
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "/reset-password" } });
+    const token = resetTokenIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
 
     const rows = await env.DB.prepare("SELECT identifier FROM verification").all<{ identifier: string }>();
     expect(rows.results.length).toBeGreaterThan(0);
@@ -239,138 +370,49 @@ describe("password reset", () => {
   });
 
   test("an unknown email gets the same answer and no email", async () => {
-    const { sent } = captureEmails();
     const known = uniqueEmail();
     await createVerifiedUser(known);
-    sent.length = 0;
+    const ghost = uniqueEmail("ghost");
 
-    const a = await call("/api/auth/request-password-reset", { method: "POST", json: { email: known, redirectTo: "/reset-password" }, env: withEmail });
-    const b = await call("/api/auth/request-password-reset", { method: "POST", json: { email: uniqueEmail("ghost"), redirectTo: "/reset-password" }, env: withEmail });
+    const a = await call("/api/auth/request-password-reset", { method: "POST", json: { email: known, redirectTo: "/reset-password" } });
+    const b = await call("/api/auth/request-password-reset", { method: "POST", json: { email: ghost, redirectTo: "/reset-password" } });
     expect(a.status).toBe(b.status);
     expect(await a.json()).toEqual(await b.json());
-    expect(sent).toHaveLength(1);
+    expect(emailsTo(known).filter((message) => message.purpose === "reset-password")).toHaveLength(1);
+    expect(emailsTo(ghost)).toHaveLength(0);
   });
 
   test("a redirect target on another site is refused", async () => {
     const email = uniqueEmail();
     await createVerifiedUser(email);
-    const { sent } = captureEmails();
-    const res = await call("/api/auth/request-password-reset", {
-      method: "POST",
-      json: { email, redirectTo: "https://evil.example/steal" },
-      env: withEmail,
-    });
+    const res = await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: "https://evil.example/steal" } });
     expect(res.status).toBe(403);
-    expect(sent).toHaveLength(0);
-  });
-});
-
-describe("email fails closed in production", () => {
-  function consoleOutput() {
-    const lines: string[] = [];
-    for (const method of ["log", "info", "warn", "error", "debug"] as const) {
-      vi.spyOn(console, method).mockImplementation((...args: unknown[]) => {
-        lines.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
-      });
-    }
-    return lines;
-  }
-
-  test("sign-up without a Resend key sends nothing and logs no link, token or address", async () => {
-    const lines = consoleOutput();
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const email = uniqueEmail("prod");
-
-    const res = await call("/api/auth/sign-up/email", {
-      method: "POST",
-      json: { email, password: PASSWORD, name: "Prod" },
-      env: { ENVIRONMENT: "production", RESEND_API_KEY: undefined, EMAIL_FROM: undefined },
-    });
-
-    expect(res.status).toBe(200);
-    expect(fetchSpy).not.toHaveBeenCalled(); // nothing went to Resend (or anywhere)
-    const all = lines.join("\n");
-    expect(all).toContain("provider not configured; verify-email email was not sent");
-    expect(all).not.toContain(email);
-    expect(all).not.toContain("token=");
-    expect(all).not.toContain("/api/auth/");
-    expect(all).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}/); // no JWT-looking string
-    // And the account cannot be used: it is unverified, so sign-in is refused.
-    expect((await userRow(email))?.emailVerified).toBe(0);
-  });
-
-  test("password reset without a Resend key sends nothing and logs no link", async () => {
-    const email = uniqueEmail("prod-reset");
-    await createVerifiedUser(email);
-    const lines = consoleOutput();
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-
-    const res = await call("/api/auth/request-password-reset", {
-      method: "POST",
-      json: { email, redirectTo: "/reset-password" },
-      env: { ENVIRONMENT: "production", RESEND_API_KEY: undefined, EMAIL_FROM: undefined },
-    });
-
-    expect(res.status).toBe(200); // same answer as with a working provider
-    expect(fetchSpy).not.toHaveBeenCalled();
-    const all = lines.join("\n");
-    expect(all).toContain("reset-password email was not sent");
-    expect(all).not.toContain(email);
-    expect(all).not.toContain("/reset-password/");
-    expect(all).not.toContain("callbackURL");
-  });
-
-  test("a missing ENVIRONMENT counts as production", async () => {
-    const lines = consoleOutput();
-    const email = uniqueEmail("noenv");
-    await call("/api/auth/sign-up/email", {
-      method: "POST",
-      json: { email, password: PASSWORD, name: "No Env" },
-      env: { ENVIRONMENT: undefined, RESEND_API_KEY: undefined, EMAIL_FROM: undefined },
-    });
-    expect(lines.join("\n")).not.toContain("token=");
-  });
-
-  test("outside production the same situation prints the link for the developer", async () => {
-    const lines = consoleOutput();
-    const email = uniqueEmail("dev");
-    await call("/api/auth/sign-up/email", {
-      method: "POST",
-      json: { email, password: PASSWORD, name: "Dev" },
-      env: { ENVIRONMENT: "development", RESEND_API_KEY: undefined, EMAIL_FROM: undefined },
-    });
-    const all = lines.join("\n");
-    expect(all).toContain("[email:dev] verify-email");
-    expect(all).toContain("/api/auth/verify-email?token=");
-  });
-
-  test("a provider error is logged by status only", async () => {
-    const lines = consoleOutput();
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("boom: recipient not allowed", { status: 422 }));
-    const email = uniqueEmail("rejected");
-    const res = await signUp(email);
-
-    expect(res.status).toBe(200);
-    const all = lines.join("\n");
-    expect(all).toContain("provider rejected verify-email email: HTTP 422");
-    expect(all).not.toContain(email);
-    expect(all).not.toContain("recipient not allowed");
+    expect(emailsTo(email).filter((message) => message.purpose === "reset-password")).toHaveLength(0);
   });
 });
 
 describe("Google sign-in availability", () => {
   test("is reported off, and the route does not exist, until both variables are set", async () => {
-    expect(await (await call("/api/config")).json()).toEqual({ google: false });
+    expect(await (await call("/api/config")).json()).toEqual({ google: false, turnstileSiteKey: null });
     const start = await call("/api/auth/sign-in/social", { method: "POST", json: { provider: "google" } });
     expect(start.status).toBeGreaterThanOrEqual(400);
 
     const on = { GOOGLE_CLIENT_ID: "fake-client-id", GOOGLE_CLIENT_SECRET: "fake-client-secret" };
-    expect(await (await call("/api/config", { env: on })).json()).toEqual({ google: true });
+    expect(await (await call("/api/config", { env: on })).json()).toEqual({ google: true, turnstileSiteKey: null });
     const redirect = await call("/api/auth/sign-in/social", { method: "POST", json: { provider: "google", callbackURL: "/announcements" }, env: on });
     expect(redirect.status).toBe(200);
     const body = (await redirect.json()) as { url?: string };
     expect(body.url).toContain("https://accounts.google.com/");
+    // Shared devices: always let the person choose the Google account (as the legacy app did).
+    expect(new URL(body.url!).searchParams.get("prompt")).toBe("select_account");
     // The OAuth state cookie must survive the wrapper, or the callback fails with state_mismatch.
     expect(redirect.headers.getSetCookie().length).toBeGreaterThan(0);
+  });
+
+  test("/api/config serves the public Turnstile site key and nothing secret", async () => {
+    const res = await call("/api/config", { env: { TURNSTILE_SITE_KEY: "1x00000000000000000000AA", TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA" } });
+    const text = await res.text();
+    expect(JSON.parse(text)).toEqual({ google: false, turnstileSiteKey: "1x00000000000000000000AA" });
+    expect(text).not.toContain("0000000000000000000000000000000AA");
   });
 });
