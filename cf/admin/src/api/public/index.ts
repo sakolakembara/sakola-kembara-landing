@@ -6,6 +6,7 @@ import { resolveContactDeps } from "../../public/contact-deps";
 import { createContactRoutes } from "./contact";
 import { markServiceBindingCall } from "./internal";
 import { publicReadRoutes } from "./read";
+import { publicShortlinkRoutes } from "./shortlink";
 
 export { publicReadRoutes } from "./read";
 export { createContactRoutes } from "./contact";
@@ -42,6 +43,7 @@ export function createInternalApp(deps: (env: Bindings) => ContactDeps = resolve
   const app = new Hono<{ Bindings: Bindings }>();
   app.use("*", markServiceBindingCall);
   app.route(PUBLIC_BASE_PATH, publicReadRoutes);
+  app.route(PUBLIC_BASE_PATH, publicShortlinkRoutes);
   app.route(PUBLIC_BASE_PATH, createContactRoutes(deps));
   // The same JSON 404 and 500 as the public Worker, never cacheable.
   app.notFound((c) => c.json({ error: "not_found" }, 404, { "Cache-Control": CACHE_NONE }));

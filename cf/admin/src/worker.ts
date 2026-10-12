@@ -6,6 +6,9 @@ import { dashboardRoutes } from "./api/dashboard";
 import { serveDevUpload } from "./api/dev-uploads";
 import { messageRoutes } from "./api/messages";
 import { createPublicApp } from "./api/public";
+import { reportRoutes } from "./api/reports";
+import { shortlinkRoutes } from "./api/shortlinks";
+import { teamRoutes } from "./api/team";
 import { uploadRoutes } from "./api/uploads";
 import { AUTH_BASE_PATH } from "./auth/factory";
 import { authGate } from "./auth/gate";
@@ -103,6 +106,9 @@ app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 app.route("/api/admin/audit", auditRoutes);
 app.route("/api/admin/uploads", uploadRoutes);
+app.route("/api/admin/reports", reportRoutes);
+app.route("/api/admin/team", teamRoutes);
+app.route("/api/admin/shortlinks", shortlinkRoutes);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 
