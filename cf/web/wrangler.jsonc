@@ -15,6 +15,7 @@
   //   fetch(request) inside the Worker reaches the legacy origin behind the
   //   same hostname. Add it at deploy time. See docs/cloudflare/web-skeleton.md.
   // - "vars": LEGACY_ORIGIN_URL (unset in production: plain fetch) and
-  //   CONTENT_API_URL (base URL for /api/public/team). Locally these come from
+  //   CONTENT_API_URL (base URL for /api/public/*; optional: TEAM_CACHE_FRESH_SECONDS,
+  //   CONTENT_CACHE_FRESH_SECONDS). Locally these come from
   //   an untracked .dev.vars; copy dev.vars.example.
 }

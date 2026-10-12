@@ -1,0 +1,141 @@
+---
+import { env } from 'cloudflare:workers';
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon from '~/components/Icon.astro';
+import ResourceCard from '~/components/ResourceCard.astro';
+import Base from '~/layouts/Base.astro';
+import { contentPageHeaders, contentRuntime } from '~/lib/content-api';
+import {
+  RESOURCE_CATEGORY_DESCRIPTION,
+  RESOURCE_CATEGORY_LABEL,
+  groupResourcesByCategory,
+  loadResources,
+} from '~/lib/resources';
+
+// SSR: the catalog comes from the content API at request time (see lib/content-api.ts for the
+// timeout, the 60 s cache and stale-if-error). Ported from app/(public)/gabung-siswa/docs/.
+export const prerender = false;
+
+const { resources, source } = await loadResources(contentRuntime(env, Astro.locals.cfContext));
+const page = contentPageHeaders(source);
+Astro.response.status = page.status;
+for (const [name, value] of Object.entries(page.headers)) Astro.response.headers.set(name, value);
+Astro.response.headers.set('x-resources-source', source);
+
+const groups = groupResourcesByCategory(resources ?? []);
+const hasAnything = groups.length > 0;
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: 'Pusat Dokumen & Berkas',
+    description:
+      'Panduan pendaftaran, template berkas, dan bahan marketing yang perlu disiapkan calon siswa Sakola Kembara.',
+    path: '/gabung-siswa/docs',
+  }}
+>
+  <main class="min-h-screen bg-gray-50">
+    {/* Hero */}
+    <section
+      class="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-12 md:pb-16 pt-[var(--hero-top,8rem)]"
+    >
+      <Container>
+        <a href="/gabung-siswa" class="inline-block text-sm text-white/80 hover:text-white transition-colors mb-4">
+          Kembali ke halaman informasi
+        </a>
+        <Heading level="page" class="mb-4">Pusat Dokumen &amp; Berkas</Heading>
+        <p class="text-base md:text-lg text-white/90 max-w-[600px]">
+          Semua panduan, template berkas, poster, twibbon, dan bahan lain yang perlu kamu siapkan selama proses
+          pendaftaran ada di sini. Kalau kamu baru mulai mendaftar, buka
+          <a href="/portal/daftar" class="underline font-semibold hover:text-white">formulir pendaftaran</a>
+          di tab lain agar bisa lihat berkas + isi formulir bersamaan.
+        </p>
+      </Container>
+    </section>
+
+    {/* Table of contents: one anchor per category that has documents, in the page's order. */}
+    {
+      hasAnything && (
+        <section class="py-8 bg-white border-b border-gray-100">
+          <Container>
+            <nav aria-label="Kategori dokumen" class="flex flex-wrap gap-2">
+              {groups.map(({ category }) => (
+                <a
+                  href={`#${category}`}
+                  class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full border border-gray-200 hover:border-primary-blue hover:text-primary-blue transition-colors text-gray-700"
+                >
+                  {RESOURCE_CATEGORY_LABEL[category]}
+                </a>
+              ))}
+            </nav>
+          </Container>
+        </section>
+      )
+    }
+
+    {/* Content */}
+    <section class="py-14 md:py-16">
+      <Container>
+        {/* resources === null: the API is down and nothing is cached. The page says so (it is a 503
+            with Retry-After, never cached); an empty catalog is the legacy empty state, a normal 200. */}
+        {
+          resources === null && (
+            <div role="status" class="bg-white border border-gray-200 rounded-2xl p-12 text-center">
+              <Icon name="file-text" size={32} class="mx-auto text-gray-300 mb-4" />
+              <Heading level="card" as="h2" class="text-gray-900 mb-2">
+                Dokumen belum dapat ditampilkan
+              </Heading>
+              <p class="text-gray-600 max-w-md mx-auto">
+                Kami sedang mengalami kendala saat memuat daftar dokumen. Silakan muat ulang halaman ini beberapa
+                saat lagi.
+              </p>
+            </div>
+          )
+        }
+        {
+          resources !== null && !hasAnything && (
+            <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center">
+              <Icon name="file-text" size={32} class="mx-auto text-gray-300 mb-4" />
+              <Heading level="card" as="h2" class="text-gray-900 mb-2">
+                Dokumen akan segera tersedia
+              </Heading>
+              <p class="text-gray-600 max-w-md mx-auto">
+                Tim kami sedang menyiapkan bahan-bahan pendaftaran. Silakan cek kembali halaman ini dalam beberapa
+                waktu ke depan.
+              </p>
+            </div>
+          )
+        }
+
+        <div class="space-y-14">
+          {
+            groups.map(({ category, items }) => (
+              <section id={category} class="scroll-mt-24" aria-labelledby={`heading-${category}`}>
+                <header class="mb-5">
+                  <Heading level="subsection" id={`heading-${category}`} class="text-gray-900">
+                    {RESOURCE_CATEGORY_LABEL[category]}
+                  </Heading>
+                  <p class="text-sm md:text-base text-gray-600 mt-1 max-w-[760px]">
+                    {RESOURCE_CATEGORY_DESCRIPTION[category]}
+                  </p>
+                </header>
+                <div class="grid gap-4">
+                  {items.map((item) => (
+                    <ResourceCard item={item} />
+                  ))}
+                </div>
+              </section>
+            ))
+          }
+        </div>
+      </Container>
+    </section>
+  </main>
+</Base>
+
+{/* The copy buttons' script (974 B, inlined); it does nothing on a page without a text snippet. */}
+<script>
+  import '~/scripts/copy-button';
+</script>

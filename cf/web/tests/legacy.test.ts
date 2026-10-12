@@ -28,14 +28,14 @@ describe('legacy path list', () => {
     expect(isLegacyPath(p)).toBe(true);
   });
 
-  it.each(['/laporan', '/kontak', '/gabung-siswa', '/gabung-siswa/docs'])(
+  it.each(['/kontak'])(
     '%s is forwarded as not yet ported',
     (p) => {
       expect(legacyKind(p)).toBe('not-yet-ported');
     },
   );
 
-  it.each(['/', '/blog', '/blog/some-slug', '/blog/imagesx', '/tim', '/program', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan', '/donasi', '/robots.txt', '/sitemap.xml', '/404', '/portal-x', '/administrator', '/apis', '/login-help', '/images-old', '/_nextx', '/_astro/a.css'])(
+  it.each(['/', '/blog', '/blog/some-slug', '/blog/imagesx', '/tim', '/program', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan', '/donasi', '/laporan', '/gabung-siswa', '/gabung-siswa/docs', '/robots.txt', '/sitemap.xml', '/404', '/portal-x', '/administrator', '/apis', '/login-help', '/images-old', '/_nextx', '/_astro/a.css'])(
     '%s belongs to the Worker',
     (p) => {
       expect(legacyKind(p)).toBeNull();
@@ -73,7 +73,7 @@ describe('the legacy app has no top-level route this Worker does not know about'
   segments.add('api');
 
   // Pages the Worker serves itself.
-  const astroOwned = new Set(['blog', 'tim', 'program', 'donasi']);
+  const astroOwned = new Set(['blog', 'tim', 'program', 'donasi', 'laporan', 'gabung-siswa']);
 
   it.each([...segments].sort())('/%s is Astro-owned or listed', (segment) => {
     const owned = astroOwned.has(segment);

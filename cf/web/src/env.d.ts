@@ -5,10 +5,12 @@ declare namespace Cloudflare {
   interface Env {
     /** Stand-in origin for local runs. Unset in production: pass-through is a plain fetch(request). */
     LEGACY_ORIGIN_URL?: string;
-    /** Base URL of the content API (`${CONTENT_API_URL}/api/public/team`). */
+    /** Base URL of the content API (`${CONTENT_API_URL}/api/public/team`, `/reports`, `/resources`). */
     CONTENT_API_URL?: string;
     /** Seconds a fetched team list is served from the cache before the API is asked again (default 300). */
     TEAM_CACHE_FRESH_SECONDS?: string;
+    /** Same for the other lists (reports, resources): default 60, the contract's `s-maxage`. */
+    CONTENT_CACHE_FRESH_SECONDS?: string;
   }
 }
 
