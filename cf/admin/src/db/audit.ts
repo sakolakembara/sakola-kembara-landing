@@ -13,11 +13,21 @@ export type AuditAction =
   | "announcement.create"
   | "announcement.update"
   | "announcement.delete"
-  // An admin's area grants changed (Pengaturan). Legacy label: "Admin diubah".
-  | "admin.update";
+  // Pengaturan. Legacy labels: "Admin ditambahkan", "Admin diubah". `admin.update` is
+  // used for area grants and for a role change; metadata.field says which.
+  | "admin.create"
+  | "admin.update"
+  // New in D1 (the legacy app deleted admins; here they are deactivated, so the audit trail keeps pointing at a row).
+  | "admin.deactivate"
+  | "admin.reactivate"
+  | "admin.invite_resend"
+  // Written by the auth flows, with the person themselves as the actor (legacy names).
+  | "student.register"
+  | "user.email_verified"
+  | "user.password_reset";
 
 /** Resource types written so far (legacy names, see RESOURCE_TYPES in lib/audit-labels.ts). */
-export type AuditResourceType = "announcement" | "admin_user";
+export type AuditResourceType = "announcement" | "admin_user" | "user";
 
 export interface AuditEntry {
   action: AuditAction;
@@ -42,4 +52,19 @@ export function auditStatement(db: Db, actor: Pick<AuthUser, "id" | "email">, en
     resourceId: entry.resourceId,
     metadata: entry.metadata ?? null,
   });
+}
+
+/**
+ * For events that happen inside Better Auth's own flows (registration, email
+ * verified, password reset), where there is no mutation of ours to put in a
+ * batch. Best-effort like the legacy `writeAudit`: a failed audit write must
+ * not undo a verification or a password reset, so it is logged (no row content)
+ * and swallowed.
+ */
+export async function writeAuditSafely(db: Db, actor: Pick<AuthUser, "id" | "email">, entry: AuditEntry): Promise<void> {
+  try {
+    await auditStatement(db, actor, entry);
+  } catch {
+    console.error(`[audit] failed to write ${entry.action}`);
+  }
 }

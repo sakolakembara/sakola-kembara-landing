@@ -7,7 +7,8 @@
 // Run it on a clean tree: it rewrites files under src/ and migrations/ for a
 // few seconds each. A check whose pattern is not found exactly once is
 // reported as FAIL, so a refactor that moves the code cannot silently turn a
-// check into a no-op.
+// check into a no-op. A check is either one edit (file, from, to) or a list of
+// `edits` for safeguards that live in two places.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -31,25 +32,26 @@ const checks = [
     tests: "test/auth.test.ts",
   },
   {
-    name: "rate limiting not mounted",
+    name: "the auth gate (route table, rate limits, Turnstile) not mounted",
     file: "src/worker.ts",
-    from: "app.use(`${AUTH_BASE_PATH}/*`, authRateLimit);",
+    from: "app.use(`${AUTH_BASE_PATH}/*`, authGate);",
     to: "",
-    tests: "test/rate-limit.test.ts",
+    tests: "test/rate-limit.test.ts test/gate.test.ts test/register.test.ts",
   },
   {
     name: "production treated as development (email no longer fails closed)",
     file: "src/env.ts",
     from: 'return env.ENVIRONMENT !== "development" && env.ENVIRONMENT !== "test";',
     to: "return false;",
-    tests: "test/auth.test.ts",
+    tests: "test/email.test.ts test/gate.test.ts",
   },
   {
-    name: "clients may set their own role",
-    file: "src/auth/factory.ts",
-    from: 'defaultValue: "student", input: false',
-    to: 'defaultValue: "student", input: true',
-    tests: "test/auth.test.ts",
+    name: "clients may set their own role (registration forwards the whole body, and Better Auth accepts a role)",
+    edits: [
+      { file: "src/auth/register.ts", from: "body: JSON.stringify({\n      name: input.name,", to: "body: JSON.stringify({\n      ...(raw as object),\n      name: input.name," },
+      { file: "src/auth/factory.ts", from: 'defaultValue: "student", input: false', to: 'defaultValue: "student", input: true' },
+    ],
+    tests: "test/register.test.ts",
   },
   {
     name: "Google email_verified no longer checked",
@@ -173,6 +175,307 @@ const checks = [
     from: 'if (target.role !== "editor") return c.json({ error: "not_editor" }, 409);',
     to: "",
     tests: "test/areas.test.ts",
+  },
+
+  // ------------------------------------------- same-origin guard (CSRF)
+  {
+    name: "same-origin guard not mounted",
+    file: "src/worker.ts",
+    from: 'app.use("/api/*", sameOriginGuard);',
+    to: "",
+    tests: "test/csrf.test.ts",
+  },
+  {
+    name: "a foreign Origin header accepted",
+    file: "src/security/csrf.ts",
+    from: 'if (origin !== null) return allowed(originOf(origin)) ? { ok: true } : { ok: false, reason: "origin_mismatch" };',
+    to: "if (origin !== null) return { ok: true };",
+    tests: "test/csrf.test.ts",
+  },
+  {
+    name: "Sec-Fetch-Site cross-site and same-site accepted when there is no Origin",
+    file: "src/security/csrf.ts",
+    from: 'return site === "same-origin" || site === "none" ? { ok: true } : { ok: false, reason: "cross_site" };',
+    to: "return { ok: true };",
+    tests: "test/csrf.test.ts",
+  },
+  {
+    name: "a cookie with no origin signal at all accepted",
+    file: "src/security/csrf.ts",
+    from: 'return headers.has("cookie") ? { ok: false, reason: "no_origin_signal" } : { ok: true };',
+    to: "return { ok: true };",
+    tests: "test/csrf.test.ts",
+  },
+
+  // --------------------------------------------- the auth gate and register
+  {
+    name: "Better Auth's own sign-up exposed (skips Turnstile and the legacy validation)",
+    file: "src/auth/gate.ts",
+    from: '  { method: "POST", path: "/sign-out", limits: none },',
+    to: '  { method: "POST", path: "/sign-out", limits: none },\n  { method: "POST", path: "/sign-up/email", limits: none },',
+    tests: "test/register.test.ts test/gate.test.ts",
+  },
+  {
+    name: "routes missing from the table pass through to Better Auth",
+    file: "src/auth/gate.ts",
+    from: 'if (!policy) return c.json({ error: "not_found" }, 404);',
+    to: "if (!policy) return next();",
+    tests: "test/gate.test.ts",
+  },
+  {
+    name: "form-encoded bodies accepted by the gate",
+    file: "src/auth/gate.ts",
+    from: 'if (!c.req.header("content-type")?.toLowerCase().startsWith("application/json")) {',
+    to: "if (false) {",
+    tests: "test/gate.test.ts",
+  },
+  {
+    name: "body size cap removed",
+    file: "src/auth/gate.ts",
+    from: 'if (body.tooBig) return c.json({ error: "body_too_large" }, 413);',
+    to: "",
+    tests: "test/gate.test.ts",
+  },
+  {
+    name: "Turnstile not asked for on the gated routes",
+    file: "src/auth/gate.ts",
+    from: "const refused = await guardTurnstile(c.env, c.req.raw, policy.turnstile);",
+    to: "const refused = null as Response | null;",
+    tests: "test/gate.test.ts",
+  },
+  {
+    name: "routes that send email no longer check that email can be sent",
+    file: "src/auth/gate.ts",
+    from: "if (policy.sendsEmail && !emailAvailable(c.env)) {",
+    to: "if (false) {",
+    tests: "test/gate.test.ts",
+  },
+  {
+    name: "one mailbox no longer limited across register, reset and resend",
+    file: "src/auth/gate.ts",
+    from: 'limits: ({ ip, email }) => [{ name: "register", key: ip }, ...byEmail("mailTarget", email)],',
+    to: 'limits: ({ ip }) => [{ name: "register", key: ip }],',
+    tests: "test/rate-limit.test.ts",
+  },
+  {
+    name: "registration answers an existing address differently (leaks Better Auth's answer)",
+    file: "src/auth/register.ts",
+    from: "if (result.ok) return c.json({ ok: true, message: REGISTER_MESSAGE });",
+    to: "if (result.ok) return c.json({ ok: true, message: REGISTER_MESSAGE, user: await result.clone().json() });",
+    tests: "test/register.test.ts",
+  },
+  {
+    name: "the owner of an existing address is not told about the attempt",
+    file: "src/auth/factory.ts",
+    from: "onExistingUserSignUp: async ({ user }, request) => {",
+    to: "onExistingUserSignUp: async ({ user }, request) => {\n        return;",
+    tests: "test/register.test.ts",
+  },
+  {
+    name: "honeypot ignored",
+    file: "src/auth/register.ts",
+    from: "if (input.website) return c.json({ ok: true, message: REGISTER_MESSAGE });",
+    to: "",
+    tests: "test/register.test.ts",
+  },
+  {
+    name: "visitor address taken from X-Forwarded-For (legacy bug SAKEM-008)",
+    file: "src/security/client.ts",
+    from: 'const value = headers.get("cf-connecting-ip")?.trim().toLowerCase();',
+    to: 'const value = (headers.get("x-forwarded-for")?.split(",")[0] ?? headers.get("cf-connecting-ip"))?.trim().toLowerCase();',
+    tests: "test/rate-limit.test.ts",
+  },
+  {
+    name: "a missing rate limit binding no longer refuses in production",
+    file: "src/security/rate-limit.ts",
+    from: "if (isProductionEnv(env)) {",
+    to: "if (false) {",
+    tests: "test/rate-limit.test.ts",
+  },
+
+  // ------------------------------------------------------------- Turnstile
+  {
+    name: "Turnstile answer never checked (every token passes)",
+    file: "src/security/turnstile.ts",
+    from: 'if (answer.success !== true) return { ok: false, reason: "rejected", errorCodes };',
+    to: "",
+    tests: "test/turnstile.test.ts test/gate.test.ts",
+  },
+  {
+    name: "Turnstile skipped in production when the secret is missing (fails open)",
+    file: "src/security/turnstile.ts",
+    from: "if (config.production) {",
+    to: "if (false) {",
+    tests: "test/turnstile.test.ts test/gate.test.ts",
+  },
+  {
+    name: "Turnstile counted as passed when Siteverify cannot be reached",
+    file: "src/security/turnstile.ts",
+    from: 'console.error("[turnstile] Siteverify could not be reached or read");\n    return { ok: false, reason: "unavailable", errorCodes: [] };',
+    to: 'console.error("[turnstile] Siteverify could not be reached or read");\n    return { ok: true };',
+    tests: "test/turnstile.test.ts test/gate.test.ts",
+  },
+  {
+    name: "Turnstile token minted for another form accepted",
+    file: "src/security/turnstile.ts",
+    from: "if (expectedAction && answer.action && answer.action !== expectedAction) {",
+    to: "if (false) {",
+    tests: "test/turnstile.test.ts",
+  },
+
+  // ----------------------------------------------------------------- email
+  {
+    name: "production without an email provider reports success instead of failing closed",
+    file: "src/email/send.ts",
+    from: "if (isProduction(env)) {\n      console.error(`[email] provider not configured;",
+    to: "if (false) {\n      console.error(`[email] provider not configured;",
+    tests: "test/email.test.ts",
+  },
+  {
+    name: "routes can't tell that email is unavailable (emailAvailable always true)",
+    file: "src/email/send.ts",
+    from: "return !isProduction(env) || Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);",
+    to: "return true;",
+    tests: "test/email.test.ts test/gate.test.ts",
+  },
+  {
+    name: "a non-2xx answer from Resend counted as sent",
+    file: "src/email/send.ts",
+    from: "if (res.ok) return { ok: true };",
+    to: "return { ok: true };",
+    tests: "test/email.test.ts",
+  },
+  {
+    name: "the admin invite ignores a failed send",
+    file: "src/api/admin-users.ts",
+    from: "if (!sent.ok) return emailFailure(c, sent, present(created));",
+    to: "",
+    tests: "test/admin-users.test.ts",
+  },
+
+  // ------------------------------------------------- sessions and passwords
+  {
+    name: "a password reset leaves other sessions alive",
+    file: "src/auth/factory.ts",
+    from: "revokeSessionsOnPasswordReset: true,",
+    to: "revokeSessionsOnPasswordReset: false,",
+    tests: "test/auth.test.ts",
+  },
+  {
+    name: "a password reset no longer proves the mailbox (an invited admin could not sign in)",
+    file: "src/auth/factory.ts",
+    from: "db.update(schema.users).set({ emailVerified: true }).where(eq(schema.users.id, user.id)),",
+    to: "db.update(schema.users).set({ emailVerified: false }).where(eq(schema.users.id, user.id)),",
+    tests: "test/auth.test.ts test/admin-users.test.ts",
+  },
+  {
+    name: "production session cookie loses its __Host- prefix",
+    file: "src/auth/factory.ts",
+    from: 'cookiePrefix: "__Host-better-auth",',
+    to: 'cookiePrefix: "better-auth",',
+    tests: "test/auth.test.ts",
+  },
+  {
+    name: "a deactivated account can open a session (session hook removed)",
+    file: "src/auth/factory.ts",
+    from: "if (row?.deactivatedAt) {",
+    to: "if (false) {",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "a session of a deactivated account is still honoured",
+    file: "src/auth/session.ts",
+    from: "if ((session.user as { deactivatedAt?: unknown }).deactivatedAt) return null;",
+    to: "",
+    tests: "test/admin-users.test.ts",
+  },
+
+  // ------------------------------------------------------- admin users API
+  {
+    name: "the last super_admin trigger does nothing",
+    file: "migrations/0006_keep_one_super_admin.sql",
+    from: "SELECT RAISE(ABORT, 'last_super_admin');",
+    to: "SELECT 1;",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "the trigger's refusal is not turned into a 409",
+    file: "src/api/admin-users.ts",
+    from: 'if (mentions(error, "last_super_admin")) {\n      return c.json({ error: "last_super_admin", message: "Tidak dapat menurunkan',
+    to: 'if (false) {\n      return c.json({ error: "last_super_admin", message: "Tidak dapat menurunkan',
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "a super_admin may deactivate themselves",
+    file: "src/api/admin-users.ts",
+    from: "if (id === actor.id) {",
+    to: "if (false) {",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "deactivating leaves the account's sessions alive",
+    file: "src/api/admin-users.ts",
+    from: "db.delete(schema.sessions).where(eq(schema.sessions.userId, id)),",
+    to: "",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "a demoted editor keeps the area grants",
+    file: "src/api/admin-users.ts",
+    from: 'const grantsRemoved = roleChanges && target.role === "editor" ? target.areas : [];',
+    to: "const grantsRemoved: GrantableArea[] = [];",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "a deactivation is not audited",
+    file: "src/api/admin-users.ts",
+    from: 'auditStatement(db, actor, { action: "admin.deactivate", resourceType: "admin_user", resourceId: id, metadata: { email: target.email, role: target.role } }),',
+    to: "",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "an admin invite lives 60 seconds instead of 7 days",
+    file: "src/api/admin-users.ts",
+    from: "expiresAt: new Date(Date.now() + ADMIN_INVITE_SECONDS * 1000),",
+    to: "expiresAt: new Date(Date.now() + 60 * 1000),",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "resending an invite leaves the old link working",
+    file: "src/api/admin-users.ts",
+    from: 'await c.env.DB.prepare("DELETE FROM verification WHERE value = ?").bind(userId).run();',
+    to: "",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "students can be managed (promoted) through the admin users API",
+    file: "src/api/admin-users.ts",
+    from: "and(inArray(schema.users.role, adminRoles), eq(schema.users.id, only))",
+    to: "eq(schema.users.id, only)",
+    tests: "test/admin-users.test.ts",
+  },
+  {
+    name: "deactivation open to editors (guarded by an area an editor can hold)",
+    file: "src/api/admin-users.ts",
+    from: 'adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"),',
+    to: 'adminUserRoutes.post("/:id/deactivate", requireArea("konten", "write"),',
+    tests: "test/admin-users.test.ts",
+  },
+
+  // ------------------------------------------------------------------ cron
+  {
+    name: "cleanup deletes sessions that have not expired",
+    file: "src/cron/cleanup.ts",
+    from: 'deleteInChunks(env.DB, "session", "expires_at", now)',
+    to: 'deleteInChunks(env.DB, "session", "expires_at", now + 365 * DAY_MS)',
+    tests: "test/cron.test.ts",
+  },
+  {
+    name: "an unreadable audit retention deletes audit rows",
+    file: "src/cron/cleanup.ts",
+    from: "if (!/^[0-9]{1,5}$/.test(text)) return null;",
+    to: "if (false) return null;",
+    tests: "test/cron.test.ts",
   },
 
   // ------------------------------------------------------------ the schema
@@ -402,6 +705,43 @@ const checks = [
     tests: PUBLIC_CONTACT,
   },
 
+  // ----------------------- the contact seam: the shared limiter and Turnstile
+  {
+    name: "contact seam: Turnstile bypassed (a check that passes everything)",
+    file: "src/public/contact-deps.ts",
+    from: "verifyTurnstile: sharedTurnstile(env),",
+    to: "verifyTurnstile: turnstileDisabled,",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: a Turnstile check that cannot run is counted as passed (fails open)",
+    file: "src/public/contact-deps.ts",
+    from: 'throw new ContactInfrastructureError("TurnstileUnavailable");',
+    to: "return true;",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: a missing rate limit binding no longer refuses in production",
+    file: "src/public/contact-deps.ts",
+    from: 'if (result.reason === "unavailable") throw new ContactInfrastructureError("RateLimitUnavailable");',
+    to: 'if (result.reason === "unavailable") return { allowed: true, retryAfterSeconds: 0 };',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: the limiter is asked about a different key than the route built",
+    file: "src/public/contact-deps.ts",
+    from: 'const result = await checkLimits(env, [{ name: "contact", key }]);',
+    to: 'const result = await checkLimits(env, [{ name: "contact", key: "contact:shared" }]);',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: the token is checked for the wrong form (action not contact)",
+    file: "src/public/contact-deps.ts",
+    from: 'token, ip, "contact");',
+    to: 'token, ip, "login");',
+    tests: PUBLIC_CONTACT,
+  },
+
   // ------------------------------------------------ the public API: purge plan
   {
     name: "purge plan of a team save names no cache tag",
@@ -412,17 +752,25 @@ const checks = [
   },
 ];
 
+// `node scripts/negative-checks.mjs --only <text>` runs the checks whose name contains <text>.
+const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : undefined;
+
 let bad = 0;
+let ran = 0;
 for (const check of checks) {
-  const original = readFileSync(check.file, "utf8");
-  const occurrences = original.split(check.from).length - 1;
-  if (occurrences !== 1) {
-    console.log(`FAIL  ${check.name}: pattern found ${occurrences} times in ${check.file}, expected exactly once`);
+  if (only && !check.name.includes(only)) continue;
+  ran++;
+  const edits = check.edits ?? [{ file: check.file, from: check.from, to: check.to }];
+  const originals = new Map(edits.map((edit) => [edit.file, readFileSync(edit.file, "utf8")]));
+  const missing = edits.find((edit) => originals.get(edit.file).split(edit.from).length - 1 !== 1);
+  if (missing) {
+    const occurrences = originals.get(missing.file).split(missing.from).length - 1;
+    console.log(`FAIL  ${check.name}: pattern found ${occurrences} times in ${missing.file}, expected exactly once`);
     bad++;
     continue;
   }
   try {
-    writeFileSync(check.file, original.replace(check.from, () => check.to));
+    for (const edit of edits) writeFileSync(edit.file, readFileSync(edit.file, "utf8").replace(edit.from, () => edit.to));
     const run = spawnSync("pnpm", ["exec", "vitest", "run", ...check.tests.split(" ")], { encoding: "utf8" });
     const failed = (run.stdout + run.stderr).match(/Tests\s+(\d+) failed/);
     if (run.status !== 0 && failed) console.log(`OK    ${check.name}: ${failed[1]} test(s) failed as they should`);
@@ -431,8 +779,8 @@ for (const check of checks) {
       bad++;
     }
   } finally {
-    writeFileSync(check.file, original);
+    for (const [file, original] of originals) writeFileSync(file, original);
   }
 }
-console.log(bad === 0 ? `\nAll ${checks.length} safeguards are covered by tests.` : `\n${bad} of ${checks.length} checks did not behave.`);
+console.log(bad === 0 ? `\nAll ${ran} safeguards are covered by tests.` : `\n${bad} of ${ran} checks did not behave.`);
 process.exit(bad === 0 ? 0 : 1);

@@ -47,7 +47,7 @@ Astro Worker ──service binding, entrypoint "PublicApi"──▶ GET /api/pub
 ]
 ```
 
-Nothing else changes on that side: the form's call (`src/lib/contact-submit.ts`: JSON to `https://api.internal/api/public/contact` with `x-sakem-client-ip` set from `CF-Connecting-IP`) is what the route expects, and its handling of `201`, `400 validation_failed`, `429 rate_limited` and `429 duplicate_recent` matches the codes below. Two things it does not know yet: the `X-Sakem-Turnstile-Token` header and the `400 turnstile_failed` answer (it would show the latter as "unavailable"), both only relevant once Turnstile is wired. The host in the URL is ignored by a service binding. The read endpoints go through the same binding (`env.API.fetch("https://api.internal/api/public/team")`) or over public HTTP (`CONTENT_API_URL`); the answers are identical.
+Nothing else changes on that side: the form's call (`src/lib/contact-submit.ts`: JSON to `https://api.internal/api/public/contact` with `x-sakem-client-ip` set from `CF-Connecting-IP`) is what the route expects, and its handling of `201`, `400 validation_failed`, `429 rate_limited` and `429 duplicate_recent` matches the codes below. Two things it does not know yet: the `X-Sakem-Turnstile-Token` header and the `400 turnstile_failed` answer (it would show the latter as "unavailable"), both relevant now that the check is wired: with a secret set (always in production) the form must forward the token. The host in the URL is ignored by a service binding. The read endpoints go through the same binding (`env.API.fetch("https://api.internal/api/public/team")`) or over public HTTP (`CONTENT_API_URL`); the answers are identical.
 
 **Verified:** the two-face split and the header rules by the tests above, through the runtime's own entrypoint dispatch (`ctx.exports.PublicApi`, the loopback of a service binding); a real binding between local `wrangler dev` processes, with a probe Worker and with the built Astro site itself (see [How it was run](#how-it-was-run-locally)). **Not verified:** a deployed zone, and what `CF-Connecting-IP` looks like inside a binding call. That a public hostname cannot address a named entrypoint follows from how Workers dispatch routes to the default export, and the documentation presents named entrypoints only as service-binding targets; I found no sentence that states the negative outright, so check it once on the real zone: `curl -X POST https://<host>/api/public/contact` must be a 404 (it is, locally, because the default export has no such route, which is the guarantee this design leans on).
 
@@ -111,7 +111,7 @@ body over 32 KiB → X-Sakem-Client-Ip → rate limit → JSON → fields → bo
                                                               (honeypot: 201, nothing saved)   400 turnstile_failed*   429 duplicate_recent
 ```
 
-\* only once a Turnstile check is wired in; see [The seam](#the-seam-for-the-limiter-and-turnstile).
+\* when `TURNSTILE_SECRET_KEY` is set (always in production; unset, the check is skipped outside production); see [The seam](#the-seam-for-the-limiter-and-turnstile).
 
 - **Validation** is the on-site form's, word for word (`CONTACT_MESSAGES`, the zod schema in `src/public/contact.ts`). A JSON body can omit a field or send another type, which a form cannot: such a value is treated as empty, so the visitor sees the rule's own Indonesian message. Only text the legacy form never showed was added: `Maksimal 254 karakter` for an email over 254 characters (legacy showed a library default in English) and the bot-check message.
 - **Honeypot**: a non-empty `website` is answered `201` with the normal body and nothing is saved, whatever else is wrong (legacy behaviour). It still uses a rate-limit slot, so it cannot be hammered for free.
@@ -119,7 +119,7 @@ body over 32 KiB → X-Sakem-Client-Ip → rate limit → JSON → fields → bo
 - **Audit**: `contact_message.submit`, actor = the sender's email (no user id), metadata `{ subject }`, never the text.
 - **Personal data**: no email, name or message text in any log line (a test sends saved, duplicate, invalid, honeypot, bot-check and 500 paths and searches everything logged). Errors log the error name only.
 - **Never trusted**: `X-Forwarded-For`, `X-Real-IP`, `Forwarded`, and `CF-Connecting-IP`. The rate-limit key is `contact:<X-Sakem-Client-Ip>`, lower-cased; the header must be a single IPv4 or IPv6 literal. (An IPv6 visitor can rotate addresses inside a /64; bucketing by prefix is a hardening option, not in the contract.)
-- **Status codes**: `201`, `400` (`body_too_large`, `invalid_client_ip`, `invalid_json`, `validation_failed`, and `turnstile_failed` if enabled), `429` (`rate_limited`, `duplicate_recent`), plus a plain `500` if D1 or a collaborator fails (nothing stored). `401` and `503 service_unavailable` are the contract's option C (HMAC), which is **not implemented**: transport A needs no secret.
+- **Status codes**: `201`, `400` (`body_too_large`, `invalid_client_ip`, `invalid_json`, `validation_failed`, and `turnstile_failed` when a Turnstile secret is set), `429` (`rate_limited`, `duplicate_recent`), plus a plain `500` if D1 or a collaborator fails (nothing stored): including a production Worker without `TURNSTILE_SECRET_KEY` or without the `RL_CONTACT` binding, and Siteverify being unreachable. `401` and `503 service_unavailable` are the contract's option C (HMAC), which is **not implemented**: transport A needs no secret.
 
 ### The seam for the limiter and Turnstile
 
@@ -130,16 +130,16 @@ interface RateLimiter { hit(key: string): Promise<{ allowed: boolean; retryAfter
 type VerifyTurnstile = (input: { token: string | null; ip: string }) => Promise<boolean>
 ```
 
-`resolveContactDeps(env)` is the **only** place that chooses what stands behind them, with two lines marked `SEAM`:
+`resolveContactDeps(env)` is the **only** place that chooses what stands behind them. **Wired since the auth work (SAKEM-081 part B, [`auth.md`](auth.md))**:
 
-| | Now | To wire part B's helper |
+| | Behind it | Behaviour |
 | --- | --- | --- |
-| Rate limiter | the Cloudflare rate-limit binding `PUBLIC_CONTACT_LIMIT` (5 per 60 s, declared in `wrangler.jsonc`, namespace `7811`) through a 12-line adapter, `bindingRateLimiter`; without the binding, an in-memory fixed window (per isolate, so only a brake; production logs one warning) | adapt the shared limiter to `RateLimiter.hit` and return it from the first `SEAM` branch; the key is `contact:<ip>`, the limit 5 per 60 s |
-| Turnstile | `turnstileDisabled`: every post passes | adapt the helper to `VerifyTurnstile` (it receives the token from the header `X-Sakem-Turnstile-Token` and the trusted address) and return it from the second `SEAM` line |
+| Rate limiter | `sharedRateLimiter`: the shared limiter of `src/security/rate-limit.ts`, binding `RL_CONTACT` (5 per 60 s, namespace `7808`). **One limiter only**: it replaced the `PUBLIC_CONTACT_LIMIT` binding (namespace `7811`) this route first declared, because the shared one fails closed in production | the key is `contact:<ip>` with the address from `X-Sakem-Client-Ip` and nothing else; a refusal reports the whole period (60 s); a missing `RL_CONTACT` binding is a throw in production (500, nothing stored, the binding named in the log) and the shared in-memory counter outside it |
+| Turnstile | `sharedTurnstile`: `verifyTurnstile` of `src/security/turnstile.ts`, action `contact` | receives the token from `X-Sakem-Turnstile-Token` and the trusted address (sent to Siteverify as `remoteip`); a failed, missing or reused token is `false` (400 `turnstile_failed`); no `TURNSTILE_SECRET_KEY` in production, or Siteverify unreachable or unreadable, is a throw (500, nothing stored); outside production without a secret the check is skipped |
 
-The binding answers yes or no and not "how long", so a refusal reports the whole period (60 s) as `retryAfterSeconds`: the honest upper bound. Counters are per Cloudflare location and eventually consistent: a brake, not an exact quota.
+The binding answers yes or no and not "how long", so a refusal reports the whole period (60 s) as `retryAfterSeconds`: the honest upper bound. Counters are per Cloudflare location and eventually consistent: a brake, not an exact quota. `InMemoryRateLimiter` and `turnstileDisabled` remain in `contact-deps.ts` only as the test doubles of `test/public-contact.test.ts`.
 
-The contract has no Turnstile field. Rather than change the body, the token travels in the header `X-Sakem-Turnstile-Token` (set by the Astro Worker from the form's `cf-turnstile-response`), the check runs after the field checks (a typo does not spend a single-use token) and before the duplicate check, and a refusal is `400 { "error": "turnstile_failed", "message": ... }`. This is **an addition to the contract**, inactive until the helper is wired.
+The contract has no Turnstile field. Rather than change the body, the token travels in the header `X-Sakem-Turnstile-Token` (set by the Astro Worker from the form's `cf-turnstile-response`), the check runs after the field checks (a typo does not spend a single-use token) and before the duplicate check, and a refusal is `400 { "error": "turnstile_failed", "message": ... }`. This is **an addition to the contract**; the helper is wired (above), and with `TURNSTILE_SECRET_KEY` set (always in production) a post without a good token is refused, so the Astro Worker must forward the form's token.
 
 ## Differences from the contract
 
@@ -148,8 +148,8 @@ None in a payload, header value, status or order that the contract defines. Addi
 | Addition | Why |
 | --- | --- |
 | `Cache-Tag` response header on the read endpoints | what a purge by tag needs; invisible to a browser behind Cloudflare |
-| Header `X-Sakem-Turnstile-Token` and error `400 turnstile_failed` | the Turnstile seam; only when a check is wired |
-| `PUBLIC_CONTACT_LIMIT` rate-limit binding | the contact limiter (contract open question 4) |
+| Header `X-Sakem-Turnstile-Token` and error `400 turnstile_failed` | the Turnstile check, now wired to the shared helper |
+| `RL_CONTACT` rate-limit binding (was `PUBLIC_CONTACT_LIMIT`) | the contact limiter (contract open question 4), shared with the auth routes' limiter module |
 | Index `blog_posts_status_featured_published_idx` | the query budget |
 
 Not done, on purpose: the HMAC option C (`401`, `503`), `ETag`/`Last-Modified`, CORS, upload endpoints (milestone M3), the rendering of `contentHtml` (the blog save path renders it; the read path only returns it).
@@ -205,13 +205,13 @@ Beyond the tests, with `wrangler dev` only (no account, `WRANGLER_SEND_METRICS=f
 - **A real service binding** with a probe Worker (`{ "binding": "API", "service": "sakem-admin", "entrypoint": "PublicApi" }`): a post is `201`; the same email again is `429 duplicate_recent` with `Retry-After: 300`; six posts from one reported address are `201 x5` then `429`; a read through the binding answers like the public one; the same post on the Worker's public port with a forged `X-Sakem-Client-Ip` is `404`. The dev server's log contains no email, name or message text, and the audit rows carry no text.
 - **Wall time** per route, in [Query budget](#query-budget), with `scripts/measure-public.mjs`.
 
-Not run: anything on a Cloudflare zone or account (SAKEM-084), a browser (no visual QA applies: this is JSON), and the Astro form's own rate limit and Turnstile (not wired).
+Not run: anything on a Cloudflare zone or account (SAKEM-084), a browser (no visual QA applies: this is JSON), and the Astro form with a Turnstile widget (it does not forward a token yet).
 
 ## Open decisions
 
 1. **Where the read endpoints are reachable from.** Today `/api/public/*` is on the public face (the Astro Worker reads it over `CONTENT_API_URL`), so anyone can spend the daily D1 read budget with cache-busting query strings (see [Query budget](#query-budget)). Either add a rate-limit or Cache Rule at the zone, or have `cf/web` read through the `PublicApi` binding and empty `createPublicApp` (the reads are already on the internal face). Recommended: the binding, since the only consumer is the Astro Worker.
 2. **Which purger, and when.** A (TTL only) is in; B or C need a zone, a token or a flag the epic has not decided. See [Purge options](#purge-options).
 3. **Bucket IPv6 visitors by /64** in the contact rate limit (a visitor can rotate addresses inside it). One line in the route; not in the contract.
-4. **Turnstile on the contact form**: the token transport (a header, as built) and the `400 turnstile_failed` code need the contract's blessing, and the Astro form needs the widget.
+4. **Turnstile on the contact form**: the check is wired (above), so the Astro form must now render the widget (`data-action="contact"`), forward the token in `X-Sakem-Turnstile-Token` and show `400 turnstile_failed`; until then a production Worker with a secret refuses every post. The token transport (a header) and the code still need the contract's blessing.
 5. **`ETag`/`Last-Modified`** if the consumer ever revalidates instead of keeping a copy by TTL.
 6. **The blog `count(*)`** is one index entry per article read per uncached request; fine at school volume, worth a stored count past a few thousand articles.

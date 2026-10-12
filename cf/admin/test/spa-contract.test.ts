@@ -4,19 +4,7 @@ import { resetFailure, resetRequestFailureMessage, signInFailureMessage, verifyO
 import { decideGuard } from "../spa/src/lib/guard";
 import { parseMe } from "../spa/src/lib/me";
 import { visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
-import {
-  call,
-  captureEmails,
-  cookiesOf,
-  createVerifiedUser,
-  linkIn,
-  PASSWORD,
-  revokeArea,
-  signedInCookie,
-  signUp,
-  uniqueEmail,
-  withEmail,
-} from "./helpers";
+import { call, cookiesOf, createVerifiedUser, emailsTo, linkIn, PASSWORD, revokeArea, signedInCookie, signUp, uniqueEmail } from "./helpers";
 
 // What the SPA sends and expects back, checked against the real Worker in
 // workerd. The SPA tests (spa/test) stub the API, so these are what keep the
@@ -70,26 +58,24 @@ describe("sign-in as the SPA sends it", () => {
   });
 
   test("an unverified account: 403, the SPA says a fresh link was sent, and that link lands on /verify-email", async () => {
-    const { sent } = captureEmails();
     const email = uniqueEmail();
     await signUp(email);
-    expect(sent).toHaveLength(1);
+    expect(emailsTo(email)).toHaveLength(1);
 
     const res = await call("/api/auth/sign-in/email", {
       method: "POST",
       json: { email, password: PASSWORD, callbackURL: VERIFY_CALLBACK },
-      env: withEmail,
     });
     expect(res.status).toBe(403);
     expect(signInFailureMessage(await failureOf(res))).toContain("tautan verifikasi baru");
 
     // The fresh link carries the callback the SPA gave.
-    expect(sent).toHaveLength(2);
-    const link = linkIn(sent[1]!);
+    expect(emailsTo(email)).toHaveLength(2);
+    const link = linkIn(emailsTo(email)[1]!);
     expect(decodeURIComponent(link)).toContain(`callbackURL=${VERIFY_CALLBACK}`);
 
     // Following it verifies the account and lands on the success page.
-    const verified = await call(link, { env: withEmail });
+    const verified = await call(link);
     expect(verified.status).toBe(302);
     expect(verified.headers.get("location")).toBe(VERIFY_CALLBACK);
     const landed = new URL(verified.headers.get("location")!, "https://admin.test");
@@ -97,17 +83,15 @@ describe("sign-in as the SPA sends it", () => {
   });
 
   test("a broken verification link lands on /verify-email with an error, which the SPA reports as failure", async () => {
-    const { sent } = captureEmails();
     const email = uniqueEmail();
     await signUp(email);
     await call("/api/auth/sign-in/email", {
       method: "POST",
       json: { email, password: PASSWORD, callbackURL: VERIFY_CALLBACK },
-      env: withEmail,
     });
-    const link = linkIn(sent[1]!).replace(/token=([^&]+)/, (_, token: string) => `token=${token.slice(0, -3)}abc`);
+    const link = linkIn(emailsTo(email)[1]!).replace(/token=([^&]+)/, (_, token: string) => `token=${token.slice(0, -3)}abc`);
 
-    const res = await call(link, { env: withEmail });
+    const res = await call(link);
     expect(res.status).toBe(302);
     const landed = new URL(res.headers.get("location")!, "https://admin.test");
     expect(landed.pathname).toBe("/verify-email");
@@ -120,14 +104,12 @@ describe("sign-in as the SPA sends it", () => {
 
 describe("password reset as the SPA drives it", () => {
   test("the request answers alike for a known and an unknown address, and the SPA shows one line", async () => {
-    captureEmails();
     const known = uniqueEmail();
     await createVerifiedUser(known);
-    const a = await call("/api/auth/request-password-reset", { method: "POST", json: { email: known, redirectTo: RESET_PAGE }, env: withEmail });
+    const a = await call("/api/auth/request-password-reset", { method: "POST", json: { email: known, redirectTo: RESET_PAGE } });
     const b = await call("/api/auth/request-password-reset", {
       method: "POST",
       json: { email: uniqueEmail("ghost"), redirectTo: RESET_PAGE },
-      env: withEmail,
     });
     expect(a.status).toBe(200);
     expect(b.status).toBe(200);
@@ -135,14 +117,12 @@ describe("password reset as the SPA drives it", () => {
   });
 
   test("the emailed link lands on /reset-password with a token, and the new password then works", async () => {
-    const { sent } = captureEmails();
     const email = uniqueEmail();
     await createVerifiedUser(email);
-    const before = sent.length;
-    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: RESET_PAGE }, env: withEmail });
-    const link = linkIn(sent[before]!);
+    await call("/api/auth/request-password-reset", { method: "POST", json: { email, redirectTo: RESET_PAGE } });
+    const link = linkIn(emailsTo(email).find((message) => message.purpose === "reset-password")!);
 
-    const redirect = await call(link, { env: withEmail });
+    const redirect = await call(link);
     expect(redirect.status).toBe(302);
     const landed = new URL(redirect.headers.get("location")!, "https://admin.test");
     expect(landed.pathname).toBe(RESET_PAGE);
@@ -190,15 +170,13 @@ describe("password reset as the SPA drives it", () => {
   });
 
   test("the limiter's answer carries a Retry-After the SPA turns into a wait", async () => {
-    // One address floods the email routes: the per-IP bucket allows 10 a minute.
-    captureEmails();
+    // One address floods the reset route: the per-IP bucket allows 5 a minute.
     const ip = "198.51.100.77";
     let last: Response | undefined;
     for (let i = 0; i < 12; i++) {
       last = await call("/api/auth/request-password-reset", {
         method: "POST",
         json: { email: uniqueEmail("flood"), redirectTo: RESET_PAGE },
-        env: withEmail,
         ip,
       });
       if (last.status === 429) break;

@@ -35,6 +35,10 @@ export default defineConfig(async () => ({
           EMAIL_FROM: "",
           GOOGLE_CLIENT_ID: "",
           GOOGLE_CLIENT_SECRET: "",
+          // Empty = no Turnstile check outside production; the tests that need it set a test secret.
+          TURNSTILE_SECRET_KEY: "",
+          TURNSTILE_SITE_KEY: "",
+          AUDIT_RETENTION_DAYS: "365",
           TEST_MIGRATIONS: await readD1Migrations(path.join(here, "migrations")),
         },
       },

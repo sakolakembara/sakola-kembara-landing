@@ -1,11 +1,14 @@
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
+import wranglerConfig from "../wrangler.jsonc?raw";
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createContactRoutes } from "../src/api/public/contact";
-import { CONTACT_MESSAGES, isIpLiteral } from "../src/public/contact";
+import { CONTACT_MESSAGES, CONTACT_RATE_LIMIT, isIpLiteral } from "../src/public/contact";
 import { InMemoryRateLimiter, turnstileDisabled, type ContactDeps, type RateLimiter, type VerifyTurnstile } from "../src/public/contact-deps";
-import { call, uniqueEmail } from "./helpers";
+import { RATE_LIMITS } from "../src/security/rate-limit";
+import { SITEVERIFY_URL, TURNSTILE_TEST_SECRETS } from "../src/security/turnstile";
+import { call, fakeNetwork, uniqueEmail } from "./helpers";
 import { CONTACT_CREATED, FIELD_ERRORS_EXAMPLE } from "./contract-examples";
 import { internalFetch, internalFetchWith, internalFetchWithBindings, json, uniqueIp } from "./public-helpers";
 
@@ -466,25 +469,72 @@ describe("the rate limit", () => {
     expect((await limiter.hit("a")).allowed).toBe(true);
   });
 
-  test("without a binding the fallback is the in-memory limiter, and production says so once, without personal data", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const bindings = { ...env, ENVIRONMENT: "production", PUBLIC_CONTACT_LIMIT: undefined } as never;
+  // Changed by SAKEM-081 part B: the limiter is the shared one (src/security/rate-limit.ts). The first version fell back to a
+  // per-isolate counter in production with a warning, which on Workers limits nothing; now a missing binding refuses there.
+  test("without the binding, production refuses (500, nothing stored, the binding named in the log, no personal data)", async () => {
+    const lines: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const bindings = { ...env, ENVIRONMENT: "production", RL_CONTACT: undefined, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRETS.alwaysPass } as never;
+    const email = uniqueEmail("lain");
+    const res = await internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid({ email }), clientIp: uniqueIp() });
+    expect(res.status).toBe(500);
+    expect(await json(res)).toEqual({ error: "internal" });
+    expect(await count("contact_messages")).toBe(0);
+    const logged = lines.join("\n");
+    expect(logged).toContain("[rate-limit] binding RL_CONTACT is not configured");
+    expect(logged).toContain("[contact] failed (RateLimitUnavailable)");
+    expect(logged).not.toContain(email);
+  });
+
+  test("without the binding, outside production, the shared in-memory counter limits 5 a minute", async () => {
+    const bindings = { ...env, ENVIRONMENT: "test", RL_CONTACT: undefined } as never;
     const ip = uniqueIp();
-    // The default resolver, which is what the entrypoint uses, over bindings without the rate limit binding.
     const run = () => internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid({ email: uniqueEmail() }), clientIp: ip });
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) statuses.push((await run()).status);
     expect(statuses).toEqual([201, 201, 201, 201, 201, 429]);
-    const warnings = warn.mock.calls.map((args) => args.join(" ")).filter((line) => line.includes("rate limit"));
-    expect(warnings.length).toBeLessThanOrEqual(1);
-    for (const line of warnings) expect(line).not.toContain("@");
+  });
+
+  test("one limiter only: the limit, the period and the words are the contract's, and the first version's binding is gone", async () => {
+    expect(RATE_LIMITS.contact).toMatchObject({ binding: "RL_CONTACT", limit: CONTACT_RATE_LIMIT.limit, period: CONTACT_RATE_LIMIT.windowSeconds, message: CONTACT_MESSAGES.rateLimited });
+    expect(Object.keys(env)).not.toContain("PUBLIC_CONTACT_LIMIT");
+    expect(wranglerConfig.replace(/^\s*\/\/.*$/gm, "")).not.toContain("PUBLIC_CONTACT_LIMIT"); // comments may still say where it went
+  });
+
+  test("the key is contact:<address> and the address is X-Sakem-Client-Ip only, never a header the visitor can set", async () => {
+    const keys: string[] = [];
+    const spy = { limit: async ({ key }: { key: string }) => (keys.push(key), { success: true }) };
+    const bindings = { ...env, RL_CONTACT: spy } as never;
+    const forged = { "cf-connecting-ip": "198.51.100.1", "x-forwarded-for": "6.6.6.6, 7.7.7.7", "x-real-ip": "8.8.8.8", forwarded: "for=9.9.9.9" };
+
+    await internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid(), clientIp: "203.0.113.55", headers: forged });
+    await internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid(), clientIp: "2001:DB8::1", headers: forged });
+    expect(keys).toEqual(["contact:203.0.113.55", "contact:2001:db8::1"]);
+
+    // No X-Sakem-Client-Ip: a 400 before the limiter is asked, whatever else the request carries.
+    keys.length = 0;
+    const missing = await internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid(), clientIp: null, headers: forged });
+    expect(missing.status).toBe(400);
+    expect(await json(missing)).toEqual({ error: "invalid_client_ip" });
+    expect(keys).toEqual([]);
+  });
+
+  test("a refusal from the binding is rate_limited with the whole period as the wait", async () => {
+    const bindings = { ...env, RL_CONTACT: { limit: async () => ({ success: false }) } } as never;
+    const res = await internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid(), clientIp: uniqueIp() });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect(await json(res)).toEqual({ error: "rate_limited", message: CONTACT_MESSAGES.rateLimited, retryAfterSeconds: 60 });
+    expect(await count("contact_messages")).toBe(0);
   });
 });
 
 describe("the Turnstile seam", () => {
-  test("is disabled by default: no token is needed", async () => {
-    expect(await turnstileDisabled({ token: null, ip: "203.0.113.1" })).toBe(true);
-    expect((await post(valid())).status).toBe(201);
+  test("is skipped outside production when no secret is set: no token is needed", async () => {
+    expect(await turnstileDisabled({ token: null, ip: "203.0.113.1" })).toBe(true); // the test double
+    const network = fakeNetwork();
+    expect((await post(valid())).status).toBe(201); // the default resolver: ENVIRONMENT=test, no TURNSTILE_SECRET_KEY
+    expect(network.siteverify).toHaveLength(0);
   });
 
   test("a failing check is turnstile_failed, stores nothing and is not cacheable", async () => {
@@ -534,6 +584,111 @@ describe("the Turnstile seam", () => {
     spy.mockRestore();
     expect(res.status).toBe(500);
     expect(await count("contact_messages")).toBe(0);
+  });
+});
+
+describe("the Turnstile check is the shared one (src/security/turnstile.ts, action contact)", () => {
+  const withSecret = (secret: string | undefined, environment = "test") => ({ ...env, ENVIRONMENT: environment, TURNSTILE_SECRET_KEY: secret }) as never;
+  const send = (bindings: never, over: { token?: string; ip?: string; body?: Record<string, unknown> } = {}) =>
+    internalFetchWithBindings(bindings, "/api/public/contact", {
+      method: "POST",
+      json: over.body ?? valid(),
+      clientIp: over.ip ?? uniqueIp(),
+      headers: over.token === undefined ? {} : { "x-sakem-turnstile-token": over.token },
+    });
+
+  // Negative check: make the contact seam skip the shared check, or fail open in production.
+  test("production without TURNSTILE_SECRET_KEY refuses (500, nothing stored, the reason in the log, never the token)", async () => {
+    const lines: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const network = fakeNetwork();
+    for (const secret of [undefined, ""]) {
+      const res = await send(withSecret(secret, "production"), { token: "SECRET-TOKEN-XYZ" });
+      expect(res.status, String(secret)).toBe(500);
+      expect(await json(res)).toEqual({ error: "internal" });
+    }
+    expect(await count("contact_messages")).toBe(0);
+    expect(network.siteverify).toHaveLength(0);
+    const logged = lines.join("\n");
+    expect(logged).toContain("[turnstile] TURNSTILE_SECRET_KEY is not set");
+    expect(logged).toContain("[contact] failed (TurnstileUnavailable)");
+    expect(logged).not.toContain("SECRET-TOKEN-XYZ");
+  });
+
+  test("a missing ENVIRONMENT is production too", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const bindings = { ...env, ENVIRONMENT: undefined, TURNSTILE_SECRET_KEY: undefined } as never;
+    expect((await send(bindings)).status).toBe(500);
+    expect(await count("contact_messages")).toBe(0);
+  });
+
+  test("a failing check answers 400 turnstile_failed and stores nothing", async () => {
+    const network = fakeNetwork();
+    const res = await send(withSecret(TURNSTILE_TEST_SECRETS.alwaysFail), { token: "any-token" });
+    expect(res.status).toBe(400);
+    expect(await json(res)).toEqual({ error: "turnstile_failed", message: CONTACT_MESSAGES.botCheckFailed });
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await count("contact_messages")).toBe(0);
+    expect(network.siteverify).toHaveLength(1);
+  });
+
+  test("a spent token, and no token at all, are turnstile_failed too (the latter without asking Cloudflare)", async () => {
+    const network = fakeNetwork();
+    const spent = await send(withSecret(TURNSTILE_TEST_SECRETS.spent), { token: "used-before" });
+    expect(spent.status).toBe(400);
+    expect(await json(spent)).toMatchObject({ error: "turnstile_failed" });
+
+    const before = network.siteverify.length;
+    const none = await send(withSecret(TURNSTILE_TEST_SECRETS.alwaysPass));
+    expect(none.status).toBe(400);
+    expect(await json(none)).toMatchObject({ error: "turnstile_failed" });
+    expect(network.siteverify).toHaveLength(before);
+    expect(await count("contact_messages")).toBe(0);
+  });
+
+  test("a good token is read from X-Sakem-Turnstile-Token only and sent with the trusted address as remoteip", async () => {
+    const network = fakeNetwork();
+    const res = await internalFetchWithBindings(withSecret(TURNSTILE_TEST_SECRETS.alwaysPass), "/api/public/contact", {
+      method: "POST",
+      json: { ...valid(), turnstileToken: "from-the-body", "cf-turnstile-response": "from-the-body-too" },
+      clientIp: "203.0.113.77",
+      headers: { "x-sakem-turnstile-token": "  from-the-header ", "x-turnstile-token": "the-admin-routes-header", "cf-connecting-ip": "198.51.100.2" },
+    });
+    expect(res.status).toBe(201);
+    expect(network.siteverify).toEqual([{ secret: TURNSTILE_TEST_SECRETS.alwaysPass, response: "from-the-header", remoteip: "203.0.113.77" }]);
+    expect(await count("contact_messages")).toBe(1);
+  });
+
+  test("Siteverify unreachable or answering an error is a 500 that stores nothing (the check never fails open)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      if ((typeof input === "string" ? input : input instanceof URL ? input.href : input.url) === SITEVERIFY_URL) throw new TypeError("network down");
+      throw new Error("unexpected outbound request");
+    });
+    expect((await send(withSecret(TURNSTILE_TEST_SECRETS.alwaysPass), { token: "t" })).status).toBe(500);
+    vi.restoreAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("oops", { status: 502 }));
+    expect((await send(withSecret(TURNSTILE_TEST_SECRETS.alwaysPass), { token: "t" })).status).toBe(500);
+    expect(await count("contact_messages")).toBe(0);
+  });
+
+  test("the order is unchanged: after the limit and the fields, so a typo does not spend a token", async () => {
+    const network = fakeNetwork();
+    const bindings = withSecret(TURNSTILE_TEST_SECRETS.alwaysPass);
+    const invalid = await send(bindings, { token: "t", body: valid({ email: "not an email" }) });
+    expect(invalid.status).toBe(400);
+    expect(await json(invalid)).toMatchObject({ error: "validation_failed" });
+    const honeypot = await send(bindings, { token: "t", body: valid({ website: "spam" }) });
+    expect(honeypot.status).toBe(201);
+    expect(network.siteverify).toHaveLength(0);
+  });
+
+  test("a token minted for another form is refused (the widget's action must be 'contact', when it sets one)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => Response.json({ success: true, action: "login" }));
+    const res = await send(withSecret(TURNSTILE_TEST_SECRETS.alwaysPass), { token: "t" });
+    expect(res.status).toBe(400);
+    expect(await json(res)).toMatchObject({ error: "turnstile_failed" });
   });
 });
 

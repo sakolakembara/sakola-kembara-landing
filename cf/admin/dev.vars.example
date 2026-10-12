@@ -1,26 +1,43 @@
 # Copy to .dev.vars (untracked, ignored by .gitignore) and fill with FAKE local values.
 # Never put real secrets in this repo.
 
-# Anything other than "production" enables local conveniences (emails are printed
-# to the console when RESEND_API_KEY is empty). Omit it and the app runs as production.
+# Anything other than "production" enables local conveniences: emails are kept in
+# memory (read them at GET /api/dev/mailbox, nothing is printed), Turnstile is
+# skipped when no secret is set, a missing rate limit binding falls back to memory.
+# Omit it and the app runs as production, where all three fail closed.
 ENVIRONMENT=development
 
 # Required. At least 32 random characters. Generate one with: openssl rand -base64 32
 BETTER_AUTH_SECRET=local-only-fake-secret-change-me-32-chars-min
 
-# Comma-separated browser origins allowed to call the API with cookies.
-# Not needed for same-origin use; the request origin is always trusted.
+# Comma-separated browser origins allowed to send cookie-bearing writes (the Origin
+# check) and to be a callbackURL. Not needed for same-origin use: the request's own
+# origin is always accepted. Vite's dev server is the usual entry.
 TRUSTED_ORIGINS=http://localhost:5173
 
-# Cross-subdomain cookie domain. Leave empty locally (host-only cookies).
-# Production value is in docs/cloudflare/admin-skeleton.md.
+# Leave empty. Empty means host-only cookies (with the __Host- prefix in production),
+# which is what this app wants. Set it only if another subdomain must read the session;
+# see docs/cloudflare/auth.md#cookies.
 COOKIE_DOMAIN=
 
-# Email (Resend). Empty in development = print to console. In production this
-# must be set, otherwise sending fails closed.
+# Email (Resend). Empty in development = recorded in memory, not sent. In production
+# both must be set, otherwise the routes that send email answer 503.
 RESEND_API_KEY=
 EMAIL_FROM=Sakola Kembara <no-reply@example.test>
 
 # Google sign-in is offered only when both are set.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+
+# Turnstile. Empty = not checked (development only; production without it refuses).
+# To try the real path locally use Cloudflare's published test keys, which work on
+# any site and need no account:
+#   always passes:  secret 1x0000000000000000000000000000000AA  site key 1x00000000000000000000AA
+#   always fails:   secret 2x0000000000000000000000000000000AA  site key 2x00000000000000000000AB
+#   token spent:    secret 3x0000000000000000000000000000000AA
+# (with the passing secret, the token "XXXX.DUMMY.TOKEN.XXXX" is accepted.)
+TURNSTILE_SECRET_KEY=
+TURNSTILE_SITE_KEY=
+
+# Days to keep audit_log rows (the daily cleanup). Empty or 0 = keep everything.
+AUDIT_RETENTION_DAYS=365

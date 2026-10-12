@@ -9,7 +9,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | Part | Where |
 | --- | --- |
 | Drizzle schema, one file per concern, re-exported from `src/db/schema.ts` | `cf/admin/src/db/schema/` |
-| Four SQL migrations, one per concern, and `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)) | `cf/admin/migrations/` |
+| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)) | `cf/admin/migrations/` |
 | Permission model (pure) and the `requireArea` guard | `src/auth/permissions.ts`, `src/auth/guard.ts` |
 | Super-admin routes to grant and revoke an editor's areas | `src/api/admin-users.ts` |
 | Dev seed for every table | `scripts/seed-data.ts`, `scripts/seed.ts` |
@@ -63,6 +63,7 @@ Every legacy column is listed. "same" means the same name and meaning with the t
 | `role` enum | `role` text, default `student`, CHECK `users_role_check` | same values: `student`, `viewer`, `editor`, `super_admin`. |
 | `passwordHash` text (bcrypt) | **moved** to `account.password` of the `credential` account | New format `pbkdf2-sha256$100000$...` (`src/auth/password.ts`). bcrypt hashes cannot be verified on Workers, so legacy students need a password reset at cutover (admin-skeleton risk 2). |
 | `emailVerifiedAt` timestamp | `email_verified` integer boolean | Better Auth's shape. The instant of verification is not kept. |
+| *(new)* | `deactivated_at` integer (ms), nullable | Set when a super_admin deactivates the account (migration `0005_user_deactivation`): no sign-in by any method, sessions deleted. A trigger (`0006_keep_one_super_admin`) refuses to leave the system without an active super_admin. See [`auth.md`](auth.md#admin-users). |
 | `lastLoginAt` timestamp | **dropped** | Nothing writes it in Better Auth. Derive "last login" as the newest `session.created_at` of the user (sessions are swept after they expire, so it is only recent history; see open decisions). |
 | `createdAt`, `updatedAt` | same | ms |
 

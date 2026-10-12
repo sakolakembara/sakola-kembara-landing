@@ -1,8 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Admin/portal backend (SAKEM-078). Public repo: no account ids, no resource
-  // ids, no secrets. The D1 binding below has no database_id on purpose; it is
-  // only usable locally (`wrangler dev`, `wrangler d1 ... --local`, tests).
+  // Admin/portal backend (SAKEM-078, SAKEM-081). Public repo: no account ids, no
+  // resource ids, no secrets. The D1 binding below has no database_id on purpose;
+  // it is only usable locally (`wrangler dev`, `wrangler d1 ... --local`, tests).
   // Real resources are attached in the deploy ticket, see docs/cloudflare/admin-skeleton.md.
   "name": "sakem-admin",
   "main": "src/worker.ts",
@@ -12,8 +12,15 @@
 
   // Anything that is not production must say so in untracked .dev.vars
   // (ENVIRONMENT=development). A deployed worker with this file as-is is
-  // production: email fails closed and tokenized URLs are never logged.
-  "vars": { "ENVIRONMENT": "production" },
+  // production: email, Turnstile and rate limiting fail closed, and tokenized
+  // URLs are never logged.
+  //   AUDIT_RETENTION_DAYS  days to keep audit_log rows ("" or "0" = keep all).
+  //                         365 = one year; see docs/cloudflare/auth.md#retention.
+  // Not here, set per deploy: TURNSTILE_SITE_KEY (public widget key, served by
+  // GET /api/config), EMAIL_FROM, TRUSTED_ORIGINS, COOKIE_DOMAIN (normally unset).
+  // Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, TURNSTILE_SECRET_KEY,
+  // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) are set with `wrangler secret put`.
+  "vars": { "ENVIRONMENT": "production", "AUDIT_RETENTION_DAYS": "365" },
 
   "assets": {
     "directory": "./dist/spa",
@@ -35,17 +42,39 @@
     }
   ],
 
-  // Cloudflare's rate limit binding: counted per Cloudflare location, eventually
-  // consistent, period is 10 or 60 seconds only. namespace_id is a number we
-  // choose, unique per account; it is not a resource id.
+  // Cloudflare rate limit bindings, one per concern (SAKEM-081, auth). Counted
+  // per Cloudflare location and eventually consistent, period 10 or 60 seconds
+  // only: a brake against floods and guessing, not an exact quota.
+  // namespace_id is a number WE choose (unique per account), not a resource id;
+  // these are placeholders, change one if the account already uses the number.
+  // Limits, keys and the Indonesian 429 messages live in src/security/rate-limit.ts
+  // (the in-memory fallback for local runs uses the same numbers, and a test
+  // keeps this file and that one in sync). Table: docs/cloudflare/auth.md#rate-limits.
   "ratelimits": [
-    // One client guessing one account: 5 tries per minute per route+IP+email.
-    { "name": "AUTH_PAIR_LIMIT", "namespace_id": "7801", "simple": { "limit": 5, "period": 60 } },
-    // One account attacked from many addresses: 20 per minute per route+email.
-    { "name": "AUTH_EMAIL_LIMIT", "namespace_id": "7802", "simple": { "limit": 20, "period": 60 } },
-    // One address flooding the routes that send email: 10 per minute per route+IP.
-    { "name": "AUTH_IP_LIMIT", "namespace_id": "7803", "simple": { "limit": 10, "period": 60 } },
-    // Public contact form (SAKEM-081): 5 submissions per minute per visitor address.
-    { "name": "PUBLIC_CONTACT_LIMIT", "namespace_id": "7811", "simple": { "limit": 5, "period": 60 } }
-  ]
+    // Sign-in: one client guessing one account. Key: route + IP + email hash.
+    { "name": "RL_LOGIN", "namespace_id": "7801", "simple": { "limit": 5, "period": 60 } },
+    // Sign-in: one account attacked from many addresses. Key: email hash.
+    { "name": "RL_LOGIN_ACCOUNT", "namespace_id": "7802", "simple": { "limit": 20, "period": 60 } },
+    // Student registration: one address creating accounts. Key: IP.
+    { "name": "RL_REGISTER", "namespace_id": "7803", "simple": { "limit": 10, "period": 60 } },
+    // "Forgot password" requests. Key: IP.
+    { "name": "RL_RESET", "namespace_id": "7804", "simple": { "limit": 5, "period": 60 } },
+    // "Send the verification link again". Key: email hash.
+    { "name": "RL_VERIFY_RESEND", "namespace_id": "7805", "simple": { "limit": 2, "period": 60 } },
+    // One mailbox, across every route that sends it email (register, reset,
+    // resend, admin invite). Protects the Resend quota and the inbox. Key: email hash.
+    { "name": "RL_MAIL_TARGET", "namespace_id": "7806", "simple": { "limit": 3, "period": 60 } },
+    // Redeeming a token (reset-password, verify-email) and starting Google sign-in. Key: IP.
+    { "name": "RL_TOKEN", "namespace_id": "7807", "simple": { "limit": 20, "period": 60 } },
+    // Public contact form (POST /api/public/contact, behind the PublicApi service
+    // binding): 5 per minute per visitor address, key "contact:<address>" from
+    // X-Sakem-Client-Ip. The one limiter of that route (src/public/contact-deps.ts);
+    // it replaces the PUBLIC_CONTACT_LIMIT binding (namespace 7811) of the first public API PR.
+    { "name": "RL_CONTACT", "namespace_id": "7808", "simple": { "limit": 5, "period": 60 } }
+  ],
+
+  // Daily cleanup (src/cron/cleanup.ts): expired sessions and verification
+  // tokens, and audit rows older than AUDIT_RETENTION_DAYS. 03:17 UTC is 10:17
+  // in Jakarta, outside school hours; the minute is off the hour on purpose.
+  "triggers": { "crons": ["17 3 * * *"] }
 }
