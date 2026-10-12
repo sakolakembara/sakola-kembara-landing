@@ -11,6 +11,7 @@ import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
 import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
+import { pendaftaranSpaChecks } from "./negative-checks-spa-pendaftaran.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -26,6 +27,8 @@ const checks = [
 
   // Laporan, Tim and Shortlink (SAKEM-082): scripts/negative-checks-spa-konten-misc.mjs.
   ...kontenMiscSpaChecks,
+  // Pendaftaran: Batch, Pendaftar, Pusat Dokumen (SAKEM-082): scripts/negative-checks-spa-pendaftaran.mjs.
+  ...pendaftaranSpaChecks,
 
   // Who may see and do what
   {

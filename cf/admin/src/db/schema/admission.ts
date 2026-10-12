@@ -158,6 +158,9 @@ export const studentApplications = sqliteTable(
     index("student_applications_submitted_at_idx").on(t.submittedAt),
     index("student_applications_email_idx").on(t.email),
     index("student_applications_batch_id_idx").on(t.batchId),
+    // Name search of Pendaftar (a prefix match, `full_name like 'abc%'`): SQLite can walk this index for a LIKE
+    // prefix only when it is declared COLLATE NOCASE, which is also what makes the match case-insensitive.
+    index("student_applications_full_name_idx").on(sql`${t.fullName} collate nocase`),
     // A given user can only have one application per batch. (Its leftmost
     // column also serves "applications of this user", which is why legacy's
     // separate user_id index is not carried over.)

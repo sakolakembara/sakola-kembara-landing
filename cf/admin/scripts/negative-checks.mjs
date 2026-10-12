@@ -16,6 +16,7 @@ import { crudChecks } from "./negative-checks-crud.mjs";
 import { sistemChecks } from "./negative-checks-sistem.mjs";
 import { komunikasiChecks } from "./negative-checks-komunikasi.mjs";
 import { kontenMiscChecks } from "./negative-checks-konten-misc.mjs";
+import { pendaftaranChecks } from "./negative-checks-pendaftaran.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -46,6 +47,8 @@ const checks = [
 
   // Laporan, Tim, Shortlink and the redirect's lookup (SAKEM-082): scripts/negative-checks-konten-misc.mjs.
   ...kontenMiscChecks,
+  // Pendaftaran: Batch, Pendaftar, Pusat Dokumen (SAKEM-082): scripts/negative-checks-pendaftaran.mjs.
+  ...pendaftaranChecks,
 
   // ---------------------------------------------------------------- auth
   {

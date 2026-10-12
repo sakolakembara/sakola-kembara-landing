@@ -348,7 +348,7 @@ const resource: MockResource<Report> = {
 export default resource;
 ```
 
-`mock/resources/announcements.ts` is the worked one. A mock never touches the network and never stores anything outside memory (a page reload starts from the seed again).
+A route the generic store cannot answer (a verb such as `POST /:id/publish`, or a detail with more than the row) is a `custom` function on the same `MockResource`: it is called after the access check with what is below the collection (`""`, `"abc"`, `"abc/publish"`), returns the Response or `null` to leave it to the generic store (`mock/resources/pendaftaran.ts` has three). `mock/resources/announcements.ts` is the worked one. A mock never touches the network and never stores anything outside memory (a page reload starts from the seed again).
 
 **When the generic store is not enough** (a verb route such as `POST /:id/deactivate`, a list with a cursor, an answer that depends on state across routes) add one file `spa/src/mock/handlers/<name>.ts` with a `default` export of a `MockHandler` (`mock/handlers.ts`: it receives the method, the URL, the init, `accessOf` and who the persona is, and returns a `Response` or `null` for a request that is not its own). It is picked up by `import.meta.glob` like `mock/resources/`, and `mock/transport.ts` asks the handlers after the resource store; `mock/handlers/sistem.ts` is the worked one (Aktivitas and Pengaturan, [`admin-sistem.md`](admin-sistem.md#5-the-mock)).
 

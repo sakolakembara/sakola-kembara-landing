@@ -225,7 +225,7 @@ Keputusan yang tidak bisa diambil dari kode. Rekomendasi ada di tiap butir.
 5. **Aktivitas untuk `viewer` dan `editor`.** Log memuat catatan tinjau dan, pada penghapusan pesan, nama dan email pengirim. Tetap terlihat semua peran seperti sekarang, atau dibatasi? *Diputuskan: dibatasi, hanya `super_admin` (Sistem).*
 6. **Pengumuman.** Di Komunikasi atau Konten Situs? Rekomendasi: Komunikasi. Kalau ternyata hampir selalu dipakai untuk kabar pendaftaran, bisa pindah ke Pendaftaran.
 7. **Detail batch.** Tabel 100 pendaftar diganti 5 terbaru + tautan terfilter? Rekomendasi: ya, agar daftar pendaftar hanya punya satu tempat.
-8. **Pendaftar.** Daftar default ke batch terbaru (bukan "Semua batch"), dan hitungan perhatian = `pending` + `under_review`? Rekomendasi: ya untuk keduanya.
+8. **Pendaftar.** Daftar default ke batch terbaru (bukan "Semua batch"), dan hitungan perhatian = `pending` + `under_review`? Rekomendasi: ya untuk keduanya. *Diputuskan dan dikerjakan (SAKEM-082): daftar membuka pada batch terbaru; alamat `?batch=all` berarti semua batch, dan tautan yang menyebut status tanpa batch (tile dashboard) juga berarti semua batch. Lihat [`admin-pendaftaran.md`](admin-pendaftaran.md#pendaftar).*
 9. **Pola pemakaian nyata.** Kolom frekuensi di bagian 1 hanya dugaan. Minta satu atau dua admin menandai menu yang dipakai tiap minggu sebelum urutan dalam grup dikunci.
 
 ## 6. Catatan portabilitas
