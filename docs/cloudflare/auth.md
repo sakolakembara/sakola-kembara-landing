@@ -35,7 +35,7 @@ Only the routes in this table exist under `/api/auth`; everything else Better Au
 | `POST /api/auth/sign-in/email` | `login` | `login` (IP+email), `loginAccount` (email) | no | `{ email, password, rememberMe? }`. Sets the session cookie. |
 | `POST /api/auth/request-password-reset` | `forgot-password` | `reset` (IP), `mailTarget` (email) | yes | `{ email, redirectTo }`. `redirectTo` must be a path on this origin or a trusted origin (403 otherwise). 200 for every address. |
 | `POST /api/auth/send-verification-email` | `resend-verification` | `verifyResend` (email), `mailTarget` (email), `reset` (IP) | yes | `{ email, callbackURL? }`. 200 for every address. Takes 0.5 s on purpose (Better Auth's constant-time floor). |
-| `POST /api/auth/reset-password` | none | `token` (IP) | no | `{ token, newPassword }`; 8 to 200 characters; the token is consumed. |
+| `POST /api/auth/reset-password` | none | `token` (IP) | no | `{ token, newPassword }`; 8 to 128 characters; the token is consumed. |
 | `GET /api/auth/reset-password/:token?callbackURL=...` | none | `token` (IP) | no | The emailed link. Redirects to `callbackURL?token=...`, or `?error=INVALID_TOKEN`. |
 | `GET /api/auth/verify-email?token=...&callbackURL=...` | none | `token` (IP) | no | The emailed link. Redirects to `callbackURL`, or `?error=INVALID_TOKEN` / `TOKEN_EXPIRED`. |
 | `POST /api/auth/sign-in/social` | none | `token` (IP) | no | `{ provider: "google", callbackURL }`. Answers `{ url }`. |
@@ -79,7 +79,7 @@ X-Turnstile-Token: <token from the widget, data-action="register">
 | --- | --- |
 | `name` | trimmed, 2 to 120 characters: "Nama minimal 2 karakter", "Maksimal 120 karakter" |
 | `email` | trimmed, lowercased, a valid address of at most 254 characters: "Format email belum benar" |
-| `password` | 8 to 200 characters: "Password minimal 8 karakter" |
+| `password` | 8 to 128 characters: "Password minimal 8 karakter", "Password maksimal 128 karakter". The legacy form allowed 200; 128 is Better Auth's bound and the one the SPA already states (`spa/src/lib/validation.ts`, pinned by `test/spa-contract.test.ts`), so the code keeps one rule (`PASSWORD_MAX_LENGTH` in `src/auth/factory.ts`; change it with the SPA constant). |
 | `confirmPassword` | optional; when sent it must equal `password`: "Konfirmasi password tidak cocok" |
 | `callbackURL` | optional; where the verification link sends the browser, and where the "you already have an account" email links. A path on this origin or a trusted origin (403 otherwise). Use the sign-in page. |
 | `website` | honeypot, a field humans never see. Anything in it gets the success answer and creates nothing. |
@@ -252,11 +252,29 @@ If you ran the part A migrations before: `pnpm db:migrate:local` applies `0004` 
 
 ## Results
 
-RESULTS_PLACEHOLDER
+Machine: Apple M4, Node 22, 2026-10-12. Every timing here is **wall time on a laptop, not Worker CPU**: workerd freezes timers during synchronous code, so CPU cannot be measured locally, and whether native PBKDF2 time counts as CPU on Workers is undocumented. A proxy for ranking, not a verdict against the 10 ms limit.
+
+| Measurement | Result |
+| --- | --- |
+| `pnpm test` in `cf/admin` (workerd, real local D1 and rate limit bindings) | 515 passed in 18 files (269 after part A, 70 at SAKEM-078). The SPA's own suite, `pnpm test:spa`: 402 passed, unchanged. |
+| `pnpm test:negative` | 66 of 66 safeguards make the tests fail (25 from before, 41 new: verification, the Origin guard in three ways, the route table, JSON only and the body cap, Turnstile in four ways, fail-closed email, `X-Forwarded-For` as the address, the per-mailbox cap, no-enumeration, the honeypot, session revocation, the `__Host-` cookie, the last super_admin trigger and its 409, self-deactivation, invite lifetime and revocation, cron retention). |
+| `pnpm db:drift` | exit 0, schema and the six migrations agree. `wrangler d1 migrations apply --local` on a clean state applies all six, trigger included. |
+| Root `pnpm exec tsc --noEmit`, `pnpm test` | exit 0, 229 passed (unchanged). |
+| PBKDF2-SHA256 100k, Node (`pnpm measure`) | verify median 8.10 ms, p95 8.34 (n=51); wrong password 8.04; hash 8.13 (n=31) |
+| `createAuth()` per request, warm | median 0.19 ms, p95 0.66 (0.10 at SAKEM-078: the new hooks and settings cost 0.1 ms) |
+| `emailKey()` (the gate's SHA-256) | median 0.02 ms |
+| Local `wrangler dev`, HTTP wall time, medians (includes the dev proxy) | `/api/config` 1.2 ms (n=40) · `/api/me` 3.1 ms (n=40) · sign-in right password 13.1 ms (n=12) · sign-in wrong password 11.9 ms (n=12) · `register` 12.1 ms (n=8) · `request-password-reset`, known address 5.7 ms (n=4) |
+| Worker bundle (`wrangler deploy --dry-run`, config valid with eight rate limit bindings, the cron trigger and the vars) | 2869.99 KiB, gzip 491.20 KiB (475 KiB at SAKEM-078; the new code is about 16 KiB gzip) |
+
+Reading the numbers: a sign-in is the session baseline (`/api/me` 3.1 ms) plus about 10 ms, of which the hash is 8.1 ms. At SAKEM-078 the same measure was 10.9 ms for sign-in on a 3.6 ms baseline (7 ms above), so the gate, the body read, the SHA-256, the extra `session.create` query and the audit-aware hooks add roughly 2 to 3 ms of wall time, mostly I/O that is not CPU. Registration costs one hash too, and reset costs one (at redemption, not at request). **Sign-in remains the route to watch against the 10 ms CPU limit**; SAKEM-084 on a real Free account decides. If it does not fit: fewer iterations (weaker), or the hash in a second Worker behind a service binding, or the paid plan.
+
+Not measured at all: Siteverify latency (a `fetch`, I/O), the rate limit bindings at the edge, and Resend.
+
+Visual and interaction QA of the SPA was **not** done (no browser by instruction); nothing in this part has a UI.
 
 ## Not built
 
-* **SPA pages** for registration, forgot and reset password, verify-sent and the admin invite landing (`/reset-password`, `/auth/error`): the API and the redirects are final, the pages are another ticket. The SPA must send `X-Turnstile-Token` on sign-in, registration, forgot-password and resend once a site key exists (the skeleton's login page does not yet; without a secret in development the check is skipped, so it still works locally).
+* **The SPA does not speak Turnstile yet, and this is the one thing that stops a deploy.** The merged sign-in, forgot-password, reset-password and verify pages (SAKEM-082) work against this Worker (`test/spa-contract.test.ts` passes), but `api()` never sends `X-Turnstile-Token`, the pages render no widget, and `lib/auth-errors.ts` does not know `captcha_failed`, `captcha_unavailable` or `email_unavailable`. With `TURNSTILE_SECRET_KEY` set (always, in production) sign-in and forgot-password answer 403 until the SPA adds the widget (site key from `GET /api/config`, `data-action` per the [table](#public-auth-routes)). Locally without a secret the check is skipped, so nothing looks broken. The student registration page is part of the portal milestone; its API is final. The invite link lands on `/reset-password?invite=1&token=...`, which the existing reset page handles (it does not show invite wording).
 * Password change for a signed-in user, session list and "sign out everywhere": Better Auth has them; they are not in the route table, so they answer 404 until they are added on purpose.
 * Resend webhooks (bounces and complaints), a daily send counter, per-account lockout over minutes (Durable Object).
 * Promoting an existing student to admin (the invite refuses an address that already has an account).

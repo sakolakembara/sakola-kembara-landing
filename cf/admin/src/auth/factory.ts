@@ -24,9 +24,15 @@ export const RESET_LINK_SECONDS = 30 * 60;
 export const SESSION_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_REFRESH_SECONDS = 24 * 60 * 60;
 
-/** Legacy bounds (app/(auth)/register/actions.ts): at least 8, at most 200 characters. */
+/**
+ * At least 8, at most 128 characters: Better Auth's own bounds, which the SPA's
+ * forms and error mapping already state (spa/src/lib/validation.ts, pinned by
+ * test/spa-contract.test.ts). The legacy app allowed up to 200; nobody types a
+ * password between 129 and 200 characters, and one rule on both sides is worth
+ * more. Change this and `PASSWORD_MAX` in the SPA together.
+ */
 export const PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MAX_LENGTH = 200;
+export const PASSWORD_MAX_LENGTH = 128;
 
 export interface AuthRequestContext {
   /** Origin the browser used, e.g. "https://admin.example.org". */

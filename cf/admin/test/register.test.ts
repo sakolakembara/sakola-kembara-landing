@@ -156,11 +156,12 @@ describe("validation: the legacy rules and wording", () => {
     expect((await invalid({ email: `${"a".repeat(250)}@example.test` })).email).toBeDefined();
   });
 
-  test("password: 8 to 200 characters", async () => {
+  // The legacy form allowed 200; 128 is Better Auth's bound and the one the SPA states (see PASSWORD_MAX_LENGTH).
+  test("password: 8 to 128 characters", async () => {
     expect((await invalid({ password: "1234567" })).password).toEqual(["Password minimal 8 karakter"]);
-    expect((await invalid({ password: "x".repeat(201) })).password).toEqual(["Password maksimal 200 karakter"]);
+    expect((await invalid({ password: "x".repeat(129) })).password).toEqual(["Password maksimal 128 karakter"]);
     expect((await register(uniqueEmail(), { password: "12345678" })).status).toBe(200);
-    expect((await register(uniqueEmail(), { password: "p".repeat(200) })).status).toBe(200);
+    expect((await register(uniqueEmail(), { password: "p".repeat(128) })).status).toBe(200);
   });
 
   test("confirmPassword, when sent, must match", async () => {

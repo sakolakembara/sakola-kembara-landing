@@ -9,6 +9,7 @@
 import { createAuth } from "../src/auth/factory";
 import { hashPassword, verifyPassword } from "../src/auth/password";
 import type { Bindings } from "../src/env";
+import { emailKey } from "../src/security/client";
 
 function summary(label: string, samples: number[]) {
   const sorted = [...samples].sort((a, b) => a - b);
@@ -51,3 +52,9 @@ const init: number[] = [];
 for (let i = 0; i < 101; i++) init.push(await time(() => createAuth(env, context)));
 console.log(`createAuth() first call (cold module graph)      ${first.toFixed(2)} ms`);
 summary("createAuth() per request (warm)", init);
+
+// What the auth gate adds to a sign-in besides the bindings and Turnstile (both are
+// I/O, not CPU): hashing the address into a rate limit key.
+const keys: number[] = [];
+for (let i = 0; i < 201; i++) keys.push(await time(() => emailKey("siswa@example.test")));
+summary("emailKey() (SHA-256 of the address)", keys);
