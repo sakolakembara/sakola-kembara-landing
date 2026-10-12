@@ -1,13 +1,13 @@
 import { describe, expect, test } from "vitest";
 import { CACHE_CONTENT, CACHE_NOT_FOUND } from "../src/public/cache";
 import { pickRelatedArticles } from "../src/public/blog-rules";
-import { call } from "./helpers";
 import { EMPTY_BLOG, EXAMPLES, sameShape } from "./contract-examples";
-import { addPost, addPosts, countedGet, DAY, json } from "./public-helpers";
+import { addPost, addPosts, countedGet, DAY, internalFetch, json } from "./public-helpers";
 
 // GET /api/public/blog and /api/public/blog/{slug}.
 
-const get = (path: string) => call(path);
+// Through the `PublicApi` entrypoint: the only face that serves the read endpoints (test/public-face.test.ts).
+const get = (path: string) => internalFetch(path);
 
 interface Card {
   slug: string;

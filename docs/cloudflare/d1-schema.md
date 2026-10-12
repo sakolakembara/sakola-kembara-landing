@@ -213,7 +213,7 @@ Decided by Dzul (IA admin, [`admin-ia.md`](admin-ia.md), and the SAKEM-081 comme
 | `konten` | Blog (`blog`), Laporan (`reports`), Tim (`team`), Shortlink (`shortlinks`) |
 | `sistem` | Aktivitas (`audit`), Pengaturan (`settings`; admin users and area grants) |
 
-Dashboard has no area: every admin role may open it. Public endpoints (`/api/public/*`, the contact form) have no guard and are throttled by rate limit bindings; the contact form writes `contact_messages`.
+Dashboard has no area: every admin role may open it. Public endpoints (`/api/public/*`, the contact form) have no guard: they are served only to the Astro Worker through the `PublicApi` service binding (the Worker's public face serves none of them, [`public-api.md`](public-api.md)); the contact form is throttled by a rate limit binding and checked with Turnstile, and writes `contact_messages`.
 
 ### How a request is checked
 

@@ -2,14 +2,22 @@
 import Button from '~/components/Button.astro';
 import Icon from '~/components/Icon.astro';
 import { CONTACT_SUBJECT_OPTIONS, type ContactFieldErrors, type ContactValues } from '~/lib/contact';
+import { TURNSTILE_ACTION, TURNSTILE_MESSAGES, TURNSTILE_SCRIPT_URL } from '~/lib/turnstile';
 
 /**
  * The /kontak form, ported from app/(public)/kontak/_contact-form.tsx. It is a plain
- * HTML form that posts to /kontak and works without JavaScript: the page answers a
- * valid post with a redirect to the success state and an invalid one with this form
- * again, the visitor's text put back and the legacy messages under the fields.
- * The two small differences from the React form: the success state comes from the
- * URL (`sent`), and the typed text survives an error (React 19 resets an action's form).
+ * HTML form that posts to /kontak: the page answers a valid post with a redirect to
+ * the success state and an invalid one with this form again, the visitor's text put
+ * back and the legacy messages under the fields. The two small differences from the
+ * React form: the success state comes from the URL (`sent`), and the typed text
+ * survives an error (React 19 resets an action's form).
+ *
+ * The bot check (Cloudflare Turnstile, SAKEM-080/081): with a site key the form carries the widget's
+ * slot, loads Cloudflare's script (here, so only /kontak has it, and not the confirmation) and the
+ * widget adds the hidden field `cf-turnstile-response`. The widget needs JavaScript, so a visitor
+ * without it sees a notice instead (<noscript>) and cannot be verified; the API Worker decides what a
+ * post without a token means (refused in production, accepted where no secret is configured, which is
+ * how local runs and CI post without JavaScript). Without a site key there is no widget at all.
  *
  * Field, Input, Select, Textarea and Alert are the classes of the root components/ui/field.tsx
  * and alert.tsx (DESIGN.md, Forms), spelled out here so Tailwind finds them.
@@ -22,8 +30,10 @@ interface Props {
   message?: string;
   fieldErrors?: ContactFieldErrors;
   values?: Partial<ContactValues>;
+  /** The public Turnstile site key (TURNSTILE_SITE_KEY). Absent: no widget, no Cloudflare script. */
+  turnstileSiteKey?: string;
 }
-const { sent = false, successMessage = '', message, fieldErrors = {}, values = {} } = Astro.props;
+const { sent = false, successMessage = '', message, fieldErrors = {}, values = {}, turnstileSiteKey } = Astro.props;
 
 const control = 'w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none rounded-xl px-4 py-2.5 leading-6';
 const labelClass = 'block text-sm font-medium text-gray-700 mb-2';
@@ -147,6 +157,23 @@ const aria = (field: keyof ContactFieldErrors) =>
         )}
       </div>
 
+      {
+        turnstileSiteKey && (
+          <div>
+            {/* The widget renders here (src/scripts/turnstile-widget.ts). min-h is the widget's height: the page does not jump when it appears. */}
+            <div data-turnstile data-sitekey={turnstileSiteKey} data-action={TURNSTILE_ACTION} class="min-h-[65px]" />
+            <p data-turnstile-failed hidden role="status" class="mt-1.5 text-xs text-danger-fg">
+              {TURNSTILE_MESSAGES.failed}
+            </p>
+            <noscript>
+              <p class="rounded-lg border px-4 py-3 text-sm leading-relaxed border-warning-border bg-warning-bg text-warning-fg">
+                {TURNSTILE_MESSAGES.noScript}
+              </p>
+            </noscript>
+          </div>
+        )
+      }
+
       <div class="pt-1">
         <Button type="submit" size="lg">
           {/* Lucide "send" (18 px), as in the React form. */}
@@ -172,8 +199,20 @@ const aria = (field: keyof ContactFieldErrors) =>
   )
 }
 
+{
+  /* Cloudflare's script, explicit rendering: on /kontak and nowhere else, never on the confirmation, never without a site key. */
+}
+{
+  !sent && turnstileSiteKey && <script is:inline src={TURNSTILE_SCRIPT_URL} async defer data-turnstile-api />
+}
+
 <script>
-  // The only script of the form, and optional: the form posts without it. While the post is in
+  // Renders the widget when Cloudflare's script is there (a no-op without the slot).
+  import '~/scripts/turnstile-widget';
+</script>
+
+<script>
+  // The form's own script, and optional: the form posts without it. While the post is in
   // flight the button is disabled and reads "Mengirim..." (the React form's pending state), which
   // also stops a double click from posting twice. pageshow undoes it when the browser restores
   // the page from its back/forward cache.

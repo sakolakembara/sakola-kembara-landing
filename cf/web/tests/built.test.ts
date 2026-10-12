@@ -100,8 +100,10 @@ describe.skipIf(!built)('build output', () => {
       const v = cfg[key];
       expect(v === undefined || (Array.isArray(v) ? v.length === 0 : Object.values(v).every((x) => !x || (Array.isArray(x) && x.length === 0)))).toBe(true);
     }
-    // The one binding: the internal service binding to the API Worker, by a placeholder name (no ids, no account).
-    expect(cfg.services).toEqual([{ binding: 'API', service: 'sakola-kembara-api' }]);
+    // The one binding: the internal service binding to the API Worker's PublicApi entrypoint, by a placeholder name (no ids, no account).
+    expect(cfg.services).toEqual([{ binding: 'API', service: 'sakem-admin', entrypoint: 'PublicApi' }]);
+    // No var: no API URL (production reads through the binding) and no site key (set per deploy).
+    expect(cfg.vars ?? {}).toEqual({});
     expect(cfg.images).toBeUndefined();
     expect(cfg.routes).toBeUndefined();
     expect(cfg.account_id).toBeUndefined();

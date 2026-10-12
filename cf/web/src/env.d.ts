@@ -5,15 +5,29 @@ declare namespace Cloudflare {
   interface Env {
     /** Stand-in origin for local runs. Unset in production: pass-through is a plain fetch(request). */
     LEGACY_ORIGIN_URL?: string;
-    /** Base URL of the content API (`${CONTENT_API_URL}/api/public/team`, `/reports`, `/resources`). */
+    /**
+     * Local/CI only: base URL of the content API (`${CONTENT_API_URL}/api/public/team`, `/reports`, `/resources`,
+     * `/blog`), a fixture server or a local API. Unset in production, where every read goes through the `API`
+     * binding. When it is set it wins over the binding (lib/api-client.ts).
+     */
     CONTENT_API_URL?: string;
+    /**
+     * The PUBLIC site key of the Turnstile widget on /kontak (not a secret; the matching secret key lives on the
+     * API Worker). Set per deploy; locally Cloudflare's always-pass test key (dev.vars.example). Unset: the form
+     * renders no widget and loads no Cloudflare script.
+     */
+    TURNSTILE_SITE_KEY?: string;
     /** Seconds a fetched team list is served from the cache before the API is asked again (default 300). */
     TEAM_CACHE_FRESH_SECONDS?: string;
     /** Same for the other lists (reports, resources) and for the blog pages and articles: default 60, the contract's `s-maxage`. */
     CONTENT_CACHE_FRESH_SECONDS?: string;
     /** Local/CI only: where the contact form posts instead of the `API` service binding (scripts/fixture-api.mjs). Unset in production. */
     CONTACT_API_URL?: string;
-    /** Service binding to the API Worker (wrangler.jsonc `services`); the contact form and, without CONTENT_API_URL, the read endpoints go through it. */
+    /**
+     * Service binding to the API Worker's `PublicApi` entrypoint (wrangler.jsonc `services`). In production the
+     * contact form and every read of /api/public/* go through it; CONTACT_API_URL and CONTENT_API_URL win over it
+     * when set (local runs and CI only).
+     */
     API?: { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
     /** Rate-limit binding for the contact form (wrangler.jsonc, see its comment). Absent: an in-memory limiter answers instead. */
     CONTACT_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };

@@ -135,12 +135,28 @@ export function instrumentD1(real: D1Database): { db: D1Database; stats: D1Stats
   return { db, stats };
 }
 
-/** Calls the worker's public face with every D1 statement counted. */
+/**
+ * Calls the `PublicApi` entrypoint's app (the only face that serves the read endpoints, since the public one
+ * serves none) with every D1 statement counted. The same app and the same handlers the entrypoint runs, with a
+ * D1 binding that records what goes through it.
+ */
 export async function countedGet(path: string): Promise<{ response: Response; stats: D1Stats }> {
+  const { db, stats } = instrumentD1(env.DB);
+  const response = await internalFetchWithBindings({ ...env, DB: db } as Bindings, path);
+  return { response, stats };
+}
+
+/**
+ * Calls the worker's DEFAULT export (what a route, workers.dev or a custom domain reaches) with every D1
+ * statement counted: the public face, which must not serve `/api/public/*` at all.
+ */
+export async function countedPublicFaceGet(path: string, init: RequestInit = {}): Promise<{ response: Response; stats: D1Stats }> {
   const { default: worker } = await import("../src/worker");
   const { db, stats } = instrumentD1(env.DB);
   const ctx = createExecutionContext();
-  const response = await worker.fetch(new Request(`https://admin.test${path}`, { headers: { "cf-connecting-ip": "203.0.113.9" } }), { ...env, DB: db } as Bindings, ctx);
+  const headers = new Headers(init.headers);
+  if (!headers.has("cf-connecting-ip")) headers.set("cf-connecting-ip", "203.0.113.9");
+  const response = await worker.fetch!(new Request(`https://admin.test${path}`, { ...init, headers }), { ...env, DB: db } as Bindings, ctx);
   await waitOnExecutionContext(ctx);
   return { response, stats };
 }

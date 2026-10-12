@@ -2,8 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { articleTag } from "../src/public/cache";
 import { createContentChangeNotifier, notifyContentChanged, planPurge, STALENESS_SECONDS, ttlOnlyPurger, type ContentChange, type ContentPurger, type PurgePlan } from "../src/public/purge";
 import fixtureSource from "../../web/scripts/fixture-api.mjs?raw";
-import { call } from "./helpers";
-import { addAnnouncement, addPost, addReport, addResource, addTeam } from "./public-helpers";
+import { addAnnouncement, addPost, addReport, addResource, addTeam, internalFetch } from "./public-helpers";
 
 // "Content changed": which public URLs and cache tags an admin save makes
 // stale, and the hook that hands them to a purger. No Cloudflare API is
@@ -65,7 +64,7 @@ describe("what a change makes stale", () => {
       const plan = planPurge(change);
       const tagsSeen = new Set<string>();
       for (const path of plan.paths) {
-        const res = await call(path);
+        const res = await internalFetch(path);
         expect(res.status, path).toBe(200);
         for (const tag of (res.headers.get("cache-tag") ?? "").split(",")) tagsSeen.add(tag.trim());
       }
@@ -76,7 +75,7 @@ describe("what a change makes stale", () => {
 
   test("an article's response carries its own tag and the list's", async () => {
     await addPost({ slug: "satu" });
-    expect((await call("/api/public/blog/satu")).headers.get("cache-tag")).toBe(`${articleTag("satu")},blog`);
+    expect((await internalFetch("/api/public/blog/satu")).headers.get("cache-tag")).toBe(`${articleTag("satu")},blog`);
   });
 
   test("states the bound of the TTL-only option", () => {

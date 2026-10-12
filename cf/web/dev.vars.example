@@ -2,10 +2,15 @@
 # Stand-in for the legacy Next origin (scripts/stub-origin.mjs, default port 4390).
 LEGACY_ORIGIN_URL=http://127.0.0.1:4390
 # Base URL of the content API that serves /api/public/team, /reports, /resources, /blog and /blog/<slug>
-# (scripts/fixture-api.mjs, default port 4391).
+# (scripts/fixture-api.mjs, default port 4391). Local runs and CI only: in production the reads go
+# through the `API` service binding and this must NOT be set (a URL wins over the binding).
 CONTENT_API_URL=http://127.0.0.1:4391
 # Where the contact form posts locally instead of the `API` service binding (the same fixture server).
 # Never set this in production: it would move the form off the binding onto public HTTP.
 CONTACT_API_URL=http://127.0.0.1:4391
+# The PUBLIC site key of the Turnstile widget on /kontak. This is Cloudflare's published always-pass TEST
+# key: it works on any host (localhost included), needs no account, and yields a dummy token. Production
+# sets its own key as a Worker var at deploy time (the matching secret key lives on the API Worker only).
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
 # Optional: seconds a fetched list, blog page or article is cached before the API is asked again (default 60).
 # CONTENT_CACHE_FRESH_SECONDS=60

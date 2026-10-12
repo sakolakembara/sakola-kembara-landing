@@ -19,12 +19,15 @@ import { sameOriginGuard } from "./security/csrf";
 
 const app = new Hono<AppEnv>();
 
-// The public read API (/api/public/*, docs/cloudflare/public-api.md). Mounted
-// before the middleware below on purpose: it needs no session, builds no auth,
-// sends no cookie and sets its own Cache-Control, which the blanket no-store
-// must not replace. It is GET only, so the same-origin guard has nothing to
-// guard there; the contact form is not on this app at all (see
-// src/api/public/internal.ts) and is protected by src/public/contact-deps.ts.
+// The public face of the public API: nothing. /api/public/* (the read
+// endpoints and the contact form, docs/cloudflare/public-api.md) is served only
+// by the `PublicApi` entrypoint below, to the Astro Worker through its service
+// binding, so a request from the internet to /api/public/* is the ordinary JSON
+// 404 at the end of this file and never reaches D1 (a cache-busting query
+// string cannot spend the daily read budget). createPublicApp() mounts no
+// route; test/public-face.test.ts pins that. The contact route is protected
+// by the entrypoint split (src/api/public/internal.ts) and by
+// src/public/contact-deps.ts.
 app.route("/", createPublicApp());
 
 app.use("/api/*", async (c, next) => {
@@ -99,6 +102,7 @@ export default {
   scheduled: (controller, env, _ctx) => scheduledCleanup(controller, env),
 } satisfies ExportedHandler<Bindings>;
 
-// The service-binding face of the public API (read endpoints + the contact
-// form). Not reachable from the internet: see src/api/public/internal.ts.
+// The service-binding face of the public API (the read endpoints and the
+// contact form: the only place either is served). Not reachable from the
+// internet: see src/api/public/internal.ts.
 export { PublicApi } from "./api/public/entrypoint";

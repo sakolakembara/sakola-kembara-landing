@@ -24,14 +24,33 @@ export const PORT_OFFSET = Number(process.env.E2E_PORT_OFFSET ?? 0);
 export const distServer = path.join(webRoot, 'dist/server');
 
 /**
+ * Cloudflare's published always-pass TEST site key (works on any host, needs no account): what the stack
+ * gives the form's widget, like dev.vars.example. The tests never load Cloudflare's script (there is no
+ * browser here, and the DOM runs of scripts/e2e.mjs strip every <script> tag and evaluate the page's own
+ * inline scripts next to a stand-in `window.turnstile`, scripts/lib/turnstile-stub.mjs).
+ */
+export const TURNSTILE_TEST_SITE_KEY = '1x00000000000000000000AA';
+
+/** The probe Worker that stands in for the API Worker behind the service binding (scripts/lib/probe-api-worker.mjs). */
+const probeEntry = path.join(webRoot, 'scripts/lib/probe-api-worker.mjs');
+
+/**
  * @param {{ wranglerConfig?: string, port?: number, stubPort?: number, fixturePort?: number,
- *           inspectorPort?: number, vars?: Record<string,string>, log?: string }} [opts]
+ *           inspectorPort?: number, vars?: Record<string,string>, log?: string,
+ *           binding?: boolean, turnstileSiteKey?: string | null }} [opts]
+ *   binding: how the content API is reached. false (default): CONTENT_API_URL and CONTACT_API_URL point at
+ *     the fixture (a local run, CI), and win over the binding. true: neither is set, so the built Worker
+ *     must use its `API` service binding, which a second Worker named like the config's `services` entry
+ *     (`sakem-admin`) answers on its `PublicApi` entrypoint by forwarding to the fixture.
+ *   turnstileSiteKey: the TURNSTILE_SITE_KEY var (default: the test key); null leaves it unset.
  */
 export async function startStack(opts = {}) {
   const {
     wranglerConfig = path.join(distServer, 'wrangler.json'),
     vars = {},
     log,
+    binding = false,
+    turnstileSiteKey = TURNSTILE_TEST_SITE_KEY,
   } = opts;
   const port = (opts.port ?? 8791) + PORT_OFFSET;
   const stubPort = (opts.stubPort ?? 4390) + PORT_OFFSET;
@@ -42,15 +61,36 @@ export async function startStack(opts = {}) {
   const fixture = await startFixtureApi({ port: fixturePort });
   const persist = mkdtempSync(path.join(tmpdir(), 'sakem-wrangler-'));
 
+  // The probe Worker's own config: the name and entrypoint the web Worker's `services` entry asks for.
+  let probeConfig = null;
+  if (binding) {
+    const web = JSON.parse(readFileSync(wranglerConfig, 'utf8'));
+    const service = web.services?.find((s) => s.binding === 'API');
+    if (!service) throw new Error(`${wranglerConfig} has no \`API\` service binding`);
+    probeConfig = path.join(persist, 'probe-api.wrangler.json');
+    writeFileSync(
+      probeConfig,
+      JSON.stringify({
+        name: service.service,
+        main: probeEntry,
+        compatibility_date: web.compatibility_date,
+        vars: { FIXTURE_URL: `http://127.0.0.1:${fixturePort}` },
+      }),
+    );
+  }
+
   const args = [
     'dev',
     '-c', wranglerConfig,
+    ...(probeConfig ? ['-c', probeConfig] : []),
     '--port', String(port),
     '--inspector-port', String(inspectorPort),
     '--persist-to', persist,
     '--var', `LEGACY_ORIGIN_URL:http://127.0.0.1:${stubPort}`,
-    '--var', `CONTENT_API_URL:http://127.0.0.1:${fixturePort}`,
-    '--var', `CONTACT_API_URL:http://127.0.0.1:${fixturePort}`,
+    ...(binding
+      ? []
+      : ['--var', `CONTENT_API_URL:http://127.0.0.1:${fixturePort}`, '--var', `CONTACT_API_URL:http://127.0.0.1:${fixturePort}`]),
+    ...(turnstileSiteKey ? ['--var', `TURNSTILE_SITE_KEY:${turnstileSiteKey}`] : []),
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]),
   ];
   const child = spawn(path.join(webRoot, 'node_modules/.bin/wrangler'), args, {

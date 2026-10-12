@@ -1,16 +1,20 @@
 // How this Worker reaches the API Worker (docs/cloudflare/content-api.md,
 // "How the callers reach the API").
 //
-//   production   an internal SERVICE BINDING named `API` (wrangler.jsonc, `services`). The Worker
-//                calls the API Worker directly, not over the public internet, so there is no
-//                public path to authenticate and no shared secret. A service binding ignores the
-//                host of the URL it is given, only the path counts.
+//   production   an internal SERVICE BINDING named `API`, bound to the API Worker's `PublicApi`
+//                entrypoint (wrangler.jsonc, `services`). Every call goes through it: the contact form
+//                and ALL reads of /api/public/* (/tim, /laporan, /gabung-siswa/docs, the blog). The
+//                Worker calls the API Worker directly, not over the public internet, so there is no
+//                public path to authenticate and no shared secret, and the read endpoints are not
+//                reachable from the internet at all (a cache-busting query string cannot reach D1).
+//                A service binding ignores the host of the URL it is given, only the path counts.
 //   local / CI   `CONTENT_API_URL` (read endpoints) and `CONTACT_API_URL` (the contact form) point at
 //                scripts/fixture-api.mjs. They win over the binding whenever they are set, so a
-//                developer machine never needs the API Worker. Do not set them in production:
-//                the contact form would then leave the binding and travel over public HTTP.
-//   (`/tim`, `/laporan` and `/gabung-siswa/docs` read CONTENT_API_URL only, through lib/content-api.ts;
-//   moving them to the binding is `target.base` and `target.fetchImpl` in their `contentRuntime`.)
+//                developer machine never needs the API Worker. Do not set them in production: the
+//                reads and the contact form would then leave the binding and travel over public HTTP.
+//   Every page that reads content takes its target from `contentApiTarget` (lib/content-api.ts
+//   `contentRuntime` for /tim, /laporan and /gabung-siswa/docs; lib/blog.ts for the blog), so the
+//   rule above is decided in this one file.
 
 /** The bit of a service binding this site uses. */
 export interface ServiceBinding {

@@ -14,12 +14,14 @@ import { CACHE_NONE } from "../../public/cache";
 // names it (`entrypoint` in the caller's wrangler.jsonc) or through
 // `ctx.exports` inside this Worker. So:
 //
-//   - the default export (src/worker.ts) builds the public app: the read
-//     endpoints and nothing else. The contact route does not exist there, so
-//     `POST /api/public/contact` from the internet is the Worker's ordinary 404;
+//   - the default export (src/worker.ts) builds the public app, which mounts
+//     nothing under /api/public: neither the read endpoints nor the contact
+//     route exist there, so `POST /api/public/contact` and every
+//     `GET /api/public/*` from the internet are the Worker's ordinary 404,
+//     with no D1 read;
 //   - the `PublicApi` entrypoint (./entrypoint.ts) builds the internal app: the
-//     same read endpoints plus the contact route, and it marks every request
-//     with `markServiceBindingCall`;
+//     read endpoints and the contact route, the only place either exists, and
+//     it marks every request with `markServiceBindingCall`;
 //   - the contact route itself refuses a request that carries no mark
 //     (`requireServiceBinding`), so a future edit that mounts it on the public
 //     app by mistake still answers 404 instead of trusting a forged header.

@@ -27,9 +27,10 @@ import {
 import type { AnnouncementResponse, BlogArticleResponse, BlogListResponse, ReportsResponse, ResourcesResponse, TeamResponse } from "../../public/types";
 
 // The unauthenticated, read-only half of the public API (contract:
-// docs/cloudflare/content-api.md). Mounted under /api/public on the Worker's
-// public entrypoint and, for the Astro Worker's service binding, on the
-// internal one. No cookies, no CORS, no request header changes an answer.
+// docs/cloudflare/content-api.md). Mounted under /api/public on the internal
+// app only, which the `PublicApi` entrypoint serves to the Astro Worker's
+// service binding; the Worker's public face (the default export) mounts none
+// of it (./index.ts). No cookies, no CORS, no request header changes an answer.
 
 type ReadEnv = { Bindings: Bindings };
 type ReadContext = Context<ReadEnv>;
