@@ -74,6 +74,7 @@ Both fonts are subsetted to `latin` and load with `display: "swap"`.
 - **react-markdown 10** + **remark-gfm 4** render markdown in `components/blog/BlogPostContent.tsx`.
 - Backend conversion uses **gray-matter** (frontmatter), **marked** (markdown → HTML for the JSON cache), **turndown** + **turndown-plugin-gfm** (WP HTML → markdown on scrape).
 - The pipeline lives in `scripts/lib/blog-pipeline.mjs`. See [`blog-pipeline.md`](blog-pipeline.md).
+- `GET /api/public/blog/[slug]` returns the article as HTML too. `lib/public-api/blog-html.ts` renders it with **unified** + **remark-parse** + **remark-gfm** + **remark-rehype** + **rehype-stringify**: the same pipeline react-markdown runs internally, ending in a string, because Next does not allow `react-dom/server` in a route handler. See [`../cloudflare/content-api.md`](../cloudflare/content-api.md).
 
 ## Deployment
 

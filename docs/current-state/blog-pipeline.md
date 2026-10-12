@@ -50,6 +50,8 @@ Used by `app/blog/[id]/page.tsx`. Prefers `markdown` over `html`:
 - Anchor links open in a new tab if `href` starts with `http`.
 - Otherwise falls back to dangerously rendering pre-generated `html`.
 
+The public JSON API renders the same markdown to an HTML string in `lib/public-api/blog-html.ts` (see [`../cloudflare/content-api.md`](../cloudflare/content-api.md)); `__tests__/blog-html-parity.test.tsx` keeps the two renderers in step. The index layout (featured + pages) and the related-articles rule are shared helpers in `lib/blog-types.ts` (`buildBlogIndex`, `pickRelatedArticles`), used by both the pages and the API.
+
 Styling is provided by `.blog-content` rules in `app/globals.css` (h2/h3 sizes, paragraph spacing, blockquote with yellow left border, table, code, etc.).
 
 ## Pipeline scripts

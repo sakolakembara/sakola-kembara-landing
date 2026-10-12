@@ -17,6 +17,10 @@ Defined under `app/` (Next.js App Router):
 
 There is **no** `/tentang-kami`, `/siswa`, `/laporan`, or `/team`.
 
+### Public content API (`/api/public/*`)
+
+Read-only JSON for the Astro site that replaces the public pages during phase 1 of the Cloudflare migration (SAKEM-074/076), plus one signed server-to-server endpoint for the contact form: `GET /api/public/{team,reports,resources,announcements/current,blog,blog/[slug]}` and `POST /api/public/contact`. Not a user-facing route. Contract, caching, signing and what a later Worker API must reproduce: [`../cloudflare/content-api.md`](../cloudflare/content-api.md). These sit under `/api`, which is already reserved for shortlinks.
+
 ### Root-level shortlinks
 
 `app/(public)/[slug]/page.tsx` also serves the whole root namespace as
