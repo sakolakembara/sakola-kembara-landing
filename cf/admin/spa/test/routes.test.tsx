@@ -157,7 +157,6 @@ describe("placeholder pages", () => {
       ["/batches", "Batch Pendaftaran"],
       ["/applications", "Pendaftar"],
       ["/resources", "Pusat Dokumen"],
-      ["/messages", "Pesan"],
       ["/blog", "Blog"],
       ["/reports", "Laporan"],
       ["/team", "Tim"],
@@ -186,9 +185,7 @@ describe("placeholder pages", () => {
       view.unmount();
     };
     await check(["editor", ["konten"]], "/blog", "Bisa mengubah", "Hanya baca");
-    await check(["editor", ["konten", "komunikasi"]], "/messages", "Bisa mengubah", "Hanya baca");
     await check(["viewer"], "/blog", "Hanya baca", "Bisa mengubah");
-    await check(["viewer"], "/messages", "Hanya baca", "Bisa mengubah");
     await check(["super_admin"], "/blog", "Bisa mengubah", "Hanya baca");
   });
 

@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { uploadChecks } from "./negative-checks-uploads.mjs";
 import { crudChecks } from "./negative-checks-crud.mjs";
 import { sistemChecks } from "./negative-checks-sistem.mjs";
+import { komunikasiChecks } from "./negative-checks-komunikasi.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -38,6 +39,9 @@ const checks = [
 
   // Aktivitas and Pengaturan (SAKEM-082): scripts/negative-checks-sistem.mjs.
   ...sistemChecks,
+
+  // The Komunikasi area, Pesan and Pengumuman (SAKEM-082): scripts/negative-checks-komunikasi.mjs.
+  ...komunikasiChecks,
 
   // ---------------------------------------------------------------- auth
   {

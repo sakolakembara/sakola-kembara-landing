@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { PREVIEW_LENGTH } from "../src/api/messages";
 import { spyOnD1 } from "./crud-app";
 import { call, signedInCookie, uniqueEmail } from "./helpers";
-import { instrumentD1 } from "./public-helpers";
+import { instrumentD1, internalFetch, uniqueIp } from "./public-helpers";
 
 // Pesan, `/api/admin/messages` (src/api/messages.ts, docs/cloudflare/admin-komunikasi.md): who may do what,
 // what the list and the detail answer, and above all the rule that opening a message (a GET) never marks it read.
@@ -441,6 +441,24 @@ describe("the counts, and the dashboard's unread number (one definition)", () =>
     const next = (await list("?filter=unread", cookie)).items[0]!;
     await call(`${BASE}/${next.id}`, { cookie });
     expect(await unreadEverywhere()).toEqual([2, 2, 2]);
+  });
+});
+
+describe("from the public contact form to the inbox", () => {
+  test("a message sent through the PublicApi entrypoint arrives unread, whole, and the dashboard and the counts count it", async () => {
+    const cookie = await signedInCookie(uniqueEmail("root"), "super_admin");
+    const sent = { fullName: "Budi Pengirim", email: "budi.pengirim@example.test", subject: "partnership", message: "Kami ingin bekerja sama.\nMohon dihubungi kembali.", website: "" };
+    const res = await internalFetch("/api/public/contact", { method: "POST", json: sent, clientIp: uniqueIp() });
+    expect(res.status).toBe(201);
+
+    const listed = await list("", cookie);
+    expect(listed.total).toBe(1);
+    expect(listed.items[0]).toMatchObject({ fullName: "Budi Pengirim", email: "budi.pengirim@example.test", subject: "partnership", readAt: null, preview: "Kami ingin bekerja sama.\nMohon dihubungi kembali." });
+    const one = (await (await call(`${BASE}/${listed.items[0]!.id}`, { cookie })).json()) as { item: { message: string; readAt: unknown } };
+    expect(one.item).toMatchObject({ message: sent.message, readAt: null });
+    expect(await (await call(`${BASE}/counts`, { cookie })).json()).toEqual({ total: 1, unread: 1 });
+    const dashboard = (await (await call("/api/dashboard", { cookie })).json()) as { attention: { unreadMessages?: { count: number; to: string } } };
+    expect(dashboard.attention.unreadMessages).toEqual({ count: 1, to: "/messages?filter=unread" });
   });
 });
 
