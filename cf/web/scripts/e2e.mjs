@@ -6,7 +6,8 @@
 // Covers: status codes of every page type, the real 404, all 80 WordPress
 // redirects, the other redirect rules, pass-through (method, headers, body,
 // cookies, redirects not followed), Astro paths NOT reaching the origin, /tim
-// timeout / cache / stale-if-error, SEO tags in the served HTML, security
+// timeout / cache / stale-if-error (also /laporan and /gabung-siswa/docs: grouping, anchors, copy
+// buttons run in a DOM, degraded and empty states), SEO tags in the served HTML, security
 // headers, images and PDFs served as static assets (never through the origin).
 // Prints a summary and exits non-zero on any failure.
 
@@ -14,7 +15,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import { Window } from 'happy-dom';
 import { startStack, webRoot } from './lib/harness.mjs';
+import { SAMPLE_REPORTS, SAMPLE_RESOURCES } from './fixture-api.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
 import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
 import { checkImgTag, localUrls, parseAttrs } from './lib/dist-audit.mjs';
@@ -25,7 +28,7 @@ if (!existsSync(path.join(webRoot, 'dist/server/wrangler.json'))) {
 }
 
 const articles = JSON.parse(readFileSync(path.join(webRoot, '../../lib/blog-posts.json'), 'utf8')).articles;
-const stack = await startStack({ log: path.join(webRoot, 'dist/e2e-wrangler.log'), vars: { TEAM_CACHE_FRESH_SECONDS: '2' } });
+const stack = await startStack({ log: path.join(webRoot, 'dist/e2e-wrangler.log'), vars: { TEAM_CACHE_FRESH_SECONDS: '2', CONTENT_CACHE_FRESH_SECONDS: '2' } });
 const { base, stub } = stack;
 
 /** Every HTTP exchange the checks made: used for the status-code tally. */
@@ -174,7 +177,7 @@ await check('canonical-url', 'prerendered article with a trailing slash: the ass
 
 // ---------------------------------------------------------------- pass-through
 const legacyPages = ['/login', '/register', '/forgot-password', '/reset-password?token=abc', '/verify-email?token=abc',
-  '/laporan', '/kontak', '/gabung-siswa', '/gabung-siswa/docs'];
+  '/kontak'];
 for (const p of legacyPages) {
   await check('pass-through', `GET ${p} reaches the origin (200)`, async () => {
     clearStub();
@@ -551,11 +554,358 @@ await check('tim', 'API returns invalid JSON shape: treated as an error (empty o
   }
 });
 
+// ---------------------------------------------------------------- /laporan, /gabung-siswa, /gabung-siswa/docs (SAKEM-080, part D)
+// /laporan and /gabung-siswa/docs are SSR from the content API (fixture: scripts/fixture-api.mjs);
+// /gabung-siswa is a prerendered file of the assets layer. The tim checks above left the main
+// fixture failing, so it is reset first.
+const decode = (t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(?:39|x27);/g, "'").replace(/&amp;/g, '&');
+const mainText = (html) =>
+  decode(
+    html
+      .slice(html.indexOf('id="konten-utama"'), html.indexOf('<footer'))
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<svg[\s\S]*?<\/svg>/g, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' '),
+  );
+const anchorTags = (html) => [...html.matchAll(/<a\s[^>]*>/g)].map((m) => m[0]);
+const fixtureStats = async (port = 4391) => (await fetch(`http://127.0.0.1:${port}/__hits`)).json();
+const setMode = (port, mode, only) => fetch(`http://127.0.0.1:${port}/__mode?m=${mode}${only ? `&for=${only}` : ''}`, { method: 'POST' });
+const inlineScripts = (html) => [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json')).map((m) => m[2]);
+const notes = [];
+await setMode(4391, 'ok');
+const listLogStart = stack.output().length;
+
+await check('reports', '/laporan: SSR 200 from the API, one h1, years newest first, cards in the API order, PDF links as the API gave them, origin not asked', async () => {
+  clearStub();
+  const res = await get('/laporan');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.equal(res.headers.get('x-reports-source'), 'network');
+  assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+  assert.equal(stubHits().length, 0, 'must not reach the origin');
+  const html = await text(res);
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  const years = [...html.matchAll(/<h2 class="[^"]*">(Tahun[^<]*)<\/h2>/g)].map((m) => m[1]);
+  assert.deepEqual(years, ['Tahun Ajaran 2025/2026', 'Tahun 2025', 'Tahun Ajaran 2024/2025', 'Tahun 2024']);
+  assert.deepEqual([...html.matchAll(/<span class="text-sm text-gray-500">(\d+) laporan<\/span>/g)].map((m) => Number(m[1])), [2, 2, 1, 1]);
+  const titles = [...html.matchAll(/<h3 class="text-lg font-bold text-gray-900 mb-2 leading-snug">([^<]*)<\/h3>/g)].map((m) => decode(m[1]));
+  assert.deepEqual(titles, SAMPLE_REPORTS.map((r) => r.title)); // the fixture lists them in display order
+  const tags = [...html.matchAll(/rounded-full text-xs font-semibold border border-(\w+)-200 [^"]*">([^<]*)<\/span>/g)].map((m) => `${m[1]}:${m[2]}`);
+  assert.deepEqual(tags, ['purple:Laporan Dampak', 'emerald:Laporan Keuangan', 'blue:Laporan Tahunan', 'amber:Laporan Donasi', 'purple:Laporan Dampak', 'blue:Laporan Tahunan']);
+  assert.deepEqual([...html.matchAll(/<div class="text-xs text-gray-500 mb-4">([^<]*)<\/div>/g)].map((m) => m[1]), ['PDF · 1.8 MB', 'PDF · 500 KB', 'PDF · 3.0 MB', 'PDF · 85 KB', 'PDF · 1.5 MB', 'PDF · 2.3 MB']);
+  const links = anchorTags(html).filter((a) => a.includes('href="/reports/'));
+  assert.deepEqual(links.map((a) => attrOf(a, 'href')), SAMPLE_REPORTS.map((r) => r.filePath));
+  for (const a of links) {
+    assert.equal(attrOf(a, 'target'), '_blank');
+    assert.equal(attrOf(a, 'rel'), 'noopener noreferrer');
+  }
+  const t = mainText(html);
+  assert.ok(t.includes('Komitmen kami untuk transparansi.'));
+  assert.ok(t.includes('Punya pertanyaan tentang laporan kami?'));
+  assert.ok(html.includes('href="/kontak"'));
+  assert.ok(!html.includes('application/ld+json'));
+});
+await check('reports', '/laporan: a second request inside the fresh window comes from caches.default (the API is not asked again)', async () => {
+  const before = (await fixtureStats()).byEndpoint.reports;
+  const res = await get('/laporan');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('x-reports-source'), 'cache');
+  assert.equal((await fixtureStats()).byEndpoint.reports, before);
+});
+
+await check('resources', '/gabung-siswa/docs: SSR 200, five categories in order, every contents link has its section, entries counted per category', async () => {
+  clearStub();
+  const res = await get('/gabung-siswa/docs');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('x-resources-source'), 'network');
+  assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+  assert.equal(stubHits().length, 0, 'must not reach the origin');
+  const html = await text(res);
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  const order = ['panduan', 'berkas-pendaftaran', 'berkas-marketing', 'tutorial', 'lainnya'];
+  const toc = html.match(/<nav aria-label="Kategori dokumen"[\s\S]*?<\/nav>/)?.[0] ?? '';
+  assert.deepEqual([...toc.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), order);
+  assert.deepEqual([...toc.matchAll(/>\s*([^<>\s][^<>]*?)\s*<\/a>/g)].map((m) => m[1]), ['Panduan Pendaftaran', 'Berkas Pendaftaran', 'Berkas Marketing', 'Tutorial', 'Lainnya']);
+  const at = order.map((id) => {
+    assert.ok(html.includes(`<section id="${id}" class="scroll-mt-24" aria-labelledby="heading-${id}">`), `section ${id}`);
+    assert.ok(html.includes(`id="heading-${id}"`), `heading of ${id}`);
+    return html.indexOf(`<section id="${id}"`);
+  });
+  assert.deepEqual([...at].sort((a, b) => a - b), at, 'sections out of order');
+  const counts = order.map((_, i) => (html.slice(at[i], at[i + 1] ?? html.length).match(/<article\b/g) ?? []).length);
+  assert.deepEqual(counts, order.map((id) => SAMPLE_RESOURCES.filter((r) => r.category === id).length));
+  assert.ok(!html.includes('application/ld+json'));
+  const t = mainText(html);
+  assert.ok(t.includes('Panduan lengkap, poin-poin penting, dan alur pendaftaran Sakola Kembara.'));
+  assert.ok(t.includes('Dokumen tambahan yang tidak masuk kategori di atas.'));
+  assert.ok(html.includes('<a href="/portal/daftar"'));
+  assert.ok(html.includes('<a href="/gabung-siswa"'));
+});
+await check('resources', '/gabung-siswa/docs: files and links open in a new tab with rel noopener noreferrer (files also download); a text entry has a hidden copy button that points at its <pre>', async () => {
+  const html = await text(await get('/gabung-siswa/docs'));
+  const links = anchorTags(html);
+  for (const r of SAMPLE_RESOURCES) {
+    if (r.contentType === 'file' || r.contentType === 'url') {
+      const href = r.contentType === 'file' ? r.filePath : r.externalUrl;
+      const a = links.find((x) => attrOf(x, 'href') === href);
+      assert.ok(a, `${r.title}: no link to ${href}`);
+      assert.equal(attrOf(a, 'target'), '_blank', r.title);
+      assert.equal(attrOf(a, 'rel'), 'noopener noreferrer', r.title);
+      assert.equal(/\sdownload[\s>=]/.test(a), r.contentType === 'file', `${r.title}: download attribute`);
+    } else {
+      const preId = `resource-text-${r.id}`;
+      const pre = html.match(new RegExp(`<pre id="${preId}"[^>]*>([\\s\\S]*?)</pre>`));
+      assert.ok(pre, `${r.title}: <pre>`);
+      assert.equal(decode(pre[1]), r.bodyText);
+      const button = html.match(new RegExp(`<button [^>]*data-copy-text="${preId}"[^>]*>`))?.[0];
+      assert.ok(button, `${r.title}: copy button`);
+      assert.match(button, /type="button"/);
+      assert.match(button, /\shidden[\s>]/);
+      assert.equal(attrOf(button, 'aria-label'), `Salin teks ${r.title}`);
+    }
+  }
+  const t = mainText(html);
+  for (const label of ['Unduh', 'Buka', 'Salin', 'Tersalin', 'Teks · siap disalin', 'Link eksternal', 'File · 881 KB']) assert.ok(t.includes(label), label);
+});
+await check('resources', 'the copy script, run against the served page in a DOM: un-hides the buttons, copies the <pre>, shows "Tersalin" and says so, returns to "Salin"; a refused copy shows nothing; no console error', async () => {
+  const html = await text(await get('/gabung-siswa/docs'));
+  const scripts = inlineScripts(html);
+  const copy = scripts.find((c) => c.includes('data-copy-text'));
+  assert.ok(copy, 'copy script');
+  notes.push(`copy-button script on /gabung-siswa/docs: ${Buffer.byteLength(copy)} bytes raw, inline (the navbar script next to it: ${Buffer.byteLength(scripts.find((c) => c.includes('nav-toggle')))})`);
+  assert.ok(Buffer.byteLength(copy) < 1200, `${Buffer.byteLength(copy)} bytes`);
+
+  const problems = [];
+  const sink = (...a) => void problems.push(a.join(' '));
+  const window = new Window({ url: `${base}/gabung-siswa/docs`, console: { error: sink, warn: sink, log() {}, info() {}, debug() {} } });
+  try {
+    window.document.documentElement.innerHTML = html
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<link rel="stylesheet"[^>]*>/g, '')
+      .replace(/^<!doctype html>/i, '');
+    window.fetch = () => Promise.reject(new Error('offline')); // the navbar script asks the legacy app, which is not here
+    let copied = null;
+    let writeOk = true;
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (t) => (writeOk ? void (copied = t) : Promise.reject(new Error('denied'))) },
+    });
+    window.addEventListener('error', (e) => problems.push(`window error: ${e.message}`));
+    const buttons = () => [...window.document.querySelectorAll('[data-copy-text]')];
+    assert.ok(buttons().length >= 2);
+    for (const b of buttons()) assert.equal(b.hidden, true, 'hidden until the script runs');
+    for (const code of scripts) window.eval(code);
+    for (const b of buttons()) assert.equal(b.hidden, false);
+
+    const first = buttons()[0];
+    const state = (b) => ({
+      copied: b.hasAttribute('data-copied'),
+      idle: b.querySelector('[data-copy-idle]').hidden,
+      done: b.querySelector('[data-copy-done]').hidden,
+      said: b.parentElement.querySelector('[data-copy-status]').textContent,
+    });
+    assert.deepEqual(state(first), { copied: false, idle: false, done: true, said: '' });
+    first.click();
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(copied, SAMPLE_RESOURCES.find((r) => `resource-text-${r.id}` === first.dataset.copyText).bodyText);
+    assert.deepEqual(state(first), { copied: true, idle: true, done: false, said: 'Teks tersalin ke papan klip.' });
+    await new Promise((r) => setTimeout(r, 1900));
+    assert.deepEqual(state(first), { copied: false, idle: false, done: true, said: '' });
+
+    // refused by the browser and by the fallback: no success shown
+    writeOk = false;
+    window.document.execCommand = () => false;
+    const second = buttons()[1];
+    second.click();
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(state(second).copied, false);
+    // refused by the browser, accepted by the fallback (a hidden textarea is used and removed again)
+    window.document.execCommand = () => true;
+    second.click();
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(state(second).copied, true);
+    assert.equal(window.document.querySelectorAll('textarea').length, 0);
+  } finally {
+    await window.happyDOM.close();
+  }
+  assert.deepEqual(problems, []);
+});
+
+await check('gabung-siswa', '/gabung-siswa: 200 html from the assets layer, one h1, SEO tags, no JSON-LD, origin not asked', async () => {
+  clearStub();
+  const res = await get('/gabung-siswa');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.equal(stubHits().length, 0, 'must not reach the origin');
+  const html = await text(res);
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  assert.match(html, /<title>Daftar Siswa \| Sakola Kembara<\/title>/);
+  assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/gabung-siswa');
+  assert.match(html, /<meta name="description" content="Daftarkan diri sebagai siswa Sakola Kembara\./);
+  assert.ok(!html.includes('application/ld+json'));
+  const t = mainText(html);
+  for (const phrase of ['Open Recruitment Gen 6', 'Wujudkan Mimpimu Bersama Sakola Kembara', 'Manfaat Bergabung dengan Sakola Kembara', 'Alur Pendaftaran', 'Siap Bergabung dengan Sakola Kembara?', 'Pusat Dokumen']) {
+    assert.ok(t.includes(phrase), phrase);
+  }
+  for (const step of ['01', '02', '03', '04']) assert.ok(t.includes(` ${step} `), step);
+  assert.equal((html.match(/<h3 class="font-bold text-gray-900 mb-2">/g) ?? []).length, 4, 'four steps');
+  const links = anchorTags(html);
+  assert.equal(links.filter((a) => attrOf(a, 'href') === '/portal/daftar').length, 2, 'the two Daftar Sekarang buttons');
+  assert.equal(links.filter((a) => attrOf(a, 'href') === '/gabung-siswa/docs').length, 1);
+  assert.ok(links.some((a) => attrOf(a, 'href') === '#manfaat'));
+  assert.ok(html.includes('<section id="manfaat"'));
+  assert.equal(inlineScripts(html).length, 1, 'the navbar script is the only script');
+});
+await check('gabung-siswa', 'trailing slashes: /gabung-siswa/ (assets layer) and /gabung-siswa/docs/, /laporan/ (middleware) go to the clean URL', async () => {
+  clearStub();
+  const a = await get('/gabung-siswa/');
+  assert.equal(a.headers.get('location'), '/gabung-siswa');
+  assert.ok([307, 308].includes(a.status));
+  for (const [from, to] of [['/gabung-siswa/docs/', '/gabung-siswa/docs'], ['/laporan/', '/laporan'], ['/laporan.html', '/laporan']]) {
+    const res = await get(from);
+    assert.equal(res.status, 308, from);
+    assert.equal(res.headers.get('location'), to, from);
+  }
+  assert.equal(stubHits().length, 0);
+});
+await check('gabung-siswa', 'the sitemap lists /laporan and /gabung-siswa (not /gabung-siswa/docs, like the Next sitemap)', async () => {
+  const xml = await text(await get('/sitemap.xml'));
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/laporan</loc>'));
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa</loc>'));
+  assert.ok(!xml.includes('/gabung-siswa/docs'));
+});
+await check('gabung-siswa', 'the Worker logged no error while serving /laporan, /gabung-siswa and /gabung-siswa/docs', async () => {
+  assert.doesNotMatch(stack.output().slice(listLogStart), /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
+});
+
+// API failure: degraded and empty states, stale-if-error. One stack, steps in order (the cache is shared).
+{
+  const failing = await startStack({ port: 8795, stubPort: 4398, fixturePort: 4399, inspectorPort: 9335, vars: { CONTENT_CACHE_FRESH_SECONDS: '1' } });
+  const page = (p) => fetch(`${failing.base}${p}`, { redirect: 'manual' });
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const lists = [
+    { path: '/laporan', header: 'x-reports-source', endpoint: 'reports', degraded: 'Laporan belum dapat ditampilkan', empty: 'Laporan akan segera tersedia', data: 'Laporan Dampak 2025/2026' },
+    { path: '/gabung-siswa/docs', header: 'x-resources-source', endpoint: 'resources', degraded: 'Dokumen belum dapat ditampilkan', empty: 'Dokumen akan segera tersedia', data: 'Panduan Pendaftaran Siswa Baru' },
+  ];
+  try {
+    await setMode(4399, '500', 'resources');
+    await setMode(4399, 'badjson', 'reports');
+    for (const l of lists) {
+      await check('degraded', `${l.path}: API failing and nothing cached -> 503 with the page shell and a clear notice, never cached, Retry-After`, async () => {
+        const res = await page(l.path);
+        assert.equal(res.status, 503);
+        assert.equal(res.headers.get(l.header), 'empty');
+        assert.equal(res.headers.get('cache-control'), 'no-store');
+        assert.equal(res.headers.get('retry-after'), '30');
+        assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+        assert.match(res.headers.get('content-type'), /text\/html/);
+        const html = await res.text();
+        const t = mainText(html);
+        assert.ok(t.includes(l.degraded), 'degraded notice');
+        assert.ok(!t.includes(l.empty), 'must not claim the list is empty');
+        assert.ok(html.includes('role="status"'));
+        assert.ok(html.includes('id="site-nav"') && html.includes('<footer'), 'shell is there');
+        assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+        assert.ok(!html.includes('<nav aria-label="Kategori dokumen"'));
+        assert.match(html, /<link rel="canonical" href="https:\/\/sakolakembara\.org\//);
+      });
+    }
+
+    await setMode(4399, 'ok');
+    for (const l of lists) {
+      await check('degraded', `${l.path}: the API is back -> 200 with the data`, async () => {
+        const res = await page(l.path);
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get(l.header), 'network');
+        assert.ok(mainText(await res.text()).includes(l.data));
+      });
+    }
+
+    await setMode(4399, 'empty');
+    await wait(1300); // the 1 s fresh window is over
+    for (const l of lists) {
+      await check('empty', `${l.path}: an empty list is the legacy empty state, a normal cacheable 200`, async () => {
+        const res = await page(l.path);
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get(l.header), 'network');
+        assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+        const html = await res.text();
+        const t = mainText(html);
+        assert.ok(t.includes(l.empty), 'empty-state copy');
+        assert.ok(!t.includes(l.degraded));
+        assert.ok(!html.includes('<nav aria-label="Kategori dokumen"'));
+      });
+    }
+
+    await setMode(4399, 'ok');
+    await wait(1300);
+    for (const l of lists) {
+      await check('empty', `${l.path}: the list is back after the empty one`, async () => {
+        const res = await page(l.path);
+        assert.equal(res.status, 200);
+        assert.ok(mainText(await res.text()).includes(l.data));
+      });
+    }
+
+    await setMode(4399, '500');
+    await wait(1300);
+    for (const l of lists) {
+      await check('stale', `${l.path}: API 500 after the fresh window -> the last good copy is served (200, short s-maxage), then reused for 30 s without asking the API`, async () => {
+        const before = (await fixtureStats(4399)).byEndpoint[l.endpoint];
+        const res = await page(l.path);
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get(l.header), 'stale');
+        assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=30');
+        assert.ok(mainText(await res.text()).includes(l.data));
+        assert.equal((await fixtureStats(4399)).byEndpoint[l.endpoint], before + 1);
+        const again = await page(l.path);
+        assert.equal(again.status, 200);
+        assert.equal(again.headers.get(l.header), 'cache');
+        assert.equal((await fixtureStats(4399)).byEndpoint[l.endpoint], before + 1);
+      });
+    }
+  } finally {
+    await failing.stop();
+  }
+}
+{
+  // A hanging API: the 2 s timeout fires. Resources on a cold cache (-> 503), reports with a stale copy (-> 200).
+  const slow = await startStack({ port: 8796, stubPort: 4400, fixturePort: 4401, inspectorPort: 9336, vars: { CONTENT_CACHE_FRESH_SECONDS: '1' } });
+  try {
+    await check('degraded', '/gabung-siswa/docs: a hanging API on a cold cache is cut off after about 2 s and answers the degraded 503', async () => {
+      await setMode(4401, 'slow', 'resources');
+      const started = performance.now();
+      const res = await fetch(`${slow.base}/gabung-siswa/docs`);
+      const ms = performance.now() - started;
+      assert.equal(res.status, 503);
+      assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
+      assert.ok(mainText(await res.text()).includes('Dokumen belum dapat ditampilkan'));
+    });
+    await check('stale', '/laporan: a hanging API with a stale copy: after about 2 s the stale copy is served', async () => {
+      assert.equal((await fetch(`${slow.base}/laporan`)).headers.get('x-reports-source'), 'network');
+      await setMode(4401, 'slow', 'reports');
+      await new Promise((r) => setTimeout(r, 1300));
+      const started = performance.now();
+      const res = await fetch(`${slow.base}/laporan`);
+      const ms = performance.now() - started;
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('x-reports-source'), 'stale');
+      assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
+    });
+  } finally {
+    await slow.stop();
+  }
+}
+
 // ---------------------------------------------------------------- SEO in served HTML
 const SEO_PAGES = [
   { path: '/', title: 'Sakola Kembara - Pendidikan Untuk Semua', canonical: 'https://sakolakembara.org/', ld: 'NGO' },
   { path: '/blog', title: 'Blog &amp; Cerita | Sakola Kembara', canonical: 'https://sakolakembara.org/blog' },
   { path: '/tim', title: 'Tim Kami | Sakola Kembara', canonical: 'https://sakolakembara.org/tim' },
+  { path: '/laporan', title: 'Laporan | Sakola Kembara', canonical: 'https://sakolakembara.org/laporan' },
+  { path: '/gabung-siswa', title: 'Daftar Siswa | Sakola Kembara', canonical: 'https://sakolakembara.org/gabung-siswa' },
+  { path: '/gabung-siswa/docs', title: 'Pusat Dokumen &amp; Berkas | Sakola Kembara', canonical: 'https://sakolakembara.org/gabung-siswa/docs' },
   { path: `/blog/${slugs[0]}`, title: ` | Sakola Kembara`, canonical: `https://sakolakembara.org/blog/${slugs[0]}`, ld: 'Article' },
 ];
 for (const page of SEO_PAGES) {
@@ -607,7 +957,7 @@ await check('seo', 'sitemap.xml: 80 articles with real lastmod, static routes wi
 });
 
 // ---------------------------------------------------------------- headers
-for (const p of ['/', '/tim', '/blog', '/blog/nope', `/blog/${slugs[0]}`, '/robots.txt']) {
+for (const p of ['/', '/tim', '/blog', '/blog/nope', `/blog/${slugs[0]}`, '/robots.txt', '/laporan', '/gabung-siswa', '/gabung-siswa/docs']) {
   await check('headers', `${p}: security headers present`, async () => {
     const res = await get(p);
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
@@ -838,6 +1188,7 @@ for (const e of exchanges) {
 }
 console.log('\nHTTP exchanges made by the checks, by status and kind');
 for (const [k, n] of Object.entries(byStatus).sort()) console.log(`  ${k.padEnd(14)} ${n}`);
+for (const n of notes) console.log(`note: ${n}`);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 for (const f of failed) console.log(`FAIL [${f.group}] ${f.name}\n     ${f.detail}`);
 process.exit(failed.length ? 1 : 0);
