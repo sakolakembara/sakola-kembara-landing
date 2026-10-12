@@ -13,6 +13,8 @@ const USERS = "test/sistem-users.test.ts";
 // SAKEM-087: the last super_admin is the last one who can sign in (migration 0010's view).
 const SIGNIN = "test/last-super-admin.test.ts test/admin-users.test.ts test/sistem-users.test.ts";
 const VIEW = "migrations/0010_last_super_admin_signin.sql";
+const FIRST_ADMIN = "scripts/first-admin-sql.ts";
+const FIRST_ADMIN_TESTS = "test/first-admin.test.ts";
 
 export const sistemChecks = [
   // ------------------------------------------------------- Aktivitas: who may read
@@ -295,5 +297,44 @@ export const sistemChecks = [
     from: "return row?.self === 1 && row.other === 0;",
     to: "return row?.other === 0;",
     tests: SIGNIN,
+  },
+
+  // ------------------------------------------------------- the first super_admin of an empty database (SAKEM-087)
+  // The command's own refusals (the typed name of a real database, no overwrite, nothing inside the repo) are checked
+  // end to end by `pnpm check:first-admin`; these break the SQL it writes.
+  {
+    name: "last-super-admin: the first-admin SQL writes even when a super_admin who can sign in exists",
+    file: FIRST_ADMIN,
+    from: "WHERE NOT EXISTS (SELECT 1 FROM signable_super_admins);",
+    to: "WHERE 1 = 1;",
+    tests: FIRST_ADMIN_TESTS,
+  },
+  {
+    name: "last-super-admin: the first-admin SQL counts an unopened invitation as a super_admin who can sign in",
+    file: FIRST_ADMIN,
+    from: "WHERE NOT EXISTS (SELECT 1 FROM signable_super_admins);",
+    to: "WHERE NOT EXISTS (SELECT 1 FROM users WHERE role = 'super_admin');",
+    tests: FIRST_ADMIN_TESTS,
+  },
+  {
+    name: "last-super-admin: the first-admin SQL writes the password row without the user row",
+    file: FIRST_ADMIN,
+    from: "SELECT ${literal(accountId)}, ${user}, 'credential', ${user}, ${literal(passwordHash)}\nWHERE EXISTS (SELECT 1 FROM users WHERE id = ${user});",
+    to: "SELECT ${literal(accountId)}, ${user}, 'credential', ${user}, ${literal(passwordHash)}\nWHERE 1 = 1;",
+    tests: FIRST_ADMIN_TESTS,
+  },
+  {
+    name: "last-super-admin: the first-admin SQL holds the password itself instead of its hash",
+    file: FIRST_ADMIN,
+    from: "passwordHash: await hashPassword(options.password),",
+    to: "passwordHash: options.password,",
+    tests: FIRST_ADMIN_TESTS,
+  },
+  {
+    name: "last-super-admin: the first-admin SQL does not double the quotes of what was typed",
+    file: FIRST_ADMIN,
+    from: "return `'${value.replaceAll(\"'\", \"''\")}'`;",
+    to: "return `'${value}'`;",
+    tests: FIRST_ADMIN_TESTS,
   },
 ];
