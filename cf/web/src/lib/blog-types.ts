@@ -25,10 +25,5 @@ export interface BlogMeta {
   modifiedISO: string;
 }
 
-/** Strip WordPress-style "[…]" / "…" trailers from a scraped excerpt. Same as the root lib/blog-types.ts. */
-export function cleanExcerpt(excerpt: string): string {
-  return excerpt
-    .replace(/\[\s*&?hellip;\s*\]/gi, '...')
-    .replace(/…\s*$/, '...')
-    .trim();
-}
+// The one implementation lives in blog-contract.mjs (shared with the fixture API); same as the root lib/blog-types.ts.
+export { cleanExcerpt } from '../../blog-contract.mjs';

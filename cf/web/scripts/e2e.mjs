@@ -7,16 +7,18 @@
 // redirects, the other redirect rules, pass-through (method, headers, body,
 // cookies, redirects not followed), Astro paths NOT reaching the origin, /tim
 // timeout / cache / stale-if-error (also /laporan and /gabung-siswa/docs: grouping, anchors, copy
-// buttons run in a DOM, degraded and empty states), SEO tags in the served HTML, security
-// headers, images and PDFs served as static assets (never through the origin).
+// buttons run in a DOM, degraded and empty states), the blog read from the content API (cache,
+// stale-if-error, outage pages, 404, sitemap), the /kontak form without JavaScript (every status
+// code of the contract, IP forwarding, no personal data in the log), SEO tags in the served HTML,
+// security headers, images and PDFs served as static assets (never through the origin).
 // Prints a summary and exits non-zero on any failure.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { Window } from 'happy-dom';
-import { startStack, webRoot } from './lib/harness.mjs';
+import { PORT_OFFSET, startStack, webRoot } from './lib/harness.mjs';
 import { SAMPLE_REPORTS, SAMPLE_RESOURCES } from './fixture-api.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
 import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
@@ -30,6 +32,7 @@ if (!existsSync(path.join(webRoot, 'dist/server/wrangler.json'))) {
 const articles = JSON.parse(readFileSync(path.join(webRoot, '../../lib/blog-posts.json'), 'utf8')).articles;
 const stack = await startStack({ log: path.join(webRoot, 'dist/e2e-wrangler.log'), vars: { TEAM_CACHE_FRESH_SECONDS: '2', CONTENT_CACHE_FRESH_SECONDS: '2' } });
 const { base, stub } = stack;
+const fixtureBase = `http://127.0.0.1:${stack.fixture.port}`;
 
 /** Every HTTP exchange the checks made: used for the status-code tally. */
 const exchanges = [];
@@ -81,19 +84,35 @@ await check('pages', 'GET /blog?page=abc falls back to page 1', async () => {
   const html = await text(await get('/blog?page=abc'));
   assert.match(html, /Halaman 1 dari 6/);
 });
+const decodeEntities = (t) => t.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const apiJson = async (p) => (await fetch(`${fixtureBase}${p}`)).json();
 for (const slug of slugs) {
-  await check('articles', `GET /blog/${slug} is 200`, async () => {
+  await check('articles', `GET /blog/${slug}: 200 from the API data, one h1, title, canonical, og, Article JSON-LD, contentHtml as given`, async () => {
+    clearStub();
     const res = await get(`/blog/${slug}`);
     assert.equal(res.status, 200);
     assert.match(res.headers.get('content-type'), /text\/html/);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+    assert.equal(res.headers.get('x-blog-source'), 'network');
+    assert.equal(stubHits().length, 0);
+    const html = await text(res);
+    const { article } = await apiJson(`/api/public/blog/${slug}`);
+    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+    assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), `${article.title} | Sakola Kembara`);
+    assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), `https://sakolakembara.org/blog/${slug}`);
+    assert.equal(decodeEntities(tag(html, /<meta name="description" content="([^"]*)"/)), article.excerpt);
+    assert.match(tag(html, /<meta property="og:image" content="([^"]*)"/), /^https:\/\/sakolakembara\.org\//);
+    const ld = JSON.parse(tag(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/));
+    assert.equal(ld['@type'], 'Article');
+    assert.equal(ld.headline, article.title);
+    assert.equal(ld.datePublished, article.dateISO);
+    assert.equal(ld.dateModified, article.modifiedISO);
+    assert.equal(ld.mainEntityOfPage, `https://sakolakembara.org/blog/${slug}`);
+    assert.equal(ld.image[0], tag(html, /<meta property="og:image" content="([^"]*)"/));
+    // the stored HTML is injected as it is (unescaped): the page holds it verbatim
+    assert.ok(html.includes(`<div class="blog-content">${article.contentHtml}</div>`), 'contentHtml was changed on the way');
   });
 }
-await check('articles', 'all article HTML carries exactly one <h1>', async () => {
-  for (const slug of slugs.slice(0, 5)) {
-    const html = await text(await get(`/blog/${slug}`));
-    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1, slug);
-  }
-});
 
 // ---------------------------------------------------------------- 404
 for (const p of ['/blog/does-not-exist', '/blog/DOES-NOT-EXIST', '/blog/a/b', '/a/b/c', '/404', '/_astro/missing.css', '/wp-admin/install.php', '/%E0%A4%A']) {
@@ -169,15 +188,14 @@ await check('canonical-url', 'a legacy path with a trailing slash is not touched
   assert.equal(res.headers.get('x-stub-origin'), '1');
   assert.equal(stubHits().length, 1);
 });
-await check('canonical-url', 'prerendered article with a trailing slash: the assets layer sends it to the clean URL (307)', async () => {
+await check('canonical-url', 'an article with a trailing slash: the Worker sends it to the clean URL (308)', async () => {
   const res = await get(`/blog/${slugs[0]}/`);
-  assert.equal(res.status, 307);
+  assert.equal(res.status, 308);
   assert.equal(res.headers.get('location'), `/blog/${slugs[0]}`);
 });
 
 // ---------------------------------------------------------------- pass-through
-const legacyPages = ['/login', '/register', '/forgot-password', '/reset-password?token=abc', '/verify-email?token=abc',
-  '/kontak'];
+const legacyPages = ['/login', '/register', '/forgot-password', '/reset-password?token=abc', '/verify-email?token=abc'];
 for (const p of legacyPages) {
   await check('pass-through', `GET ${p} reaches the origin (200)`, async () => {
     clearStub();
@@ -194,7 +212,7 @@ for (const p of ['/portal/status', '/admin/blog', '/admin']) {
     clearStub();
     const res = await get(p);
     assert.equal(res.status, 307);
-    assert.match(res.headers.get('location'), /^http:\/\/127\.0\.0\.1:8791\/login\?from=/);
+    assert.ok(res.headers.get('location').startsWith(`http://127.0.0.1:${new URL(base).port}/login?from=`), res.headers.get('location'));
     assert.equal(stubHits().length, 1, 'only the first hop');
   });
 }
@@ -285,7 +303,7 @@ await check('pass-through', 'hop-by-hop response headers from the origin do not 
 await check('pass-through', 'the origin sees the original host as X-Forwarded-Host (local mode)', async () => {
   clearStub();
   await get('/api/x');
-  assert.equal(stubHits()[0].headers['x-forwarded-host'], '127.0.0.1:8791');
+  assert.equal(stubHits()[0].headers['x-forwarded-host'], new URL(base).host);
   assert.equal(stubHits()[0].headers['x-forwarded-proto'], 'http');
 });
 await check('pass-through', 'static files of the legacy pages are forwarded (/_next, /images, /blog/images, /files, /reports)', async () => {
@@ -493,14 +511,14 @@ await check('tim', 'ok: members rendered from the API, source "network", origin 
   assert.match(html, /<dialog id="member-00000000-0000-4000-8000-000000000001"/);
 });
 await check('tim', 'a second request inside the TTL is served from caches.default (API not asked again)', async () => {
-  const before = (await (await fetch('http://127.0.0.1:4391/__hits')).json()).hits;
+  const before = (await (await fetch(`${fixtureBase}/__hits`)).json()).hits;
   const res = await get('/tim');
-  const after = (await (await fetch('http://127.0.0.1:4391/__hits')).json()).hits;
+  const after = (await (await fetch(`${fixtureBase}/__hits`)).json()).hits;
   assert.equal(res.headers.get('x-team-source'), 'cache');
   assert.equal(after, before);
 });
 await check('tim', 'API answers 500 after the TTL: stale copy is served, page is still 200', async () => {
-  await fetch('http://127.0.0.1:4391/__mode?m=500', { method: 'POST' });
+  await fetch(`${fixtureBase}/__mode?m=500`, { method: 'POST' });
   await new Promise((r) => setTimeout(r, 2500)); // fresh TTL is 2 s in this run
   const res = await get('/tim');
   assert.equal(res.status, 200);
@@ -508,9 +526,9 @@ await check('tim', 'API answers 500 after the TTL: stale copy is served, page is
   assert.match(await text(res), /Anggota Contoh 1/);
 });
 await check('tim', 'while down, the stale copy is re-served as fresh for 30 s (no API call per request)', async () => {
-  const before = (await (await fetch('http://127.0.0.1:4391/__hits')).json()).hits;
+  const before = (await (await fetch(`${fixtureBase}/__hits`)).json()).hits;
   const res = await get('/tim');
-  const after = (await (await fetch('http://127.0.0.1:4391/__hits')).json()).hits;
+  const after = (await (await fetch(`${fixtureBase}/__hits`)).json()).hits;
   assert.equal(res.headers.get('x-team-source'), 'cache');
   assert.equal(after, before);
 });
@@ -519,7 +537,7 @@ await check('tim', 'API hangs: the 2 s timeout fires and the stale copy is serve
   const second = await startStack({ port: 8792, stubPort: 4392, fixturePort: 4393, inspectorPort: 9332, vars: { TEAM_CACHE_FRESH_SECONDS: '1' } });
   try {
     assert.equal((await fetch(`${second.base}/tim`)).headers.get('x-team-source'), 'network');
-    await fetch('http://127.0.0.1:4393/__mode?m=slow', { method: 'POST' });
+    await fetch(`http://127.0.0.1:${second.fixture.port}/__mode?m=slow`, { method: 'POST' });
     await new Promise((r) => setTimeout(r, 1500));
     const started = performance.now();
     const res = await fetch(`${second.base}/tim`);
@@ -533,7 +551,7 @@ await check('tim', 'API hangs: the 2 s timeout fires and the stale copy is serve
 await check('tim', 'cold cache and API down: empty state, still 200', async () => {
   const third = await startStack({ port: 8793, stubPort: 4394, fixturePort: 4395, inspectorPort: 9333 });
   try {
-    await fetch('http://127.0.0.1:4395/__mode?m=500', { method: 'POST' });
+    await fetch(`http://127.0.0.1:${third.fixture.port}/__mode?m=500`, { method: 'POST' });
     const res = await fetch(`${third.base}/tim`);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('x-team-source'), 'empty');
@@ -545,7 +563,7 @@ await check('tim', 'cold cache and API down: empty state, still 200', async () =
 await check('tim', 'API returns invalid JSON shape: treated as an error (empty on a cold cache)', async () => {
   const fourth = await startStack({ port: 8794, stubPort: 4396, fixturePort: 4397, inspectorPort: 9334 });
   try {
-    await fetch('http://127.0.0.1:4397/__mode?m=badjson', { method: 'POST' });
+    await fetch(`http://127.0.0.1:${fourth.fixture.port}/__mode?m=badjson`, { method: 'POST' });
     const res = await fetch(`${fourth.base}/tim`);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('x-team-source'), 'empty');
@@ -569,8 +587,9 @@ const mainText = (html) =>
       .replace(/\s+/g, ' '),
   );
 const anchorTags = (html) => [...html.matchAll(/<a\s[^>]*>/g)].map((m) => m[0]);
-const fixtureStats = async (port = 4391) => (await fetch(`http://127.0.0.1:${port}/__hits`)).json();
-const setMode = (port, mode, only) => fetch(`http://127.0.0.1:${port}/__mode?m=${mode}${only ? `&for=${only}` : ''}`, { method: 'POST' });
+// Ports here are base ports, as in startStack: E2E_PORT_OFFSET is added.
+const fixtureStats = async (port = 4391) => (await fetch(`http://127.0.0.1:${port + PORT_OFFSET}/__hits`)).json();
+const setMode = (port, mode, only) => fetch(`http://127.0.0.1:${port + PORT_OFFSET}/__mode?m=${mode}${only ? `&for=${only}` : ''}`, { method: 'POST' });
 const inlineScripts = (html) => [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json')).map((m) => m[2]);
 const notes = [];
 await setMode(4391, 'ok');
@@ -1168,6 +1187,487 @@ await check('home', "the news covers are the blog's own /blog/images files (the 
   const covers = [...html.slice(html.indexOf('id="blog"')).matchAll(/<img src="(\/blog\/images\/[^"]+)"/g)].map((m) => m[1]);
   assert.equal(covers.length, 3);
   for (const cover of covers) assert.doesNotMatch(cover, /^\/_astro\//);
+});
+
+// ---------------------------------------------------------------- blog from the content API (SAKEM-080, part E)
+// The articles and the list are rendered by the Worker from GET /api/public/blog and /blog/<slug> (the fixture server),
+// through caches.default with stale-if-error. The per-article SEO checks for all 80 are in the "articles" group above.
+const blogRequests = async (f = fixtureBase) => (await (await fetch(`${f}/__requests?for=blog`)).json());
+const blogHits = async (f = fixtureBase) => (await (await fetch(`${f}/__hits`)).json()).byEndpoint.blog;
+const setFixtureMode = (f, group, m) => fetch(`${f}/__mode?for=${group}&m=${m}`, { method: 'POST' });
+
+await check('blog', '/blog?page=4: the first view asks the API once (network), the second is served from caches.default (no API call)', async () => {
+  const before = await blogRequests();
+  const first = await get('/blog?page=4');
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get('x-blog-source'), 'network');
+  assert.equal(first.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+  const second = await get('/blog?page=4');
+  assert.equal(second.headers.get('x-blog-source'), 'cache');
+  const added = (await blogRequests()).slice(before.length);
+  assert.deepEqual(added, ['/api/public/blog?page=4&pageSize=15']);
+});
+await check('blog', '/blog?page=99999999 is capped before it reaches the API (page 500, the same key as ?page=999), and the API clamps it to the last page', async () => {
+  const res = await get('/blog?page=99999999');
+  assert.equal(res.status, 200);
+  assert.match(await text(res), /Halaman 6 dari 6/);
+  const requests = await blogRequests();
+  assert.ok(requests.includes('/api/public/blog?page=500&pageSize=15'));
+  assert.ok(!requests.some((r) => /page=(?:999|99999999)\b/.test(r)), 'an uncapped page number reached the API');
+});
+await check('blog', 'the featured article is on page 1 only, never repeated in the grid; page 2 has 15 cards', async () => {
+  const list1 = await apiJson('/api/public/blog?page=1&pageSize=15');
+  const html1 = await text(await get('/blog'));
+  const html2 = await text(await get('/blog?page=2'));
+  assert.match(html1, /Artikel Terbaru/);
+  assert.doesNotMatch(html2, /Artikel Terbaru/);
+  const cards = (html) => [...html.matchAll(/<article class="group bg-gray-50/g)].length;
+  assert.equal(cards(html1), 15);
+  assert.equal(cards(html2), 15);
+  const linksOf = (html) => [...html.matchAll(/href="\/blog\/([a-z0-9-]+)"/g)].map((m) => m[1]);
+  assert.equal(linksOf(html1).filter((l) => l === list1.featured.slug).length, 1, 'the featured article is linked once on page 1');
+  assert.ok(!linksOf(html2).includes(list1.featured.slug));
+});
+await check('blog', 'an article page lists the three related articles the API sent, in its order, and the hero image has width, height and the manifest srcset', async () => {
+  const slug = slugs[0];
+  const html = await text(await get(`/blog/${slug}`));
+  const { related, article } = await apiJson(`/api/public/blog/${slug}`);
+  assert.equal(related.length, 3);
+  const section = html.slice(html.indexOf('Artikel Lainnya'));
+  const links = [...section.matchAll(/<a\s+href="\/blog\/([a-z0-9-]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(links, related.map((r) => r.slug));
+  const hero = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]).find((i) => /fetchpriority="high"/.test(i));
+  assert.ok(hero, 'hero image');
+  assert.deepEqual(checkImgTag(hero), []);
+  assert.equal(attrOf(hero, 'width'), String(article.imageWidth));
+  assert.equal(attrOf(hero, 'height'), String(article.imageHeight));
+  assert.ok(attrOf(hero, 'srcset')?.includes('/_img/'), 'the WebP ladder of the asset manifest');
+  const res = await get(attrOf(hero, 'src'));
+  assert.equal(res.status, 200);
+});
+await check('blog', 'an unknown slug is a real 404 with the 404 page: the API is asked once, the next view is answered from the remembered "not found" (s-maxage 30)', async () => {
+  const before = await blogRequests();
+  const first = await get('/blog/no-such-article');
+  assert.equal(first.status, 404);
+  assert.match(await text(first), /Halaman tidak ditemukan/);
+  assert.equal(first.headers.get('cache-control'), 'public, max-age=0, s-maxage=30');
+  assert.equal(first.headers.get('x-blog-source'), 'not_found');
+  const second = await get('/blog/no-such-article');
+  assert.equal(second.status, 404);
+  assert.equal(second.headers.get('x-blog-source'), 'not_found');
+  assert.deepEqual((await blogRequests()).slice(before.length), ['/api/public/blog/no-such-article']);
+});
+await check('blog', 'a slug that cannot exist (upper case, a dot, a space, too long) is a 404 without any API request or cache entry', async () => {
+  const before = await blogHits();
+  for (const p of ['/blog/DOES-NOT-EXIST', '/blog/a.b', `/blog/${'a'.repeat(201)}`, '/blog/a%20b', '/blog/a_b%2Fc']) {
+    const res = await get(p);
+    assert.equal(res.status, 404, p);
+    assert.match(await text(res), /Halaman tidak ditemukan/);
+  }
+  assert.equal(await blogHits(), before);
+});
+await check('blog', 'the sitemap enumerates every article by paging the API with pageSize=50 and adding the featured one, with a real lastmod', async () => {
+  const before = await blogRequests();
+  const res = await get('/sitemap.xml');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /application\/xml/);
+  assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
+  const xml = await text(res);
+  const entries = [...xml.matchAll(/<url><loc>https:\/\/sakolakembara\.org\/blog\/([^<]+)<\/loc>(?:<lastmod>([^<]+)<\/lastmod>)?/g)].map((m) => ({ slug: m[1], lastmod: m[2] }));
+  assert.deepEqual(entries.map((e) => e.slug).sort(), [...slugs].sort());
+  const list = [...(await apiJson('/api/public/blog?page=1&pageSize=50')).articles, ...(await apiJson('/api/public/blog?page=2&pageSize=50')).articles, (await apiJson('/api/public/blog?page=1&pageSize=50')).featured];
+  for (const e of entries) assert.equal(e.lastmod, list.find((a) => a.slug === e.slug).dateISO, e.slug);
+  const requests = (await blogRequests()).slice(before.length).filter((r) => r.includes('pageSize=50'));
+  assert.ok(requests.includes('/api/public/blog?page=1&pageSize=50') && requests.includes('/api/public/blog?page=2&pageSize=50'));
+});
+await check('blog', 'the blog pages and the sitemap never reach the legacy origin, and the Worker logged no error', async () => {
+  clearStub();
+  for (const p of ['/blog', '/blog?page=3', `/blog/${slugs[1]}`, '/sitemap.xml']) await get(p);
+  assert.equal(stubHits().length, 0);
+  assert.doesNotMatch(stack.output().slice(logStart), /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
+});
+
+// stale-if-error: a short fresh window, then the API goes down
+await check('blog', 'stale-if-error: the API fails after the fresh window, /blog, an article and the sitemap are served from the last good copy (200, stale), then recover', async () => {
+  const s = await startStack({ port: 8801, stubPort: 4411, fixturePort: 4412, inspectorPort: 9341, vars: { CONTENT_CACHE_FRESH_SECONDS: '1' } });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  try {
+    for (const p of ['/blog', `/blog/${slugs[2]}`, '/sitemap.xml']) assert.equal((await fetch(s.base + p)).headers.get('x-blog-source'), 'network', p);
+    await setFixtureMode(f, 'blog', '500');
+    await new Promise((r) => setTimeout(r, 1500));
+    for (const p of ['/blog', `/blog/${slugs[2]}`, '/sitemap.xml']) {
+      const res = await fetch(s.base + p);
+      assert.equal(res.status, 200, p);
+      assert.equal(res.headers.get('x-blog-source'), 'stale', p);
+      assert.notEqual(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=60, stale-while-revalidate=300', `${p}: a stale answer must not be told to cache for a minute`);
+      if (p !== '/sitemap.xml') assert.match(await res.text(), /Sakola Kembara/);
+    }
+    // while down, the stale copy is re-served as fresh for 30 s: no API call per request
+    const before = await blogHits(f);
+    assert.equal((await fetch(`${s.base}/blog`)).headers.get('x-blog-source'), 'cache');
+    assert.equal(await blogHits(f), before);
+    // an article never fetched has nothing to fall back on: a clear 503, not a 404 and not a 500
+    const cold = await fetch(`${s.base}/blog/${slugs[3]}`);
+    assert.equal(cold.status, 503);
+    assert.match(await cold.text(), /Artikel belum dapat dimuat saat ini/);
+    assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
+  } finally {
+    await s.stop();
+  }
+});
+
+// outage on a cold cache: a plain notice, never a 500
+await check('blog', 'API down on a cold cache: /blog, an article and the sitemap answer 503 with the notice, no-store and Retry-After; an unknown slug is NOT turned into a 404', async () => {
+  const s = await startStack({ port: 8802, stubPort: 4413, fixturePort: 4414, inspectorPort: 9342 });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  try {
+    await setFixtureMode(f, 'blog', '500');
+    for (const p of ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/blog/some-valid-looking-slug']) {
+      const res = await fetch(s.base + p);
+      assert.equal(res.status, 503, p);
+      assert.equal(res.headers.get('cache-control'), 'no-store', p);
+      assert.equal(res.headers.get('retry-after'), '30', p);
+      assert.equal(res.headers.get('x-blog-source'), 'empty', p);
+      assert.match(res.headers.get('content-type'), /text\/html/);
+      const html = await res.text();
+      assert.match(html, /Artikel belum dapat dimuat saat ini\. Silakan coba lagi beberapa saat lagi\./);
+      assert.match(html, /<html lang="id"/);
+      assert.match(html, />Coba Lagi</);
+      assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+    }
+    const sitemap = await fetch(`${s.base}/sitemap.xml`);
+    assert.equal(sitemap.status, 503);
+    assert.equal(sitemap.headers.get('retry-after'), '300');
+    assert.equal(sitemap.headers.get('cache-control'), 'no-store');
+    // a slug that cannot exist is still a plain 404: that needs no API
+    assert.equal((await fetch(`${s.base}/blog/NOT-A-SLUG`)).status, 404);
+    // the contact page and the static pages are not affected by a blog outage
+    assert.equal((await fetch(`${s.base}/kontak`)).status, 200);
+    assert.equal((await fetch(`${s.base}/`)).status, 200);
+
+    // a 404 that is not the contract's JSON (a wrong base URL answering HTML) is an outage, not a deleted article
+    await setFixtureMode(f, 'blog', 'html404');
+    const wrong = await fetch(`${s.base}/blog/${slugs[5]}`);
+    assert.equal(wrong.status, 503);
+    // an answer that is not a blog payload is an outage too
+    await setFixtureMode(f, 'blog', 'badjson');
+    assert.equal((await fetch(`${s.base}/blog?page=3`)).status, 503);
+    // a hanging API: the 2 s timeout fires
+    await setFixtureMode(f, 'blog', 'slow');
+    const started = performance.now();
+    const slow = await fetch(`${s.base}/blog/${slugs[6]}`);
+    const ms = performance.now() - started;
+    assert.equal(slow.status, 503);
+    assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
+    // and it comes back: the next view after the API recovers is a normal page
+    await setFixtureMode(f, 'blog', 'ok');
+    assert.equal((await fetch(`${s.base}/blog/${slugs[7]}`)).status, 200);
+    assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
+  } finally {
+    await s.stop();
+  }
+});
+
+// ---------------------------------------------------------------- /kontak (SAKEM-080, part E)
+const contactLogStart = stack.output().length;
+const contactApi = {
+  log: async () => (await fetch(`${fixtureBase}/__contact-log`)).json(),
+  hits: async () => (await (await fetch(`${fixtureBase}/__hits`)).json()).byEndpoint.contact,
+  mode: (m) => setFixtureMode(fixtureBase, 'contact', m),
+};
+let ipCounter = 10;
+/** A plain HTML form post, as a browser without JavaScript sends it. Each call gets its own visitor address unless one is given. */
+async function postForm(fields, { ip = `203.0.113.${++ipCounter}`, headers = {}, path: target = '/kontak' } = {}) {
+  return get(target, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: base, ...(ip ? { 'cf-connecting-ip': ip } : {}), ...headers },
+    body: new URLSearchParams(fields).toString(),
+  });
+}
+const VALID_FORM = (n) => ({ fullName: `Budi Marker${n}`, email: `budi.marker${n}@example.com`, subject: 'other', message: `Halo, saya ingin bertanya soal program Marker${n}.`, website: '' });
+const valueOf = (html, id) => decodeEntities(html.match(new RegExp(`<input[^>]*\\sid="${id}"[^>]*\\svalue="([^"]*)"`))?.[1] ?? '');
+const textarea = (html) => decodeEntities(html.match(/<textarea[^>]*>([\s\S]*?)<\/textarea>/)?.[1] ?? '');
+
+await check('contact', 'GET /kontak: 200 html from the Worker, one h1, SEO tags, the form, the three contact cards, no JSON-LD, origin not asked', async () => {
+  clearStub();
+  const res = await get('/kontak');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.equal(stubHits().length, 0, 'must not reach the origin');
+  const html = await text(res);
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  assert.match(html, />Mari Bergerak Bersama</);
+  assert.match(html, /<title>Kontak \| Sakola Kembara<\/title>/);
+  assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/kontak');
+  assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), 'https://sakolakembara.org/kontak');
+  assert.match(html, /<meta name="description" content="Hubungi tim Sakola Kembara untuk pertanyaan, kerjasama, atau peluang relawan\. Berbasis di Bandung, melayani siswa di seluruh Indonesia\.">/);
+  assert.match(html, /<meta name="robots" content="index, follow">/);
+  assert.ok(!html.includes('application/ld+json'));
+  // the form: a real POST, every field with its label, the honeypot, no native validation
+  assert.match(html, /<form id="kontak-form" method="post" action="\/kontak" class="space-y-5" novalidate>/);
+  for (const [id, name] of [['fullName', 'Nama Lengkap'], ['email', 'Email'], ['subject', 'Subjek'], ['message', 'Pesan']]) {
+    assert.match(html, new RegExp(`<label for="${id}"[^>]*>\\s*${name}<span aria-hidden="true"`), id);
+    assert.match(html, new RegExp(`name="${id}"\\s+required`), id);
+  }
+  assert.match(html, /<input id="website" type="text" name="website" tabindex="-1" autocomplete="off"/);
+  for (const t of ['Kerjasama/Partnership', 'Seputar Donasi', 'Lainnya', 'Pilih subjek', 'Kirim Pesan']) assert.ok(html.includes(t), t);
+  assert.match(html, /hello@sakolakembara\.org/);
+  assert.match(html, /\+62 812 3456 7890/);
+  assert.match(html, /Bandung, Jawa Barat, Indonesia/);
+  assert.match(html, /aria-label="Instagram"/);
+  assert.ok(!html.includes('Pesan Terkirim'));
+});
+await check('contact', 'JavaScript is optional and tiny: the form script is inline, under 1 KB, and only toggles the pending state', async () => {
+  const html = await text(await get('/kontak'));
+  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
+  assert.equal(scripts.length, 2, 'the navbar script and the form script');
+  assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0, 'no script file');
+  const formScript = scripts.find((m) => m[2].includes('Mengirim...'));
+  assert.ok(formScript);
+  assert.ok(Buffer.byteLength(formScript[2]) < 1000, `form script is ${Buffer.byteLength(formScript[2])} bytes`);
+  assert.doesNotMatch(formScript[2], /fetch\(|XMLHttpRequest/);
+});
+await check('contact', 'no JavaScript, valid post: 303 to the confirmation, the API got one JSON post with the visitor address, the confirmation page replaces the form', async () => {
+  clearStub();
+  await contactApi.mode('ok');
+  const before = (await contactApi.log()).length;
+  const ip = '203.0.113.200';
+  const res = await postForm(VALID_FORM(1), { ip });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('location'), '/kontak?terkirim=1');
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+  const log = (await contactApi.log()).slice(before);
+  assert.equal(log.length, 1);
+  assert.equal(log[0].clientIp, ip, 'the visitor address from CF-Connecting-IP reaches the API in X-Sakem-Client-Ip');
+  assert.equal(log[0].headers['content-type'], 'application/json');
+  assert.deepEqual(log[0].body, { ...VALID_FORM(1), website: '' });
+  const done = await get('/kontak?terkirim=1');
+  assert.equal(done.status, 200);
+  const html = await text(done);
+  assert.match(html, /Pesan Terkirim/);
+  assert.match(html, /Pesan kamu sudah kami terima\. Tim kami akan menghubungi via email\./);
+  assert.ok(!html.includes('<form'));
+  assert.ok(!html.includes('Marker1'), 'nothing of the message is echoed');
+  assert.equal(stubHits().length, 0);
+});
+await check('contact', 'the API gets the trimmed, lower-cased values, and only the address from CF-Connecting-IP (a client-sent X-Sakem-Client-Ip and X-Forwarded-For are ignored)', async () => {
+  const before = (await contactApi.log()).length;
+  const res = await postForm(
+    { ...VALID_FORM(2), fullName: '  Ana Marker2  ', email: ' ANA.Marker2@Example.COM ' },
+    { ip: '203.0.113.201', headers: { 'x-sakem-client-ip': '9.9.9.9', 'x-forwarded-for': '8.8.8.8' } },
+  );
+  assert.equal(res.status, 303);
+  const [entry] = (await contactApi.log()).slice(before);
+  assert.equal(entry.clientIp, '203.0.113.201');
+  assert.equal(entry.body.fullName, 'Ana Marker2');
+  assert.equal(entry.body.email, 'ana.marker2@example.com');
+});
+await check('contact', 'without a CF-Connecting-IP header the API still gets a valid address literal (the shared "unknown" one), never none', async () => {
+  const before = (await contactApi.log()).length;
+  const res = await postForm(VALID_FORM(3), { ip: null });
+  assert.ok([303, 429].includes(res.status), String(res.status)); // 429 only if an earlier local post shares the bucket
+  const [entry] = (await contactApi.log()).slice(before);
+  if (entry) assert.match(entry.clientIp, /^(\d{1,3}\.){3}\d{1,3}$|:/);
+});
+await check('contact', 'invalid form (no JavaScript): 400, the legacy messages under the fields, the typed text kept, aria wired, nothing sent to the API', async () => {
+  const hits = await contactApi.hits();
+  const res = await postForm({ fullName: 'Ana', email: 'bukan-email', subject: '', message: 'pendek', website: '' });
+  assert.equal(res.status, 400);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  const html = await text(res);
+  assert.match(html, /role="alert"[^>]*>\s*Silakan periksa kembali isian formulir\.\s*<\/div>/);
+  assert.match(html, /<p id="email-error"[^>]*>\s*Format email belum benar\s*<\/p>/);
+  assert.match(html, /<p id="subject-error"[^>]*>\s*Pilih salah satu subjek\s*<\/p>/);
+  assert.match(html, /<p id="message-error"[^>]*>\s*Tulis minimal 10 karakter\s*<\/p>/);
+  assert.ok(!html.includes('id="fullName-error"'), 'a valid field shows no error');
+  assert.match(html, /id="email"[^>]*aria-describedby="email-error"[^>]*aria-invalid="true"|id="email"[^>]*aria-invalid="true"[^>]*aria-describedby="email-error"/);
+  assert.equal(valueOf(html, 'fullName'), 'Ana');
+  assert.equal(valueOf(html, 'email'), 'bukan-email');
+  assert.equal(textarea(html), 'pendek');
+  assert.match(html, /<option value="" disabled selected>/);
+  assert.equal(await contactApi.hits(), hits, 'the API was not called');
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+});
+await check('contact', 'an empty post shows every legacy message', async () => {
+  const html = await text(await postForm({}));
+  for (const m of ['Nama lengkap minimal 2 karakter', 'Format email belum benar', 'Pilih salah satu subjek', 'Tulis minimal 10 karakter']) assert.ok(html.includes(m), m);
+});
+await check('contact', 'the typed text is escaped where it is put back (no markup injection through the form)', async () => {
+  const res = await postForm({ fullName: '"><script>alert(1)</script>', email: 'x', subject: 'other', message: '</textarea><script>alert(2)</script>' });
+  assert.equal(res.status, 400);
+  const html = await text(res);
+  // Inside a quoted attribute `<` is harmless; what matters is that the quote cannot be closed and no element is created.
+  assert.ok(!html.includes('value=""><script'), 'the quote of the attribute was not escaped');
+  // Parse it like a browser would (happy-dom's DOMParser does not run scripts): no element may carry the injected code.
+  const { Window } = await import('happy-dom');
+  const win = new Window();
+  const doc = new win.DOMParser().parseFromString(html, 'text/html');
+  assert.deepEqual([...doc.querySelectorAll('script')].filter((el) => el.textContent.includes('alert(')).length, 0, 'a script element was injected');
+  assert.equal(doc.querySelector('#fullName')?.getAttribute('value'), '"><script>alert(1)</script>');
+  assert.equal(doc.querySelector('#message')?.textContent, '</textarea><script>alert(2)</script>');
+  await win.happyDOM.close();
+  assert.ok(!html.includes('</textarea><script>'), 'the textarea was closed by the typed text');
+  assert.equal(valueOf(html, 'fullName'), '"><script>alert(1)</script>');
+  assert.equal(textarea(html), '</textarea><script>alert(2)</script>');
+});
+await check('contact', 'honeypot: a filled hidden field is answered like a success (303), and the API is never called', async () => {
+  const hits = await contactApi.hits();
+  const res = await postForm({ ...VALID_FORM(4), website: 'https://spam.example' });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('location'), '/kontak?terkirim=1');
+  assert.equal(await contactApi.hits(), hits);
+});
+await check('contact', 'API 429 rate_limited: 429 with Retry-After, the legacy message, the typed text kept', async () => {
+  await contactApi.mode('429');
+  try {
+    const res = await postForm(VALID_FORM(5));
+    assert.equal(res.status, 429);
+    assert.equal(res.headers.get('retry-after'), '42');
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    const html = await text(res);
+    assert.match(html, /Terlalu banyak percobaan pengiriman\. Silakan tunggu satu menit lalu coba lagi\./);
+    assert.equal(valueOf(html, 'email'), VALID_FORM(5).email);
+    assert.equal(textarea(html), VALID_FORM(5).message);
+  } finally {
+    await contactApi.mode('ok');
+  }
+});
+await check('contact', 'API 429 duplicate_recent (forced, and for real: the same email twice): 429 with the legacy duplicate message', async () => {
+  await contactApi.mode('duplicate');
+  try {
+    const res = await postForm(VALID_FORM(6));
+    assert.equal(res.status, 429);
+    assert.equal(res.headers.get('retry-after'), '300');
+    assert.match(await text(res), /Pesan dari email ini baru saja dikirim\. Mohon tunggu beberapa menit sebelum mengirim ulang\./);
+  } finally {
+    await contactApi.mode('ok');
+  }
+  assert.equal((await postForm(VALID_FORM(7))).status, 303);
+  const again = await postForm(VALID_FORM(7)); // another address, the same email
+  assert.equal(again.status, 429);
+  assert.match(await text(again), /Pesan dari email ini baru saja dikirim\./);
+});
+await check('contact', 'API 503, 500, a wrong-URL 404 page and an unreachable API: 503 with Retry-After and one plain sentence, the typed text kept', async () => {
+  for (const mode of ['503', '500', 'html404']) {
+    await contactApi.mode(mode);
+    try {
+      const res = await postForm(VALID_FORM(8));
+      assert.equal(res.status, 503, mode);
+      assert.equal(res.headers.get('retry-after'), '30', mode);
+      assert.equal(res.headers.get('cache-control'), 'no-store', mode);
+      const html = await text(res);
+      assert.match(html, /Pesan belum dapat dikirim saat ini\. Silakan coba lagi beberapa saat lagi\./, mode);
+      assert.equal(textarea(html), VALID_FORM(8).message, mode);
+    } finally {
+      await contactApi.mode('ok');
+    }
+  }
+});
+await check('contact', 'API 400 validation_failed: 400 with the API\'s field messages under the legacy banner', async () => {
+  await contactApi.mode('invalid');
+  try {
+    const res = await postForm(VALID_FORM(9));
+    assert.equal(res.status, 400);
+    const html = await text(res);
+    assert.match(html, /Silakan periksa kembali isian formulir\./);
+    assert.match(html, /<p id="email-error"[^>]*>\s*Format email belum benar\s*<\/p>/);
+  } finally {
+    await contactApi.mode('ok');
+  }
+});
+await check('contact', 'API unreachable (a stack whose API is not there): 503 with the plain sentence, the Worker does not crash', async () => {
+  const s = await startStack({ port: 8803, stubPort: 4415, fixturePort: 4416, inspectorPort: 9343 });
+  try {
+    await s.fixture.close(); // the API goes away
+    const res = await fetch(`${s.base}/kontak`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: s.base, 'cf-connecting-ip': '203.0.113.250' },
+      body: new URLSearchParams(VALID_FORM(10)).toString(),
+    });
+    assert.equal(res.status, 503);
+    assert.match(await res.text(), /Pesan belum dapat dikirim saat ini\./);
+    assert.doesNotMatch(s.output(), /Marker10/);
+  } finally {
+    // the fixture is already closed; stop() closes it again, which must not throw
+    await s.stop().catch(() => undefined);
+  }
+});
+await check('contact', 'the Worker limits one address to 5 posts a minute (in-memory fallback, no binding in this stack): the 6th is 429 and never reaches the API', async () => {
+  const ip = '203.0.113.210';
+  const hits = await contactApi.hits();
+  const statuses = [];
+  for (let i = 0; i < 6; i++) statuses.push((await postForm({ ...VALID_FORM(11), website: 'bot' }, { ip })).status); // honeypot posts: counted, never sent
+  assert.deepEqual(statuses, [303, 303, 303, 303, 303, 429]);
+  const sixth = await postForm(VALID_FORM(11), { ip });
+  assert.equal(sixth.status, 429);
+  assert.equal(sixth.headers.get('retry-after'), '60');
+  assert.match(await text(sixth), /Terlalu banyak percobaan pengiriman\. Silakan tunggu satu menit lalu coba lagi\./);
+  assert.equal(await contactApi.hits(), hits, 'throttled posts did not reach the API');
+  assert.equal((await postForm(VALID_FORM(12), { ip: '203.0.113.211' })).status, 303, 'another address is not affected');
+});
+await check('contact', 'a cross-origin post is refused with 403 and never reaches the API; a post from the site itself is fine', async () => {
+  const hits = await contactApi.hits();
+  const evil = await postForm(VALID_FORM(13), { headers: { origin: 'https://evil.example' } });
+  assert.equal(evil.status, 403);
+  assert.equal(evil.headers.get('cache-control'), 'no-store');
+  const cross = await postForm(VALID_FORM(13), { headers: { 'sec-fetch-site': 'cross-site' } });
+  assert.equal(cross.status, 403);
+  assert.equal(await contactApi.hits(), hits);
+  assert.equal((await postForm(VALID_FORM(13))).status, 303);
+});
+await check('contact', 'other methods: PUT and DELETE are 405 with Allow, HEAD works; a JSON body is a 400 form, a 40 KB body is a 413', async () => {
+  for (const method of ['PUT', 'DELETE', 'PATCH']) {
+    const res = await get('/kontak', { method, ...(method === 'DELETE' ? {} : { body: 'x' }) });
+    assert.equal(res.status, 405, method);
+    assert.equal(res.headers.get('allow'), 'GET, HEAD, POST');
+  }
+  assert.equal((await get('/kontak', { method: 'HEAD' })).status, 200);
+  const json = await postForm({}, { headers: { 'content-type': 'application/json' } });
+  assert.equal(json.status, 400);
+  const big = await get('/kontak', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: base, 'cf-connecting-ip': '203.0.113.220' },
+    body: `message=${'x'.repeat(40 * 1024)}`,
+  });
+  assert.equal(big.status, 413);
+  assert.match(await text(big), /Maksimal 5000 karakter/);
+});
+await check('contact', '/kontak and its post never reach the legacy origin, and /kontak is in the sitemap', async () => {
+  clearStub();
+  await get('/kontak');
+  await postForm({ ...VALID_FORM(14), website: 'bot' });
+  assert.equal(stubHits().length, 0);
+  assert.ok((await text(await get('/sitemap.xml'))).includes('<loc>https://sakolakembara.org/kontak</loc>'));
+});
+await check('contact', 'nothing personal is logged: no name, email address, message text or visitor address appears in the Worker\'s output', async () => {
+  const out = stack.output().slice(contactLogStart);
+  assert.doesNotMatch(out, /Marker\d|marker\d|@example\.com|Halo, saya ingin bertanya|203\.0\.113\./);
+  assert.doesNotMatch(out, /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
+});
+
+// the real rate-limit binding (a local miniflare one), with a limit lower than the fallback's, proves the binding is the one asked
+await check('contact', 'with a rate-limit binding (CONTACT_LIMITER) the binding decides: a limit of 2 refuses the 3rd post, which the in-memory fallback would have allowed', async () => {
+  const config = JSON.parse(readFileSync(path.join(webRoot, 'dist/server/wrangler.json'), 'utf8'));
+  config.ratelimits = [{ name: 'CONTACT_LIMITER', namespace_id: '1001', simple: { limit: 2, period: 60 } }];
+  const file = path.join(webRoot, 'dist/server/wrangler.ratelimit.json');
+  writeFileSync(file, JSON.stringify(config));
+  const s = await startStack({ wranglerConfig: file, port: 8804, stubPort: 4417, fixturePort: 4418, inspectorPort: 9344 });
+  try {
+    const post = (n) =>
+      fetch(`${s.base}/kontak`, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', origin: s.base, 'cf-connecting-ip': '203.0.113.230' },
+        body: new URLSearchParams({ ...VALID_FORM(n), website: 'bot' }).toString(),
+      });
+    const statuses = [];
+    for (let i = 0; i < 3; i++) statuses.push((await post(20 + i)).status);
+    assert.deepEqual(statuses, [303, 303, 429]);
+  } finally {
+    await s.stop();
+  }
 });
 
 // ---------------------------------------------------------------- report

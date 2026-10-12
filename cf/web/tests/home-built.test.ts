@@ -163,11 +163,10 @@ describe.skipIf(!built)('home page build output', () => {
 
   describe('News', () => {
     const latest = getAllArticles().slice(0, 3);
-    it('shows the three newest articles, each linking to a prerendered article page', () => {
+    it('shows the three newest articles of the build-time index, each linking to its article page (rendered by the Worker from the API)', () => {
       const links = all(news, /<a href="\/blog\/[^"]+"/g).map((a) => a.match(/href="([^"]+)"/)![1]);
       expect(links).toEqual(latest.map((a) => `/blog/${a.id}`));
       for (const a of latest) {
-        expect(existsSync(path.join(client, `blog/${a.id}.html`)), a.id).toBe(true);
         expect(text(news)).toContain(a.title);
         expect(text(news)).toContain(a.date);
         expect(text(news)).toContain(a.category);

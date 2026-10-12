@@ -1,0 +1,196 @@
+---
+import Button from '~/components/Button.astro';
+import Icon from '~/components/Icon.astro';
+import { CONTACT_SUBJECT_OPTIONS, type ContactFieldErrors, type ContactValues } from '~/lib/contact';
+
+/**
+ * The /kontak form, ported from app/(public)/kontak/_contact-form.tsx. It is a plain
+ * HTML form that posts to /kontak and works without JavaScript: the page answers a
+ * valid post with a redirect to the success state and an invalid one with this form
+ * again, the visitor's text put back and the legacy messages under the fields.
+ * The two small differences from the React form: the success state comes from the
+ * URL (`sent`), and the typed text survives an error (React 19 resets an action's form).
+ *
+ * Field, Input, Select, Textarea and Alert are the classes of the root components/ui/field.tsx
+ * and alert.tsx (DESIGN.md, Forms), spelled out here so Tailwind finds them.
+ */
+interface Props {
+  /** The success state: the form is replaced by the confirmation. */
+  sent?: boolean;
+  successMessage?: string;
+  /** Banner above the fields (the error of a failed submission). */
+  message?: string;
+  fieldErrors?: ContactFieldErrors;
+  values?: Partial<ContactValues>;
+}
+const { sent = false, successMessage = '', message, fieldErrors = {}, values = {} } = Astro.props;
+
+const control = 'w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none rounded-xl px-4 py-2.5 leading-6';
+const labelClass = 'block text-sm font-medium text-gray-700 mb-2';
+const errorClass = 'mt-1.5 text-xs text-danger-fg';
+const error = (field: keyof ContactFieldErrors) => fieldErrors[field]?.[0];
+// aria wiring of a control inside its Field: describedby and invalid only when there is an error.
+const aria = (field: keyof ContactFieldErrors) =>
+  error(field) ? { 'aria-describedby': `${field}-error`, 'aria-invalid': 'true' as const } : {};
+---
+
+{
+  sent ? (
+    <div class="bg-success-bg border border-success-border rounded-2xl p-8 text-center">
+      <div class="w-14 h-14 bg-success-fg rounded-full mx-auto mb-4 flex items-center justify-center">
+        <Icon name="circle-check" size={32} class="text-white" />
+      </div>
+      <h3 class="font-[family-name:var(--font-display)] text-2xl text-gray-900 mb-2">Pesan Terkirim</h3>
+      <p class="text-gray-700 max-w-md mx-auto">{successMessage}</p>
+    </div>
+  ) : (
+    <form id="kontak-form" method="post" action="/kontak" class="space-y-5" novalidate>
+      {message && (
+        <div
+          role="alert"
+          class="rounded-lg border px-4 py-3 text-sm leading-relaxed border-danger-border bg-danger-bg text-danger-fg"
+        >
+          {message}
+        </div>
+      )}
+
+      {/* Honeypot — hidden from humans by clip + tab-out */}
+      <div aria-hidden="true" class="absolute -left-[10000px] top-auto w-px h-px overflow-hidden">
+        <label for="website">
+          Website
+          <input id="website" type="text" name="website" tabindex="-1" autocomplete="off" />
+        </label>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-5">
+        <div>
+          <label for="fullName" class={labelClass}>
+            Nama Lengkap<span aria-hidden="true" class="ml-0.5 text-danger-fg">*</span>
+          </label>
+          <input
+            id="fullName"
+            type="text"
+            name="fullName"
+            required
+            placeholder="Masukkan nama Anda"
+            value={values.fullName ?? ''}
+            class={control}
+            {...aria('fullName')}
+          />
+          {error('fullName') && (
+            <p id="fullName-error" class={errorClass}>
+              {error('fullName')}
+            </p>
+          )}
+        </div>
+        <div>
+          <label for="email" class={labelClass}>
+            Email<span aria-hidden="true" class="ml-0.5 text-danger-fg">*</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="email@example.com"
+            value={values.email ?? ''}
+            class={control}
+            {...aria('email')}
+          />
+          {error('email') && (
+            <p id="email-error" class={errorClass}>
+              {error('email')}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label for="subject" class={labelClass}>
+          Subjek<span aria-hidden="true" class="ml-0.5 text-danger-fg">*</span>
+        </label>
+        <select id="subject" name="subject" required class={`${control} bg-white h-12`} {...aria('subject')}>
+          <option value="" disabled selected={!values.subject}>
+            Pilih subjek
+          </option>
+          {CONTACT_SUBJECT_OPTIONS.map((option) => (
+            <option value={option.value} selected={values.subject === option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {error('subject') && (
+          <p id="subject-error" class={errorClass}>
+            {error('subject')}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label for="message" class={labelClass}>
+          Pesan<span aria-hidden="true" class="ml-0.5 text-danger-fg">*</span>
+        </label>
+        <textarea
+          id="message"
+          name="message"
+          required
+          rows="5"
+          placeholder="Tulis pesan Anda di sini..."
+          class={`${control} resize-none`}
+          {...aria('message')}
+        >{values.message ?? ''}</textarea>
+        {error('message') && (
+          <p id="message-error" class={errorClass}>
+            {error('message')}
+          </p>
+        )}
+      </div>
+
+      <div class="pt-1">
+        <Button type="submit" size="lg">
+          {/* Lucide "send" (18 px), as in the React form. */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+            <path d="m21.854 2.147-10.94 10.939" />
+          </svg>
+          <span data-label>Kirim Pesan</span>
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+<script>
+  // The only script of the form, and optional: the form posts without it. While the post is in
+  // flight the button is disabled and reads "Mengirim..." (the React form's pending state), which
+  // also stops a double click from posting twice. pageshow undoes it when the browser restores
+  // the page from its back/forward cache.
+  const form = document.getElementById('kontak-form');
+  const button = form?.querySelector<HTMLButtonElement>('[type=submit]');
+  const label = button?.querySelector('[data-label]');
+  if (form && button && label) {
+    const idle = label.textContent;
+    form.addEventListener('submit', () => {
+      button.disabled = true;
+      label.textContent = 'Mengirim...';
+    });
+    addEventListener('pageshow', (e) => {
+      if (e.persisted) {
+        button.disabled = false;
+        label.textContent = idle;
+      }
+    });
+  }
+</script>

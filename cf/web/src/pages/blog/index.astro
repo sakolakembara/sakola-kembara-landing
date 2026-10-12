@@ -1,17 +1,38 @@
 ---
+import BlogUnavailable from '~/components/BlogUnavailable.astro';
 import Container from '~/components/Container.astro';
 import Heading from '~/components/Heading.astro';
 import Icon from '~/components/Icon.astro';
 import PageHero from '~/components/PageHero.astro';
 import Tag from '~/components/Tag.astro';
 import Base from '~/layouts/Base.astro';
-import { cleanExcerpt, getBlogPage, pageHref, pageNumbers } from '~/lib/blog';
+import { coverAttrs, getBlogSource, headerSource, normalizePage, pageHref, pageNumbers } from '~/lib/blog';
+import { blogRuntime } from '~/lib/blog-runtime';
+import { contentPageHeaders } from '~/lib/content-api';
 
-// SSR on purpose: pagination is `?page=N`, which a prerendered page cannot read.
-// The list reads only the small metadata index bundled into the Worker.
+// SSR: the list comes from the content API at request time (a new article shows without a
+// rebuild) through the Cache API, 60 s fresh and stale-if-error (see lib/content-api.ts), and
+// pagination is `?page=N`, which a prerendered page cannot read.
+// An API outage with no copy to fall back on answers 503 with a plain notice, not a 500.
 export const prerender = false;
 
-const { featured, items, currentPage, totalPages } = getBlogPage(Astro.url.searchParams.get('page'));
+const source = await getBlogSource(blogRuntime((p) => Astro.locals.cfContext.waitUntil(p)));
+const result = await source.list(normalizePage(Astro.url.searchParams.get('page')));
+const data = result.data;
+const answer = contentPageHeaders(headerSource(result.source));
+Astro.response.status = answer.status;
+for (const [name, value] of Object.entries(answer.headers)) Astro.response.headers.set(name, value);
+Astro.response.headers.set('x-blog-source', result.source);
+
+// The featured article is shown on page 1 only (the API always returns it).
+const currentPage = data?.page ?? 1;
+const totalPages = data?.totalPages ?? 1;
+const featured = data && currentPage === 1 ? data.featured : null;
+const featuredCover = featured && coverAttrs(featured.image, featured.imageWidth, featured.imageHeight);
+const items = (data?.articles ?? []).map((article) => ({
+  ...article,
+  cover: coverAttrs(article.image, article.imageWidth, article.imageHeight),
+}));
 const pages = pageNumbers(currentPage, totalPages);
 const prevHref = currentPage > 1 ? pageHref(currentPage - 1) : null;
 const nextHref = currentPage < totalPages ? pageHref(currentPage + 1) : null;
@@ -22,6 +43,10 @@ const stepLink =
 const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100';
 ---
 
+{
+  !data ? (
+    <BlogUnavailable path="/blog" />
+  ) : (
 <Base
   seo={{
     kind: 'page',
@@ -43,19 +68,19 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
           <Container>
             <h2 class="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">Artikel Terbaru</h2>
             <a
-              href={`/blog/${featured.id}`}
+              href={`/blog/${featured.slug}`}
               class="group block bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
             >
               <div class="grid md:grid-cols-2 gap-0">
                 <div class="h-[300px] md:h-[400px] relative overflow-hidden">
-                  {featured.image && (
+                  {featuredCover && (
                     <img
-                      src={featured.image}
-                      srcset={featured.imageSrcset ?? undefined}
+                      src={featuredCover.src}
+                      srcset={featuredCover.srcset}
                       sizes="(min-width: 1200px) 576px, (min-width: 768px) 50vw, 100vw"
                       alt={featured.title}
-                      width={featured.imageWidth ?? undefined}
-                      height={featured.imageHeight ?? undefined}
+                      width={featuredCover.width}
+                      height={featuredCover.height}
                       fetchpriority="high"
                       decoding="async"
                       class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -74,7 +99,7 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
                   >
                     {featured.title}
                   </Heading>
-                  <p class="text-gray-600 leading-relaxed mb-6">{cleanExcerpt(featured.excerpt)}</p>
+                  <p class="text-gray-600 leading-relaxed mb-6">{featured.excerpt}</p>
                   <span class="text-primary-blue font-semibold group-hover:underline">Baca Selengkapnya</span>
                 </div>
               </div>
@@ -101,14 +126,14 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
             items.map((article) => (
               <article class="group bg-gray-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
                 <div class="h-[200px] relative overflow-hidden">
-                  {article.image && (
+                  {article.cover && (
                     <img
-                      src={article.image}
-                      srcset={article.imageSrcset ?? undefined}
+                      src={article.cover.src}
+                      srcset={article.cover.srcset}
                       sizes="(min-width: 1200px) 363px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                       alt={article.title}
-                      width={article.imageWidth ?? undefined}
-                      height={article.imageHeight ?? undefined}
+                      width={article.cover.width}
+                      height={article.cover.height}
                       loading="lazy"
                       decoding="async"
                       class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -126,8 +151,8 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
                   <h3 class="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-primary-blue transition-colors">
                     {article.title}
                   </h3>
-                  <p class="text-sm text-gray-600 line-clamp-2 mb-4">{cleanExcerpt(article.excerpt)}</p>
-                  <a href={`/blog/${article.id}`} class="text-sm text-primary-blue font-semibold hover:underline">
+                  <p class="text-sm text-gray-600 line-clamp-2 mb-4">{article.excerpt}</p>
+                  <a href={`/blog/${article.slug}`} class="text-sm text-primary-blue font-semibold hover:underline">
                     Baca Selengkapnya
                   </a>
                 </div>
@@ -178,3 +203,5 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
     </section>
   </main>
 </Base>
+)
+}

@@ -1,52 +1,72 @@
 ---
-import { bodies } from 'virtual:blog-bodies';
+import BlogUnavailable from '~/components/BlogUnavailable.astro';
 import Container from '~/components/Container.astro';
 import Heading from '~/components/Heading.astro';
 import Icon from '~/components/Icon.astro';
+import NotFoundPage from '~/components/NotFoundPage.astro';
 import Tag from '~/components/Tag.astro';
 import Base from '~/layouts/Base.astro';
-import { cleanExcerpt, getAllArticles, getArticleBySlug, getRelated } from '~/lib/blog';
+import { coverAttrs, getBlogSource, headerSource } from '~/lib/blog';
+import { blogRuntime } from '~/lib/blog-runtime';
+import { contentPageHeaders } from '~/lib/content-api';
 import { articleJsonLd } from '~/lib/seo';
 
-// One static HTML file per article, generated at build and served by the assets
-// layer. A slug that is not in getStaticPaths() is not an asset and matches no
-// route: the Worker answers it with the 404 page and a real 404 status (the
-// Next app answered such URLs with 200 and an empty shell).
-export const prerender = true;
+// SSR: the article comes from the content API at request time (a new or edited article shows
+// without a rebuild) through the Cache API, 60 s fresh and stale-if-error (lib/content-api.ts).
+//   - an unknown or unpublished slug is a real 404 with the 404 page (the API's 404, or a slug that
+//     cannot exist, which is answered without asking the API);
+//   - an API outage with no earlier copy is a 503 with a plain notice, never a 500.
+// This used to be one prerendered file per article; the migrated articles' images still get their
+// WebP srcset, from the asset manifest (coverAttrs).
+export const prerender = false;
 
-export function getStaticPaths() {
-  return getAllArticles().map((article) => ({ params: { slug: article.id } }));
-}
+const slug = Astro.params.slug ?? '';
+const source = await getBlogSource(blogRuntime((p) => Astro.locals.cfContext.waitUntil(p)));
+const result = await source.article(slug);
 
-const { slug } = Astro.params;
-const article = getArticleBySlug(slug ?? '');
-if (!article) throw new Error(`No article for slug "${slug}"`); // unreachable: paths come from getStaticPaths
-const html = bodies[article.id] ?? '';
-const related = getRelated(article);
-const excerpt = cleanExcerpt(article.excerpt);
+// 200 with the article, 404 for a slug the API does not have, 503 when it cannot be reached and there is no copy.
+const answer = contentPageHeaders(headerSource(result.source));
+Astro.response.status = answer.status;
+for (const [name, value] of Object.entries(answer.headers)) Astro.response.headers.set(name, value);
+Astro.response.headers.set('x-blog-source', result.source);
+
+const page = result.data;
+const article = page?.article;
+const cover = article ? coverAttrs(article.image, article.imageWidth, article.imageHeight) : null;
+const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttrs(item.image, item.imageWidth, item.imageHeight) }));
 ---
 
+---
+
+{
+  !article ? (
+    result.source === 'not_found' ? (
+      <NotFoundPage />
+    ) : (
+      <BlogUnavailable path={`/blog/${slug}`} />
+    )
+  ) : (
 <Base
   seo={{
     kind: 'page',
     title: article.title,
-    description: excerpt,
-    path: `/blog/${article.id}`,
-    ogImage: article.image || undefined,
+    description: article.excerpt,
+    path: `/blog/${article.slug}`,
+    ogImage: cover?.src,
   }}
-  jsonLd={[articleJsonLd({ ...article, excerpt })]}
+  jsonLd={[articleJsonLd({ ...article, id: article.slug, image: cover?.src })]}
 >
   <main class="min-h-screen bg-gray-50">
     <section class="relative overflow-hidden">
       {
-        article.image ? (
+        cover ? (
           <img
-            src={article.image}
-            srcset={article.imageSrcset ?? undefined}
+            src={cover.src}
+            srcset={cover.srcset}
             sizes="100vw"
             alt={article.title}
-            width={article.imageWidth ?? undefined}
-            height={article.imageHeight ?? undefined}
+            width={cover.width}
+            height={cover.height}
             fetchpriority="high"
             decoding="async"
             class="absolute inset-0 h-full w-full object-cover"
@@ -83,7 +103,8 @@ const excerpt = cleanExcerpt(article.excerpt);
     <article class="py-12 pb-16">
       <Container size="reading">
         <div class="bg-white rounded-2xl shadow-sm p-6 md:p-10 -mt-8 relative z-10">
-          <div class="blog-content" set:html={html} />
+          {/* Trusted: the API sanitizes the HTML when the article is saved (see BlogArticle.contentHtml). */}
+          <div class="blog-content" set:html={article.contentHtml} />
         </div>
       </Container>
     </article>
@@ -96,18 +117,18 @@ const excerpt = cleanExcerpt(article.excerpt);
             <div class="grid md:grid-cols-3 gap-6">
               {related.map((item) => (
                 <a
-                  href={`/blog/${item.id}`}
+                  href={`/blog/${item.slug}`}
                   class="group bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-all"
                 >
                   <div class="h-[160px] relative overflow-hidden">
-                    {item.image ? (
+                    {item.cover ? (
                       <img
-                        src={item.image}
-                        srcset={item.imageSrcset ?? undefined}
+                        src={item.cover.src}
+                        srcset={item.cover.srcset}
                         sizes="(min-width: 1200px) 368px, (min-width: 768px) 33vw, 100vw"
                         alt={item.title}
-                        width={item.imageWidth ?? undefined}
-                        height={item.imageHeight ?? undefined}
+                        width={item.cover.width}
+                        height={item.cover.height}
                         loading="lazy"
                         decoding="async"
                         class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -134,3 +155,5 @@ const excerpt = cleanExcerpt(article.excerpt);
     }
   </main>
 </Base>
+)
+}

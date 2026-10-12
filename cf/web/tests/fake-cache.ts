@@ -14,6 +14,9 @@ export function fakeCache(now: () => number) {
       const ttl = Number(/max-age=(\d+)/.exec(res.headers.get('cache-control') ?? '')?.[1] ?? 0);
       store.set(req.url, { text: await res.text(), expires: now() + ttl * 1000 });
     },
+    async delete(req: Request) {
+      return store.delete(req.url);
+    },
   };
 }
 

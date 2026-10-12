@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { bodies } from 'virtual:blog-bodies';
 import { describe, expect, it } from 'vitest';
 import { blogPosts, webRoot } from './helpers';
 
@@ -15,38 +16,20 @@ const walk = (dir: string): string[] =>
 describe.skipIf(!built)('build output', () => {
   const articles = blogPosts().articles;
 
-  it('prerenders the home page, 80 article pages, robots.txt and sitemap.xml as static files', () => {
+  it('prerenders the home page, the program pages, /donasi and robots.txt; the articles and the sitemap are rendered by the Worker (API data)', () => {
     expect(existsSync(path.join(dist, 'client/index.html'))).toBe(true);
-    const files = readdirSync(path.join(dist, 'client/blog')).filter((f) => f.endsWith('.html'));
-    expect(files).toHaveLength(80);
-    expect(files.map((f) => f.replace(/\.html$/, '')).sort()).toEqual(articles.map((a) => a.id).sort());
     expect(existsSync(path.join(dist, 'client/robots.txt'))).toBe(true);
-    expect(existsSync(path.join(dist, 'client/sitemap.xml'))).toBe(true);
+    // The blog is managed in the new admin and changes without a rebuild, so no article is a file any more.
+    const files = readdirSync(path.join(dist, 'client/blog')).filter((f) => f.endsWith('.html'));
+    expect(files).toEqual([]);
+    expect(existsSync(path.join(dist, 'client/sitemap.xml'))).toBe(false);
   });
 
-  it('does NOT prerender the pages that must be dynamic: /blog, /tim, the 404', () => {
-    expect(existsSync(path.join(dist, 'client/blog.html'))).toBe(false);
-    expect(existsSync(path.join(dist, 'client/blog/index.html'))).toBe(false);
-    expect(existsSync(path.join(dist, 'client/tim.html'))).toBe(false);
-    expect(existsSync(path.join(dist, 'client/404.html'))).toBe(false); // a static 404 would be served with status 200
-  });
-
-  it('every article page: lang id, one h1, canonical, og, twitter, Article JSON-LD that parses', () => {
-    for (const a of articles) {
-      const html = read(`client/blog/${a.id}.html`);
-      expect(html, a.id).toContain('<html lang="id"');
-      expect((html.match(/<h1[\s>]/g) ?? []).length, a.id).toBe(1);
-      expect(html, a.id).toContain(`<link rel="canonical" href="https://sakolakembara.org/blog/${a.id}">`);
-      expect(html, a.id).toMatch(/<title>[^<]+ \| Sakola Kembara<\/title>/);
-      expect(html, a.id).toContain('<meta property="og:image" content="https://sakolakembara.org/');
-      expect(html, a.id).toContain('<meta name="twitter:card" content="summary_large_image">');
-      const ld = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
-      expect(ld, a.id).toBeDefined();
-      const data = JSON.parse(ld as string);
-      expect(data['@type']).toBe('Article');
-      expect(data.datePublished).toBe(a.dateISO);
-      expect(data.description, a.id).not.toContain('&hellip;');
+  it('does NOT prerender the pages that must be dynamic: /blog, /blog/<slug>, /kontak, /tim, /sitemap.xml, the 404', () => {
+    for (const f of ['blog.html', 'blog/index.html', 'kontak.html', 'tim.html', 'sitemap.xml', '404.html']) {
+      expect(existsSync(path.join(dist, 'client', f)), f).toBe(false); // a static 404 would be served with status 200
     }
+    expect(articles.length).toBe(80);
   });
 
   it('home page: Organization JSON-LD, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {
@@ -69,12 +52,8 @@ describe.skipIf(!built)('build output', () => {
     }
   });
 
-  it('article pages ship one inline module script and no JS file; the only JS files are the home page map chunks', () => {
-    const html = read('client/blog/sejarah-sakola-kembara.html');
-    expect([...html.matchAll(/<script[^>]*\ssrc=/g)]).toHaveLength(0);
-    const scripts = [...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json'));
-    expect(scripts).toHaveLength(1);
-    // The home page's scripts and budget are checked in home-built.test.ts.
+  it('the only JS files are the home page map chunks (the scripts of the other pages are inline)', () => {
+    // The home page's scripts and budget are checked in home-built.test.ts; the Worker-rendered pages are checked in e2e.
     const jsFiles = walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js'));
     for (const f of jsFiles) {
       expect(path.basename(f), f).toMatch(/^(ImpactMap\.astro_astro_type_script_index_0_lang|leaflet-src|leaflet|map)\.[\w-]+\.js$/);
@@ -117,30 +96,32 @@ describe.skipIf(!built)('build output', () => {
     expect(cfg.main).toBe('entry.mjs');
     expect(cfg.assets).toMatchObject({ binding: 'ASSETS', directory: '../client' });
     expect(cfg.compatibility_flags).toContain('nodejs_compat');
-    for (const key of ['kv_namespaces', 'r2_buckets', 'd1_databases', 'durable_objects', 'queues', 'services']) {
+    for (const key of ['kv_namespaces', 'r2_buckets', 'd1_databases', 'durable_objects', 'queues']) {
       const v = cfg[key];
       expect(v === undefined || (Array.isArray(v) ? v.length === 0 : Object.values(v).every((x) => !x || (Array.isArray(x) && x.length === 0)))).toBe(true);
     }
+    // The one binding: the internal service binding to the API Worker, by a placeholder name (no ids, no account).
+    expect(cfg.services).toEqual([{ binding: 'API', service: 'sakola-kembara-api' }]);
     expect(cfg.images).toBeUndefined();
     expect(cfg.routes).toBeUndefined();
     expect(cfg.account_id).toBeUndefined();
   });
 
-  it('the Worker bundle holds no article body: bodies are only in the prerendered pages', () => {
+  it('the Worker bundle holds no markdown article: no body, and not even the metadata index (BLOG_SOURCE=api, the default)', () => {
     const chunks = walk(path.join(dist, 'server')).filter((f) => f.endsWith('.mjs'));
     const bundle = chunks.map((f) => readFileSync(f, 'utf8')).join('\n');
-    // a sentence from the body of an article (not its excerpt)
+    // a sentence from the body of an article (not its excerpt), from the build-time markdown fixture
     let sentence: string | undefined;
     for (const a of articles) {
-      const html = read(`client/blog/${a.id}.html`);
-      const body = html.slice(html.indexOf('class="blog-content"'));
-      sentence = [...body.matchAll(/<p>([^<&]{80,200})<\/p>/g)][0]?.[1];
+      sentence = [...bodies[a.id].matchAll(/<p>([^<&]{80,200})<\/p>/g)][0]?.[1];
       if (sentence) break;
     }
     expect(sentence).toBeDefined();
     expect(bundle).not.toContain(sentence as string);
-    // while the metadata index IS there (the /blog list needs it)
-    expect(bundle).toContain(articles[0].id);
+    // the markdown index would name every article: check the long slugs (a short one such as `daffa-najwan` is also an image name of the home page)
+    for (const a of articles.filter((x) => x.id.length > 30)) expect(bundle, a.id).not.toContain(a.id);
+    // the blog is read from the API: its client is in there
+    expect(bundle).toContain('/api/public/blog');
   });
 
   it('server bundle stays far below the 3 MB (compressed) Workers Free limit', () => {

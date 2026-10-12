@@ -45,11 +45,15 @@ const isLocalImage = (src) => src.startsWith('/blog/images/');
 const INLINE_SIZES = '(min-width: 800px) 672px, (min-width: 768px) calc(100vw - 128px), calc(100vw - 96px)';
 
 /**
+ * The reader behind both the Vite plugin and scripts/fixture-api.mjs (the local
+ * stand-in for the Worker API): every article parsed and rendered by the same
+ * pipeline, so the fixture serves exactly what the build used to bake in.
+ *
  * @param {{ contentDir: string; manifestFile: string }} options
  *   contentDir: folder with the <slug>.md files. manifestFile: the image
  *   manifest that scripts/build-assets.mjs writes (src/generated/image-manifest.json).
  */
-export default function blogContent({ contentDir, manifestFile }) {
+export function createBlogReader({ contentDir, manifestFile }) {
   let images = null;
 
   /** The manifest entry of a local image URL, or null (external URL, or a file the pipeline does not know). */
@@ -140,6 +144,8 @@ export default function blogContent({ contentDir, manifestFile }) {
             modifiedISO: data.modifiedISO ?? data.dateISO ?? '1970-01-01',
           },
           html,
+          /** The markdown source, for the fixture API (the contract's `contentMarkdown`). */
+          markdown: content.trim(),
         };
       }),
     );
@@ -152,8 +158,16 @@ export default function blogContent({ contentDir, manifestFile }) {
     return articles;
   }
 
+  return { readAll };
+}
+
+/**
+ * @param {{ contentDir: string; manifestFile: string }} options see createBlogReader
+ */
+export default function blogContent({ contentDir, manifestFile }) {
+  const reader = createBlogReader({ contentDir, manifestFile });
   let cache = null;
-  const load = () => (cache ??= readAll());
+  const load = () => (cache ??= reader.readAll());
 
   return {
     name: 'sakem:blog-content',

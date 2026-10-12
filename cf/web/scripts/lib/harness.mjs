@@ -15,6 +15,12 @@ import { startStubOrigin } from '../stub-origin.mjs';
 import { startFixtureApi } from '../fixture-api.mjs';
 
 export const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+/**
+ * Added to every port the stack uses (the Worker, the stub origin, the fixture API, the inspector), so two
+ * runs on one machine do not collide: `E2E_PORT_OFFSET=1000 pnpm test:e2e`. Default 0.
+ */
+export const PORT_OFFSET = Number(process.env.E2E_PORT_OFFSET ?? 0);
 export const distServer = path.join(webRoot, 'dist/server');
 
 /**
@@ -24,13 +30,13 @@ export const distServer = path.join(webRoot, 'dist/server');
 export async function startStack(opts = {}) {
   const {
     wranglerConfig = path.join(distServer, 'wrangler.json'),
-    port = 8791,
-    stubPort = 4390,
-    fixturePort = 4391,
-    inspectorPort = 9331,
     vars = {},
     log,
   } = opts;
+  const port = (opts.port ?? 8791) + PORT_OFFSET;
+  const stubPort = (opts.stubPort ?? 4390) + PORT_OFFSET;
+  const fixturePort = (opts.fixturePort ?? 4391) + PORT_OFFSET;
+  const inspectorPort = (opts.inspectorPort ?? 9331) + PORT_OFFSET;
 
   const stub = await startStubOrigin({ port: stubPort });
   const fixture = await startFixtureApi({ port: fixturePort });
@@ -44,6 +50,7 @@ export async function startStack(opts = {}) {
     '--persist-to', persist,
     '--var', `LEGACY_ORIGIN_URL:http://127.0.0.1:${stubPort}`,
     '--var', `CONTENT_API_URL:http://127.0.0.1:${fixturePort}`,
+    '--var', `CONTACT_API_URL:http://127.0.0.1:${fixturePort}`,
     ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]),
   ];
   const child = spawn(path.join(webRoot, 'node_modules/.bin/wrangler'), args, {

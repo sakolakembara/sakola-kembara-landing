@@ -6,7 +6,15 @@
   "name": "sakola-kembara-web",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // The API Worker (cf/api), reached through an internal SERVICE BINDING: the contact form posts to
+  // it from here, and so can the read endpoints when CONTENT_API_URL is unset. A binding needs no
+  // public path to the API and no shared secret (docs/cloudflare/content-api.md, transport A).
+  // `service` is a PLACEHOLDER name: set it to the deployed API Worker's name at deploy time.
+  // Locally the binding is not used: CONTACT_API_URL and CONTENT_API_URL point at
+  // scripts/fixture-api.mjs (dev.vars.example), and they win over the binding when set.
+  "services": [{ "binding": "API", "service": "sakola-kembara-api" }]
 
   // Intentionally NOT set here (no resource ids, hostnames or secrets in git):
   //
@@ -15,7 +23,15 @@
   //   fetch(request) inside the Worker reaches the legacy origin behind the
   //   same hostname. Add it at deploy time. See docs/cloudflare/web-skeleton.md.
   // - "vars": LEGACY_ORIGIN_URL (unset in production: plain fetch) and
-  //   CONTENT_API_URL (base URL for /api/public/*; optional: TEAM_CACHE_FRESH_SECONDS,
-  //   CONTENT_CACHE_FRESH_SECONDS). Locally these come from
-  //   an untracked .dev.vars; copy dev.vars.example.
+  //   CONTENT_API_URL (base URL for /api/public/*; leave it unset to use the `API` binding for the
+  //   blog, but /tim, /laporan and /gabung-siswa/docs read this variable only; optional:
+  //   TEAM_CACHE_FRESH_SECONDS, CONTENT_CACHE_FRESH_SECONDS). Locally these come from an
+  //   untracked .dev.vars; copy dev.vars.example. Never set CONTACT_API_URL in production: it
+  //   would move the contact form off the binding onto public HTTP.
+  // - "ratelimits": the rate-limit binding of the contact form, binding name CONTACT_LIMITER:
+  //     "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "<a positive integer you choose>",
+  //                      "simple": { "limit": 5, "period": 60 } }]
+  //   The code uses `env.CONTACT_LIMITER` when it exists and an in-memory limiter (one isolate, a
+  //   development fallback) when it does not, so the form works either way. The numbers are the
+  //   legacy limit (5 per minute per visitor address); the API Worker enforces the same behind it.
 }

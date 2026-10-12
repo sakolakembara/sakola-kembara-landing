@@ -3,19 +3,41 @@
 //
 //   node scripts/fixture-api.mjs            listens on FIXTURE_API_PORT (default 4391)
 //
-//   GET  /api/public/team         { "members": TeamMember[] }   (src/lib/team-types.ts)
-//   GET  /api/public/reports      { "reports": Report[] }       newest year first, then newest upload
-//   GET  /api/public/resources    { "resources": Resource[] }   category order, then the admin's order
-//   POST /__mode?m=ok|500|slow|badjson|empty[&for=team|reports|resources]
-//                                 switch behaviour at runtime (tests use this); without `for` it
-//                                 applies to every endpoint, and resets the per-endpoint overrides
-//   GET  /__hits                  { hits (team, kept for older checks), mode, byEndpoint }
+//   GET  /api/public/team              { "members": TeamMember[] }   (src/lib/team-types.ts)
+//   GET  /api/public/reports           { "reports": Report[] }       newest year first, then newest upload
+//   GET  /api/public/resources         { "resources": Resource[] }   category order, then the admin's order
+//   GET  /api/public/blog              ?page=&pageSize=  featured + articles + paging (the contract's rules)
+//   GET  /api/public/blog/<slug>       { article, related }, or 404 { "error": "not_found" }
+//   POST /api/public/contact           the contact form: 201, 400, 429 (rate_limited, duplicate_recent)
+//
+// The blog is generated from the root content/blog/*.md with the SAME pipeline the build uses
+// (plugins/blog-content.mjs, createBlogReader), so all 80 articles exist, with the rendered HTML
+// (srcset and sizes on the images the asset manifest knows) and the rules of the contract
+// (blog-contract.mjs, shared with the site). It needs `pnpm assets` to have run (the image
+// manifest); the other endpoints work without.
+//
+// Test hooks (not part of the contract; nothing of them exists in the real API):
+//
+//   POST /__mode?m=<mode>[&for=<endpoint>]
+//        modes: ok | 500 | slow | badjson | empty, and for the blog and the contact form also
+//        html404 (a 404 that is not the contract's JSON), 503 | 429 | duplicate | invalid (contact only).
+//        Without `for` it applies to every endpoint and resets the per-endpoint overrides; `for` is
+//        team | reports | resources | blog | contact.
+//   GET  /__hits                { hits (team, kept for older checks), mode, overrides, byEndpoint }
+//   GET  /__requests?for=blog   the blog request targets (path + query), oldest first
+//   GET  /__contact-log         every contact request the fixture looked at: { clientIp, headers, body }
+//                               (a TEST fixture: the real API stores messages in D1, and the site never logs them)
+//   POST /__reset               forget everything: mode, overrides, hits, requests, the contact log, limiter and duplicates
 //
 // All names, titles, texts and links below are made up for the fixture (example.org is reserved).
 // The file paths are root-relative, as the API returns them; nothing serves those files here.
 
 import { createServer } from 'node:http';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildListPayload, pickRelated, toWireSummary } from '../blog-contract.mjs';
+
+const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const T = '2026-01-01T00:00:00.000Z';
 const member = (n, category, displayOrder, extra = {}) => ({
@@ -111,6 +133,60 @@ export const SAMPLE_RESOURCES = [
   }),
 ];
 
+
+// ---- the blog, from the markdown ---------------------------------------------------------------
+
+let blogData;
+/** Every article of the root content/blog as the API would serve it, read once on the first blog request. */
+function loadBlog() {
+  blogData ??= (async () => {
+    const { createBlogReader } = await import('../plugins/blog-content.mjs');
+    const reader = createBlogReader({
+      contentDir: path.resolve(webRoot, '../../content/blog'),
+      manifestFile: path.join(webRoot, 'src/generated/image-manifest.json'),
+    });
+    const articles = await reader.readAll(); // newest first
+    return {
+      summaries: articles.map((a) => toWireSummary(a.meta)),
+      bySlug: new Map(articles.map((a) => [a.meta.id, a])),
+    };
+  })();
+  return blogData;
+}
+
+/** Cache headers of the contract (content-api.md, "Caching"). */
+const READ_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
+
+// ---- the contact form ---------------------------------------------------------------------------
+
+const MESSAGES = {
+  rateLimited: 'Terlalu banyak percobaan pengiriman. Silakan tunggu satu menit lalu coba lagi.',
+  invalid: 'Silakan periksa kembali isian formulir.',
+  duplicate: 'Pesan dari email ini baru saja dikirim. Mohon tunggu beberapa menit sebelum mengirim ulang.',
+  success: 'Pesan kamu sudah kami terima. Tim kami akan menghubungi via email.',
+};
+const EMAIL = /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i;
+const IP_V4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+const isIp = (v) => (IP_V4.test(v) ? v.split('.').every((n) => Number(n) <= 255) : v.includes(':') && /^[0-9a-f:.]{2,45}$/i.test(v));
+
+/** The contract's field rules (the legacy zod schema, word for word). Returns fieldErrors, or null when valid. */
+function validateContact(input) {
+  const s = (v) => (typeof v === 'string' ? v : '');
+  const fullName = s(input.fullName).trim();
+  const email = s(input.email).trim().toLowerCase();
+  const message = s(input.message).trim();
+  const errors = {};
+  const add = (field, text) => ((errors[field] ??= []).push(text));
+  if (fullName.length < 2) add('fullName', 'Nama lengkap minimal 2 karakter');
+  if (fullName.length > 120) add('fullName', 'Maksimal 120 karakter');
+  if (!EMAIL.test(email)) add('email', 'Format email belum benar');
+  if (email.length > 254) add('email', 'Maksimal 254 karakter');
+  if (!['partnership', 'donation', 'other'].includes(s(input.subject))) add('subject', 'Pilih salah satu subjek');
+  if (message.length < 10) add('message', 'Tulis minimal 10 karakter');
+  if (message.length > 5000) add('message', 'Maksimal 5000 karakter');
+  return Object.keys(errors).length > 0 ? { errors } : { ok: { fullName, email, message } };
+}
+
 const ENDPOINTS = {
   '/api/public/team': { name: 'team', key: 'members', data: SAMPLE_MEMBERS },
   '/api/public/reports': { name: 'reports', key: 'reports', data: SAMPLE_REPORTS },
@@ -120,11 +196,53 @@ const ENDPOINTS = {
 export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 4391), host = '127.0.0.1' } = {}) {
   let mode = 'ok';
   const overrides = {};
-  const byEndpoint = { team: 0, reports: 0, resources: 0 };
+  const byEndpoint = { team: 0, reports: 0, resources: 0, blog: 0, contact: 0 };
+  const requests = { blog: [] };
+  const contact = { log: [], windows: new Map(), recent: new Map() };
+  /** The mode an endpoint answers in: its own override, else the global one. */
+  const modeOf = (name) => overrides[name] ?? mode;
+  const reset = () => {
+    mode = 'ok';
+    for (const k of Object.keys(overrides)) delete overrides[k];
+    for (const k of Object.keys(byEndpoint)) byEndpoint[k] = 0;
+    requests.blog.length = 0;
+    contact.log.length = 0;
+    contact.windows.clear();
+    contact.recent.clear();
+  };
 
-  const server = createServer((req, res) => {
+  const send = (res, status, body, headers = {}) => {
+    res.writeHead(status, { 'content-type': 'application/json', ...headers });
+    res.end(typeof body === 'string' ? body : JSON.stringify(body));
+  };
+  // `slow` answers after 5 s, longer than the Worker's 2 s timeout.
+  const delayed = (current, fn) => (current === 'slow' ? setTimeout(fn, 5000) : fn());
+
+  /** The failure modes the blog shares with the lists. Returns true when it answered. */
+  const failMode = (res, current) => {
+    if (current === '500') {
+      res.writeHead(500);
+      res.end('boom');
+      return true;
+    }
+    if (current === 'badjson') {
+      send(res, 200, '{"articles": "not a list", "article": "x"}');
+      return true;
+    }
+    if (current === 'html404') {
+      res.writeHead(404, { 'content-type': 'text/html' });
+      res.end('<h1>Not Found</h1>');
+      return true;
+    }
+    return false;
+  };
+
+  const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
-    if (url.pathname === '/__mode') {
+    const p = url.pathname;
+
+    // ---- test hooks
+    if (p === '/__mode') {
       const m = url.searchParams.get('m') ?? 'ok';
       const only = url.searchParams.get('for');
       if (only) {
@@ -136,17 +254,122 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
       res.writeHead(204);
       return res.end();
     }
-    if (url.pathname === '/__hits') {
-      res.setHeader('content-type', 'application/json');
-      return res.end(JSON.stringify({ hits: byEndpoint.team, mode, overrides, byEndpoint }));
+    if (p === '/__hits') return send(res, 200, { hits: byEndpoint.team, mode, overrides, byEndpoint });
+    if (p === '/__requests') return send(res, 200, requests[url.searchParams.get('for') ?? 'blog'] ?? []);
+    if (p === '/__contact-log') return send(res, 200, contact.log);
+    if (p === '/__reset') {
+      reset();
+      res.writeHead(204);
+      return res.end();
     }
-    const endpoint = ENDPOINTS[url.pathname];
+
+    // ---- blog
+    if (p === '/api/public/blog' || p.startsWith('/api/public/blog/')) {
+      if (req.method !== 'GET') return send(res, 405, { error: 'method_not_allowed' });
+      byEndpoint.blog++;
+      requests.blog.push(p + url.search);
+      const current = modeOf('blog');
+      if (failMode(res, current)) return;
+      let data;
+      try {
+        data = await loadBlog();
+      } catch (error) {
+        return send(res, 500, { error: 'fixture_not_ready', hint: String(error.message ?? error) });
+      }
+      return delayed(current, () => {
+        if (p === '/api/public/blog') {
+          const list = current === 'empty' ? [] : data.summaries;
+          return send(res, 200, buildListPayload(list, url.searchParams.get('page'), url.searchParams.get('pageSize')), {
+            'cache-control': READ_CACHE,
+          });
+        }
+        const slug = decodeURIComponent(p.slice('/api/public/blog/'.length));
+        const entry = current === 'empty' ? undefined : data.bySlug.get(slug);
+        if (!entry) return send(res, 404, { error: 'not_found' }, { 'cache-control': 'public, s-maxage=30' });
+        const summary = data.summaries.find((a) => a.slug === slug);
+        return send(
+          res,
+          200,
+          {
+            article: { ...summary, modifiedISO: entry.meta.modifiedISO, contentMarkdown: entry.markdown, contentHtml: entry.html },
+            related: pickRelated(summary, data.summaries),
+          },
+          { 'cache-control': READ_CACHE },
+        );
+      });
+    }
+
+    // ---- contact
+    if (p === '/api/public/contact') {
+      const noStore = { 'cache-control': 'no-store' };
+      if (req.method !== 'POST') return send(res, 405, { error: 'method_not_allowed' }, noStore);
+      byEndpoint.contact++;
+      const current = modeOf('contact');
+      const chunks = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size <= 64 * 1024) chunks.push(chunk);
+      }
+      const raw = Buffer.concat(chunks).toString('utf8');
+      const clientIp = String(req.headers['x-sakem-client-ip'] ?? '').trim();
+      const entry = { clientIp, headers: { 'content-type': req.headers['content-type'], 'x-sakem-client-ip': clientIp || undefined }, body: undefined };
+      contact.log.push(entry);
+
+      // The modes of the test hooks answer first, whatever the body is.
+      if (current === '500') return send(res, 500, { error: 'boom' }, noStore);
+      if (current === '503') return send(res, 503, { error: 'service_unavailable' }, noStore);
+      if (current === 'html404') {
+        res.writeHead(404, { 'content-type': 'text/html' });
+        return res.end('<h1>Not Found</h1>');
+      }
+      if (current === '429') {
+        return send(res, 429, { error: 'rate_limited', message: MESSAGES.rateLimited, retryAfterSeconds: 42 }, { ...noStore, 'retry-after': '42' });
+      }
+      if (current === 'duplicate') {
+        return send(res, 429, { error: 'duplicate_recent', message: MESSAGES.duplicate, retryAfterSeconds: 300 }, { ...noStore, 'retry-after': '300' });
+      }
+      if (current === 'invalid') {
+        return send(res, 400, { error: 'validation_failed', message: MESSAGES.invalid, fieldErrors: { email: ['Format email belum benar'] } }, noStore);
+      }
+      if (current === 'slow') return setTimeout(() => send(res, 201, { ok: true, message: MESSAGES.success }, noStore), 10_000);
+
+      // The contract's checks, in its order.
+      if (size > 32 * 1024) return send(res, 400, { error: 'body_too_large' }, noStore);
+      if (!clientIp || !isIp(clientIp)) return send(res, 400, { error: 'invalid_client_ip' }, noStore);
+      const now = Date.now();
+      const w = contact.windows.get(clientIp);
+      if (!w || now - w.start >= 60_000) contact.windows.set(clientIp, { start: now, count: 1 });
+      else if (++w.count > 5) {
+        const retry = Math.max(1, Math.ceil((w.start + 60_000 - now) / 1000));
+        return send(res, 429, { error: 'rate_limited', message: MESSAGES.rateLimited, retryAfterSeconds: retry }, { ...noStore, 'retry-after': String(retry) });
+      }
+      let body;
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        return send(res, 400, { error: 'invalid_json' }, noStore);
+      }
+      entry.body = body;
+      if (typeof body?.website === 'string' && body.website.length > 0) return send(res, 201, { ok: true, message: MESSAGES.success }, noStore); // honeypot: nothing saved
+      const verdict = validateContact(body ?? {});
+      if (verdict.errors) return send(res, 400, { error: 'validation_failed', message: MESSAGES.invalid, fieldErrors: verdict.errors }, noStore);
+      const last = contact.recent.get(verdict.ok.email);
+      if (last && now - last < 5 * 60_000) {
+        return send(res, 429, { error: 'duplicate_recent', message: MESSAGES.duplicate, retryAfterSeconds: 300 }, { ...noStore, 'retry-after': '300' });
+      }
+      contact.recent.set(verdict.ok.email, now);
+      return send(res, 201, { ok: true, message: MESSAGES.success }, noStore);
+    }
+
+    // ---- the lists
+    const endpoint = ENDPOINTS[p];
     if (!endpoint) {
       res.writeHead(404);
       return res.end();
     }
     byEndpoint[endpoint.name]++;
-    const current = overrides[endpoint.name] ?? mode;
+    const current = modeOf(endpoint.name);
     if (current === '500') {
       res.writeHead(500);
       return res.end('boom');
@@ -155,12 +378,12 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(`{"${endpoint.key}": "not a list"}`);
     }
-    const send = () => {
+    const reply = () => {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ [endpoint.key]: current === 'empty' ? [] : endpoint.data }));
     };
-    if (current === 'slow') return void setTimeout(send, 5000); // longer than the Worker's 2 s timeout
-    send();
+    if (current === 'slow') return void setTimeout(reply, 5000); // longer than the Worker's 2 s timeout
+    reply();
   });
 
   return new Promise((resolve) => {
@@ -170,5 +393,5 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { port } = await startFixtureApi();
-  console.log(`fixture content API on http://127.0.0.1:${port}/api/public/{team,reports,resources}`);
+  console.log(`fixture content API on http://127.0.0.1:${port}/api/public/{team,reports,resources,blog,blog/<slug>,contact}`);
 }

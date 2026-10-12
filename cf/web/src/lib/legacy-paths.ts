@@ -56,9 +56,9 @@ export const LEGACY_PATHS: readonly LegacyPath[] = [
   { path: '/resources', why: 'Documents uploaded from /admin/resources.' },
 ];
 
-export const NOT_YET_PORTED: readonly LegacyPath[] = [
-  { path: '/kontak', why: 'Contact page with the message form (server action + Postgres).' },
-];
+// Empty: /laporan, /gabung-siswa* and /kontak are ported. The list stays (the matcher and the tests use it)
+// for the next public page that is ever added to the legacy app before the Worker has it.
+export const NOT_YET_PORTED: readonly LegacyPath[] = [];
 
 const matches = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);

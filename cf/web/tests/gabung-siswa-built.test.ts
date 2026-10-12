@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { isLegacyPath } from '~/lib/legacy-paths';
 import { absoluteUrl } from '~/lib/seo';
+import { STATIC_ROUTES } from '~/lib/sitemap';
 import { importRoot, readRoot, webRoot } from './helpers';
 
 // Checks on the page `pnpm build` generates for /gabung-siswa (dist/client/gabung-siswa.html) and on
@@ -132,10 +133,11 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     for (const img of imgs) expect(img).toMatch(/alt="Sakola Kembara"/);
   });
 
-  it('the sitemap still lists /laporan and /gabung-siswa (and, like the Next sitemap, not the documents page)', () => {
-    const xml = read('sitemap.xml');
-    expect(xml).toContain('<loc>https://sakolakembara.org/laporan</loc>');
-    expect(xml).toContain('<loc>https://sakolakembara.org/gabung-siswa</loc>');
-    expect(xml).not.toContain('/gabung-siswa/docs');
+  it('the sitemap still lists /laporan and /gabung-siswa (and, like the Next sitemap, not the documents page); it is rendered by the Worker now, so its output is checked in scripts/e2e.mjs', () => {
+    const paths = STATIC_ROUTES.map((r) => r.path);
+    expect(paths).toContain('/laporan');
+    expect(paths).toContain('/gabung-siswa');
+    expect(paths).not.toContain('/gabung-siswa/docs');
+    expect(existsSync(path.join(client, 'sitemap.xml'))).toBe(false);
   });
 });

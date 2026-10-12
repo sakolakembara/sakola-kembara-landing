@@ -45,7 +45,7 @@ function pageWeight(htmlFile) {
   };
 }
 out.astroHome = pageWeight(path.join(dist, 'client/index.html'));
-out.astroArticle = pageWeight(path.join(dist, 'client/blog/sejarah-sakola-kembara.html'));
+// out.astroArticle is measured further down: the article is rendered by the Worker now, so there is no file in dist/.
 {
   const hero = readFileSync(path.join(dist, 'client/index.html'), 'utf8').match(/srcset="([^"]+)"/)?.[1] ?? '';
   const mid = hero.split(', ')[1]?.split(' ')[0]; // the 800w candidate
@@ -95,12 +95,14 @@ if (nextArg > 0) {
 }
 
 // ------------------------------------------------------------------ 4. warm timings (proxy only, not CPU)
-const articleSlug = readdirSync(path.join(dist, 'client/blog')).find((f) => f.endsWith('.html')).replace(/\.html$/, '');
+const articleSlug = 'sejarah-sakola-kembara'; // one of the 80 migrated articles (content/blog)
 const routes = [
   ['/ (prerendered)', '/'],
   ['/blog (SSR)', '/blog'],
   ['/blog?page=3 (SSR)', '/blog?page=3'],
-  [`/blog/<slug> (prerendered)`, `/blog/${articleSlug}`],
+  [`/blog/<slug> (SSR, API data from caches.default)`, `/blog/${articleSlug}`],
+  ['/kontak (SSR)', '/kontak'],
+  ['/sitemap.xml (SSR, 2 API pages from caches.default)', '/sitemap.xml'],
   ['/tim (SSR, cache hit)', '/tim'],
   ['404 (SSR render)', '/blog/does-not-exist'],
   ['redirect (/cerita/x/, _redirects)', '/cerita/some-slug/'],
@@ -116,6 +118,11 @@ const stats = (xs) => {
   const stack = await startStack({ port: 8796, stubPort: 4398, fixturePort: 4399, inspectorPort: 9336 });
   out.timings = {};
   try {
+    // The article is rendered by the Worker: fetch it and weigh it like the prerendered pages.
+    mkdirSync(path.join(webRoot, '.measure'), { recursive: true });
+    const articleFile = path.join(webRoot, '.measure/article.html');
+    writeFileSync(articleFile, await (await fetch(`${stack.base}/blog/${articleSlug}`)).text());
+    out.astroArticle = pageWeight(articleFile);
     for (const [name, p] of routes) {
       const N = 60;
       for (let i = 0; i < 5; i++) await (await fetch(stack.base + p, { redirect: 'manual' })).arrayBuffer(); // warm up
@@ -144,9 +151,10 @@ const stats = (xs) => {
   try {
     const probes = [
       ['/', 'prerendered page'],
-      [`/blog/${articleSlug}`, 'prerendered article'],
+      [`/blog/${articleSlug}`, 'SSR article (API data)'],
       ['/robots.txt', 'prerendered endpoint'],
-      ['/sitemap.xml', 'prerendered endpoint'],
+      ['/sitemap.xml', 'SSR endpoint (API data)'],
+      ['/kontak', 'SSR page (contact form)'],
       ['/favicon.ico', 'public/ file'],
       ['/og-default.jpg', 'public/ file'],
       ['__css__', 'hashed asset (/_astro/*.css)'],
