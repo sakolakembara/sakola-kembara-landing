@@ -32,6 +32,7 @@ import {
   MAX_WIDTH,
   PIPELINE_VERSION,
   RASTER_RE,
+  UNSUPPORTED_RASTER_RE,
   WIDTHS,
   rungHeight,
   rungsFor,
@@ -41,10 +42,13 @@ import { shrinkPdf } from './lib/pdf-shrink.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, '..');
-const sourceDir = path.resolve(webRoot, '../../public'); // legacy repo root public/
-const outDir = path.join(webRoot, 'public');
-const manifestFile = path.join(webRoot, 'src/generated/image-manifest.json');
-const stateFile = path.join(webRoot, '.asset-state.json');
+/** Where things are by default; the tests pass throwaway folders instead. */
+export const DEFAULT_PATHS = {
+  sourceDir: path.resolve(webRoot, '../../public'), // legacy repo root public/
+  outDir: path.join(webRoot, 'public'),
+  manifestFile: path.join(webRoot, 'src/generated/image-manifest.json'),
+  stateFile: path.join(webRoot, '.asset-state.json'),
+};
 
 const posix = (p) => p.split(path.sep).join('/');
 const sha = (...parts) => {
@@ -93,13 +97,16 @@ function writeAtomic(dest, data) {
 const settingsKey = JSON.stringify({ v: PIPELINE_VERSION, ENCODE, MAX_WIDTH, WIDTHS });
 
 /** The rasters and the other files of the root public/ that this app serves. */
-function collectSources() {
+function collectSources(sourceDir) {
   const rasters = [];
   const copies = [];
   for (const dir of IMAGE_DIRS) {
     for (const rel of listFiles(path.join(sourceDir, dir))) {
       const url = `/${dir}/${rel}`;
       const abs = path.join(sourceDir, dir, rel);
+      if (UNSUPPORTED_RASTER_RE.test(rel)) {
+        throw new Error(`build-assets: ${url}: the pipeline reads jpg, jpeg, png and webp. Convert the file (an unprocessed raster would ship at full size and have no manifest entry).`);
+      }
       (RASTER_RE.test(rel) ? rasters : copies).push({ url, abs });
     }
   }
@@ -113,7 +120,12 @@ function collectSources() {
 /** Hash, size and ladder of one raster: everything the manifest needs, without encoding. */
 async function describeRaster({ url, abs }) {
   const bytes = await readFile(abs);
-  const meta = await sharp(bytes).metadata();
+  const meta = await sharp(bytes)
+    .metadata()
+    .catch((error) => {
+      // A file sharp cannot read fails the build: better than a page with a broken image.
+      throw new Error(`build-assets: ${url}: ${error.message}`, { cause: error });
+    });
   if (!meta.width || !meta.height || !['jpeg', 'png', 'webp'].includes(meta.format ?? '')) {
     throw new Error(`build-assets: ${url} is not a readable jpeg/png/webp`);
   }
@@ -170,9 +182,10 @@ async function encodeVariant(item, variant) {
 
 // ---------------------------------------------------------------- main
 
-export async function buildAssets({ manifestOnly = false, log = console.log } = {}) {
+export async function buildAssets({ manifestOnly = false, log = console.log, ...paths } = {}) {
+  const { sourceDir, outDir, manifestFile, stateFile } = { ...DEFAULT_PATHS, ...paths };
   const started = performance.now();
-  const { rasters, copies } = collectSources();
+  const { rasters, copies } = collectSources(sourceDir);
 
   // 1. The manifest: a pure function of the source bytes and the settings.
   const described = [];

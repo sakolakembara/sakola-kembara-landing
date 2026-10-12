@@ -27,26 +27,30 @@ export function getImage(src: string): ImageEntry {
   return entry;
 }
 
+/** File-name order of a gallery folder: "2.jpg" before "10.jpg", names that are not numbers after, alphabetically. */
+export function compareNames(a: string, b: string): number {
+  const ext = /\.[^.]+$/;
+  const an = Number(a.replace(ext, ''));
+  const bn = Number(b.replace(ext, ''));
+  const aNum = Number.isFinite(an);
+  const bNum = Number.isFinite(bn);
+  if (aNum && bNum && an !== bn) return an - bn;
+  if (aNum !== bNum) return aNum ? -1 : 1;
+  return a.localeCompare(b);
+}
+
 /**
  * The images directly inside a folder, e.g. listImages("/images/program/galeri/pembinaan"):
  * the build-time replacement for the legacy lib/gallery.ts, which read the
- * folder at request time (a Worker has no file system). Same order: numbered
- * names numerically (2.jpg before 10.jpg), the rest alphabetically after them.
- * Empty when the folder has no images.
+ * folder at request time (a Worker has no file system), in the same order
+ * (compareNames). Empty when the folder has no images.
  */
 export function listImages(dir: string): { src: string; name: string }[] {
   const prefix = `${dir.replace(/\/$/, '')}/`;
-  const order = (name: string) => Number(name.replace(/\.[^.]+$/, ''));
   return Object.keys(images)
     .filter((src) => src.startsWith(prefix) && !src.slice(prefix.length).includes('/'))
     .map((src) => ({ src, name: src.slice(prefix.length) }))
-    .sort((a, b) => {
-      const aNum = Number.isFinite(order(a.name));
-      const bNum = Number.isFinite(order(b.name));
-      if (aNum && bNum) return order(a.name) - order(b.name);
-      if (aNum !== bNum) return aNum ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+    .sort((a, b) => compareNames(a.name, b.name));
 }
 
 export interface ImgAttrs {

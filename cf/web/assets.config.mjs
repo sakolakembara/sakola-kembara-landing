@@ -47,6 +47,8 @@ export const GENERATED_DIRS = [...IMAGE_DIRS, FILES_DIR, DERIVATIVE_DIR];
 
 /** Raster formats the pipeline re-encodes. Anything else in IMAGE_DIRS is copied as is. */
 export const RASTER_RE = /\.(jpe?g|png|webp)$/i;
+/** Raster formats the pipeline does not read: a file like this in IMAGE_DIRS fails the build instead of shipping unprocessed. */
+export const UNSUPPORTED_RASTER_RE = /\.(avif|gif|tiff?|bmp|heic|heif)$/i;
 
 /**
  * The URL path to write in markup for a file of the root public/. The Workers
