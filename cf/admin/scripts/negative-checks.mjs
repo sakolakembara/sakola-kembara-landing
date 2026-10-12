@@ -750,6 +750,44 @@ const checks = [
     to: "return { paths: [PATHS.team], tags: [] };",
     tests: PUBLIC_PURGE,
   },
+  // ---------------------------------------- the SPA and the Worker agree (SAKEM-082)
+  // The SPA's own side of these is in negative-checks-spa.mjs; these break the
+  // agreement from either end and expect test/spa-contract.test.ts to notice.
+  {
+    name: "the SPA sends the Turnstile token under another header name",
+    file: "spa/src/lib/captcha.ts",
+    from: 'export const TURNSTILE_HEADER = "X-Turnstile-Token";',
+    to: 'export const TURNSTILE_HEADER = "X-Captcha-Token";',
+    tests: "test/spa-contract.test.ts",
+  },
+  {
+    name: "the Worker asks another action of the sign-in widget than the SPA declares",
+    file: "src/auth/gate.ts",
+    from: 'turnstile: "login",',
+    to: 'turnstile: "register",',
+    tests: "test/spa-contract.test.ts",
+  },
+  {
+    name: "the Worker renames captcha_failed, which the SPA maps",
+    file: "src/security/turnstile.ts",
+    from: 'error: "captcha_failed"',
+    to: 'error: "captcha_denied"',
+    tests: "test/spa-contract.test.ts",
+  },
+  {
+    name: "the Worker renames email_unavailable, which the SPA maps",
+    file: "src/auth/gate.ts",
+    from: 'error: "email_unavailable"',
+    to: 'error: "email_missing"',
+    tests: "test/spa-contract.test.ts",
+  },
+  {
+    name: "the SPA stops mapping captcha_unavailable",
+    file: "spa/src/lib/auth-errors.ts",
+    from: 'if (code === "captcha_unavailable") return CAPTCHA_UNAVAILABLE_MESSAGE;',
+    to: "",
+    tests: "test/spa-contract.test.ts",
+  },
 ];
 
 // `node scripts/negative-checks.mjs --only <text>` runs the checks whose name contains <text>.
