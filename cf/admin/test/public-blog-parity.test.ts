@@ -5,8 +5,7 @@ import { describe, expect, test } from "vitest";
 // @ts-expect-error -- a plain JS module of cf/web with JSDoc types only; no declaration file to resolve here
 import { buildListPayload, pickRelated } from "../../web/blog-contract.mjs";
 import { serializeBlogSummary } from "../src/public/serializers";
-import { call } from "./helpers";
-import { addPosts, DAY, json } from "./public-helpers";
+import { addPosts, DAY, internalFetch, json } from "./public-helpers";
 
 const categories = ["News", "Cerita", "Tips", "Career", "Education"] as const;
 
@@ -40,7 +39,7 @@ describe("the SQL agrees with the shared rules of cf/web (blog-contract.mjs)", (
     for (const page of pages) {
       for (const pageSize of sizes) {
         const query = [page !== undefined ? `page=${encodeURIComponent(page)}` : "", pageSize !== undefined ? `pageSize=${encodeURIComponent(pageSize)}` : ""].filter(Boolean).join("&");
-        const res = await call(`/api/public/blog${query ? `?${query}` : ""}`);
+        const res = await internalFetch(`/api/public/blog${query ? `?${query}` : ""}`);
         expect(res.status, query).toBe(200);
         const expected = buildListPayload(summaries, page ?? null, pageSize ?? null);
         expect(await json(res), query).toEqual(expected);
@@ -50,13 +49,13 @@ describe("the SQL agrees with the shared rules of cf/web (blog-contract.mjs)", (
 
   test("the featured pick: the newest flagged one, else the newest", async () => {
     const none = await seed(10, []);
-    expect(await json(await call("/api/public/blog"))).toEqual(buildListPayload(none, null, null));
+    expect(await json(await internalFetch("/api/public/blog"))).toEqual(buildListPayload(none, null, null));
   });
 
   test("the related articles of every article", async () => {
     const summaries = await seed(40, [5]);
     for (const article of summaries) {
-      const { related } = await json<{ related: unknown[] }>(await call(`/api/public/blog/${article.slug}`));
+      const { related } = await json<{ related: unknown[] }>(await internalFetch(`/api/public/blog/${article.slug}`));
       expect(related, article.slug).toEqual(pickRelated(article, summaries));
     }
   }, 120_000);

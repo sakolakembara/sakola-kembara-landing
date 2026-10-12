@@ -1,8 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
 import { serializeAnnouncement, serializeBlogArticle, serializeBlogSummary, serializeReport, serializeResource, serializeTeamMember } from "../src/public/serializers";
-import { call } from "./helpers";
-import { addAnnouncement, addPost, addReport, addResource, addTeam, addUser, json, orm } from "./public-helpers";
+import { addAnnouncement, addPost, addReport, addResource, addTeam, addUser, internalFetch, json, orm } from "./public-helpers";
 import * as schema from "../src/db/schema";
 
 // The contract's rule: build every response from an explicit list of fields,
@@ -124,7 +123,7 @@ describe("no private column reaches any public response", () => {
     const paths = ["/api/public/team", "/api/public/reports", "/api/public/resources", "/api/public/announcements/current", "/api/public/blog", "/api/public/blog?pageSize=50", "/api/public/blog/satu", "/api/public/blog/dua"];
     const markers = [staff.id, staff.email, "staf.privat", PRIVATE.note, String(PRIVATE.wpId), PRIVATE.sourceUrl, "wp.example.test", PRIVATE.contactEmail, PRIVATE.contactText, PRIVATE.auditText, PRIVATE.mediaKey, PRIVATE.shortlinkTarget, "JUDUL-DRAF-PRIVAT", "draf-privat"];
     for (const path of paths) {
-      const res = await call(path);
+      const res = await internalFetch(path);
       expect(res.status, path).toBe(200);
       const text = await res.text();
       for (const marker of markers) expect(text, `${path} leaked ${marker}`).not.toContain(marker);
@@ -138,24 +137,24 @@ describe("no private column reaches any public response", () => {
   test("the key set of every endpoint is exactly the contract's, nothing more", async () => {
     await seedEverythingPrivate();
     const keys = (value: object) => Object.keys(value).sort();
-    const team = await json<{ members: object[] }>(await call("/api/public/team"));
+    const team = await json<{ members: object[] }>(await internalFetch("/api/public/team"));
     expect(keys(team)).toEqual(["members"]);
     expect(keys(team.members[0]!)).toEqual(["bio", "category", "educationHistory", "id", "image", "name", "role", "workHistory"]);
 
-    const reports = await json<{ reports: object[] }>(await call("/api/public/reports"));
+    const reports = await json<{ reports: object[] }>(await internalFetch("/api/public/reports"));
     expect(keys(reports.reports[0]!)).toEqual(["category", "description", "fileSize", "filePath", "id", "title", "year"].sort());
 
-    const resources = await json<{ resources: object[] }>(await call("/api/public/resources"));
+    const resources = await json<{ resources: object[] }>(await internalFetch("/api/public/resources"));
     for (const resource of resources.resources) expect(keys(resource)).toEqual(["bodyText", "category", "contentType", "description", "externalUrl", "filePath", "fileSize", "id", "title"]);
 
-    const announcement = await json<{ announcement: object }>(await call("/api/public/announcements/current"));
+    const announcement = await json<{ announcement: object }>(await internalFetch("/api/public/announcements/current"));
     expect(keys(announcement.announcement)).toEqual(["body", "ctaLabel", "ctaUrl", "severity", "title"]);
 
-    const blog = await json<{ featured: object; articles: object[] }>(await call("/api/public/blog"));
+    const blog = await json<{ featured: object; articles: object[] }>(await internalFetch("/api/public/blog"));
     expect(keys(blog)).toEqual(["articles", "featured", "page", "pageSize", "total", "totalPages"]);
     expect(keys(blog.featured)).toEqual(["author", "category", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "slug", "title"]);
 
-    const article = await json<{ article: object; related: object[] }>(await call("/api/public/blog/satu"));
+    const article = await json<{ article: object; related: object[] }>(await internalFetch("/api/public/blog/satu"));
     expect(keys(article)).toEqual(["article", "related"]);
     expect(keys(article.article)).toEqual(["author", "category", "contentHtml", "contentMarkdown", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "modifiedISO", "slug", "title"]);
     expect(keys(article.related[0]!)).toEqual(["author", "category", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "slug", "title"]);
@@ -164,7 +163,7 @@ describe("no private column reaches any public response", () => {
   test("the announcement does not carry its author, as the legacy /api/announcements/current did (SAKEM-085)", async () => {
     const staff = await addUser();
     await addAnnouncement({ createdBy: staff.id });
-    const text = await (await call("/api/public/announcements/current")).text();
+    const text = await (await internalFetch("/api/public/announcements/current")).text();
     expect(text).not.toContain(staff.id);
     expect(text).not.toContain("createdBy");
   });

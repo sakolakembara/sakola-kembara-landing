@@ -1,11 +1,9 @@
 import { env } from "cloudflare:workers";
-import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { describe, expect, test, vi } from "vitest";
-import worker from "../src/worker";
 import type { Bindings } from "../src/env";
 import { CACHE_ANNOUNCEMENT, CACHE_CONTENT, CACHE_NONE, CACHE_NOT_FOUND } from "../src/public/cache";
 import { cacheControlRows, EXAMPLES } from "./contract-examples";
-import { addAnnouncement, addReport, addResource, addTeam, DAY, json } from "./public-helpers";
+import { addAnnouncement, addReport, addResource, addTeam, DAY, internalFetch, internalFetchWithBindings, json } from "./public-helpers";
 import { call } from "./helpers";
 
 // The read endpoints that are plain lists (team, reports, resources) and the
@@ -14,7 +12,10 @@ import { call } from "./helpers";
 // read from that document and compared with what the API serves for the same
 // rows.
 
-const get = (path: string) => call(path);
+// The read endpoints are served by the `PublicApi` entrypoint only (what the Astro Worker's service binding
+// reaches): the default export, the public face, mounts none of them (test/public-face.test.ts). So every read
+// below goes through the entrypoint, and `call` (the default export) is used only for the admin API's own routes.
+const get = (path: string) => internalFetch(path);
 
 describe("GET /api/public/team", () => {
   test("serves exactly the contract's example for the same row", async () => {
@@ -184,10 +185,8 @@ describe("GET /api/public/announcements/current", () => {
   test("a database failure is a 500 that is not cacheable, never a false { announcement: null }", async () => {
     await addAnnouncement();
     const broken = { ...env, DB: { prepare() { throw new Error("D1_ERROR: database is down"); }, batch() { throw new Error("D1_ERROR: database is down"); } } } as unknown as Bindings;
-    const ctx = createExecutionContext();
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = await worker.fetch(new Request("https://admin.test/api/public/announcements/current"), broken, ctx);
-    await waitOnExecutionContext(ctx);
+    const res = await internalFetchWithBindings(broken, "/api/public/announcements/current");
     spy.mockRestore();
     expect(res.status).toBe(500);
     expect(res.headers.get("cache-control")).toBe(CACHE_NONE);
@@ -223,30 +222,30 @@ describe("headers of every read endpoint", () => {
     await addTeam({ name: "Satu" });
     const plain = await (await get(path)).text();
     // Cookies, credentials and a spoofed visitor address change nothing: the answer depends on no request header.
-    const res = await call(path, { headers: { cookie: "better-auth.session_token=abc", authorization: "Bearer x", "x-sakem-client-ip": "198.51.100.1", origin: "https://evil.example" } });
+    const res = await internalFetch(path, { headers: { cookie: "better-auth.session_token=abc", authorization: "Bearer x", "x-sakem-client-ip": "198.51.100.1", origin: "https://evil.example" } });
     expect(await res.text()).toBe(plain);
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
   });
 
   test("the answers are not behind the admin API's blanket no-store, which still covers the rest of /api", async () => {
     expect((await get("/api/public/team")).headers.get("cache-control")).toBe(CACHE_CONTENT);
-    expect((await get("/api/config")).headers.get("cache-control")).toBe("no-store");
+    expect((await call("/api/config")).headers.get("cache-control")).toBe("no-store");
   });
 
   test("HEAD works like GET without a body; OPTIONS is the Worker's 404, with no CORS grant", async () => {
-    const head = await call("/api/public/team", { method: "HEAD" });
+    const head = await internalFetch("/api/public/team", { method: "HEAD" });
     expect(head.status).toBe(200);
     expect(head.headers.get("cache-control")).toBe(CACHE_CONTENT);
     expect(await head.text()).toBe("");
 
-    const options = await call("/api/public/team", { method: "OPTIONS", headers: { origin: "https://evil.example", "access-control-request-method": "GET" } });
+    const options = await internalFetch("/api/public/team", { method: "OPTIONS", headers: { origin: "https://evil.example", "access-control-request-method": "GET" } });
     expect(options.status).toBe(404);
     expect(options.headers.get("access-control-allow-origin")).toBeNull();
   });
 
   test("writes are not routes: POST, PUT and DELETE on a read endpoint are 404", async () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
-      const res = await call("/api/public/team", { method, json: { name: "x" } });
+      const res = await internalFetch("/api/public/team", { method, json: { name: "x" } });
       expect(res.status, method).toBe(404);
     }
     expect(await env.DB.prepare("SELECT count(*) AS n FROM team_members").first()).toEqual({ n: 0 });
@@ -263,9 +262,7 @@ describe("headers of every read endpoint", () => {
     const broken = { ...env, DB: { prepare() { throw new Error("D1_ERROR: boom"); }, batch() { throw new Error("D1_ERROR: boom"); } } } as unknown as Bindings;
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     for (const path of endpoints) {
-      const ctx = createExecutionContext();
-      const res = await worker.fetch(new Request(`https://admin.test${path}`), broken, ctx);
-      await waitOnExecutionContext(ctx);
+      const res = await internalFetchWithBindings(broken, path);
       expect(res.status, path).toBe(500);
       expect(res.headers.get("cache-control"), path).toBe(CACHE_NONE);
     }

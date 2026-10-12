@@ -21,6 +21,7 @@ const PUBLIC_LEAK = "test/public-leak.test.ts";
 const PUBLIC_CONTACT = "test/public-contact.test.ts";
 const PUBLIC_BUDGET = "test/public-budget.test.ts";
 const PUBLIC_PURGE = "test/public-purge.test.ts";
+const PUBLIC_FACE = "test/public-face.test.ts";
 
 const checks = [
   // ---------------------------------------------------------------- auth
@@ -610,11 +611,25 @@ const checks = [
     tests: PUBLIC_READ,
   },
   {
-    name: "public answers put behind the admin API's blanket no-store",
-    file: "src/worker.ts",
-    from: 'app.route("/", createPublicApp());',
-    to: 'app.use("/api/public/*", async (c, next) => {\n  await next();\n  c.header("Cache-Control", "no-store");\n});\napp.route("/", createPublicApp());',
+    name: "public answers put behind a blanket no-store (the entrypoint's app wraps every answer)",
+    file: "src/api/public/index.ts",
+    from: '  app.use("*", markServiceBindingCall);\n  app.route(PUBLIC_BASE_PATH, publicReadRoutes);',
+    to: '  app.use("*", markServiceBindingCall);\n  app.use("*", async (c, next) => {\n    await next();\n    c.header("Cache-Control", "no-store");\n  });\n  app.route(PUBLIC_BASE_PATH, publicReadRoutes);',
     tests: PUBLIC_READ,
+  },
+  {
+    name: "read endpoints mounted on the public face again (reachable from the internet: cache-busting query strings spend the daily D1 read budget)",
+    file: "src/api/public/index.ts",
+    from: "export function createPublicApp() {\n  const app = new Hono<{ Bindings: Bindings }>();\n  return app;\n}",
+    to: "export function createPublicApp() {\n  const app = new Hono<{ Bindings: Bindings }>();\n  app.route(PUBLIC_BASE_PATH, publicReadRoutes);\n  return app;\n}",
+    tests: PUBLIC_FACE,
+  },
+  {
+    name: "read endpoints dropped from the PublicApi entrypoint's app (the Astro Worker would read nothing)",
+    file: "src/api/public/index.ts",
+    from: '  app.use("*", markServiceBindingCall);\n  app.route(PUBLIC_BASE_PATH, publicReadRoutes);',
+    to: '  app.use("*", markServiceBindingCall);',
+    tests: `${PUBLIC_READ} ${PUBLIC_FACE}`,
   },
 
   // --------------------------------------------------- the public API: the budget
@@ -646,7 +661,7 @@ const checks = [
     file: "src/api/public/index.ts",
     from: "export function createPublicApp() {\n  const app = new Hono<{ Bindings: Bindings }>();\n",
     to: 'export function createPublicApp() {\n  const app = new Hono<{ Bindings: Bindings }>();\n  app.use("*", markServiceBindingCall);\n  app.route(PUBLIC_BASE_PATH, createContactRoutes(resolveContactDeps));\n',
-    tests: PUBLIC_CONTACT,
+    tests: `${PUBLIC_CONTACT} ${PUBLIC_FACE}`,
   },
   {
     name: "contact route no longer checks that the call came through the binding",
