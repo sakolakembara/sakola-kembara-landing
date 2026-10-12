@@ -130,25 +130,32 @@ async function describeRaster({ url, abs }) {
 
 const base = (item, { width, height }) => sharp(item.bytes).rotate().resize({ width, height, fit: 'fill' });
 
-/** The file served at the original URL: same format, capped at MAX_WIDTH, metadata stripped. */
-async function encodeLegacy(item) {
+/** The format an original URL promises by its extension. A few migrated files are PNG data named .jpg, or WebP named .png. */
+const formatOfUrl = (url) => (/\.jpe?g$/i.test(url) ? 'jpeg' : /\.png$/i.test(url) ? 'png' : 'webp');
+
+/** The file served at the original URL: the format its extension says, capped at MAX_WIDTH, metadata stripped. */
+async function encodeLegacy(item, target) {
   const { meta, entry, bytes } = item;
+  const resized = () => {
+    const img = base(item, entry);
+    return target === 'jpeg' && meta.hasAlpha ? img.flatten({ background: '#ffffff' }) : img;
+  };
   let out;
-  if (meta.format === 'jpeg') {
-    out = await base(item, entry).jpeg({ quality: ENCODE.jpegQuality, mozjpeg: true }).toBuffer();
-  } else if (meta.format === 'png') {
-    out = await base(item, entry).png({ compressionLevel: 9, effort: 10 }).toBuffer();
+  if (target === 'jpeg') {
+    out = await resized().jpeg({ quality: ENCODE.jpegQuality, mozjpeg: true }).toBuffer();
+  } else if (target === 'png') {
+    out = await resized().png({ compressionLevel: 9, effort: 10 }).toBuffer();
     if (out.length > ENCODE.pngPaletteAboveBytes) {
-      const palette = await base(item, entry)
+      const palette = await resized()
         .png({ palette: true, quality: ENCODE.pngPaletteQuality, effort: 10, compressionLevel: 9 })
         .toBuffer();
       if (palette.length < out.length) out = palette;
     }
   } else {
-    out = await base(item, entry).webp({ quality: ENCODE.webpQuality, effort: ENCODE.webpEffort }).toBuffer();
+    out = await resized().webp({ quality: ENCODE.webpQuality, effort: ENCODE.webpEffort }).toBuffer();
   }
   // Re-encoding an already small file can grow it: keep the original bytes then, unless they carry metadata.
-  const untouched = entry.width === item.sourceWidth && !meta.exif && !meta.xmp && !meta.iptc;
+  const untouched = meta.format === target && entry.width === item.sourceWidth && !meta.exif && !meta.xmp && !meta.iptc;
   return untouched && out.length >= bytes.length ? bytes : out;
 }
 
@@ -211,16 +218,17 @@ export async function buildAssets({ manifestOnly = false, log = console.log } = 
         } else stats.reused++;
       }
       // The original URL: one file per path, even when the content is shared.
-      let encoded = null;
+      const encoded = new Map(); // target format -> bytes, so a shared source is encoded once per format
       for (const d of group) {
+        const target = formatOfUrl(d.url);
         const dest = path.join(outDir, d.url.slice(1));
-        const current = fresh && state.legacy?.[d.url] === d.entry.hash && existsSync(dest);
-        if (!current) {
-          encoded ??= await encodeLegacy(item);
-          writeAtomic(dest, encoded);
+        const key = `${d.entry.hash}:${target}`;
+        if (!(fresh && state.legacy?.[d.url] === key && existsSync(dest))) {
+          if (!encoded.has(target)) encoded.set(target, await encodeLegacy(d, target));
+          writeAtomic(dest, encoded.get(target));
           stats.encoded++;
         } else stats.reused++;
-        next.legacy[d.url] = d.entry.hash;
+        next.legacy[d.url] = key;
       }
     });
   }

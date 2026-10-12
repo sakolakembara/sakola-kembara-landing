@@ -28,7 +28,7 @@ import remarkGfm from 'remark-gfm';
 import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import { visit } from 'unist-util-visit';
-import { srcsetFor } from '../assets.config.mjs';
+import { assetUrl, srcsetFor } from '../assets.config.mjs';
 
 const INDEX_ID = 'virtual:blog-index';
 const BODIES_ID = 'virtual:blog-bodies';
@@ -86,7 +86,7 @@ export default function blogContent({ contentDir, manifestFile }) {
         const entry = imageEntry(src);
         const local = isLocalImage(src);
         node.properties = {
-          src,
+          src: entry ? assetUrl(src) : src,
           alt: node.properties.alt ?? '',
           ...(entry ? { srcset: srcsetFor(entry), sizes: INLINE_SIZES, width: entry.width, height: entry.height } : {}),
           loading: 'lazy',
@@ -131,7 +131,7 @@ export default function blogContent({ contentDir, manifestFile }) {
             title: data.title ?? '(untitled)',
             excerpt: data.excerpt ?? '',
             featured: Boolean(data.featured),
-            image,
+            image: entry ? assetUrl(image) : image,
             imageWidth: entry?.width ?? null,
             imageHeight: entry?.height ?? null,
             imageSrcset: entry ? srcsetFor(entry) : null,

@@ -37,6 +37,16 @@ export function parseAttrs(tag) {
   return attrs;
 }
 
+/** The file path a local URL maps to (query and fragment dropped, percent-escapes decoded). */
+export const servedPath = (url) => {
+  const p = url.split(/[?#]/)[0];
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p;
+  }
+};
+
 /** Local URL paths named by an `src`/`srcset` value ("/a.webp 480w, /b.webp 768w" -> ["/a.webp", "/b.webp"]). */
 export const localUrls = (value) =>
   value
@@ -55,10 +65,10 @@ export function checkImgTag(tag, exists) {
   if (!/^\d+$/.test(a.height ?? '')) problems.push('no numeric height');
   if (a.alt === undefined) problems.push('no alt');
   if (!a.src) problems.push('no src');
-  if (exists) {
-    for (const u of [...localUrls(a.src ?? ''), ...localUrls(a.srcset ?? '')]) {
-      if (!exists(decodeURI(u.split(/[?#]/)[0]))) problems.push(`missing file ${u}`);
-    }
+  for (const u of [...localUrls(a.src ?? ''), ...localUrls(a.srcset ?? '')]) {
+    // The assets layer redirects a literal @ to %40 (assetUrl in assets.config.mjs): one more hop per image.
+    if (u.includes('@')) problems.push(`url ${u} has a literal @ (write %40)`);
+    if (exists && !exists(servedPath(u))) problems.push(`missing file ${u}`);
   }
   return problems;
 }
@@ -88,7 +98,7 @@ export function auditDist(clientDir) {
     }
     for (const m of html.matchAll(/<meta\s+(?:property|name)="(?:og|twitter):image"\s+content="([^"]*)"/g)) {
       const url = m[1].startsWith(SITE) ? m[1].slice(SITE.length) : m[1];
-      if (url.startsWith('/') && !exists(decodeURI(url.split(/[?#]/)[0]))) problems.push(`${f.path}: og/twitter image ${url} is not in the output`);
+      if (url.startsWith('/') && !exists(servedPath(url))) problems.push(`${f.path}: og/twitter image ${url} is not in the output`);
     }
   }
 

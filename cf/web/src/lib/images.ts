@@ -6,7 +6,7 @@
 // adds the WebP ladder for `srcset`. Use <Img> in components; this module is for
 // code that needs the attributes as data.
 
-import { srcsetFor, type ImageEntry } from '../../assets.config.mjs';
+import { assetUrl, srcsetFor, type ImageEntry } from '../../assets.config.mjs';
 import manifest from '../generated/image-manifest.json';
 
 export type { ImageEntry };
@@ -44,5 +44,5 @@ export interface ImgAttrs {
  */
 export function imgAttrs(src: string, sizes: string, { minWidth = 0 }: { minWidth?: number } = {}): ImgAttrs {
   const entry = getImage(src);
-  return { src, srcset: srcsetFor(entry, minWidth), sizes, width: entry.width, height: entry.height };
+  return { src: assetUrl(src), srcset: srcsetFor(entry, minWidth), sizes, width: entry.width, height: entry.height };
 }

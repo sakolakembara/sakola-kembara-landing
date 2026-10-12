@@ -48,6 +48,16 @@ export const GENERATED_DIRS = [...IMAGE_DIRS, FILES_DIR, DERIVATIVE_DIR];
 /** Raster formats the pipeline re-encodes. Anything else in IMAGE_DIRS is copied as is. */
 export const RASTER_RE = /\.(jpe?g|png|webp)$/i;
 
+/**
+ * The URL path to write in markup for a file of the root public/. The Workers
+ * assets layer answers a request with a literal `@` in the path by redirecting
+ * (307) to the `%40` form, an extra hop for every such image (five files of the
+ * blog have one), so the markup carries the `%40` form. Any other character in
+ * the current file names is served as is (checked by tests/assets.test.ts and
+ * scripts/e2e.mjs, which request every image URL).
+ */
+export const assetUrl = (urlPath) => urlPath.replace(/@/g, '%40');
+
 /** URL of a derivative. The hash covers the source bytes, the encoder settings and PIPELINE_VERSION. */
 export const variantUrl = (hash, width) => `/${DERIVATIVE_DIR}/${hash}-${width}.webp`;
 

@@ -7,7 +7,8 @@
 // redirects, the other redirect rules, pass-through (method, headers, body,
 // cookies, redirects not followed), Astro paths NOT reaching the origin, /tim
 // timeout / cache / stale-if-error, SEO tags in the served HTML, security
-// headers. Prints a summary and exits non-zero on any failure.
+// headers, images and PDFs served as static assets (never through the origin).
+// Prints a summary and exits non-zero on any failure.
 
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -15,6 +16,8 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { startStack, webRoot } from './lib/harness.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
+import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
+import { checkImgTag, localUrls, parseAttrs } from './lib/dist-audit.mjs';
 
 if (!existsSync(path.join(webRoot, 'dist/server/wrangler.json'))) {
   console.error('dist/ is missing. Run `pnpm build` first.');
@@ -620,6 +623,116 @@ await check('headers', 'hashed assets are immutable', async () => {
   const res = await get(css);
   assert.equal(res.status, 200);
   assert.match(res.headers.get('cache-control'), /immutable/);
+});
+
+// ---------------------------------------------------------------- assets: images and PDFs
+// Every image and file the pages reference must come from the assets layer: a request
+// that reaches the stub origin would be a Worker request in production (100k/day on Free).
+const imageManifest = JSON.parse(readFileSync(path.join(webRoot, 'src/generated/image-manifest.json'), 'utf8')).images;
+const bytesOf = async (res) => new Uint8Array(await res.arrayBuffer());
+const startsWith = (bytes, sig) => sig.every((b, i) => bytes[i] === b);
+const MAGIC = { 'image/png': [0x89, 0x50, 0x4e, 0x47], 'image/jpeg': [0xff, 0xd8, 0xff], 'image/webp': [0x52, 0x49, 0x46, 0x46] };
+
+await check('assets', 'a WebP derivative: 200 image/webp, a year immutable, served without the origin', async () => {
+  const entry = imageManifest['/images/hero-team.png'];
+  for (const v of entry.variants) {
+    clearStub();
+    const res = await get(variantUrl(entry.hash, v.width));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/webp');
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+    assert.ok(startsWith(await bytesOf(res), MAGIC['image/webp']));
+    assert.equal(stubHits().length, 0, 'reached the origin');
+  }
+});
+await check('assets', 'every image of the manifest answers 200 at the URL the markup uses (no redirect hop), original and every WebP rung', async () => {
+  clearStub();
+  const wrong = [];
+  for (const [url, entry] of Object.entries(imageManifest)) {
+    for (const u of [assetUrl(url), ...entry.variants.map((v) => variantUrl(entry.hash, v.width))]) {
+      const res = await get(u, { method: 'HEAD' });
+      if (res.status !== 200) wrong.push(`${res.status} ${u}`);
+    }
+  }
+  assert.deepEqual(wrong, []);
+  assert.equal(stubHits().length, 0, 'an image reached the origin');
+});
+await check('assets', 'original image URLs serve a real image of the type their extension says, under 1 MiB, without the origin', async () => {
+  const cases = [
+    ['/blog/images/2025/10/1.png', 'image/png'],
+    ['/images/hero-team.png', 'image/png'],
+    ['/images/program/asrama-intensif.jpg', 'image/jpeg'],
+    ['/images/testimoni/daffa-najwan.jpg', 'image/jpeg'], // PNG data in the source, JPEG here
+    ['/images/partners/talents-mapping.png', 'image/png'], // WebP data in the source, PNG here
+  ];
+  for (const [p, type] of cases) {
+    clearStub();
+    const res = await get(p);
+    assert.equal(res.status, 200, p);
+    assert.equal(res.headers.get('content-type'), type, p);
+    assert.match(res.headers.get('cache-control'), /max-age=86400/, p);
+    const body = await bytesOf(res);
+    assert.ok(startsWith(body, MAGIC[type]), `${p} is not ${type}`);
+    assert.ok(body.length < LIMITS.imageSoftBytes, `${p} is ${body.length} bytes`);
+    assert.equal(stubHits().length, 0, `${p} reached the origin`);
+  }
+});
+await check('assets', 'the old WordPress image path redirects (308) to a served image', async () => {
+  const res = await get('/wp-content/uploads/2025/10/1.png');
+  assert.equal(res.status, 308);
+  assert.equal(res.headers.get('location'), '/blog/images/2025/10/1.png');
+  clearStub();
+  assert.equal((await get(res.headers.get('location'))).status, 200);
+  assert.equal(stubHits().length, 0);
+});
+await check('assets', 'both big PDFs: 200 application/pdf, under 25 MiB, HEAD works, without the origin', async () => {
+  for (const name of ['pitchdeck-sakola-kembara.pdf', 'kurikulum-khusus-sakola-kembara.pdf']) {
+    clearStub();
+    const head = await get(`/files/${name}`, { method: 'HEAD' });
+    assert.equal(head.status, 200, name);
+    assert.equal(head.headers.get('content-type'), 'application/pdf', name);
+    const res = await get(`/files/${name}`);
+    assert.equal(res.status, 200, name);
+    assert.match(res.headers.get('cache-control'), /max-age=3600/, name);
+    const body = await bytesOf(res);
+    assert.equal(String.fromCharCode(...body.subarray(0, 5)), '%PDF-', name);
+    assert.ok(body.length < LIMITS.maxFileBytes, `${name} is ${body.length} bytes`);
+    assert.equal(stubHits().length, 0, `${name} reached the origin`);
+  }
+});
+for (const page of ['/blog', '/blog?page=2']) {
+  await check('assets', `${page} (rendered by the Worker): every <img> has width, height and srcset, and every image URL it names is a static asset`, async () => {
+    const html = await text(await get(page));
+    const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+    assert.ok(imgs.length >= 12, `${imgs.length} images`);
+    const urls = new Set();
+    for (const img of imgs) {
+      assert.deepEqual(checkImgTag(img), [], img);
+      const a = parseAttrs(img);
+      if (!a.src.startsWith('/_astro/')) assert.ok(a.srcset && a.sizes, `no srcset/sizes: ${img}`); // the navbar logo is a hashed import
+      for (const u of [...localUrls(a.src), ...localUrls(a.srcset ?? '')]) urls.add(u);
+    }
+    clearStub();
+    for (const u of urls) {
+      const res = await get(u);
+      assert.equal(res.status, 200, u);
+      assert.match(res.headers.get('content-type'), /^image\//, u);
+    }
+    assert.equal(stubHits().length, 0, 'an image reached the origin');
+  });
+}
+await check('assets', 'an article page names only static images, each with a WebP srcset', async () => {
+  const withImages = articles.find((a) => (readFileSync(path.join(webRoot, `../../content/blog/${a.id}.md`), 'utf8').match(/!\[/g) ?? []).length >= 2);
+  const html = await text(await get(`/blog/${withImages.id}`));
+  const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+  assert.ok(imgs.length >= 3);
+  clearStub();
+  for (const img of imgs.filter((i) => !i.includes('/_astro/'))) {
+    assert.deepEqual(checkImgTag(img), [], img);
+    const a = parseAttrs(img);
+    for (const u of [...localUrls(a.src), ...localUrls(a.srcset ?? '')]) assert.equal((await get(u)).status, 200, u);
+  }
+  assert.equal(stubHits().length, 0);
 });
 
 // ---------------------------------------------------------------- announcement markup contract
