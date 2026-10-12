@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, test } from "vitest";
 import { BODY_MAX, EXCERPT_MAX, EXCERPT_MIN, AUTHOR_MAX, AUTHOR_MIN, BODY_MIN, SLUG_MAX, startOfIsoDayJakarta, TITLE_MAX, TITLE_MIN } from "../src/blog/rules";
 import { blogCategories } from "../src/db/schema";
@@ -88,6 +89,31 @@ describe("what the form sends is what the Worker takes", () => {
     expect(published.data.item.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const again = await api<{ item: BlogItem }>(`${API_PATH}/${item.id}`, { method: "PUT", json: toBody({ ...toValues(published.data.item), title: "Judul Berubah" }), ifMatch: ifMatch(published.data.item.updatedAt) });
     expect(again).toMatchObject({ ok: true, data: { item: { title: "Judul Berubah", status: "published", slug: item.slug } } });
+  });
+
+  test("an article stored with an excerpt under the minimum (the import's daffa-najwan) is saved from the form as it is, and refused when the writer shortens it", async () => {
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
+    over(cookie);
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO blog_posts (id, slug, title, excerpt, content_markdown, content_html, category, author, featured, status, published_at, created_at, updated_at) VALUES (?, 'pendek', 'Daffa Najwan', 'Manajemen, UGM', ?, '<p>isi</p>', 'Testimonials', 'Daffa', 0, 'published', ?, 1000, 1000)",
+    )
+      .bind(id, "Kalimat testimoni yang cukup panjang untuk memenuhi batas lima puluh karakter isi.", Date.parse("2025-03-04T00:00:00Z"))
+      .run();
+
+    const opened = await api<{ item: BlogItem }>(`${API_PATH}/${id}`);
+    if (!opened.ok) throw new Error(JSON.stringify(opened));
+    expect(opened.data.item.excerpt).toBe("Manajemen, UGM");
+    const send = (values: ReturnType<typeof toValues>) => api<{ item: BlogItem }>(`${API_PATH}/${id}`, { method: "PUT", json: toBody(values), ifMatch: ifMatch(opened.data.item.updatedAt) });
+
+    expect(await send(toValues(opened.data.item))).toMatchObject({ ok: true });
+    expect(await send({ ...toValues(opened.data.item), title: "Daffa Najwan, UGM" })).toMatchObject({ ok: true, data: { item: { title: "Daffa Najwan, UGM", excerpt: "Manajemen, UGM" } } });
+    // (The save above moved the version: open it again, as the form would after a reload.)
+    const reopened = await api<{ item: BlogItem }>(`${API_PATH}/${id}`);
+    if (!reopened.ok) throw new Error(JSON.stringify(reopened));
+    const shortened = await api<unknown>(`${API_PATH}/${id}`, { method: "PUT", json: toBody({ ...toValues(reopened.data.item), excerpt: "Manajemen" }), ifMatch: ifMatch(reopened.data.item.updatedAt) });
+    if (shortened.ok) throw new Error("the Worker took a shorter excerpt");
+    expect(shortened.fields).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
   });
 
   test("every field the Worker can complain about has a tab in the form, so no error can be hidden", async () => {

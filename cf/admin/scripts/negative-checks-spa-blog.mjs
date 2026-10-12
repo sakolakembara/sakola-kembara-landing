@@ -174,10 +174,11 @@ export const blogSpaChecks = [
 
   // ------------------------------------------------------------------ the mock behaves like the Worker
   {
+    // The store's own gate runs before `custom`, so the blog's verbs (publish, preview, save) rely on it.
     name: "blog: the mock lets a read-only role publish and write",
-    file: "spa/src/mock/resources/blog.ts",
-    from: '  if (access !== "write") return mockError(403, "forbidden");',
-    to: "",
+    file: "spa/src/mock/resources.ts",
+    from: 'if (access === "none" || (writes && access !== "write")) return error(403, "forbidden");',
+    to: 'if (access === "none") return error(403, "forbidden");',
     tests: MOCK,
   },
   {
@@ -193,5 +194,49 @@ export const blogSpaChecks = [
     from: '    if (parsed.values.slug && parsed.values.slug !== row.slug && row.status === "published") problems.slug = "Slug tidak bisa diubah setelah artikel terbit";\n',
     to: "",
     tests: MOCK,
+  },
+  {
+    name: "blog: the mock asks a stored excerpt under the minimum to be lengthened",
+    file: "spa/src/mock/resources/blog.ts",
+    from: "if (parsed.values.excerpt!.length < LIMITS.excerptMin && parsed.values.excerpt !== row.excerpt.trim()) problems.excerpt",
+    to: "if (parsed.values.excerpt!.length < LIMITS.excerptMin) problems.excerpt",
+    tests: MOCK,
+  },
+
+  // ------------------------------------------------------------------ "Lihat di publik"
+  {
+    name: "blog: a draft is linked to the public site (where it does not exist)",
+    file: FORM,
+    from: '{published && siteUrl !== "" && (',
+    to: '{siteUrl !== "" && (',
+    tests: BLOG,
+  },
+  {
+    name: "blog: the link to the public site is drawn without an address (a relative link into the admin)",
+    file: FORM,
+    from: '{published && siteUrl !== "" && (',
+    to: "{published && (",
+    tests: BLOG,
+  },
+  {
+    name: "blog: the link to the public site opens in the editor's own tab, with the opener",
+    file: FORM,
+    from: 'target="_blank" rel="noopener noreferrer" className="text-sm text-primary-blue hover:underline"',
+    to: 'className="text-sm text-primary-blue hover:underline"',
+    tests: BLOG,
+  },
+  {
+    name: "blog: the SPA puts the site's address into a link as the Worker sent it (not an origin: javascript:)",
+    file: "spa/src/lib/config.ts",
+    from: "siteUrl: normaliseBase(body.siteUrl) };",
+    to: 'siteUrl: typeof body.siteUrl === "string" ? body.siteUrl : "" };',
+    tests: BLOG,
+  },
+  {
+    name: "blog: the link to the public site is built from the files' address",
+    file: "spa/src/lib/config.ts",
+    from: "siteUrl: normaliseBase(body.siteUrl) };",
+    to: "siteUrl: normaliseBase(body.uploadsBaseUrl) };",
+    tests: BLOG,
   },
 ];

@@ -10,6 +10,7 @@ import { StatusTag } from "~/components/crud/StatusTag";
 import { UploadField } from "~/components/crud/UploadField";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
+import { useConfig } from "~/lib/config";
 import { describeFailure } from "~/lib/crud/errors";
 import { ifMatch } from "~/lib/crud/etag";
 import { type FlashControl, flashState, useFlash } from "~/lib/crud/flash";
@@ -97,6 +98,7 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
   const [tab, setTab] = useState<EditorTab>("detail");
   const [bodyMode, setBodyMode] = useState<BodyMode>("edit");
   const published = item?.status === "published";
+  const { siteUrl } = useConfig();
 
   // One mutation for the three things the bar can do, so one summary of errors, one lock against a double click and
   // one stale alert serve all of them. "Terbitkan" and "Kembalikan ke Draf" save what was typed first (the Worker
@@ -168,6 +170,12 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
       <code className="max-w-[260px] truncate rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-800" title={`/blog/${item.slug}`}>
         /blog/{item.slug}
       </code>
+      {/* Only a published article is on the site, and only when the site's address is configured (SITE_URL). */}
+      {published && siteUrl !== "" && (
+        <a href={`${siteUrl}/blog/${item.slug}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-blue hover:underline">
+          Lihat di publik
+        </a>
+      )}
       {canWrite && (
         <Button variant="neutral" size="sm" disabled={save.pending} onClick={() => void submit(published ? "unpublish" : "publish")}>
           {published ? "Kembalikan ke Draf" : "Terbitkan"}

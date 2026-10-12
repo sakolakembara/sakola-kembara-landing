@@ -20,6 +20,7 @@ import { loadAccess } from "./auth/guard";
 import { visibleAreas, writableAreas } from "./auth/permissions";
 import { registerStudent } from "./auth/register";
 import { authContext } from "./auth/session";
+import { publicOrigin } from "./config/public-origin";
 import type { AppEnv } from "./context";
 import { scheduledCleanup } from "./cron/cleanup";
 import { mailbox } from "./email/send";
@@ -70,6 +71,8 @@ app.get("/api/config", (c) =>
     turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
     // Where uploaded files are served from, so the SPA can show them (docs/cloudflare/admin-crud.md). "" = same origin.
     uploadsBaseUrl: uploadsBase(c.env.UPLOADS_BASE_URL),
+    // The public site's origin, for "Lihat di publik" (docs/cloudflare/admin-blog.md). "" = no link.
+    siteUrl: publicOrigin(c.env.SITE_URL),
   }),
 );
 

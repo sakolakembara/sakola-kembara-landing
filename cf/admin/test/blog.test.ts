@@ -6,8 +6,9 @@ import { renderArticle } from "../src/blog/render";
 import { BODY_MAX, isIsoDay, pickFreeSlug, slugify, startOfIsoDayJakarta } from "../src/blog/rules";
 import { isoDayJakarta } from "../src/public/dates";
 import type { ContentChange } from "../src/public/purge";
+import { checkLimits } from "../src/security/rate-limit";
 import { appAround, ifMatchOf, spyOnD1 } from "./crud-app";
-import { call, signedInCookie, uniqueEmail } from "./helpers";
+import { CAPTCHA, call, cookiesOf, createVerifiedUser, fakeNetwork, PASSWORD, productionLike, signedInCookie, uniqueEmail } from "./helpers";
 import { internalFetch } from "./public-helpers";
 import { auditRows, clearBucket, mediaRows, objectKeys, png, upload, type Uploaded } from "./uploads-helpers";
 
@@ -311,6 +312,46 @@ describe("blog: validation keeps the legacy rules and messages, in the one 400 s
   test("excerpt 20 to 500", async () => {
     expect((await invalid({ excerpt: "terlalu pendek" })).fields).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
     expect((await invalid({ excerpt: "x".repeat(501) })).fields).toEqual({ excerpt: "Maksimal 500 karakter" });
+  });
+
+  test("the minimum of the excerpt is for a text the writer changes: an article keeps the excerpt it has, whatever its length", async () => {
+    const cookie = await editor();
+    // As the import leaves `daffa-najwan`: a WordPress testimonial whose excerpt is 14 characters.
+    const short = "Manajemen, UGM";
+    const imported = await seed({ slug: "pendek", excerpt: short, title: "Daffa", published_at: Date.parse("2025-03-04T00:00:00Z") });
+    const id = imported.id as string;
+    const send = (excerpt: string, extra: Record<string, unknown> = {}) => put(cookie, id, { excerpt, date: "2025-03-04", ...extra });
+
+    // Unchanged (also with spaces around it, which are trimmed first): accepted, while the rest of the form changes.
+    const kept = await send(short, { title: "Daffa Najwan" });
+    expect(kept.status, JSON.stringify(await kept.clone().json())).toBe(200);
+    expect(((await kept.json()) as { item: Item }).item).toMatchObject({ title: "Daffa Najwan", excerpt: short });
+    expect((await send(`  ${short}  `, { title: "Daffa Najwan, lagi" })).status).toBe(200);
+    expect((await row(id)).excerpt).toBe(short);
+
+    // Changed to something else that is short, or emptied: the rule applies, with the legacy message, next to the other messages.
+    for (const excerpt of ["Manajemen", "x", "   "]) {
+      const refused = await send(excerpt);
+      expect(refused.status, excerpt).toBe(400);
+      expect(await fieldsOf(refused), excerpt).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
+    }
+    const together = await send("Manajemen", { slug: "slug-baru" }); // published: the slug is locked too
+    expect(await fieldsOf(together)).toEqual({ excerpt: "Excerpt minimal 20 karakter", slug: "Slug tidak bisa diubah setelah artikel terbit" });
+    expect((await row(id)).excerpt).toBe(short);
+
+    // Lengthened to 20 or more: accepted, and from then on that is the excerpt that stays valid.
+    expect((await send("Manajemen, Universitas Gadjah Mada")).status).toBe(200);
+    expect((await send(short)).status).toBe(400);
+    // The maximum is not relaxed for anyone.
+    expect(await fieldsOf(await send("x".repeat(501)))).toEqual({ excerpt: "Maksimal 500 karakter" });
+  });
+
+  test("a new article never gets the exception: the same short excerpt is refused on create", async () => {
+    const cookie = await editor();
+    await seed({ slug: "pendek", excerpt: "Manajemen, UGM" });
+    const res = await call(LIST, { method: "POST", cookie, json: form({ excerpt: "Manajemen, UGM" }) });
+    expect(res.status).toBe(400);
+    expect(await fieldsOf(res)).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
   });
 
   test("body at least 50 characters, and at most the limit", async () => {
@@ -923,6 +964,81 @@ describe("blog: preview", () => {
     expect(res.status).toBe(200);
     expect(spy.touching("blog_posts")).toEqual([]);
     expect(spy.touching("media")).toEqual([]);
+  });
+
+  describe("its limiter (RL_BLOG_PREVIEW)", () => {
+    const send = (cookie: string, extra: Record<string, unknown> = {}) => call(`${LIST}/preview`, { method: "POST", cookie, json: { contentMarkdown: "x" }, ...extra });
+
+    test("counts per signed-in user, whatever the address: the key is blog-preview:<user id>", async () => {
+      const email = uniqueEmail("editor");
+      const cookie = await signedInCookie(email, "editor", ["konten"]);
+      const userId = (await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: string }>())!.id;
+      const keys: string[] = [];
+      const binding = {
+        limit: async ({ key }: { key: string }) => {
+          keys.push(key);
+          return { success: true };
+        },
+      } as unknown as RateLimit;
+      expect((await send(cookie, { env: { RL_BLOG_PREVIEW: binding }, ip: "203.0.113.31" })).status).toBe(200);
+      expect((await send(cookie, { env: { RL_BLOG_PREVIEW: binding }, ip: "203.0.113.32" })).status).toBe(200);
+      expect(keys).toEqual([`blog-preview:${userId}`, `blog-preview:${userId}`]);
+    });
+
+    test("a refusal is the 429 of the other limiters, decided before the body is read, and only for the preview", async () => {
+      const cookie = await editor();
+      const full = { limit: async () => ({ success: false }) } as unknown as RateLimit;
+      // Not even JSON: a limiter that ran after the body was read would answer 400.
+      const res = await call(`${LIST}/preview`, { method: "POST", cookie, headers: { "content-type": "application/json" }, body: "{not json", env: { RL_BLOG_PREVIEW: full } });
+      expect(res.status).toBe(429);
+      expect(res.headers.get("retry-after")).toBe("60");
+      expect(await res.json()).toEqual({ error: "rate_limited", message: "Terlalu banyak permintaan pratinjau. Silakan tunggu satu menit lalu coba lagi.", retryAfterSeconds: 60 });
+
+      // The same binding says nothing about saving or reading: the preview is the only route that asks it.
+      expect((await call(LIST, { method: "POST", cookie, json: form(), env: { RL_BLOG_PREVIEW: full } })).status).toBe(201);
+      expect((await call(LIST, { cookie, env: { RL_BLOG_PREVIEW: full } })).status).toBe(200);
+    });
+
+    test("a roles refusal comes first: a viewer gets 403 and a visitor 401, neither is counted", async () => {
+      const asked: string[] = [];
+      const spy = { limit: async ({ key }: { key: string }) => (asked.push(key), { success: true }) } as unknown as RateLimit;
+      const viewer = await signedInCookie(uniqueEmail("viewer"), "viewer");
+      expect((await send(viewer, { env: { RL_BLOG_PREVIEW: spy } })).status).toBe(403);
+      expect((await send("", { env: { RL_BLOG_PREVIEW: spy } })).status).toBe(401);
+      expect(asked).toEqual([]);
+    });
+
+    test("without the binding a local run counts in memory with the same numbers (60 a minute, per user); production would refuse", async () => {
+      const cookie = await editor();
+      const statuses: number[] = [];
+      for (let i = 0; i < 61; i++) statuses.push((await send(cookie, { env: { RL_BLOG_PREVIEW: undefined }, ip: "203.0.113.40" })).status);
+      expect(statuses).toEqual([...Array(60).fill(200), 429]);
+
+      // Another person is not held back by it.
+      expect((await send(await editor(), { env: { RL_BLOG_PREVIEW: undefined }, ip: "203.0.113.40" })).status).toBe(200);
+
+      // The same lookup in production: no binding, nothing throttles, so the request is refused (503), not allowed.
+      expect(await checkLimits({ ENVIRONMENT: "production" }, [{ name: "blogPreview", key: "blog-preview:someone" }])).toEqual({ allowed: false, reason: "unavailable", name: "blogPreview" });
+    }, 30_000);
+
+    test("through the Worker in production, a deploy that lost the binding refuses the preview (503) and renders nothing; with the binding it answers", async () => {
+      fakeNetwork(); // a sign-in in production asks Turnstile
+      const email = uniqueEmail("editor");
+      await createVerifiedUser(email, "editor", ["konten"]);
+      // A session made in production mode: its cookie has the __Host- name, which a development-mode Worker would not read.
+      const signedIn = await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: PASSWORD }, env: productionLike, captcha: CAPTCHA });
+      expect(signedIn.status).toBe(200);
+      const cookie = cookiesOf(signedIn);
+
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const refused = await send(cookie, { env: { ...productionLike, RL_BLOG_PREVIEW: undefined } });
+      expect(refused.status).toBe(503);
+      expect(await refused.json()).toEqual({ error: "service_unavailable" });
+      expect(logged).toHaveBeenCalledWith("[rate-limit] binding RL_BLOG_PREVIEW is not configured; refusing the request");
+      vi.restoreAllMocks();
+
+      expect((await send(cookie, { env: productionLike })).status).toBe(200);
+    });
   });
 });
 

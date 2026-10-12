@@ -162,10 +162,35 @@ describe("an imported article opens in the editor and can be saved again", () =>
       if (((await res.json()) as { item: { updatedAt: string } }).item.updatedAt !== opened.item.updatedAt) changed.push(slug);
     }
     // The legacy form demanded an excerpt of at least 20 characters, and the WordPress testimonial "Daffa Najwan" has
-    // one of 14 ("Manajemen, UGM"): it was never editable there either. The rule is kept; the editor lengthens the
-    // excerpt on the first edit. No other article is refused, and the list of exceptions must not grow.
-    expect(refused).toEqual({ "daffa-najwan": { error: "invalid", message: "Periksa kembali isian formulir.", fields: { excerpt: "Excerpt minimal 20 karakter" } } });
+    // one of 14 ("Manajemen, UGM"): it was never editable there. The import keeps it as it is, and a save that does not
+    // change the excerpt is accepted (the minimum applies to a text the writer changes). Nothing is refused.
+    expect(refused).toEqual({});
     expect(changed).toEqual([]);
+  });
+
+  test("the article with the 14-character excerpt is imported as it is, can be edited around it, and a new short excerpt is refused", async () => {
+    await runImport();
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
+    const id = (await env.DB.prepare("SELECT id FROM blog_posts WHERE slug = 'daffa-najwan'").first<{ id: string }>())!.id;
+    const open = async () => ((await (await call(`/api/admin/blog/${id}`, { cookie })).json()) as { item: Record<string, unknown> }).item;
+    const save = async (item: Record<string, unknown>, changes: Record<string, unknown>) => {
+      const res = await call(`/api/admin/blog/${id}`, { method: "PUT", cookie, headers: { "if-match": `"${String(item.updatedAt)}"` }, json: { ...item, ...changes } });
+      return { status: res.status, body: (await res.json()) as { item?: Record<string, unknown>; fields?: Record<string, string> } };
+    };
+
+    const opened = await open();
+    expect(opened.excerpt).toBe("Manajemen, UGM");
+
+    const renamed = await save(opened, { title: "Daffa Najwan (UGM)" });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.item).toMatchObject({ title: "Daffa Najwan (UGM)", excerpt: "Manajemen, UGM" });
+
+    const shorter = await save(await open(), { excerpt: "Manajemen" });
+    expect(shorter.status).toBe(400);
+    expect(shorter.body.fields).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
+
+    const longer = await save(await open(), { excerpt: "Manajemen, Universitas Gadjah Mada" });
+    expect(longer.status).toBe(200);
   });
 
   test("editing the text of an imported article renders it again with its images intact", async () => {

@@ -72,7 +72,7 @@ function synthetic(chars: number): string {
   }
   return out.join("\n\n").slice(0, chars);
 }
-for (const chars of [8_000, 20_000, 40_000, 80_000]) {
+for (const chars of [8_000, 12_000, 20_000, 40_000, 80_000]) {
   const markdown = synthetic(chars);
   time(markdown); // warm this size once
   const cpu: number[] = [];

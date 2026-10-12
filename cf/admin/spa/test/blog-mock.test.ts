@@ -47,6 +47,31 @@ describe("the blog mock", () => {
     expect((await call("GET", `${PATH}?sort=contentMarkdown`)).status).toBe(400);
   });
 
+  test("the minimum of the excerpt is for a text the writer changes: a stored excerpt under it stays valid, like the Worker", async () => {
+    const { call, rows } = mock();
+    const created = await call("POST", PATH, valid);
+    const id = created.body.item.id as string;
+    // As if it had come from the import: an excerpt of 14 characters.
+    rows().find((row) => row.id === id)!.excerpt = "Manajemen, UGM";
+    const save = async (excerpt: string, extra: Record<string, unknown> = {}) => {
+      const current = rows().find((row) => row.id === id)!;
+      return call("PUT", `${PATH}/${id}`, { ...valid, excerpt, ...extra }, { "If-Match": ifMatch(current.updatedAt) });
+    };
+
+    expect((await save("Manajemen, UGM", { title: "Judul lain" })).status).toBe(200);
+    expect((await save("  Manajemen, UGM  ", { title: "Judul lain lagi" })).status).toBe(200);
+    for (const excerpt of ["Manajemen", "x", "   "]) {
+      const refused = await save(excerpt);
+      expect(refused.status, excerpt).toBe(400);
+      expect(refused.body.fields, excerpt).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
+    }
+    expect((await save("Manajemen, Universitas Gadjah Mada")).status).toBe(200);
+    // A new article never gets the exception.
+    const fresh = await call("POST", PATH, { ...valid, excerpt: "Manajemen, UGM" });
+    expect(fresh.status).toBe(400);
+    expect(fresh.body.fields).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
+  });
+
   test("creates a draft with a slug made from the title, numbered when taken, or the one given", async () => {
     const { call } = mock();
     const first = await call("POST", PATH, valid);

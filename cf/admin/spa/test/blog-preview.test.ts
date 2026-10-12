@@ -120,6 +120,21 @@ describe("usePreview: asks as little as it can", () => {
     expect(view.result.current).toMatchObject({ status: "ready", html: "<p>pulih</p>" });
   });
 
+  test("the Worker's limiter (429, RL_BLOG_PREVIEW) is its own Indonesian sentence, with no stale HTML, and 'Coba lagi' asks again", async () => {
+    vi.useFakeTimers();
+    const message = "Terlalu banyak permintaan pratinjau. Silakan tunggu satu menit lalu coba lagi.";
+    let limited = true;
+    const api = plainApi(() => (limited ? { status: 429, body: { error: "rate_limited", message, retryAfterSeconds: 60 } } : { body: { html: "<p>lagi</p>" } }));
+    const view = render("isi");
+    await advance(0);
+    expect(view.result.current).toMatchObject({ status: "error", html: "", message });
+    limited = false;
+    await act(async () => view.result.current.retry());
+    await advance(0);
+    expect(api.asked).toEqual(["isi", "isi"]);
+    expect(view.result.current).toMatchObject({ status: "ready", html: "<p>lagi</p>" });
+  });
+
   test("an answer that is not HTML is an error, not a crash", async () => {
     vi.useFakeTimers();
     plainApi(() => ({ body: { nonsense: true } }));

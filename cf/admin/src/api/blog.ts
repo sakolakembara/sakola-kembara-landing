@@ -1,6 +1,6 @@
 import { and, count, eq, gte, inArray, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import { requireArea } from "../auth/guard";
 import type { AppEnv, AuthUser } from "../context";
@@ -30,6 +30,7 @@ import {
 } from "../blog/rules";
 import { isoDayJakarta } from "../public/dates";
 import { notifyContentChanged, type ContentChange } from "../public/purge";
+import { checkLimits, limitedResponse } from "../security/rate-limit";
 import { keyForPath } from "../uploads/key";
 import { deleteUploadByPath } from "../uploads/store";
 import {
@@ -80,7 +81,7 @@ const MAX_BODY_BYTES = 128 * 1024;
 
 const bodyLimitLabel = BODY_MAX.toLocaleString("en-US").replace(",", ".");
 
-const blogInput = z.object({
+const blogFields = {
   title: z.string().trim().min(TITLE_MIN, "Judul minimal 3 karakter").max(TITLE_MAX, "Judul maksimal 200 karakter"),
   // Optional: a new article gets one from its title, like the legacy admin did. Lower case is done for the writer.
   slug: z
@@ -92,7 +93,6 @@ const blogInput = z.object({
     .transform((value) => value || null)
     .refine((value) => value === null || SLUG_PATTERN.test(value), { message: "Slug hanya boleh huruf kecil, angka, dan tanda hubung" }),
   category: z.enum(blogCategories, { error: "Kategori tidak dikenal" }),
-  excerpt: z.string().trim().min(EXCERPT_MIN, "Excerpt minimal 20 karakter").max(EXCERPT_MAX, "Maksimal 500 karakter"),
   contentMarkdown: z.string().trim().min(BODY_MIN, "Isi minimal 50 karakter").max(BODY_MAX, `Isi maksimal ${bodyLimitLabel} karakter`),
   author: z.string().trim().min(AUTHOR_MIN, "Wajib diisi").max(AUTHOR_MAX, "Maksimal 120 karakter"),
   // An upload of kind `blog-image` or a file of the legacy blog (`/blog/images/...`); the size is read from `media`, never from the client.
@@ -114,7 +114,20 @@ const blogInput = z.object({
     .nullish()
     .transform((value) => value || null)
     .refine((value) => value === null || isIsoDay(value), { message: "Format harus YYYY-MM-DD" }),
-});
+};
+
+const EXCERPT_TOO_SHORT = `Excerpt minimal ${EXCERPT_MIN} karakter`;
+const excerptField = z.string().trim().max(EXCERPT_MAX, "Maksimal 500 karakter");
+
+/** A new article: the legacy rules, the excerpt of at least 20 characters among them. */
+const blogInput = z.object({ ...blogFields, excerpt: excerptField.min(EXCERPT_MIN, EXCERPT_TOO_SHORT) });
+
+/**
+ * A save of an existing article. The minimum of the excerpt depends on the stored row (an excerpt the article
+ * already has stays valid as it is, whatever its length: `daffa-najwan` was imported with 14 characters), so it is
+ * checked in the handler once the row is read, with the other rules that need it. Everything else is the same.
+ */
+const blogUpdateInput = z.object({ ...blogFields, excerpt: excerptField.min(1, EXCERPT_TOO_SHORT) });
 
 type BlogInput = z.output<typeof blogInput>;
 
@@ -366,8 +379,16 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     return c.json(pageOf(rows.map(presentListItem), query, totals[0]?.total ?? 0));
   });
 
+  // The brake on the preview: every request is a render, so it is counted per signed-in user, before the body is
+  // read (a refused request costs no parse). Without the binding a local run counts in memory; production refuses (503).
+  const previewLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
+    const limit = await checkLimits(c.env, [{ name: "blogPreview", key: `blog-preview:${c.get("user").id}` }]);
+    if (!limit.allowed) return limitedResponse(limit);
+    await next();
+  };
+
   // Before "/:id" verbs, and a POST: nothing is saved. The same render a save does, with the same sizes.
-  app.post("/preview", requireArea("konten", "write"), async (c) => {
+  app.post("/preview", requireArea("konten", "write"), previewLimit, async (c) => {
     const body = await parseBody(c, previewInput, { maxBytes: MAX_BODY_BYTES });
     if (!body.ok) return body.response;
     const markdown = normaliseNewlines(body.data.contentMarkdown).trim();
@@ -433,7 +454,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     const id = c.req.param("id") ?? "";
     const precondition = readIfMatch(c);
     if (!precondition.present) return preconditionRequired(c);
-    const body = await parseBody(c, blogInput, { maxBytes: MAX_BODY_BYTES });
+    const body = await parseBody(c, blogUpdateInput, { maxBytes: MAX_BODY_BYTES });
     if (!body.ok) return body.response;
     const form = body.data;
 
@@ -443,6 +464,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
 
     // Rules that need the stored row (a form alone cannot know them).
     const problems: Record<string, string> = {};
+    // The minimum applies to a text the writer wrote, not to the one that was already there.
+    if (form.excerpt.length < EXCERPT_MIN && form.excerpt !== before.excerpt.trim()) problems.excerpt = EXCERPT_TOO_SHORT;
     if (form.slug !== null && form.slug !== before.slug && before.status === "published") problems.slug = SLUG_LOCKED;
     if (before.status === "published" && form.date === null) problems.date = DATE_REQUIRED;
     if (Object.keys(problems).length > 0) return validationError(c, problems);

@@ -18,8 +18,10 @@
   //                         365 = one year; see docs/cloudflare/auth.md#retention.
   // Not here, set per deploy: TURNSTILE_SITE_KEY (public widget key, served by
   // GET /api/config), UPLOADS_BASE_URL (the public files domain, also served by
-  // GET /api/config; empty = same origin), EMAIL_FROM, TRUSTED_ORIGINS, COOKIE_DOMAIN
-  // (normally unset).
+  // GET /api/config; empty = same origin), SITE_URL (the public site's origin, e.g.
+  // https://sakolakembara.org, public like the others and served by GET /api/config as
+  // `siteUrl`: the "Lihat di publik" link of a published blog article; empty or not an
+  // http(s) origin = no link), EMAIL_FROM, TRUSTED_ORIGINS, COOKIE_DOMAIN (normally unset).
   // Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, TURNSTILE_SECRET_KEY,
   // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) are set with `wrangler secret put`.
   "vars": { "ENVIRONMENT": "production", "AUDIT_RETENTION_DAYS": "365" },
@@ -88,7 +90,11 @@
     // Admin uploads and their deletes (src/api/uploads.ts): 20 per minute per signed-in user.
     // Key: "upload:<user id>". Keeps a stuck client or a stolen session from burning the R2
     // Class A budget (1M operations a month on Free) or the CPU of many multipart parses.
-    { "name": "RL_UPLOAD", "namespace_id": "7821", "simple": { "limit": 20, "period": 60 } }
+    { "name": "RL_UPLOAD", "namespace_id": "7821", "simple": { "limit": 20, "period": 60 } },
+    // The blog editor's preview (POST /api/admin/blog/preview, src/api/blog.ts): 60 per minute per
+    // signed-in user. Key: "blog-preview:<user id>". Every request is a markdown render on the
+    // Worker, so a stuck client or a stolen session must not be able to spend its CPU.
+    { "name": "RL_BLOG_PREVIEW", "namespace_id": "7822", "simple": { "limit": 60, "period": 60 } }
   ],
 
   // Daily cleanup (src/cron/cleanup.ts): expired sessions and verification

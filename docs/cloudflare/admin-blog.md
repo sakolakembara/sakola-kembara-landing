@@ -18,7 +18,7 @@ Read first: [`admin-crud.md`](admin-crud.md) (the conventions and the kit this f
 10. [Differences from the legacy admin](#10-differences-from-the-legacy-admin)
 11. [Measured](#11-measured)
 12. [Tests and negative checks](#12-tests-and-negative-checks)
-13. [Not verified, and open decisions](#13-not-verified-and-open-decisions)
+13. [Not verified, and the decisions taken](#13-not-verified-and-the-decisions-taken)
 
 ## 1. Where things are
 
@@ -43,7 +43,7 @@ Made here, with the reason (each is one constant or one line, so it is cheap to 
 
 | Decision | Why |
 | --- | --- |
-| **The body is limited to 12,000 characters** (the legacy limit was 80,000). | Rendering is the one heavy thing a save does: about 0.45 ms of CPU per 1,000 characters once warm, two to three times that in a fresh isolate, against 10 ms per request on Free ([section 11](#11-measured)). The longest of the 80 articles is 8,340 characters, the median 4,444, so 12,000 is 1.4 times the longest there is. It is `BODY_MAX` in `src/blog/rules.ts`; raise it only with a measurement from a real Free account (SAKEM-084). |
+| **The body is limited to 12,000 characters** (the legacy limit was 80,000). | Rendering is the one heavy thing a save does: about 0.45 ms of CPU per 1,000 characters once warm, two to three times that in a fresh isolate, against 10 ms per request on Free ([section 11](#11-measured)). The longest of the 80 articles is 8,340 characters, the median 4,444, so 12,000 is 1.4 times the longest there is. Re-measured when the PM asked whether 40,000 would do: 4.1 ms at 12,000, 12.2 ms at 40,000 (warm, wall), so it stays. It is `BODY_MAX` in `src/blog/rules.ts`; raise it only with a measurement from a real Free account (SAKEM-084). |
 | **A draft is saved with the same rules as a published article** (no partial drafts). | One validation, so publishing never has to re-check anything. The legacy form had no drafts at all. |
 | **A new article is always a draft.** Publishing is its own step: `POST /:id/publish`. | The legacy admin made every saved article public at once; a draft state needs this step, and the SPA's "Terbitkan" saves what was typed first and then publishes, so it is still one click. |
 | **The date field means "the day shown on the article".** Empty on a draft = the day it is published. | Keeps the legacy "Tanggal Publikasi" field and still lets publishing set `published_at` (a draft has none until it is dated or published). Unpublishing keeps the date, so publishing again does not move the article in the list. |
@@ -52,7 +52,7 @@ Made here, with the reason (each is one constant or one line, so it is cheap to 
 | **The list searches the title and the excerpt, containing the text** (not by prefix). | That is the legacy search; the kit supports it, and with about 80 rows a scan costs 160 rows read per search. (The brief said "title prefix"; say if you want that instead.) |
 | **A cover is an upload of kind `blog-image` or a file of the legacy blog (`/blog/images/...`).** Its size is read from `media` or from the table of the asset manifest, never from the client. | The kit's check accepts every legacy folder and no `@`; five of the blog's files have an `@`. A client that sends a size cannot make the page lie about it. |
 | **Uploaded inline images render like the legacy local ones** (wrapper `span`, `w-full h-auto`), with their recorded size. | Same look as the 80 articles; no layout shift. |
-| **The preview is a write-only route** and has no limiter of its own. | `POST` is a write by the kit's convention. A limiter would be one more binding in `wrangler.jsonc` for a staff-only route; the SPA debounces and remembers answers. See [open decisions](#13-not-verified-and-open-decisions). |
+| **The preview is a write route with its own limiter**, `RL_BLOG_PREVIEW`: 60 a minute per user. | `POST` is a write by the kit's convention. Every request is a render on the Worker, so a stuck client or a stolen session must not be able to spend its CPU; the SPA debounces and remembers answers, so a person never meets the limit. |
 | **No scheduling.** A published article with a future date is shown at once, as in the legacy admin. | "If needed" in the ticket; the legacy had none, and the public query does not look at the clock. |
 
 ## 3. The render pipeline
@@ -106,7 +106,7 @@ All under `/api/admin/blog`, area **`konten`**; the conventions (envelopes, erro
 | `POST /:id/publish` | write, `If-Match` | `status = published`; `published_at` is the article's day if it has one, otherwise now. `200 { item }`. Already published: `200`, nothing written. |
 | `POST /:id/unpublish` | write, `If-Match` | `status = draft`; the date stays. |
 | `DELETE /:id` | write | `204`. Removes the article, then the uploads only it used. |
-| `POST /preview` | write | `{ contentMarkdown }` -> `{ html }`: the render a save would store, with the same sizes, nothing saved. An empty text is `{ html: "" }`; above the limit is `400` on `contentMarkdown`. |
+| `POST /preview` | write, limiter | `{ contentMarkdown }` -> `{ html }`: the render a save would store, with the same sizes, nothing saved. An empty text is `{ html: "" }`; above the limit is `400` on `contentMarkdown`. **Limited to 60 a minute per signed-in user** (binding `RL_BLOG_PREVIEW`, key `blog-preview:<user id>`): a refusal is `429` with `Retry-After: 60` and "Terlalu banyak permintaan pratinjau. Silakan tunggu satu menit lalu coba lagi.", decided after the role check and before the body is read; in production a missing binding is `503 service_unavailable` (the brake fails closed); in a local run without the binding the same numbers are counted in memory (`src/security/rate-limit.ts`). The editor asks at most once per 400 ms pause in typing, so a person does not meet it. Placeholder namespace id 7822, to be replaced with the others by the deploy ticket. |
 
 The form (create and update):
 
@@ -115,14 +115,14 @@ The form (create and update):
 | `title` | 3 to 200 ("Judul minimal 3 karakter", "Judul maksimal 200 karakter") |
 | `slug` | optional; lower-cased; `a-z 0-9` with single hyphens, up to 160 ("Slug hanya boleh huruf kecil, angka, dan tanda hubung"); empty = made from the title |
 | `category` | `Career Cerita Education Kiat kiat News Testimonials Tips Uncategorized` ("Kategori tidak dikenal") |
-| `excerpt` | 20 to 500 ("Excerpt minimal 20 karakter", "Maksimal 500 karakter") |
+| `excerpt` | 20 to 500 ("Excerpt minimal 20 karakter", "Maksimal 500 karakter"). **The minimum applies to a text the writer changes:** on an update, an excerpt equal to the stored one (trimmed) stays valid whatever its length, so the one article imported with 14 characters (`daffa-najwan`, "Manajemen, UGM") can be edited around; a new article, or an excerpt changed to something under 20, is refused. The maximum has no exception |
 | `contentMarkdown` | 50 to 12,000 ("Isi minimal 50 karakter", "Isi maksimal 12.000 karakter") |
 | `author` | 2 to 120 ("Wajib diisi", "Maksimal 120 karakter") |
 | `featured` | boolean |
 | `date` | `YYYY-MM-DD` of a real day, or empty ("Format harus YYYY-MM-DD") |
 | `image` | an upload of kind `blog-image`, a file of `/blog/images/`, or empty ("Berkas tidak valid. Unggah ulang berkasnya.") |
 
-Rules that need the stored row: the slug of a published article cannot change (400 on `slug`: "Slug tidak bisa diubah setelah artikel terbit"); a published article must keep a date (400 on `date`, "Format harus YYYY-MM-DD").
+Rules that need the stored row: the excerpt's minimum (above), the slug of a published article cannot change (400 on `slug`: "Slug tidak bisa diubah setelah artikel terbit"); a published article must keep a date (400 on `date`, "Format harus YYYY-MM-DD").
 
 **Audit rows** (field names only, never a value): `blog.create`, `blog.update` (the names that changed), `blog.publish` (`["status", "publishedAt"]` the first time, `["status"]` after), `blog.unpublish`, `blog.delete`; label = the title (public content). `blog.publish` and `blog.unpublish` are new names: declared in `src/db/audit.ts` and in `src/audit/lists.ts` (the list Aktivitas filters by; the compiler fails until both agree), with the labels "Artikel diterbitkan" and "Artikel dikembalikan menjadi draf" in `spa/src/lib/audit.ts` ([`admin-sistem.md`](admin-sistem.md)).
 
@@ -175,9 +175,10 @@ A slug is the URL (`/blog/<slug>`). Decided: **editable while a draft, locked on
 
 - **List** (`ListPage`): the legacy columns (title with its excerpt and a Featured tag, category, date) plus **Status** (a tag, "Terbit" or "Draf") and a status filter; search "Cari judul atau excerpt...", category filter, pagination; "Tulis Artikel Baru" for someone who can write; Edit and Hapus per row (a confirmation that names the article). A viewer sees the list and "Lihat".
 - **Form** (`FormShell`): the legacy two tabs. **Detail**: Informasi Dasar (Judul, Slug, Excerpt), Klasifikasi & Publikasi (Kategori, Tanggal Publikasi, Penulis, Featured), Gambar Hero. **Konten**: Isi Artikel with "Tulis" and "Preview", "Sisipkan Gambar" and a character counter. The bar shows the status and, on an existing article, **"Terbitkan"** or **"Kembalikan ke Draf"**: they save what was typed first (when there are edits), then change the status with the version the save answered; a refused save publishes nothing. A refused form opens the tab with the first error, marks the tabs that have one, and a link of the error summary shows its tab first. Leaving with typed text asks "Tinggalkan halaman?" (the body counts); a `409` shows the stale warning with "Muat ulang".
-- **Preview.** `POST /preview` with the body, shown in `.blog-content` like the public page. It asks **only while the preview is on screen**, the first time at once, later changes **debounced** (400 ms) with the request in flight aborted, remembers the last answer (switching back without typing asks nothing), and answers an empty text and one above the limit itself. Every request is a Worker request with a render in it, which is why it asks as little as it can.
+- **"Lihat di publik"** next to the status and the address of a published article, when `SITE_URL` is configured ([below](#the-link-lihat-di-publik)).
+- **Preview.** `POST /preview` with the body, shown in `.blog-content` like the public page. It asks **only while the preview is on screen**, the first time at once, later changes **debounced** (400 ms) with the request in flight aborted, remembers the last answer (switching back without typing asks nothing), and answers an empty text and one above the limit itself. Every request is a Worker request with a render in it, which is why it asks as little as it can, and why the Worker counts them (60 a minute per user): a refusal shows the Worker's sentence, with "Coba lagi".
 - **A read-only role** (viewer) gets both parts on **one page** (no tabs: they sit inside the disabled fieldset), every field disabled, no Simpan, no "Terbitkan", no cover buttons, no "Sisipkan Gambar" and no Preview (the route is write-only). Another editor (without `konten`) gets the 403 page and the API answers 403.
-- **Mock** (`pnpm dev:spa:mock`, `?mock=viewer|editor|editor:konten,komunikasi|super_admin|student`): eight articles, the legacy rules, the slug lock, drafts and publish with `If-Match`, and a **stand-in** preview (headings, paragraphs, lists, bold, italic, links, images; escaped) so the screen can be seen without the Worker. The generic mock store got one additive hook, `custom`, for routes the five of the contract do not cover (see [`admin-crud.md`](admin-crud.md#16-the-mock-build-a-screen-without-a-backend)).
+- **Mock** (`pnpm dev:spa:mock`, `?mock=viewer|editor|editor:konten,komunikasi|super_admin|student`): eight articles, the legacy rules, the slug lock, drafts and publish with `If-Match`, and a **stand-in** preview (headings, paragraphs, lists, bold, italic, links, images; escaped) so the screen can be seen without the Worker. The blog uses the generic mock store's `custom` hook for the routes the five of the contract do not cover (see [`admin-crud.md`](admin-crud.md#16-the-mock-build-a-screen-without-a-backend)).
 
 ## 9. Import of the 80 migrated articles
 
@@ -246,13 +247,13 @@ Machine of the author, Node 22, the pipeline bundled the way wrangler bundles it
 | Worker bundle (`wrangler deploy --dry-run`), before | 2,940.93 KiB, 511.02 KiB gzip |
 | Worker bundle, after | **3,463.96 KiB, 619.84 KiB gzip** (+523.0 KiB, +108.8 KiB gzip: unified, remark, micromark, the sanitiser, the 22 KB image table). The Free limit is 3 MiB *compressed*, so 620 KiB gzip is a fifth of it |
 | SPA build (`build:spa`), before and after | JS 425.87 kB (133.52 kB gzip) to 450.96 kB (140.99 kB gzip): +25.1 kB, +7.5 kB gzip for the screens, the editor and the preview hook (no markdown library in the browser); CSS 48.33 kB to 49.57 kB. The mock is not in the build (`check:spa`) |
-| After the rebase on `cloudflare` c0af34f (Sistem, Komunikasi and Konten-misc merged, so these are totals of the integrated tree, not of the blog alone) | Worker 3,507.73 KiB, 631.67 KiB gzip; SPA JS 511.31 kB (155.77 kB gzip in the build log) |
+| After the rebase on `cloudflare` 9f72cae (Sistem, Komunikasi, Konten-misc and Pendaftaran merged, so these are totals of the integrated tree, not of the blog alone), with the preview limiter and `SITE_URL` | Worker 3,537.10 KiB, 637.98 KiB gzip; SPA JS 556.64 kB (167.24 kB gzip in the build log), CSS 53.27 kB |
 | The renderer alone, bundled | 480 KB unminified (micromark 65 KB, character entities 44 KB, the app 37 KB, property-information 30 KB, ...) |
 | Evaluating the bundled renderer (what a fresh isolate pays once) | about 8 ms |
 | 80 articles, warm, wall time per article | median 1.5 ms, p95 2.7 ms, max 4.3 ms (quiet machine) |
 | The longest article (8,340 characters), warm | about 3.9 ms (CPU about 5.5 ms with the JIT threads) |
 | **The same script on a loaded machine** (other workers running, load average 14, run twice) | the 80 articles: median 1.7 to 2.0 ms, p95 3.8 to 4.7 ms; the longest article 5.0 to 5.9 ms; 8,000 characters 4.5 to 5.2 ms; 80,000 characters 33 to 35 ms; the first render 22 to 25 ms. Treat every figure here as "within a factor of 1.5", which the cap leaves room for |
-| Synthetic articles, warm, wall time | 8,000 characters 3.5 ms; 20,000: 7.0 ms; 40,000: 12.8 ms; **80,000 (the legacy limit): 24.4 ms** |
+| Synthetic articles, warm, wall time (CPU in brackets), measured again for the PM's question about the limit | 8,000 characters 3.3 ms (3.6); **12,000 (the limit): 4.1 ms (4.9)**; 20,000: 6.2 ms (6.3); **40,000: 12.2 ms (14.3), over the 10 ms of Free even warm**; 80,000 (the legacy limit): 23.9 ms (35.1) |
 | The **first** render in a fresh process (a typical 4,200-character article) | 12 to 14 ms; the longest article 20 ms. With a throw-away render at module load: 6 to 7 ms, and 9 to 12 ms for the longest |
 | The sanitiser alone, on the longest article | 0.02 ms (the rest of the pipeline is parsing: the GFM extensions are about half) |
 
@@ -264,30 +265,37 @@ What this says, plainly:
 
 ## 12. Tests and negative checks
 
-After the rebase on `cloudflare` c0af34f (all areas merged so far, so the totals are the integrated tree's, not the blog's alone): Worker **1,773 tests** (51 files), SPA **1,041** (43 files), all exit 0, with `typecheck`, `build:spa`, `check:spa` and `db:drift`. The blog's own negative checks are Worker **56** (the blog and GIF) and SPA **24**, run with `node scripts/negative-checks.mjs --only "blog:"` and `node scripts/negative-checks-spa.mjs --only "blog:"`; the full suites run on the integrated head.
+After the rebase on `cloudflare` 9f72cae (all areas merged, so the totals are the integrated tree's, not the blog's alone): Worker **1,961 tests** (57 files), SPA **1,168** (48 files), all exit 0, with `typecheck`, `build:spa`, `check:spa` and `db:drift`. The blog's own negative checks are Worker **64** (the blog, GIF, the preview limiter, the excerpt rule, `SITE_URL`) and SPA **30**, run with `node scripts/negative-checks.mjs --only "blog:"` and `node scripts/negative-checks-spa.mjs --only "blog:"`; the full suites run on the integrated head.
 
-Worker (`cf/admin/test/`, workerd, real D1 and R2): `blog.test.ts` (roles and areas for all eight routes and nine callers, create, the legacy validation, list and filters, update and the stale and race rules, publish and unpublish and their public effect, the slug and date rules, featured, the purge hook and upload cleanup, hero and inline images, preview, the D1 budget, query plans), `blog-render-parity.test.ts` (80 articles equal to the plugin; the legacy image table equal to the manifest), `blog-sanitize.test.ts` (the allow-list, the URL rules, 36 attacks), `blog-import.test.ts` (the 80 equal to the fixture API; idempotence), `blog-spa-contract.test.ts` (the SPA's limits, categories, dates, body and field names against the real Worker), and GIF cases in `uploads-sniff.test.ts` and `uploads.test.ts`.
+Worker (`cf/admin/test/`, workerd, real D1 and R2): `blog.test.ts` (roles and areas for all eight routes and nine callers, create, the legacy validation and the excerpt that is already there, list and filters, update and the stale and race rules, publish and unpublish and their public effect, the slug and date rules, featured, the purge hook and upload cleanup, hero and inline images, preview and its limiter, the D1 budget, query plans), `blog-render-parity.test.ts` (80 articles equal to the plugin; the legacy image table equal to the manifest), `blog-sanitize.test.ts` (the allow-list, the URL rules, 36 attacks), `blog-import.test.ts` (the 80 equal to the fixture API; idempotence), `blog-spa-contract.test.ts` (the SPA's limits, categories, dates, body and field names against the real Worker), and GIF cases in `uploads-sniff.test.ts` and `uploads.test.ts`.
 
 SPA (`cf/admin/spa/test/`, jsdom): `blog.test.tsx` (the list, the form, tabs and error reveal, publish and unpublish, read-only, preview, image insertion, the cover), `blog-preview.test.ts` (the hook: debounce, abort, memory, limits), `blog-mock.test.ts` (the mock behaves like the Worker).
 
 **Negative checks**: `scripts/negative-checks-blog.mjs` (Worker side) and `scripts/negative-checks-spa-blog.mjs`, registered with one import and one spread in `negative-checks.mjs` and `negative-checks-spa.mjs` (`pnpm test:negative`, `pnpm test:negative:spa`; `--only blog:` runs just these). Each breaks one safeguard (the sanitiser out of the pipeline, a scheme check, the area check of each route, the stale check, the version in the `UPDATE`, `If-Match`, the publish date, the slug lock, the date rule, the render at save, the reuse of stored HTML, the hero size source, the purge, the upload cleanup, GIF, the import's protection of edited articles, the read-only affordances, the preview's debounce and abort, ...) and requires the tests to fail.
 
-## 13. Not verified, and open decisions
+## 13. Not verified, and the decisions taken
 
 **Not verified here.** Nothing was opened in a browser: the look of the list, the form, the tabs, the sticky bar, the preview and the dialog, focus behaviour and the keyboard are Dzul's to check (`pnpm dev:spa:mock`, then `pnpm dev` with the local import). Not measured: Worker CPU (above), D1 rows read on real D1, R2 and the public files domain, the cache purge on a real zone, the service binding from `cf/web` against this Worker with imported rows beyond the equality tests. The imported articles were compared with the fixture API, not yet rendered by the real Astro site against this API (the earlier `public-api.md` run did that for the same rows).
 
-**Open decisions, for Dzul**, heaviest first:
+**The questions this document first left open were answered by the PM on 2026-10-12** (Dzul only reviews the copy):
 
-1. **Render on the Worker or in the browser** ([section 11](#11-measured)): a save is fine warm and probably too heavy in a fresh isolate on Free. Keep, lower the limit, or move the render to the SPA and sanitise on the Worker?
-2. **The body limit of 12,000 characters** instead of the legacy 80,000.
-3. **`daffa-najwan` has a 14-character excerpt** and cannot be saved without lengthening it (the legacy rule, min 20). Keep the rule, or lower the minimum for everyone?
-4. **Drafts with the same rules as published articles**: a draft needs a full excerpt and 50 characters of text. Allow partial drafts?
-5. **The preview has no limiter of its own** (it is the one route with a render in it). Add `RL_BLOG_PREVIEW`?
-6. **Search is "contains"** in the title and the excerpt, as in the legacy admin, not "title prefix".
-7. **The slug rule** (editable while a draft, locked once published; no redirects). Agree?
-8. **The cover cannot be a pasted URL** any more (only an upload or a legacy file).
-9. **No "Lihat di publik" link** in the editor; it needs the site's address in `GET /api/config`.
-10. **The list's order is "last edited first"**, not by date, so a new draft is on top.
+| # | Question | Answer, and where it is in the code |
+| --- | --- | --- |
+| 1 | Render on the Worker or in the browser | **On the Worker, for now.** Real CPU is measured at staging (SAKEM-084); the browser-render fallback (option (d) in [section 11](#11-measured)) stays documented. |
+| 2 | The body limit | **12,000 characters stays.** Raised to the largest value that renders safely, measured: a 40,000-character article takes 12.2 ms wall (14.3 ms CPU) *warm*, about three times a 12,000 one (4.1 ms) and already above the 10 ms of Free before a fresh isolate's penalty; so it is not offered. The legacy 80,000 (24 ms wall, 35 ms CPU) would be two to three times the limit. `BODY_MAX` in `src/blog/rules.ts`. |
+| 3 | `daffa-najwan` (14-character excerpt) | **The import keeps it** (it writes the row as it is) **and the edit form accepts an unchanged short excerpt**: the minimum applies when the excerpt changes (`src/api/blog.ts`, tests in `blog.test.ts`, `blog-import.test.ts`, `blog-spa-contract.test.ts` and the mock's). |
+| 4 | Drafts | **Same validation as a published article.** |
+| 5 | A limiter for the preview | **Added: `RL_BLOG_PREVIEW`**, 60 a minute per user, in `wrangler.jsonc`, `src/env.ts` and `src/security/rate-limit.ts`, with the in-memory fallback in development and fail-closed in production like the others. |
+| 6 | Search | **"Contains"** in the title and the excerpt (a tiny table). |
+| 7 | Slug | **Locked once published, no redirects.** |
+| 8 | Cover as a pasted URL | **No.** |
+| 9 | "Lihat di publik" | **Added**, built from the public variable `SITE_URL` ([below](#the-link-lihat-di-publik)). |
+| 10 | List order | **Last edited first.** |
+| 11 | New copy | Covered by Dzul's general approval for new fallback copy; the PM shows him the rest after the merge. |
+
+### The link "Lihat di publik"
+
+On the edit page of a **published** article, the bar shows a link "Lihat di publik" to `<SITE_URL>/blog/<slug>`, in a new tab (`rel="noopener noreferrer"`). A draft has no public page, so no link. `SITE_URL` is a public variable of the Worker, like `UPLOADS_BASE_URL`: the origin of the public site (`https://sakolakembara.org`), served to the SPA by `GET /api/config` as `siteUrl`. It is checked by the same rule as the files' address (`src/config/public-origin.ts`: an `http(s)` origin without a path, a trailing slash, userinfo, a quote or a space; anything else is "none"), and again in the SPA. **Empty, unset or not an origin means no link**: the admin never guesses the site's address. It is documented in `wrangler.jsonc` (a per-deploy variable, not committed with a value) and `dev.vars.example` (locally the Astro dev server, `http://localhost:4321`; the mock says the same). Laporan, Tim and Shortlink still read the constant of `spa/src/lib/site.ts`; they could take `siteUrl` from the same place later (`useConfig()` in `spa/src/lib/config.ts` gives both origins from one request).
 
 ### New texts for review
 

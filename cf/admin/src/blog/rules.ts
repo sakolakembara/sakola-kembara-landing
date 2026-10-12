@@ -21,7 +21,8 @@ export const IMAGE_PATH_MAX = 500;
  * and rendering costs about 0.45 ms of CPU per 1,000 characters once warm (about 3.9 ms for 8,340; 24 ms
  * for 80,000, measured in Node, `pnpm measure:blog`), against 10 ms per request on Workers Free, and two to
  * three times that in a cold isolate. 12,000 characters (about 2,000 words, 1.4 times the longest article
- * there is) keeps a warm save near 5 ms. Raise it only with a measurement from a real Free account (SAKEM-084).
+ * there is) keeps a warm save near 5 ms. 40,000 characters take about 12 ms warm, over the limit on their own, so
+ * it was not raised (PM, 2026-10-12). Raise it only with a measurement from a real Free account (SAKEM-084).
  */
 export const BODY_MAX = 12_000;
 

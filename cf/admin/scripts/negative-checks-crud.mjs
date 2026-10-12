@@ -282,8 +282,9 @@ export const crudChecks = [
     tests: SPA_CONTRACT,
   },
   {
+    // The rule moved to src/config/public-origin.ts when the site's address (SITE_URL) began to use it too.
     name: "crud: the Worker serves a base that is not an origin to the SPA",
-    file: "src/uploads/base-url.ts",
+    file: "src/config/public-origin.ts",
     from: 'return ORIGIN.test(trimmed) ? trimmed : "";',
     to: "return trimmed;",
     tests: SPA_CONTRACT,

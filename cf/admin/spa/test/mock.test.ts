@@ -3,7 +3,7 @@ import { api, setTransport } from "~/lib/api";
 import { parseDashboard } from "~/lib/dashboard";
 import { parseMe } from "~/lib/me";
 import { parsePersona } from "~/mock/persona";
-import { createMockTransport, type MockConfig } from "~/mock/transport";
+import { createMockTransport, MOCK_SITE_URL, type MockConfig } from "~/mock/transport";
 import { installMockTurnstile, MOCK_SITE_KEY, MOCK_TOKEN_PREFIX } from "~/mock/turnstile";
 
 // The mock is not shipped, but it is how the screens are reviewed without a
@@ -155,7 +155,7 @@ describe("mock transport", () => {
 describe("the mock's security check", () => {
   test("/api/config offers a site key, so the pages draw the (mock) widget", async () => {
     setup();
-    expect(await api("/api/config")).toEqual({ ok: true, data: { google: true, turnstileSiteKey: MOCK_SITE_KEY, uploadsBaseUrl: "" } });
+    expect(await api("/api/config")).toEqual({ ok: true, data: { google: true, turnstileSiteKey: MOCK_SITE_KEY, uploadsBaseUrl: "", siteUrl: MOCK_SITE_URL } });
   });
 
   test("sign-in and forgot-password refuse a request without a made-up token, like the Worker", async () => {

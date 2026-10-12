@@ -386,6 +386,47 @@ describe("the form: edit", () => {
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).required).toBe(false);
   });
 
+  describe("'Lihat di publik'", () => {
+    const config = (siteUrl: unknown) => ({ "GET /api/config": respond({ google: false, uploadsBaseUrl: "", siteUrl }) });
+    const published = (overrides: Record<string, unknown> = {}) => article({ status: "published", date: "2026-05-21", ...overrides });
+
+    test("a published article links to its page on the public site (siteUrl of /api/config + /blog/<slug>), in a new tab, and the config is asked for once", async () => {
+      const { api } = await openEdit(WRITER, published(), config("https://sakolakembara.org"));
+      const link = await screen.findByRole("link", { name: "Lihat di publik" });
+      expect(link.getAttribute("href")).toBe("https://sakolakembara.org/blog/cara-belajar-efektif");
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(api.count("GET /api/config")).toBe(1);
+    });
+
+    test("a viewer is offered it too: it only reads", async () => {
+      await openEdit(["viewer", []], published(), config("https://sakolakembara.org"));
+      expect((await screen.findByRole("link", { name: "Lihat di publik" })).getAttribute("href")).toBe("https://sakolakembara.org/blog/cara-belajar-efektif");
+    });
+
+    test("a draft is not on the site, so it has no link", async () => {
+      const { api } = await openEdit(WRITER, article(), config("https://sakolakembara.org"));
+      await waitFor(() => expect(api.count("GET /api/config")).toBe(1));
+      expect(screen.queryByRole("link", { name: "Lihat di publik" })).toBeNull();
+    });
+
+    test("without the site's address (empty, missing, or not an origin) there is no link, and no guess", async () => {
+      for (const siteUrl of ["", undefined, "sakolakembara.org", "javascript:alert(1)", "https://sakolakembara.org/blog"]) {
+        resetUploadsBase();
+        const { api, unmount } = await openEdit(WRITER, published(), config(siteUrl));
+        await waitFor(() => expect(api.count("GET /api/config")).toBe(1));
+        expect(screen.queryByRole("link", { name: "Lihat di publik" }), String(siteUrl)).toBeNull();
+        unmount();
+      }
+    });
+
+    test("an answer of /api/config that cannot be read leaves the editor working, without the link", async () => {
+      await openEdit(WRITER, published(), { "GET /api/config": respond({ error: "internal" }, 500) });
+      expect(screen.getByRole("button", { name: "Kembalikan ke Draf" })).toBeTruthy();
+      expect(screen.queryByRole("link", { name: "Lihat di publik" })).toBeNull();
+    });
+  });
+
   test("an article that is gone: the sentence and a way back", async () => {
     stubApi({ "GET /api/me": respond(meBody(...WRITER)), [`GET ${LIST}/gone`]: respond({ error: "not_found", message: "Data tidak ditemukan. Mungkin sudah dihapus." }, 404) });
     renderApp("/blog/gone/edit");

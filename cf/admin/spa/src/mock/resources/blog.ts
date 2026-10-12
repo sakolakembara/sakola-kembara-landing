@@ -89,8 +89,12 @@ function slugify(title: string): string {
 
 const isDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 
-/** The Worker's schema, in miniature. `values` carry the slug and date the writer typed ("" for none). */
-function parse(body: Record<string, unknown>): MockParse<MockBlog> {
+/**
+ * The Worker's schema, in miniature. `values` carry the slug and date the writer typed ("" for none). `excerptMin` is
+ * the minimum of the excerpt: a save of an existing article lowers it to 1 and checks the real one against the stored
+ * excerpt afterwards, like the Worker (an excerpt the article already has stays valid, whatever its length).
+ */
+function parse(body: Record<string, unknown>, excerptMin: number = LIMITS.excerptMin): MockParse<MockBlog> {
   const fields: Record<string, string> = {};
   const title = text(body.title);
   if (title.length < LIMITS.titleMin) fields.title = "Judul minimal 3 karakter";
@@ -99,7 +103,7 @@ function parse(body: Record<string, unknown>): MockParse<MockBlog> {
   if (slug.length > LIMITS.slugMax) fields.slug = "Slug maksimal 160 karakter";
   else if (slug !== "" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) fields.slug = "Slug hanya boleh huruf kecil, angka, dan tanda hubung";
   const excerpt = text(body.excerpt);
-  if (excerpt.length < LIMITS.excerptMin) fields.excerpt = "Excerpt minimal 20 karakter";
+  if (excerpt.length < excerptMin) fields.excerpt = "Excerpt minimal 20 karakter";
   else if (excerpt.length > LIMITS.excerptMax) fields.excerpt = "Maksimal 500 karakter";
   const markdown = text(body.contentMarkdown);
   if (markdown.length < LIMITS.bodyMin) fields.contentMarkdown = "Isi minimal 50 karakter";
@@ -142,14 +146,14 @@ function bodyOf(init: RequestInit): Record<string, unknown> | null {
 
 let created = 0;
 
-function custom({ method, rest, init, rows, access }: MockRequest<MockBlog>): Response | null {
+// Called by the generic store after its access check (a persona that cannot write never gets a write here), like the Worker's guards.
+function custom({ method, rest, init, rows }: MockRequest<MockBlog>): Response | null {
   const parts = rest.split("/").map(decodeURIComponent);
   const isCreate = method === "POST" && rest === "";
   const isPreview = method === "POST" && rest === "preview";
   const isUpdate = method === "PUT" && parts.length === 1 && rest !== "";
   const isVerb = method === "POST" && parts.length === 2 && (parts[1] === "publish" || parts[1] === "unpublish");
   if (!isCreate && !isPreview && !isUpdate && !isVerb) return null; // the generic store: list, one, delete
-  if (access !== "write") return mockError(403, "forbidden");
 
   const headers = new Headers(init.headers);
   const today = new Date().toISOString().slice(0, 10);
@@ -194,11 +198,12 @@ function custom({ method, rest, init, rows, access }: MockRequest<MockBlog>): Re
   if (isUpdate) {
     const body = bodyOf(init);
     if (!body) return mockError(400, "invalid_json", "Isi permintaan bukan JSON yang valid.");
-    const parsed = parse(body);
+    const parsed = parse(body, 1);
     if (!parsed.ok) return mockError(400, "invalid", "Periksa kembali isian formulir.", { fields: parsed.fields });
     if (!row) return mockError(404, "not_found", NOT_FOUND);
     if (precondition !== ifMatch(row.updatedAt)) return mockError(409, "stale", STALE);
     const problems: Record<string, string> = {};
+    if (parsed.values.excerpt!.length < LIMITS.excerptMin && parsed.values.excerpt !== row.excerpt.trim()) problems.excerpt = "Excerpt minimal 20 karakter";
     const slug = parsed.values.slug || row.slug;
     if (parsed.values.slug && parsed.values.slug !== row.slug && row.status === "published") problems.slug = "Slug tidak bisa diubah setelah artikel terbit";
     if (row.status === "published" && !parsed.values.date) problems.date = "Format harus YYYY-MM-DD";

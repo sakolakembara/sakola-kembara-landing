@@ -145,8 +145,29 @@ export const blogChecks = [
   {
     name: "blog: the preview needs only read access",
     file: "src/api/blog.ts",
-    from: 'app.post("/preview", requireArea("konten", "write"), async (c) => {',
-    to: 'app.post("/preview", requireArea("konten", "read"), async (c) => {',
+    from: 'app.post("/preview", requireArea("konten", "write"), previewLimit, async (c) => {',
+    to: 'app.post("/preview", requireArea("konten", "read"), previewLimit, async (c) => {',
+    tests: API,
+  },
+  {
+    name: "blog: the preview has no limiter",
+    file: "src/api/blog.ts",
+    from: 'app.post("/preview", requireArea("konten", "write"), previewLimit, async (c) => {',
+    to: 'app.post("/preview", requireArea("konten", "write"), async (c) => {',
+    tests: API,
+  },
+  {
+    name: "blog: the preview limiter counts everybody in one bucket (the key has no user id)",
+    file: "src/api/blog.ts",
+    from: 'key: `blog-preview:${c.get("user").id}`',
+    to: 'key: "blog-preview:all"',
+    tests: API,
+  },
+  {
+    name: "blog: the preview limiter lets the request through when it cannot count (fail open)",
+    file: "src/api/blog.ts",
+    from: "    if (!limit.allowed) return limitedResponse(limit);\n    await next();\n  };\n\n  // Before \"/:id\" verbs",
+    to: "    if (!limit.allowed && limit.reason !== \"unavailable\") return limitedResponse(limit);\n    await next();\n  };\n\n  // Before \"/:id\" verbs",
     tests: API,
   },
   {
@@ -196,8 +217,8 @@ export const blogChecks = [
   {
     name: "blog: If-Match is no longer required on an update",
     file: "src/api/blog.ts",
-    from: "    if (!precondition.present) return preconditionRequired(c);\n    const body = await parseBody(c, blogInput",
-    to: "    const body = await parseBody(c, blogInput",
+    from: "    if (!precondition.present) return preconditionRequired(c);\n    const body = await parseBody(c, blogUpdateInput",
+    to: "    const body = await parseBody(c, blogUpdateInput",
     tests: API,
   },
 
@@ -424,5 +445,44 @@ export const blogChecks = [
     from: "      imageWidth: entry?.width ?? null,\n      imageHeight: entry?.height ?? null,",
     to: "      imageWidth: null,\n      imageHeight: null,",
     tests: IMPORT,
+  },
+
+  // ------------------------------------------------------------------ the excerpt that is already there
+  {
+    name: "blog: an excerpt the article already has must be lengthened to be saved (the minimum ignores what is stored)",
+    file: "src/api/blog.ts",
+    from: "if (form.excerpt.length < EXCERPT_MIN && form.excerpt !== before.excerpt.trim()) problems.excerpt = EXCERPT_TOO_SHORT;",
+    to: "if (form.excerpt.length < EXCERPT_MIN) problems.excerpt = EXCERPT_TOO_SHORT;",
+    tests: `${API} ${IMPORT} ${CONTRACT}`,
+  },
+  {
+    name: "blog: a changed excerpt may be as short as it likes on an update",
+    file: "src/api/blog.ts",
+    from: "if (form.excerpt.length < EXCERPT_MIN && form.excerpt !== before.excerpt.trim()) problems.excerpt = EXCERPT_TOO_SHORT;\n",
+    to: "",
+    tests: `${API} ${IMPORT} ${CONTRACT}`,
+  },
+  {
+    name: "blog: a new article gets the exception too (any excerpt will do on create)",
+    file: "src/api/blog.ts",
+    from: "const blogInput = z.object({ ...blogFields, excerpt: excerptField.min(EXCERPT_MIN, EXCERPT_TOO_SHORT) });",
+    to: "const blogInput = z.object({ ...blogFields, excerpt: excerptField.min(1, EXCERPT_TOO_SHORT) });",
+    tests: API,
+  },
+
+  // ------------------------------------------------------------------ the address of the public site
+  {
+    name: "blog: the Worker serves the site's address as it is set (no origin check: a quote or javascript: reaches the page)",
+    file: "src/worker.ts",
+    from: "siteUrl: publicOrigin(c.env.SITE_URL),",
+    to: 'siteUrl: (c.env.SITE_URL ?? "").trim(),',
+    tests: "test/crud-spa-contract.test.ts",
+  },
+  {
+    name: "blog: the Worker serves the site's address from the files' variable",
+    file: "src/worker.ts",
+    from: "siteUrl: publicOrigin(c.env.SITE_URL),",
+    to: "siteUrl: publicOrigin(c.env.UPLOADS_BASE_URL),",
+    tests: "test/crud-spa-contract.test.ts",
   },
 ];
