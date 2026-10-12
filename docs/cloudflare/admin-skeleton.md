@@ -19,7 +19,7 @@ One Worker (`sakem-admin`, future host `admin.<domain>`):
 | Throttling | Cloudflare rate limit bindings (3 buckets) |
 | Sample content | `announcements`, with `audit_log` rows |
 
-Routes: `GET /api/me`, `GET /api/config`, `/api/auth/*` (Better Auth), `GET|POST /api/announcements`, `PUT|DELETE /api/announcements/:id`; since SAKEM-081 also `GET /api/admin/users` and `PUT /api/admin/users/:id/areas`. SPA routes: `/login`, `/auth/error`, `/announcements`.
+Routes: `GET /api/me`, `GET /api/config`, `/api/auth/*` (Better Auth), `GET|POST /api/announcements`, `PUT|DELETE /api/announcements/:id`; since SAKEM-081 also `GET /api/admin/users` and `PUT /api/admin/users/:id/areas`. SPA routes: the sign-in pages (`/login`, `/forgot-password`, `/reset-password`, `/verify-email`, `/auth/error`), the dashboard (`/`) and one route per menu entry; see [SPA shell](#spa-shell-sakem-082-part-a).
 
 Layout: `src/worker.ts` (app), `src/auth/` (factory, password, email, guard, permissions, rate limit, roles), `src/api/` (announcements, admin users), `src/db/` (schema in `schema/`, audit, grants), `migrations/`, `spa/`, `test/`, `scripts/`. The full D1 schema is described in [`d1-schema.md`](d1-schema.md).
 
@@ -33,7 +33,7 @@ pnpm db:migrate:local         # D1 in .wrangler/state
 pnpm dev                      # builds the SPA, then wrangler dev
 ```
 
-`pnpm dev:spa` runs Vite on :5173 with `/api` proxied to the worker, for hot reload (not exercised in this ticket). With `ENVIRONMENT=development` and no `RESEND_API_KEY`, verification and reset emails are printed to the wrangler console.
+`pnpm dev:spa` runs Vite on :5173 with `/api` proxied to the worker, for hot reload; `pnpm dev:spa:mock` does the same with no Worker at all (see [SPA shell](#spa-shell-sakem-082-part-a)). Neither was exercised in a browser. With `ENVIRONMENT=development` and no `RESEND_API_KEY`, verification and reset emails are printed to the wrangler console.
 
 `pnpm db:seed:local` fills the local database with sample rows and one sign-in per role (see [`d1-schema.md`](d1-schema.md#migrate-and-seed)). To make an account you created yourself an admin (there is no UI for roles yet):
 
@@ -44,7 +44,7 @@ pnpm exec wrangler d1 execute sakem-admin --local \
 
 An editor can only change the areas granted to them; a super admin grants them with `PUT /api/admin/users/:id/areas`.
 
-Gates: `pnpm typecheck` (worker and SPA), `pnpm test`, `pnpm test:negative`, `pnpm measure`.
+Gates: `pnpm typecheck` (worker and SPA), `pnpm test` (Worker suite in workerd, then SPA suite in jsdom), `pnpm test:negative` and `pnpm test:negative:spa`, `pnpm build:spa && pnpm check:spa`, `pnpm measure`.
 
 ## Decisions
 
@@ -79,11 +79,112 @@ Difference from the legacy behaviour to settle before migration: the legacy app 
 - `@/` points at the repo root, so the kit's `@/lib/cn` import resolves as in Next.
 - `next/link` (imported by `components/ui/button.tsx`) is aliased to `spa/src/shims/next-link.tsx`, a 20-line component that renders react-router's `Link` and swallows the Next-only props (`prefetch`, `scroll`). `Button` runs unchanged. The same mapping is in `spa/tsconfig.json` `paths` so the SPA typechecks.
 - `resolve.dedupe` and `paths` force `react`, `class-variance-authority` and `tailwind-merge` to this app's copies. Verified: build and typecheck still pass with the root `node_modules` removed.
-- Tokens: `spa/src/styles.css` imports `app/globals.css` itself (one source of truth, per `DESIGN.md`) and adds `@source` for `components/ui`. Cost: the blog and map CSS of that file comes along unused.
+- Tokens: `spa/src/styles.css` imports `app/globals.css` itself (one source of truth, per `DESIGN.md`) and adds `@source` for its own files and for `components/ui`. Cost: the blog and map CSS of that file comes along unused. **One catch, fixed in SAKEM-082:** `app/globals.css` contains `@source not "../cf"` (so the Next build ignores the Astro and admin projects), and Tailwind applies that line to every build that imports the file, ahead of any `@source` of ours. The SPA's own files were therefore never scanned: only classes that also appear in `components/ui` were generated, and layout classes such as `h-dvh`, `min-h-screen` and `shadow-lg` were missing (CSS 32 kB before, 42 kB after). A small Vite plugin in `spa/vite.config.ts` (`sharedTokens`) now inlines the file minus its `@source not` lines. If the tokens ever move into their own file, import that instead and delete the plugin.
 - Fonts: Plus Jakarta Sans and Lora from `@fontsource-variable` (self-hosted, no Google request), mapped to the kit's `--font-body` and `--font-display`. No icons (`lucide-react` not added).
 - Copy: legacy strings are reused (login messages, announcements table, form labels). New strings are only the email-verification messages on `/login`.
 
 **Tests in workerd, not a fake D1.** `@cloudflare/vitest-plugin` (the renamed `@cloudflare/vitest-pool-workers`, whose npm page says deprecated) runs the tests inside the real Workers runtime with a real local D1 and the real rate limit bindings from `wrangler.jsonc`. The worker is called directly, so `fetch` (Resend, Google token endpoint) and `console` can be spied on. A Hono `app.request` with a hand-made D1 would not exercise SQLite semantics, batch atomicity, WebCrypto limits or the rate limit binding. The plugin also loads a developer's `.dev.vars`; the config pins every optional variable so tests do not depend on it (checked with a polluted file).
+
+## SPA shell (SAKEM-082, part A)
+
+The frame every admin page lives in: sidebar and mobile drawer, page header, route guard, 403/404 and error screens, the admin auth pages and the dashboard skeleton. No page body is ported yet: each menu entry shows a placeholder that says "Belum tersedia di admin baru". Visual style and Indonesian copy are the legacy ones (`DESIGN.md`, `docs/context/tone-of-voice.md`); `components/ui` is reused through the alias described above, and `PageHeader` and the sidebar are ports of `app/(admin)/admin/_page-header.tsx` and `_sidebar.tsx`.
+
+### Structure
+
+```
+spa/src/
+  main.tsx, App.tsx        entry (error boundary, router) and the route table
+  lib/
+    me.ts                  Me, roles, areas, parseMe (the /api/me payload)
+    access.ts              accessTo(me, section): THE visibility function
+    nav.ts                 the menu (one list) and what is built from it
+    guard.ts               pure guard decisions, safeFrom (the `from` rule)
+    session.tsx            SessionProvider: GET /api/me once, sign-out
+    api.ts                 typed JSON client, swappable transport
+    auth-errors.ts         every failure of the auth pages, as Indonesian text
+    validation.ts          form validation (pure)
+    dashboard.ts           GET /api/dashboard contract, parser, hook
+    hooks.ts               submit lock, focus trap, autofocus, page title
+  components/              Shell, Sidebar, MobileDrawer, PageHeader, RequireAuth, ErrorBoundary
+  pages/                   dashboard/, auth/, Announcements, Placeholder, Forbidden, NotFound
+  mock/                    development mock (never in the build)
+spa/test/                  vitest + jsdom
+```
+
+### Who sees what
+
+`accessTo(me, section)` is the only place that compares roles in the SPA; the sidebar, the route guard, the placeholder, the dashboard shortcuts and the announcements form all ask it. It answers `none`, `read` or `write`:
+
+| Role | Pendaftaran, Komunikasi, Konten Situs | Sistem (Aktivitas, Pengaturan) |
+| --- | --- | --- |
+| `super_admin` | write | write |
+| `editor` | write in the areas granted to them, read in the rest | none |
+| `viewer` | read | none |
+| `student`, unknown | none (the guard shows a refusal with Keluar) | none |
+
+Areas are `pendaftaran`, `komunikasi` and `konten`, one per sidebar group. "Read" means the page opens and shows no create, edit or delete control and no quick action. The server stays the authority: the UI hides, the API enforces (every Worker write goes through `requireAccess`).
+
+Sistem is hidden from every role but `super_admin`, Aktivitas included, as decided for this ticket. The IA proposal (`admin-ia.md`, section 3.2) had Aktivitas open to all roles; to restore that, set that entry's `section` in `lib/nav.ts` to `umum`.
+
+**The `/api/me` contract the SPA codes against:** `{ user: { id, email, name, role, emailVerified, areas } }`, with `areas` an array of the three names above (also accepted next to `user`). A payload without `areas`, or with names the SPA does not know, is read as no areas, so an editor sees everything read-only until the server says otherwise. This was written while the permission model was being built in parallel; reconcile the field name and place when that lands.
+
+### Routes and guards
+
+- Open: `/login`, `/forgot-password`, `/reset-password`, `/verify-email`, `/auth/error`. They do not call `/api/me`.
+- Behind sign-in (`RequireAuth` loads the session once): `/` (dashboard) and every menu path with everything below it (`/blog`, `/blog/new`, `/blog/<id>/edit`...). Not signed in: redirect to `/login?from=<page>`; `from` is only honoured when it is a same-origin path and not an auth page (`safeFrom`). After Keluar there is no `from`. Not reaching the server is an error screen with Coba lagi, not a sign-out.
+- Per area (`RequireSection`): no access gives the 403 page inside the shell. Unknown paths give the 404 page inside the shell (the assets layer answers 200 for every path, so this is the only 404). A crash while rendering a page shows an Indonesian message inside `<main>` and the menu keeps working; leaving the page clears it.
+- Reload on a deep link works because the Worker's assets layer falls back to `index.html`.
+
+### Shell behaviour
+
+Desktop: fixed 240 px sidebar. Below `md`: a top bar with a menu button that opens a modal drawer (`role="dialog"`, `aria-modal`): focus moves in, Tab wraps, Escape and the backdrop close it, focus returns to the button, the page behind is `inert` and does not scroll; following a link closes it. The current link carries `aria-current="page"` (a page below an entry keeps its entry marked). After a route change focus goes to `<main>`; a "Lewati ke konten utama" button is the first tab stop. The sidebar footer shows the email, the role ("Hanya baca" for a viewer) and Keluar.
+
+### Auth pages (admin side only; there is no admin registration)
+
+All call Better Auth through `api()`. None prints a server message or code (they are English and say too much); every failure has Indonesian text in `lib/auth-errors.ts`: wrong credentials, unverified email, rate limited (reads `Retry-After`: "tunggu 1 menit"), expired link, no connection, server error. Forms are `noValidate` with their own messages, `aria-invalid` and `aria-describedby` through `Field`, the cursor goes to the first invalid field, autofocus only on devices with a mouse-like pointer, and `autocomplete` is `username`/`current-password` on sign-in, `email` on forgot-password and `new-password` on reset. A ref lock (`useSubmitLock`) lets one request through at a time, because two submit events can arrive before the disabled button is drawn.
+
+| Page | Call | Notes |
+| --- | --- | --- |
+| `/login` | `POST /api/auth/sign-in/email` with `callbackURL: "/verify-email?status=success"`; Google through `/api/auth/sign-in/social` when `/api/config` says so | The callback is for the fresh verification link an unverified account is sent at that moment. `?error=` is mapped from an allow-list; any other text is replaced by the generic line and never echoed. `?reset=1` shows "password berhasil diganti". |
+| `/forgot-password` | `POST /api/auth/request-password-reset` with `redirectTo: "/reset-password"` | The page says "Kalau email tersebut terdaftar..." for every address, so it cannot be used to find out which accounts exist; failures read the same for every address too. A hidden honeypot field is kept from the legacy form. |
+| `/reset-password` | `POST /api/auth/reset-password` `{ newPassword, token }` | Better Auth redirects here with `?token=` or `?error=INVALID_TOKEN`; an error (or no token) shows "minta tautan baru" instead of the form. Success goes to `/login?reset=1` (the Worker revokes sessions; unlike the legacy page there is no automatic sign-in). Password 8 to 128 characters, the Worker's limits. |
+| `/verify-email` | none | Better Auth verifies on its own endpoint and redirects here with `?status=success` or `?error=<CODE>`; the page only reports. Opened by hand it does not claim success. |
+| `/auth/error` | none | Where `onAPIError.errorURL` sends OAuth failures, `?error=<code>` mapped from the allow-list. |
+
+### Dashboard
+
+`/` shows "Perlu perhatian" (pending and in-review applicants, unread messages, the running batch, each tile a link to the list already filtered), "Tindakan Cepat" (only the shortcuts the user may write to; none for a viewer) and "Aktivitas terakhir". It reads `GET /api/dashboard`, which **the Worker does not serve yet**: the contract is written at the top of `spa/src/lib/dashboard.ts` and is what the backend work is asked to return (counts, a server-computed batch `phase` so the SPA never uses the browser's clock, and an optional `recentActivity` that the server leaves out for roles that may not read the activity log). Loading (skeleton), empty ("Tidak ada yang perlu ditindaklanjuti"), error (Coba lagi) and not-served (404 or 501: a note, no retry) states exist. The activity summary only shows to those who may open Aktivitas. Pendaftar terbaru, Pesan terbaru and the content totals of the legacy dashboard are not part of this skeleton. No endpoint was added to the Worker.
+
+### Run it with the mock
+
+```bash
+cd cf/admin
+pnpm dev:spa:mock     # Vite on :5173, no Worker, no database; API answers come from spa/src/mock
+```
+
+A yellow "Mode mock" note is fixed to the corner. Open `http://localhost:5173/login`, then choose who you are from the address bar once (kept for the browser tab):
+
+- `?mock=viewer` · `?mock=editor` (all areas) · `?mock=editor:konten,komunikasi` · `?mock=editor:-` (no areas) · `?mock=super_admin` (default) · `?mock=student`
+- `?mock-dashboard=ready|empty|error|unavailable|slow`
+- Sign in with any password and an email whose part before the `@` is `salah` (wrong credentials), `belum-verifikasi` (unverified), `dibatasi` (rate limited, 60 s) or `offline` (no answer); anything else signs in. On `/reset-password?token=kedaluwarsa` the reset is refused as spent.
+
+The mock is loaded only when `VITE_ADMIN_MOCK=true`, which a normal build never sets. `pnpm build:spa && pnpm check:spa` prints every file's raw and gzip size and fails if mock strings are in the build (checked both ways: a build made with the flag fails it). Mock data is invented and uses reserved example addresses.
+
+### Adding a menu page
+
+1. Add one entry to `NAV` in `lib/nav.ts`: `path`, `label`, optional `title`, and `section` (`pendaftaran`, `komunikasi`, `konten` or `sistem`). The sidebar, the 403 check, the placeholder and the routes (`path` and `path/*`) follow from it.
+2. Build the page as `pages/<Name>.tsx` and register it in `PAGES` in `App.tsx` by path. Start with `<PageHeader title=...>` (it sets the tab title and supports `back`, `overline` and `actions`), pad the page itself (`p-6 md:p-10`), and take the user from `useMe()`.
+3. Gate every create, edit and delete control with `accessTo(me, "<section>") === "write"`. Do not compare roles anywhere else. The API route must use the matching `requireAccess`.
+4. Talk to the server only through `api()` (so the mock and the tests can stand in), keep Indonesian text next to the page or in `lib/`, use `useSubmitLock` for anything that sends, and add the page's tests.
+5. If the page needs a new mock answer, add it in `spa/src/mock/transport.ts`; `test/mock.test.ts` keeps the mock in the documented shapes.
+
+### Tests
+
+`pnpm test:spa` runs 377 tests in about 4 s (vitest with jsdom, config in `spa/vitest.config.ts`, same aliases as the build): the role x area matrix for `accessTo` (every role against every subset of areas, plus a hand-written table), the menu, `parseMe`, the guard and `safeFrom`, form validation, every error mapping, the API client, and component tests that render the whole app: sidebar, drawer (focus trap, Escape, focus return, inert), route guard, 403/404/error boundary, login, forgot and reset password, verification result, the dashboard in every state and role, announcements. A test fails if the page logs a console error or warning, so React's act and key warnings count. jsdom rather than happy-dom because the drawer and forms depend on focus, tab order and disabled controls behaving as in a browser, and jsdom follows the specification more closely; the speed difference does not matter at this size. `pnpm test:negative:spa` breaks 19 safeguards one at a time (viewer writes, editor outside its areas, student let in, redirect loses `from`, off-site `from`, drawer without a trap, double submit...) and expects the tests to notice.
+
+The SPA tests stub the API, so `cf/admin/test/spa-contract.test.ts` (in the Worker suite, in workerd) checks the other side: the exact bodies and callback URLs the auth pages send, the redirects that land on `/verify-email` and `/reset-password`, the error codes and the 8 to 128 password limits the SPA's messages depend on, the `Retry-After` of the limiter, sign-out, and that `/api/me` reads as a `Me`. It imports the SPA's pure `me.ts` and `auth-errors.ts`.
+
+Not tested: anything visual (layout, colours, the drawer's slide, the `md` breakpoint, focus rings), real browsers and screen readers, `dev:spa` and `dev:spa:mock` in a browser, Google sign-in against Google, and the new pages behind `wrangler dev`.
 
 ## Results
 
@@ -98,9 +199,9 @@ Machine: Apple M4, Node 22. Wall time, **not Worker CPU**: workerd freezes timer
 | Worker bundle (`wrangler deploy --dry-run`) | 2.87 MB raw, 475 KiB gzip. Limit per the current Workers limits page: 64 MiB uncompressed on Free (the old 3 MB compressed limit was removed on 2026-09-04) |
 | Bundle composition (source bytes) | zod 807 KiB, kysely 657 KiB (pulled in by Better Auth, unused), better-auth 379 KiB + core 272 KiB, opentelemetry conventions 353 KiB, app code 34 KiB |
 | Startup (`wrangler check startup`) | 38.9 ms active of a 67 ms window, locally. Limit is 1 s |
-| SPA build | JS 303 kB (96 kB gzip), CSS 32 kB (9.5 kB gzip), fonts: browsers fetch only the needed subsets, typically the two latin files (27 kB + 38 kB) |
-| Tests | 70 passing in 6 files (about 8 s) at SAKEM-078; 269 in 10 files (about 12 s) after SAKEM-081 (schema, permission matrix, seed) |
-| Negative checks (`pnpm test:negative`) | 8 of 8 safeguards at SAKEM-078 (verification requirement, viewer write, route guard, rate limit mount, production fail-closed, client-set role, Google `email_verified`, weakened account linking); 25 of 25 after SAKEM-081, adding the area rules, the guard, who may grant areas, enum CHECKs, cascade, RESTRICT and uniqueness |
+| SPA build | JS 345 kB (108 kB gzip), CSS 42 kB (11.2 kB gzip) with the shell, auth pages and dashboard. Before the shell: JS 303 kB (96 kB gzip) and CSS 32 kB (9.5 kB gzip), but that CSS was missing the SPA's own classes (see Tokens above), so the two CSS figures are not like for like. One JS chunk: lazy-load heavy pages (the blog editor) when they arrive. Fonts: browsers fetch only the needed subsets, typically the two latin files (27 kB + 38 kB) |
+| Tests | Worker: 70 passing in 6 files (about 8 s) at SAKEM-078; 269 in 10 files (about 12 s) after SAKEM-081 (schema, permission matrix, seed); SAKEM-082 part A adds 10 contract tests for the SPA (`test/spa-contract.test.ts`). SPA: 377 passing in 16 files (about 4 s) |
+| Negative checks (`pnpm test:negative`) | 8 of 8 safeguards at SAKEM-078 (verification requirement, viewer write, route guard, rate limit mount, production fail-closed, client-set role, Google `email_verified`, weakened account linking); 25 of 25 after SAKEM-081, adding the area rules, the guard, who may grant areas, enum CHECKs, cascade, RESTRICT and uniqueness. SPA: `pnpm test:negative:spa`, 19 of 19 |
 
 Visual and interaction QA of the SPA was **not** done (no browser by instruction). The SPA was verified by typecheck, build, and `curl` against `wrangler dev` (assets layer returns it; the API behind it was exercised end to end: sign-up, 403 before verification, verification link, sign-in, `/api/me`, viewer read-only, editor create, audit row).
 
@@ -110,7 +211,7 @@ Visual and interaction QA of the SPA was **not** done (no browser by instruction
 2. **Legacy password hashes are bcrypt** and cannot be verified here (bcryptjs measured ~54 ms). Migration needs a forced reset at cutover, or a one-off hybrid verify. Not built.
 3. **Resend quota can be burned by an attacker** (100/day free): the per-IP bucket slows one address, not many. Mitigation to add: Turnstile (free) on sign-up and reset request, and a daily budget counter.
 4. **Long-window throttling is shorter than legacy.** Per-account lockout over minutes needs a SQLite-backed Durable Object (available on Free); not built.
-5. **Not built:** SPA pages for sign-up, forgot/reset password and verify-sent (the API and tests cover them); super-admin settings route; LMS SSO endpoints; password change; session list; security headers for the SPA (add `public/_headers`: CSP, frame-ancestors, referrer policy); CI for `cf/` (the existing workflows do not run it); linting for `cf/` (the root ESLint ignores it).
+5. **Not built:** SPA sign-up (students register in the portal, a later milestone; there is no admin registration); the page bodies behind the menu (placeholders, see [SPA shell](#spa-shell-sakem-082-part-a)); LMS SSO endpoints; password change; session list; security headers for the SPA (add `public/_headers`: CSP, frame-ancestors, referrer policy); CI for `cf/` (the existing workflows do not run it); linting for `cf/` (the root ESLint ignores it).
 6. Better Auth user ids are random strings; legacy ids are UUIDs. Existing ids can be inserted as they are when migrating, new ones stay random.
 7. Dev server proxy mode (`dev:spa`) and Google OAuth against real Google were not exercised (the Google flow is tested with a faked token endpoint).
 
@@ -135,7 +236,7 @@ Relative to the announcements slice (S). Line counts are the legacy UI code per 
 | LMS SSO endpoints | ~190 | M | JWT with `jose` runs on Workers; follows `lms-integration.md` |
 | Data migration Postgres to D1 | n/a | M | Scripts, id mapping, forced password reset, dry runs |
 
-Shared groundwork (SPA shell with sidebar and page header, form helpers, R2 upload helper, error and empty states) is about one more S and pays off across all modules.
+Shared groundwork (SPA shell with sidebar and page header, form helpers, R2 upload helper, error and empty states) is about one more S and pays off across all modules. The SPA shell, page header, form helpers and the error and empty states are done (SAKEM-082 part A); the R2 upload helper is not.
 
 ## What only a real Free account can settle
 
