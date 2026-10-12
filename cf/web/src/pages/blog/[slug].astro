@@ -42,6 +42,8 @@ const excerpt = cleanExcerpt(article.excerpt);
         article.image ? (
           <img
             src={article.image}
+            srcset={article.imageSrcset ?? undefined}
+            sizes="100vw"
             alt={article.title}
             width={article.imageWidth ?? undefined}
             height={article.imageHeight ?? undefined}
@@ -101,6 +103,8 @@ const excerpt = cleanExcerpt(article.excerpt);
                     {item.image ? (
                       <img
                         src={item.image}
+                        srcset={item.imageSrcset ?? undefined}
+                        sizes="(min-width: 1200px) 368px, (min-width: 768px) 33vw, 100vw"
                         alt={item.title}
                         width={item.imageWidth ?? undefined}
                         height={item.imageHeight ?? undefined}

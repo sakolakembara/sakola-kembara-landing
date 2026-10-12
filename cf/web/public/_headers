@@ -1,9 +1,22 @@
-/images/program/galeri/*
-  Cache-Control: public, max-age=31536000, immutable
-
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Images made by scripts/build-assets.mjs. The file name is the content hash
+# (<hash>-<width>.webp), so a URL never changes meaning: cache it for a year.
+# /_astro/* gets the same rule from the Astro adapter.
+/_img/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Original URLs of images and files: the same URL can get new content when a
+# file is replaced, so a day in the browser and the edge, then revalidate in
+# the background (an unchanged file answers 304, which costs nothing).
+/images/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/blog/images/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/files/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400

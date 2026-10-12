@@ -9,16 +9,17 @@
   },
   "scripts": {
     "sync-assets": "node scripts/sync-assets.mjs",
-    "build-gallery": "node scripts/build-gallery.mjs",
-    "dev": "node scripts/sync-assets.mjs && node scripts/build-gallery.mjs && astro dev",
-    "build": "node scripts/sync-assets.mjs && node scripts/build-gallery.mjs && astro build",
+    "assets": "node scripts/sync-assets.mjs && node scripts/build-assets.mjs",
+    "dev": "pnpm assets && astro dev",
+    "build": "pnpm assets && astro build && node scripts/check-dist.mjs",
     "preview": "astro preview",
-    "check": "node scripts/sync-assets.mjs && node scripts/build-gallery.mjs && astro check",
-    "test": "node scripts/sync-assets.mjs && node scripts/build-gallery.mjs && vitest run",
+    "check": "node scripts/sync-assets.mjs && node scripts/build-assets.mjs --manifest-only && astro check",
+    "test": "pnpm assets && vitest run",
     "test:e2e": "node scripts/e2e.mjs",
     "measure": "node scripts/measure.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",
-    "stub-origin": "node scripts/stub-origin.mjs"
+    "stub-origin": "node scripts/stub-origin.mjs",
+    "check:dist": "node scripts/check-dist.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.7.0",
@@ -33,8 +34,8 @@
     "@types/node": "^22.0.0",
     "gray-matter": "^4.0.3",
     "happy-dom": "^20.14.6",
-    "image-size": "^2.0.2",
     "leaflet": "^1.9.4",
+    "pdf-lib": "^1.17.1",
     "rehype-stringify": "^10.0.1",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",

@@ -49,7 +49,7 @@ const nextProgram = programs[currentIndex + 1] ?? null;
 const shareImage = await getImage({ src: photos[program.photo], width: 1200, format: 'jpeg', quality: 80 });
 const { seo, jsonLd } = programSeo(program, shareImage.src);
 
-// Read from the build-time manifest (scripts/build-gallery.mjs); [] hides the section.
+// Read from the image manifest (src/lib/gallery.ts, built by scripts/build-assets.mjs); [] hides the section.
 const gallery = getProgramGallery(program.id);
 ---
 

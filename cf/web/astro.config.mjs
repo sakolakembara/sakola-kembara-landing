@@ -6,9 +6,9 @@ import tailwindcss from '@tailwindcss/vite';
 import blogContent from './plugins/blog-content.mjs';
 import { toUnderscoreRedirects } from './redirects.config.mjs';
 
-// The legacy Next app lives two folders up. Its content/blog markdown and its
-// public/ images are the single source for this slice, so they are read in
-// place (no copy). See docs/cloudflare/web-skeleton.md.
+// The legacy Next app lives two folders up. Its content/blog markdown is read in
+// place (no copy); its public/ images go through scripts/build-assets.mjs, which
+// writes the manifest the blog plugin reads. See docs/cloudflare/web-skeleton.md.
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 /**
@@ -61,7 +61,7 @@ export default defineConfig({
       tailwindcss(),
       blogContent({
         contentDir: `${repoRoot}content/blog`,
-        publicDir: `${repoRoot}public`,
+        manifestFile: fileURLToPath(new URL('./src/generated/image-manifest.json', import.meta.url)),
       }),
     ],
     resolve: { alias: { '@root': repoRoot.replace(/\/$/, '') } },

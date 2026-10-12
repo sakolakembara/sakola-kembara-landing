@@ -10,7 +10,8 @@ import type { BlogMeta } from '~/lib/blog-types';
  * does. The caller passes them (the home page takes the three newest from the
  * blog index at build time). A cover is optional: dashboard-authored posts can
  * have none, and then the card shows no <img> at all rather than an empty src.
- * Cover files are the blog's own /blog/images/*, sized by the metadata index.
+ * Cover files are the blog's own /blog/images/*; the metadata index carries their
+ * size and WebP srcset from the asset pipeline.
  */
 interface Props {
   articles: BlogMeta[];
@@ -38,6 +39,8 @@ const { articles } = Astro.props;
                 {article.image && (
                   <img
                     src={article.image}
+                    srcset={article.imageSrcset ?? undefined}
+                    sizes="(min-width: 1200px) 368px, (min-width: 768px) 33vw, 100vw"
                     alt={article.title}
                     width={article.imageWidth ?? undefined}
                     height={article.imageHeight ?? undefined}

@@ -47,7 +47,7 @@ describe('blog content (virtual modules built from the root content/blog)', () =
     let withDims = 0;
     for (const a of articles) {
       if (!a.image) continue;
-      const onDisk = existsSync(`${repoRoot}public${a.image}`);
+      const onDisk = existsSync(`${repoRoot}public${decodeURIComponent(a.image)}`); // markup carries %40 for an @ in a file name
       if (onDisk) {
         expect(a.imageWidth, a.id).toBeGreaterThan(0);
         expect(a.imageHeight, a.id).toBeGreaterThan(0);

@@ -13,22 +13,22 @@
 // once, in Node, with the same engine react-markdown uses today (remark-parse
 // + remark-gfm + remark-rehype; raw HTML is dropped, as react-markdown does).
 // The Worker (and the prerender, which runs inside workerd) only ever sees
-// plain strings. The plugin also reads the real image files under the root
-// public/ to put width and height on every <img>, which the Next app could
-// not do (it guessed 1024x768).
+// plain strings. The plugin also looks every image up in the asset manifest
+// (scripts/build-assets.mjs) to give each <img> its width and height and a
+// WebP `srcset`, which the Next app could not do (it guessed 1024x768).
 //
 // The markdown stays where it is: no copy, no second source of truth.
 
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
-import { imageSizeFromFile } from 'image-size/fromFile';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import { visit } from 'unist-util-visit';
+import { assetUrl, srcsetFor } from '../assets.config.mjs';
 
 const INDEX_ID = 'virtual:blog-index';
 const BODIES_ID = 'virtual:blog-bodies';
@@ -38,34 +38,38 @@ const resolved = (id) => `\0${id}`;
 const isLocalImage = (src) => src.startsWith('/blog/images/');
 
 /**
- * @param {{ contentDir: string; publicDir: string }} options
- *   contentDir: folder with the <slug>.md files. publicDir: root public/,
- *   used only to read image dimensions.
+ * `sizes` of an inline article image: the text column is the 800 px reading
+ * container (24 px side padding) holding a card with 24 px (40 px from md up)
+ * of padding.
  */
-export default function blogContent({ contentDir, publicDir }) {
-  const dimCache = new Map();
+const INLINE_SIZES = '(min-width: 800px) 672px, (min-width: 768px) calc(100vw - 128px), calc(100vw - 96px)';
 
-  async function dimensions(src) {
+/**
+ * @param {{ contentDir: string; manifestFile: string }} options
+ *   contentDir: folder with the <slug>.md files. manifestFile: the image
+ *   manifest that scripts/build-assets.mjs writes (src/generated/image-manifest.json).
+ */
+export default function blogContent({ contentDir, manifestFile }) {
+  let images = null;
+
+  /** The manifest entry of a local image URL, or null (external URL, or a file the pipeline does not know). */
+  function imageEntry(src) {
     if (!src || !src.startsWith('/')) return null;
-    if (dimCache.has(src)) return dimCache.get(src);
-    let dim = null;
-    const file = path.join(publicDir, src.split(/[?#]/)[0]);
-    if (existsSync(file)) {
-      try {
-        const { width, height } = await imageSizeFromFile(file);
-        if (width && height) dim = { width, height };
-      } catch {
-        // unreadable image: leave the attributes off rather than guess
+    if (!images) {
+      if (!existsSync(manifestFile)) {
+        throw new Error(`blog-content: ${manifestFile} is missing. Run \`pnpm assets\` (it is part of dev, build and test).`);
       }
+      images = JSON.parse(readFileSync(manifestFile, 'utf8')).images;
     }
-    dimCache.set(src, dim);
-    return dim;
+    return images[src.split(/[?#]/)[0]] ?? null;
   }
 
   /** The rehype step: react-markdown's `img` and `a` overrides, as HTML attributes. */
   function rehypeBlogElements() {
-    return async (tree) => {
-      const jobs = [];
+    return (tree) => {
+      // Images are rewritten after the walk: a local one is wrapped in a <span>, and
+      // wrapping while visiting would visit the wrapped <img> again.
+      const imgs = [];
       visit(tree, 'element', (node) => {
         if (node.tagName === 'a') {
           const href = String(node.properties?.href ?? '');
@@ -75,35 +79,28 @@ export default function blogContent({ contentDir, publicDir }) {
             rel: 'noopener noreferrer',
           };
         }
-        if (node.tagName === 'img') {
-          const src = String(node.properties?.src ?? '');
-          if (!src) return;
-          jobs.push(
-            (async () => {
-              const dim = await dimensions(src);
-              const local = isLocalImage(src);
-              node.properties = {
-                src,
-                alt: node.properties?.alt ?? '',
-                ...(dim ?? {}),
-                loading: 'lazy',
-                decoding: 'async',
-                className: local
-                  ? ['rounded-xl', 'w-full', 'h-auto']
-                  : ['rounded-xl', 'max-w-full', 'h-auto', 'my-6'],
-              };
-              if (local) {
-                // next/image sat in `<span class="block my-6 relative w-full max-w-full">`
-                const img = { ...node };
-                node.tagName = 'span';
-                node.properties = { className: ['block', 'my-6', 'relative', 'w-full', 'max-w-full'] };
-                node.children = [img];
-              }
-            })(),
-          );
-        }
+        if (node.tagName === 'img' && node.properties?.src) imgs.push(node);
       });
-      await Promise.all(jobs);
+      for (const node of imgs) {
+        const src = String(node.properties.src);
+        const entry = imageEntry(src);
+        const local = isLocalImage(src);
+        node.properties = {
+          src: entry ? assetUrl(src) : src,
+          alt: node.properties.alt ?? '',
+          ...(entry ? { srcset: srcsetFor(entry), sizes: INLINE_SIZES, width: entry.width, height: entry.height } : {}),
+          loading: 'lazy',
+          decoding: 'async',
+          className: local ? ['rounded-xl', 'w-full', 'h-auto'] : ['rounded-xl', 'max-w-full', 'h-auto', 'my-6'],
+        };
+        if (local) {
+          // next/image sat in `<span class="block my-6 relative w-full max-w-full">`
+          const img = { ...node };
+          node.tagName = 'span';
+          node.properties = { className: ['block', 'my-6', 'relative', 'w-full', 'max-w-full'] };
+          node.children = [img];
+        }
+      }
     };
   }
 
@@ -123,7 +120,7 @@ export default function blogContent({ contentDir, publicDir }) {
         const id = data.id ?? file.replace(/\.md$/, '');
         const image = data.image ?? '';
         const html = String(await processor.process(content.trim()));
-        const dim = await dimensions(image);
+        const entry = imageEntry(image);
         return {
           meta: {
             id,
@@ -134,9 +131,10 @@ export default function blogContent({ contentDir, publicDir }) {
             title: data.title ?? '(untitled)',
             excerpt: data.excerpt ?? '',
             featured: Boolean(data.featured),
-            image,
-            imageWidth: dim?.width ?? null,
-            imageHeight: dim?.height ?? null,
+            image: entry ? assetUrl(image) : image,
+            imageWidth: entry?.width ?? null,
+            imageHeight: entry?.height ?? null,
+            imageSrcset: entry ? srcsetFor(entry) : null,
             author: data.author ?? 'Sakola Kembara',
             sourceUrl: data.sourceUrl ?? '',
             modifiedISO: data.modifiedISO ?? data.dateISO ?? '1970-01-01',
