@@ -79,6 +79,20 @@ const schema = z.object({
     z.string().optional(),
   ),
 
+  // ----- Public content API (Cloudflare migration, phase 1) -----
+  // Shared secret for the server-to-server POST /api/public/contact call from
+  // the Astro Worker (HMAC-SHA256 request signing, see lib/public-api/signing.ts
+  // and docs/cloudflare/content-api.md). Optional: when unset the endpoint
+  // answers 503 and the rest of the app is unaffected. Same value must be set
+  // as a secret on the Worker.
+  PUBLIC_API_SHARED_SECRET: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .min(32, "PUBLIC_API_SHARED_SECRET must be at least 32 chars (openssl rand -base64 32)")
+      .optional(),
+  ),
+
   // ----- Observability -----
   // Server-side DSN. Client uses NEXT_PUBLIC_SENTRY_DSN (Next.js requires
   // the NEXT_PUBLIC_ prefix to expose an env var to the browser bundle,

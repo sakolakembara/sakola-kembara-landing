@@ -34,6 +34,19 @@ interface RateLimitOptions {
    * request comes from (e.g. attempts against one account).
    */
   perIp?: boolean;
+  /**
+   * Bucket by this address instead of the one read from the request headers.
+   *
+   * ONLY for a caller that has authenticated the request itself and received
+   * the visitor's address from that trusted party: POST /api/public/contact
+   * is called by the Astro Worker, so the request's own headers carry a
+   * Cloudflare egress address, and the real visitor IP arrives in the signed
+   * X-Sakem-Client-Ip header. Never pass a value taken from an unauthenticated
+   * request: it would let the caller pick its own bucket. Ignored when
+   * `perIp` is false; a value that is not an IP literal lands in the
+   * "unknown" bucket.
+   */
+  ip?: string;
 }
 
 /**
@@ -84,7 +97,8 @@ async function bucketKey(opts: RateLimitOptions): Promise<string> {
     // "-" can never be an IP, so this cannot collide with an IP bucket.
     return `${opts.action}:-:${opts.extraKey ?? ""}`;
   }
-  const ip = await clientIp();
+  const ip =
+    opts.ip !== undefined ? (parseIp(opts.ip) ?? "unknown") : await clientIp();
   return opts.extraKey
     ? `${opts.action}:${ip}:${opts.extraKey}`
     : `${opts.action}:${ip}`;

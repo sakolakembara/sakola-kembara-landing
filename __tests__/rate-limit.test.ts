@@ -176,6 +176,40 @@ describe("rateLimit client IP", () => {
   });
 });
 
+describe("rateLimit explicit ip override", () => {
+  test("buckets by the given ip and ignores the request's own headers", async () => {
+    const opts = {
+      action: "test.override",
+      limit: 5,
+      windowSeconds: 60,
+      ip: "198.51.100.50",
+    };
+    // The request itself looks like Cloudflare (203.0.113.10, from beforeEach).
+    expect((await rateLimit(opts)).count).toBe(1);
+    requestHeaders.current = { "cf-connecting-ip": "203.0.113.99" };
+    expect((await rateLimit(opts)).count).toBe(2);
+    expect([...memory.keys()].every((k) => k.startsWith("test.override:198.51.100.50|"))).toBe(true);
+    // A header-derived call on the same action is a different bucket.
+    const headerOnly = { action: opts.action, limit: 5, windowSeconds: 60 };
+    expect((await rateLimit(headerOnly)).count).toBe(1);
+  });
+
+  test("different override ips get separate buckets", async () => {
+    const base = { action: "test.override2", limit: 1, windowSeconds: 60 };
+    expect((await rateLimit({ ...base, ip: "198.51.100.1" })).allowed).toBe(true);
+    expect((await rateLimit({ ...base, ip: "198.51.100.1" })).allowed).toBe(false);
+    expect((await rateLimit({ ...base, ip: "198.51.100.2" })).allowed).toBe(true);
+  });
+
+  test("normalizes the ip and sends a non-IP value to the shared unknown bucket", async () => {
+    const base = { action: "test.override3", limit: 5, windowSeconds: 60 };
+    await rateLimit({ ...base, ip: "2001:DB8::1" });
+    await rateLimit({ ...base, ip: "definitely not an ip" });
+    const keys = [...memory.keys()].map((k) => k.split("|")[0]);
+    expect(keys).toEqual(["test.override3:2001:db8::1", "test.override3:unknown"]);
+  });
+});
+
 describe("resolveClientIp", () => {
   const read = (headers: Record<string, string>) =>
     resolveClientIp({ get: (name) => headers[name.toLowerCase()] ?? null });

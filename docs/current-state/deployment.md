@@ -109,6 +109,7 @@ Written by the workflow (names only; values live in GitHub):
 | `RESEND_API_KEY` | secret | for email | non-empty | verification and reset emails are not sent; the flows report failure |
 | `EMAIL_FROM` | variable | optional | `Name <address>`, no surrounding quotes | falls back to the Resend sandbox sender |
 | `APP_URL` | variable | optional | full URL | links in emails use `NEXTAUTH_URL` |
+| `PUBLIC_API_SHARED_SECRET` | secret | for the Astro site's contact form (Cloudflare migration, phase 1) | at least 32 characters, same value as the secret on the Worker | `POST /api/public/contact` answers 503; the rest of the app is unaffected. See [`../cloudflare/content-api.md`](../cloudflare/content-api.md). |
 | `SENTRY_DSN` | secret | optional | URL | server-side error reporting is off |
 
 Secret values must not contain `$` or start and end with quotes: Compose parses `env_file` and would alter them.
