@@ -6,14 +6,3 @@ export const adminPage: Decorator = (Story) => (
     <Story />
   </div>
 );
-
-/** The centered white card the sign-in, register and password pages use. */
-export const authCard: Decorator = (Story) => (
-  <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-    <div className="w-full max-w-md">
-      <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
-        <Story />
-      </div>
-    </div>
-  </main>
-);

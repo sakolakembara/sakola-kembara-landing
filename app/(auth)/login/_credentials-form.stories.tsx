@@ -1,36 +1,50 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { authCard } from "../../../.storybook/decorators";
+import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
+import Link from "next/link";
+import { AUTH_LINK, AuthDivider, AuthShell } from "../_auth-shell";
 import { CredentialsForm } from "./_credentials-form";
 import { GoogleButton } from "./_google-button";
+
+/** The page around the form, as on `/login`. */
+const loginPage: Decorator = (Story) => (
+  <AuthShell
+    title="Masuk ke Sakola Kembara"
+    footer={
+      <>
+        Belum punya akun?{" "}
+        <Link href="/register" className={AUTH_LINK}>
+          Daftar di sini
+        </Link>
+      </>
+    }
+  >
+    <Story />
+  </AuthShell>
+);
 
 const meta = {
   title: "Auth/Login",
   component: CredentialsForm,
   tags: ["autodocs"],
   parameters: { layout: "fullscreen" },
-  decorators: [authCard],
+  decorators: [loginPage],
   args: { from: null },
 } satisfies Meta<typeof CredentialsForm>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The email and password form. Signing in does nothing in Storybook. */
+/** The page without Google (when it is not configured): the email and password form. Signing in does nothing in Storybook. */
 export const Credentials: Story = {};
 
-/** The whole card as on `/login`: Google first, then email and password. */
+/** The page as on `/login` with Google: the form first, then the "atau" rule and the Google button. */
 export const WithGoogle: Story = {
   render: (args) => (
     <>
+      <CredentialsForm {...args} />
+      <AuthDivider />
       <form onSubmit={(e) => e.preventDefault()}>
         <GoogleButton />
       </form>
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-gray-200" />
-        </div>
-      </div>
-      <CredentialsForm {...args} />
     </>
   ),
 };
