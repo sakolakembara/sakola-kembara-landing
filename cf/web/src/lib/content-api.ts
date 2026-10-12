@@ -23,6 +23,11 @@
 // Cache and fetch are injected so the logic is unit tested in Node with fakes
 // (tests/team.test.ts, tests/content-api.test.ts). On a real zone the Cache API only works on
 // custom domains/routes, not on *.workers.dev.
+//
+// Where the API is, and how it is called (the `API` service binding in production, CONTENT_API_URL
+// locally and in CI) is decided once, in lib/api-client.ts, and handed in through `contentRuntime`.
+
+import { contentApiTarget, type ApiEnv } from './api-client';
 
 export type ContentSource = 'network' | 'cache' | 'stale' | 'empty' | 'not_found';
 export interface ContentResult<T> {
@@ -32,8 +37,16 @@ export interface ContentResult<T> {
 }
 
 export interface ContentRuntime {
-  /** CONTENT_API_URL, no trailing slash needed. Unset -> source "empty". */
+  /**
+   * Where the API is, no trailing slash needed: CONTENT_API_URL (local/CI), or the placeholder host of the
+   * `API` service binding (the binding ignores it, only the path counts). Unset -> source "empty".
+   */
   baseUrl: string | undefined;
+  /**
+   * How a request is made. Unset: the global `fetch` (right for a URL). With the service binding it is the
+   * binding's `fetch` (`contentApiTarget`), the only way production reaches the API.
+   */
+  fetchImpl?: typeof fetch;
   /** caches.default when the runtime has it. `delete` is only needed with `notFoundTtlSeconds`. */
   cache?: Pick<Cache, 'match' | 'put'> & Partial<Pick<Cache, 'delete'>>;
   /** ctx.waitUntil, so cache writes do not delay the response. */
@@ -47,7 +60,6 @@ export interface ContentLoaderOptions<T> extends ContentRuntime {
   path: string;
   /** Payload -> data. Null means "not a valid payload": treated as an API failure. */
   parse: (payload: unknown) => T | null;
-  fetchImpl?: typeof fetch;
   timeoutMs?: number;
   /** How long the last good copy is kept for stale-if-error. */
   staleTtlSeconds?: number;
@@ -173,16 +185,24 @@ function failureReason(error: unknown): string {
 }
 
 /**
- * The loader's runtime inputs for a page: base URL and fresh window from the Worker env, the
- * default cache, and `waitUntil` of the request context. `CONTENT_CACHE_FRESH_SECONDS` tunes the
- * fresh window (default 60, tests set 2).
+ * The loader's runtime inputs for a page: where the API is and how to call it, the fresh window
+ * from the Worker env, the default cache, and `waitUntil` of the request context.
+ *
+ * Where the API is (lib/api-client.ts, `contentApiTarget`): `CONTENT_API_URL` when it is set (local
+ * runs and CI: a fixture or a local API), otherwise the `API` service binding, which is how
+ * production reads. So in production the read endpoints are called through the binding and are never
+ * addressed over public HTTP: a URL with a random query string cannot be sent to them from the
+ * internet. Neither set: no base, the loader answers "empty" (the page's degraded state).
+ * `CONTENT_CACHE_FRESH_SECONDS` tunes the fresh window (default 60, tests set 2).
  */
 export function contentRuntime(
-  env: { CONTENT_API_URL?: string; CONTENT_CACHE_FRESH_SECONDS?: string },
+  env: ApiEnv & { CONTENT_CACHE_FRESH_SECONDS?: string },
   ctx: { waitUntil(promise: Promise<unknown>): void },
 ): ContentRuntime {
+  const target = contentApiTarget(env);
   return {
-    baseUrl: env.CONTENT_API_URL,
+    baseUrl: target?.base,
+    fetchImpl: target?.fetchImpl,
     cache: typeof caches !== 'undefined' ? caches.default : undefined,
     waitUntil: (p) => ctx.waitUntil(p),
     freshTtlSeconds: Number(env.CONTENT_CACHE_FRESH_SECONDS) || undefined,

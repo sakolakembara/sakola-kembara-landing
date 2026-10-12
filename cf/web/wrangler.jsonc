@@ -8,13 +8,22 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
-  // The API Worker (cf/api), reached through an internal SERVICE BINDING: the contact form posts to
-  // it from here, and so can the read endpoints when CONTENT_API_URL is unset. A binding needs no
-  // public path to the API and no shared secret (docs/cloudflare/content-api.md, transport A).
-  // `service` is a PLACEHOLDER name: set it to the deployed API Worker's name at deploy time.
-  // Locally the binding is not used: CONTACT_API_URL and CONTENT_API_URL point at
+  // The API Worker (cf/admin), reached through an internal SERVICE BINDING, and only through its
+  // named entrypoint `PublicApi` (src/api/public/entrypoint.ts there). Two things go through it:
+  // the contact form (POST /api/public/contact, which exists ONLY on that entrypoint) and every
+  // read (GET /api/public/*: /tim, /laporan, /gabung-siswa/docs and the blog). A binding needs no
+  // public path to the API and no shared secret, and because the API Worker serves no
+  // /api/public/* route on its public face, nobody on the internet can reach the read endpoints
+  // with cache-busting query strings and spend the daily D1 read budget
+  // (docs/cloudflare/public-api.md).
+  // `service` is a PLACEHOLDER: the deployed API Worker's real name is chosen at deploy time and
+  // must not be an account-specific value in git. `sakem-admin` is the `name` in
+  // cf/admin/wrangler.jsonc (a test keeps the two equal): change both together if the deployed
+  // name differs. Without `entrypoint` the binding would reach the public face, where neither the
+  // reads nor the contact route exist: every API call would be a 404. A test pins the entrypoint.
+  // Locally the binding is not used: CONTENT_API_URL and CONTACT_API_URL point at
   // scripts/fixture-api.mjs (dev.vars.example), and they win over the binding when set.
-  "services": [{ "binding": "API", "service": "sakola-kembara-api" }]
+  "services": [{ "binding": "API", "service": "sakem-admin", "entrypoint": "PublicApi" }]
 
   // Intentionally NOT set here (no resource ids, hostnames or secrets in git):
   //
@@ -22,12 +31,13 @@
   //   (pattern covering the whole site), not a custom domain, so that
   //   fetch(request) inside the Worker reaches the legacy origin behind the
   //   same hostname. Add it at deploy time. See docs/cloudflare/web-skeleton.md.
-  // - "vars": LEGACY_ORIGIN_URL (unset in production: plain fetch) and
-  //   CONTENT_API_URL (base URL for /api/public/*; leave it unset to use the `API` binding for the
-  //   blog, but /tim, /laporan and /gabung-siswa/docs read this variable only; optional:
-  //   TEAM_CACHE_FRESH_SECONDS, CONTENT_CACHE_FRESH_SECONDS). Locally these come from an
-  //   untracked .dev.vars; copy dev.vars.example. Never set CONTACT_API_URL in production: it
-  //   would move the contact form off the binding onto public HTTP.
+  // - "vars": LEGACY_ORIGIN_URL (unset in production: plain fetch);
+  //   TURNSTILE_SITE_KEY (the PUBLIC site key of the Turnstile widget on /kontak, set per deploy;
+  //   the matching secret lives on the API Worker only); optional: TEAM_CACHE_FRESH_SECONDS,
+  //   CONTENT_CACHE_FRESH_SECONDS. NEVER set CONTENT_API_URL or CONTACT_API_URL in production: they
+  //   are for local runs and CI (a URL wins over the binding), and set in production they would move
+  //   the reads or the contact form off the binding onto public HTTP. Locally the vars come from an
+  //   untracked .dev.vars; copy dev.vars.example (it carries Cloudflare's always-pass TEST site key).
   // - "ratelimits": the rate-limit binding of the contact form, binding name CONTACT_LIMITER:
   //     "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "<a positive integer you choose>",
   //                      "simple": { "limit": 5, "period": 60 } }]
