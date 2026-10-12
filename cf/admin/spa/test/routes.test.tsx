@@ -154,9 +154,6 @@ describe("403 inside the shell", () => {
 describe("placeholder pages", () => {
   test("every menu entry has a page with its title and an honest message", async () => {
     const titles: [string, string][] = [
-      ["/batches", "Batch Pendaftaran"],
-      ["/applications", "Pendaftar"],
-      ["/resources", "Pusat Dokumen"],
       ["/blog", "Blog"],
       // Laporan, Tim and Shortlink are pages now (test/reports.test.tsx, team.test.tsx, shortlinks.test.tsx).
       // Aktivitas and Pengaturan are pages now (test/audit-page.test.tsx, test/settings.test.tsx).

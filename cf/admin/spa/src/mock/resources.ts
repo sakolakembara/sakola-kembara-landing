@@ -42,6 +42,14 @@ export interface MockResource<T extends MockRowBase = MockRowBase> {
   parse(body: Record<string, unknown>): MockParse<T>;
   /** A delete is refused (409 in_use) with these menu names while this returns some. */
   inUse?: (row: T) => readonly string[] | null;
+  /**
+   * An answer the generic store cannot give: a verb below an item (`POST /:id/publish`), or a list or an item of a
+   * different shape (a detail with counts). Called AFTER the access check (a persona that cannot read or write
+   * the area never gets here) with what is below the collection: `""` for the collection, `"abc"` for an item,
+   * `"abc/publish"` for a verb. Return the Response, or `null` to let the generic store answer. `rows` is the
+   * store's own array: a custom answer may read and change it.
+   */
+  custom?: (request: { method: string; rest: string; url: URL; init: RequestInit; rows: T[]; access: Access }) => Response | null;
 }
 
 /** A resource of any row type, for the list of all of them. */
@@ -88,18 +96,25 @@ export function createMockResources(resources: readonly AnyMockResource[], acces
     for (const store of stores) {
       const { spec } = store;
       const rest = url.pathname === spec.path ? "" : url.pathname.startsWith(`${spec.path}/`) ? url.pathname.slice(spec.path.length + 1) : null;
-      if (rest === null || rest.includes("/")) continue;
-      return answer(store, method, rest === "" ? null : decodeURIComponent(rest), url, init);
+      if (rest === null) continue;
+      // Something below an item (a verb) is for `custom` alone.
+      if (rest.includes("/") && !spec.custom) continue;
+      return answer(store, method, rest, url, init);
     }
     return null;
   }
 
-  function answer(store: (typeof stores)[number], method: string, id: string | null, url: URL, init: RequestInit): Response {
+  function answer(store: (typeof stores)[number], method: string, rest: string, url: URL, init: RequestInit): Response {
     const { spec } = store;
     const access = accessOf(spec.area);
     const writes = method !== "GET";
     // The Worker's guard: reads need any access to the area, writes need `write`.
     if (access === "none" || (writes && access !== "write")) return error(403, "forbidden");
+
+    const custom = spec.custom?.({ method, rest, url, init, rows: store.rows as never, access });
+    if (custom) return custom;
+    if (rest.includes("/")) return error(404, "not_found");
+    const id = rest === "" ? null : decodeURIComponent(rest);
 
     if (id === null) {
       if (method === "GET") return list(store, url);
