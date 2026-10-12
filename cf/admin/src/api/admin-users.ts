@@ -1,5 +1,5 @@
 import { createEmailVerificationToken } from "better-auth/api";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lt, ne, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono } from "hono";
@@ -8,15 +8,36 @@ import { z } from "zod";
 import { hashPassword } from "../auth/password";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../auth/factory";
 import { requireArea } from "../auth/guard";
-import { grantableAreas, type GrantableArea } from "../auth/permissions";
+import { grantableAreas, isGrantableArea, type GrantableArea } from "../auth/permissions";
 import { adminRoles, type AdminRole } from "../auth/roles";
 import type { AppEnv } from "../context";
-import { auditStatement } from "../db/audit";
+import { auditStatementIfChanged } from "../audit/statement";
+import { auditStatement, type Db } from "../db/audit";
 import * as schema from "../db/schema";
 import { emailAvailable, sendEmail, type SendResult } from "../email/send";
 import { adminInviteEmail, verificationEmail, ADMIN_INVITE_SECONDS } from "../email/templates";
 import { emailKey } from "../security/client";
 import { checkLimits, limitedResponse } from "../security/rate-limit";
+import {
+  enumFilter,
+  fail,
+  matches,
+  nextVersion,
+  notFound as notFoundError,
+  pageOf,
+  parseBody,
+  parseListQuery,
+  parseSearch,
+  preconditionRequired,
+  reader,
+  readIfMatch,
+  stale,
+  etagOf,
+  fieldsOf,
+  type Filter,
+  type ListQuery,
+  type ListSpec,
+} from "./crud";
 import { readJson } from "./json";
 
 // Pengaturan: who the admins are and what each may do (SAKEM-081). Everything
@@ -48,18 +69,29 @@ const emailField = z
   .pipe(z.email("Format email tidak valid").min(5, "Email terlalu pendek").max(200, "Email terlalu panjang"));
 const nameField = z.string().trim().max(120, "Maksimal 120 karakter");
 const roleField = z.enum(adminRoles);
+// The error of a bad element belongs to the list's own field (`areas`), not to `areas.0`: the form has one control for it.
+const areaList = z
+  .array(z.string())
+  .max(grantableAreas.length, "Terlalu banyak area")
+  .refine((list) => list.every(isGrantableArea), "Area tidak dikenal")
+  .transform((list) => list as GrantableArea[]);
+const EDITOR_ONLY = "Area hanya untuk peran Editor.";
 
-const createInput = z.object({
-  email: emailField,
-  name: nameField.optional(),
-  role: roleField,
-  /** Omit to invite by email. Set it and the admin can sign in with it once the verification email is confirmed. */
-  password: z
-    .string()
-    .min(PASSWORD_MIN_LENGTH, `Password minimal ${PASSWORD_MIN_LENGTH} karakter`)
-    .max(PASSWORD_MAX_LENGTH, `Password maksimal ${PASSWORD_MAX_LENGTH} karakter`)
-    .optional(),
-});
+const createInput = z
+  .object({
+    email: emailField,
+    name: nameField.optional(),
+    role: roleField,
+    /** Omit to invite by email. Set it and the admin can sign in with it once the verification email is confirmed. */
+    password: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, `Password minimal ${PASSWORD_MIN_LENGTH} karakter`)
+      .max(PASSWORD_MAX_LENGTH, `Password maksimal ${PASSWORD_MAX_LENGTH} karakter`)
+      .optional(),
+    /** The areas of a new editor, saved in the same transaction as the account. Only for `role: "editor"`. */
+    areas: areaList.optional(),
+  })
+  .refine((value) => value.role === "editor" || !value.areas || value.areas.length === 0, { path: ["areas"], message: EDITOR_ONLY });
 
 const updateInput = z
   .object({ role: roleField.optional(), name: nameField.min(1, "Nama wajib diisi").optional() })
@@ -68,6 +100,28 @@ const updateInput = z
 const areasInput = z.object({
   areas: z.array(z.enum(grantableAreas)).max(grantableAreas.length),
 });
+
+/** The edit form, whole (PUT /:id): what the form shows is what it saves, in one transaction guarded by If-Match. */
+const formInput = z
+  .object({
+    name: nameField.min(1, "Nama wajib diisi"),
+    role: z.enum(adminRoles, { error: "Peran tidak dikenal" }),
+    areas: areaList.default([]),
+  })
+  .refine((value) => value.role === "editor" || value.areas.length === 0, { path: ["areas"], message: EDITOR_ONLY });
+
+const LAST_SUPER_ADMIN_DEMOTE = "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu.";
+const LAST_SUPER_ADMIN_DEACTIVATE = "Tidak dapat menonaktifkan super admin terakhir. Tambah super admin lain terlebih dahulu.";
+
+/**
+ * The 400 of this API's older endpoints: `fieldErrors` (`{ name: string[] }`, what their tests and the first sample
+ * read) and, beside it, the convention of docs/cloudflare/admin-crud.md#5-errors: a `message` and `fields`
+ * (`{ name: string }`), which is what the SPA reads.
+ */
+function invalidBody(c: Context<AppEnv>, error: z.ZodError) {
+  const { fields, form } = fieldsOf(error);
+  return c.json({ error: "invalid", message: form ?? "Periksa kembali isian formulir.", fields, fieldErrors: z.flattenError(error).fieldErrors }, 400);
+}
 
 type AccountStatus = "active" | "invited" | "deactivated";
 
@@ -79,9 +133,16 @@ interface AdminUserRow {
   emailVerified: boolean;
   deactivatedAt: Date | null;
   createdAt: Date;
+  /** The version `If-Match` compares (docs/cloudflare/admin-crud.md#6). Better Auth and Pengaturan both move it. */
+  updatedAt: Date;
+  /** The newest session that has not expired, when it began. Sessions go at sign-out and at expiry: not a login history. */
+  lastSessionAt: Date | null;
   /** Has a way to sign in (a password or a linked Google account). No account = the invite was never accepted. */
   hasAccount: boolean;
+  /** What the role lets them do with grants: an editor's areas, nothing for any other role. */
   areas: GrantableArea[];
+  /** Every grant row in the table, whatever the role: another role's stray rows are not rights, but a change of role must clear them. */
+  storedAreas: GrantableArea[];
 }
 
 /** invited = created by invite and not accepted yet; deactivated wins over everything. */
@@ -100,9 +161,16 @@ function present(row: AdminUserRow) {
     status: statusOf(row),
     emailVerified: row.emailVerified,
     deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
+    lastSessionAt: row.lastSessionAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
+
+/** True when the account has a way to sign in. */
+const HAS_ACCOUNT = sql<number>`exists (select 1 from account where account.user_id = users.id)`;
+/** The newest unexpired session's start, in epoch milliseconds, or null. */
+const lastSessionSql = (now: number) => sql<number | null>`(select max(created_at) from session where session.user_id = users.id and session.expires_at > ${now})`;
 
 async function loadAdmins(c: Context<AppEnv>, only?: string): Promise<AdminUserRow[]> {
   const db = drizzle(c.env.DB, { schema });
@@ -115,7 +183,9 @@ async function loadAdmins(c: Context<AppEnv>, only?: string): Promise<AdminUserR
       emailVerified: schema.users.emailVerified,
       deactivatedAt: schema.users.deactivatedAt,
       createdAt: schema.users.createdAt,
-      hasAccount: sql<number>`exists (select 1 from ${schema.accounts} where ${schema.accounts.userId} = ${schema.users.id})`,
+      updatedAt: schema.users.updatedAt,
+      lastSessionAt: lastSessionSql(Date.now()),
+      hasAccount: HAS_ACCOUNT,
       area: schema.adminAreaGrants.area,
     })
     .from(schema.users)
@@ -124,13 +194,18 @@ async function loadAdmins(c: Context<AppEnv>, only?: string): Promise<AdminUserR
     .orderBy(asc(schema.users.email));
 
   const byId = new Map<string, AdminUserRow>();
-  for (const { area, hasAccount, role, ...row } of rows) {
-    const entry = byId.get(row.id) ?? { ...row, role: role as AdminRole, hasAccount: Boolean(hasAccount), areas: [] };
+  for (const { area, hasAccount, lastSessionAt, role, ...row } of rows) {
+    const entry = byId.get(row.id) ?? { ...row, role: role as AdminRole, hasAccount: Boolean(hasAccount), lastSessionAt: lastSessionAt === null ? null : new Date(lastSessionAt), areas: [], storedAreas: [] };
+    if (area) entry.storedAreas.push(area);
     // Grants only mean something for editors; another role's stray rows are not shown as rights.
     if (area && role === "editor") entry.areas.push(area);
     byId.set(row.id, entry);
   }
-  for (const entry of byId.values()) entry.areas.sort((a, b) => grantableAreas.indexOf(a) - grantableAreas.indexOf(b));
+  const canonical = (a: GrantableArea, b: GrantableArea) => grantableAreas.indexOf(a) - grantableAreas.indexOf(b);
+  for (const entry of byId.values()) {
+    entry.areas.sort(canonical);
+    entry.storedAreas.sort(canonical);
+  }
   return [...byId.values()];
 }
 
@@ -190,9 +265,112 @@ function emailFailure(c: Context<AppEnv>, result: Extract<SendResult, { ok: fals
 
 const notFound = (c: Context<AppEnv>) => c.json({ error: "not_found" }, 404);
 
-/** Admin accounts (viewer, editor, super_admin) with the areas granted to each and their state. */
+/** `?status=`: the state the list shows as a tag. Derived, so a filter of SQL rather than a column. */
+const statusFilter: Filter = (raw) => {
+  switch (raw) {
+    case "active":
+      return { ok: true, where: sql`${schema.users.deactivatedAt} is null and ${HAS_ACCOUNT}` };
+    case "invited":
+      return { ok: true, where: sql`${schema.users.deactivatedAt} is null and not ${HAS_ACCOUNT}` };
+    case "deactivated":
+      return { ok: true, where: sql`${schema.users.deactivatedAt} is not null` };
+    default:
+      return { ok: false };
+  }
+};
+
+/** Sorts, filters and the page size of GET /api/admin/users. `q` is not here: it is an email PREFIX, see below. */
+export const adminListSpec: ListSpec = {
+  sorts: { email: schema.users.email, name: schema.users.name, role: schema.users.role, createdAt: schema.users.createdAt },
+  defaultSort: "email",
+  id: schema.users.id,
+  filters: { role: enumFilter(schema.users.role, adminRoles), status: statusFilter },
+  // A school has a handful of admins: the whole list is one page.
+  defaultPageSize: 50,
+};
+
+/**
+ * `q` is the beginning of an email address, as Pengaturan's search is used ("rom" finds rommy@...). A prefix is a
+ * range on the unique email index, `email >= 'rom' and email < 'ron'`, so it reads the matching rows only and needs
+ * no LIKE (which cannot use an index). Emails are stored in lower case, so the prefix is lower-cased too. Returns
+ * null for no search.
+ */
+export function emailPrefixRange(q: string): { from: string; to: string } | null {
+  const prefix = q.trim().toLowerCase();
+  if (prefix === "") return null;
+  return { from: prefix, to: prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1) };
+}
+
+/**
+ * The two statements of the list, the page and the count over the same `WHERE`. Exported so the tests can run
+ * `EXPLAIN QUERY PLAN` and count the rows read on exactly what the route runs.
+ */
+export function adminListStatements(db: Db, query: ListQuery, range: { from: string; to: string } | null, now: number) {
+  const where = and(inArray(schema.users.role, adminRoles), query.where, range ? and(gte(schema.users.email, range.from), lt(schema.users.email, range.to)) : undefined);
+  return [
+    db
+      .select({
+        id: schema.users.id,
+        name: schema.users.name,
+        email: schema.users.email,
+        role: schema.users.role,
+        emailVerified: schema.users.emailVerified,
+        deactivatedAt: schema.users.deactivatedAt,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+        lastSessionAt: lastSessionSql(now),
+        hasAccount: HAS_ACCOUNT,
+        areas: sql<string | null>`(select group_concat(area) from admin_area_grants where admin_area_grants.user_id = users.id)`,
+      })
+      .from(schema.users)
+      .where(where)
+      .orderBy(...query.order)
+      .limit(query.pageSize)
+      .offset(query.offset),
+    db.select({ n: count() }).from(schema.users).where(where),
+  ] as const;
+}
+
+/**
+ * Admin accounts (viewer, editor, super_admin) with the areas granted to each and their state, as a list of the
+ * CRUD convention (docs/cloudflare/admin-crud.md#3): `page`, `pageSize`, `sort` (email, name, role, createdAt),
+ * `role` and `status` filters, `q` (an email prefix), and the envelope `{ items, page, pageSize, total }`.
+ * `users` repeats `items` for the callers that were written against the first version of this endpoint.
+ * One round trip of two statements: the page and the count.
+ */
 adminUserRoutes.get("/", requireArea("sistem", "read"), async (c) => {
-  return c.json({ users: (await loadAdmins(c)).map(present) });
+  const read = reader(c);
+  const parsed = parseListQuery(c, adminListSpec, read);
+  if (!parsed.ok) return parsed.response;
+  const { query } = parsed;
+  const range = emailPrefixRange(parseSearch(read("q")));
+
+  const db = drizzle(c.env.DB, { schema });
+  const [rows, counted] = await db.batch(adminListStatements(db, query, range, Date.now()));
+
+  const items = rows.map((row) => {
+    const areas = (row.areas ? row.areas.split(",") : []).filter((area): area is GrantableArea => (grantableAreas as readonly string[]).includes(area));
+    areas.sort((a, b) => grantableAreas.indexOf(a) - grantableAreas.indexOf(b));
+    return present({
+      ...row,
+      role: row.role as AdminRole,
+      hasAccount: Boolean(row.hasAccount),
+      lastSessionAt: row.lastSessionAt === null ? null : new Date(row.lastSessionAt),
+      areas: row.role === "editor" ? areas : [],
+      storedAreas: areas,
+    });
+  });
+  return c.json({ ...pageOf(items, query, counted[0]?.n ?? 0), users: items });
+});
+
+/** One admin, for the edit form, with the `ETag` that `PUT /:id` wants back as `If-Match`. */
+adminUserRoutes.get("/:id", requireArea("sistem", "read"), async (c) => {
+  const id = c.req.param("id");
+  if (id.length > 128) return notFoundError(c);
+  const row = (await loadAdmins(c, id))[0];
+  if (!row) return notFoundError(c);
+  c.header("ETag", etagOf(row.updatedAt));
+  return c.json({ item: present(row) });
 });
 
 /**
@@ -210,8 +388,9 @@ adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
   const raw = await readJson(c);
   if (raw === undefined) return c.json({ error: "json_required" }, 415);
   const parsed = createInput.safeParse(raw);
-  if (!parsed.success) return c.json({ error: "invalid", fieldErrors: z.flattenError(parsed.error).fieldErrors }, 400);
+  if (!parsed.success) return invalidBody(c, parsed.error);
   const { email, role, password } = parsed.data;
+  const areas = role === "editor" ? grantableAreas.filter((area) => parsed.data.areas?.includes(area)) : [];
   const name = parsed.data.name || email.split("@")[0]!;
 
   if (!emailAvailable(c.env)) {
@@ -227,20 +406,22 @@ adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
   if (password) {
     statements.push(db.insert(schema.accounts).values({ id: crypto.randomUUID(), accountId: id, providerId: "credential", userId: id, password: await hashPassword(password) }));
   }
+  // The areas of a new editor commit with the account: an editor is never seen without the areas they were given.
+  for (const area of areas) statements.push(db.insert(schema.adminAreaGrants).values({ userId: id, area, grantedBy: actor.id }));
   statements.push(
     auditStatement(db, actor, {
       action: "admin.create",
       resourceType: "admin_user",
       resourceId: id,
       // The address and role, never the password.
-      metadata: { email, role, mode: password ? "password" : "invite" },
+      metadata: { email, role, mode: password ? "password" : "invite", ...(areas.length > 0 ? { areasAfter: areas } : {}) },
     }),
   );
   try {
     await db.batch(statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
   } catch (error) {
     if (mentions(error, "UNIQUE constraint failed: users.email")) {
-      return c.json({ error: "email_taken", message: "Email ini sudah terdaftar.", fieldErrors: { email: ["Email sudah digunakan"] } }, 409);
+      return c.json({ error: "email_taken", message: "Email ini sudah terdaftar.", fields: { email: "Email sudah digunakan" }, fieldErrors: { email: ["Email sudah digunakan"] } }, 409);
     }
     throw error;
   }
@@ -251,7 +432,8 @@ adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
     : adminInviteEmail(email, await createInviteLink(c, id), { role, inviterName: actor.name });
   const sent = await sendEmail(c.env, message);
   if (!sent.ok) return emailFailure(c, sent, present(created));
-  return c.json({ user: present(created), email: { sent: true, kind: password ? "verification" : "invite" } }, 201);
+  // `item` is the convention's key; `user` stays for the callers written before it.
+  return c.json({ item: present(created), user: present(created), email: { sent: true, kind: password ? "verification" : "invite" } }, 201);
 });
 
 /** A fresh email-verification link for an address, the same one sign-in would send. */
@@ -271,7 +453,7 @@ adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
   const raw = await readJson(c);
   if (raw === undefined) return c.json({ error: "json_required" }, 415);
   const parsed = updateInput.safeParse(raw);
-  if (!parsed.success) return c.json({ error: "invalid", fieldErrors: z.flattenError(parsed.error).fieldErrors }, 400);
+  if (!parsed.success) return invalidBody(c, parsed.error);
 
   const actor = c.get("user");
   const db = drizzle(c.env.DB, { schema });
@@ -286,7 +468,7 @@ adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
   if (!roleChanges && !nameChanges) return c.json({ user: present(target) });
 
   if (roleChanges && target.role === "super_admin" && !target.deactivatedAt && !(await hasOtherSuperAdmin(c, id))) {
-    return c.json({ error: "last_super_admin", message: "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu." }, 409);
+    return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEMOTE }, 409);
   }
 
   const statements: BatchItem<"sqlite">[] = [db.update(schema.users).set({ role: newRole, name: newName }).where(eq(schema.users.id, id))];
@@ -309,11 +491,99 @@ adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
     await db.batch(statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
   } catch (error) {
     if (mentions(error, "last_super_admin")) {
-      return c.json({ error: "last_super_admin", message: "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu." }, 409);
+      return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEMOTE }, 409);
     }
     throw error;
   }
   return c.json({ user: present((await loadAdmins(c, id))[0]!) });
+});
+
+/**
+ * Saves the edit form: name, role and, for an editor, the areas, as ONE change (the convention's `PUT`: what the
+ * form shows is what it saves). `If-Match` is required, the version being the admin's `updatedAt` from the
+ * `GET /:id` (428 without, 409 `stale` when someone saved first, checked again inside the transaction). The grants
+ * and the account's change commit together or not at all, with ONE audit row (`admin.update`, with the role before
+ * and after and the areas before and after for what changed). PATCH and `PUT /:id/areas` above remain, for
+ * scripts and for the tests written against them; the SPA uses this.
+ *
+ * The last active super_admin cannot be demoted: 409 `last_super_admin` with the message and the `role` field,
+ * answered first from a read and, for two requests racing, by the trigger of migration 0006 inside the batch.
+ */
+adminUserRoutes.put("/:id", requireArea("sistem", "write"), async (c) => {
+  const precondition = readIfMatch(c);
+  if (!precondition.present) return preconditionRequired(c);
+  const body = await parseBody(c, formInput, { maxBytes: 8 * 1024 });
+  if (!body.ok) return body.response;
+
+  const actor = c.get("user");
+  const id = c.req.param("id");
+  if (id.length > 128) return notFoundError(c);
+  const target = (await loadAdmins(c, id))[0];
+  if (!target) return notFoundError(c);
+  if (!matches(precondition, target.updatedAt)) return stale(c);
+
+  const { name, role } = body.data;
+  const wanted = role === "editor" ? grantableAreas.filter((area) => body.data.areas.includes(area)) : [];
+  const roleChanges = role !== target.role;
+  const nameChanges = name !== target.name;
+  const areasChange = wanted.length !== target.areas.length || wanted.some((area, index) => area !== target.areas[index]);
+  if (!roleChanges && !nameChanges && !areasChange) {
+    c.header("ETag", etagOf(target.updatedAt));
+    return c.json({ item: present(target) });
+  }
+
+  if (roleChanges && target.role === "super_admin" && !target.deactivatedAt && !(await hasOtherSuperAdmin(c, id))) {
+    return fail(c, 409, "last_super_admin", LAST_SUPER_ADMIN_DEMOTE, { fields: { role: "Minimal satu super admin harus tersedia" } });
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  const version = nextVersion(target.updatedAt);
+  // What the table holds, not what the role makes of it: a viewer's old leftover rows go when they become an editor.
+  const removed = target.storedAreas.filter((area) => !wanted.includes(area));
+  const added = wanted.filter((area) => !target.storedAreas.includes(area));
+  // The grants run BEFORE the account's own change (the audit row needs that one to be last), so each is made
+  // conditional on the version still being the one that was read: a save that lost the race changes nothing at all.
+  const untouched = sql`exists (select 1 from users where id = ${id} and updated_at = ${target.updatedAt.getTime()})`;
+  const statements: BatchItem<"sqlite">[] = [];
+  if (removed.length > 0) {
+    statements.push(db.delete(schema.adminAreaGrants).where(and(eq(schema.adminAreaGrants.userId, id), inArray(schema.adminAreaGrants.area, removed), untouched)));
+  }
+  for (const area of added) {
+    statements.push(db.insert(schema.adminAreaGrants).select(sql`select ${id}, ${area}, ${actor.id}, cast(unixepoch('subsecond') * 1000 as integer) where ${untouched}`));
+  }
+  statements.push(
+    db
+      .update(schema.users)
+      .set({ name, role, updatedAt: version })
+      .where(and(eq(schema.users.id, id), eq(schema.users.updatedAt, target.updatedAt)))
+      .returning({ id: schema.users.id }),
+    auditStatementIfChanged(db, actor, {
+      action: "admin.update",
+      resourceType: "admin_user",
+      resourceId: id,
+      metadata: {
+        email: target.email,
+        ...(roleChanges ? { roleFrom: target.role, roleTo: role } : {}),
+        ...(nameChanges ? { nameChanged: true } : {}),
+        ...(areasChange ? { areasBefore: target.areas, areasAfter: wanted } : {}),
+      },
+    }),
+  );
+
+  let results: unknown[];
+  try {
+    results = await db.batch(statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
+  } catch (error) {
+    if (mentions(error, "last_super_admin")) {
+      return fail(c, 409, "last_super_admin", LAST_SUPER_ADMIN_DEMOTE, { fields: { role: "Minimal satu super admin harus tersedia" } });
+    }
+    throw error;
+  }
+  // The account's own change is second to last: no row means someone saved first, and nothing above it was applied.
+  if ((results.at(-2) as unknown[]).length === 0) return stale(c);
+
+  c.header("ETag", etagOf(version));
+  return c.json({ item: present({ ...target, name, role, areas: wanted, storedAreas: wanted, updatedAt: version }) });
 });
 
 /**
@@ -333,7 +603,7 @@ adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"), async (c
     return c.json({ error: "cannot_deactivate_self", message: "Tidak dapat menonaktifkan akun sendiri." }, 409);
   }
   if (target.role === "super_admin" && !(await hasOtherSuperAdmin(c, id))) {
-    return c.json({ error: "last_super_admin", message: "Tidak dapat menonaktifkan super admin terakhir. Tambah super admin lain terlebih dahulu." }, 409);
+    return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEACTIVATE }, 409);
   }
   try {
     await db.batch([
@@ -344,7 +614,7 @@ adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"), async (c
     ]);
   } catch (error) {
     if (mentions(error, "last_super_admin")) {
-      return c.json({ error: "last_super_admin", message: "Tidak dapat menonaktifkan super admin terakhir. Tambah super admin lain terlebih dahulu." }, 409);
+      return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEACTIVATE }, 409);
     }
     throw error;
   }
@@ -405,9 +675,7 @@ adminUserRoutes.put("/:id/areas", requireArea("sistem", "write"), async (c) => {
   const raw = await readJson(c);
   if (raw === undefined) return c.json({ error: "json_required" }, 415);
   const parsed = areasInput.safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: "invalid", fieldErrors: z.flattenError(parsed.error).fieldErrors }, 400);
-  }
+  if (!parsed.success) return invalidBody(c, parsed.error);
 
   const actor = c.get("user");
   const db = drizzle(c.env.DB, { schema });
