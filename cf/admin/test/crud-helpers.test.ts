@@ -390,7 +390,7 @@ describe("file paths in a form", () => {
   test("not another kind's upload, not a path that only looks like one, not an address", () => {
     for (const path of [
       `/uploads/report/2026/${id}-laporan.pdf`, // another kind
-      `/uploads/team-photo/2026/${id}-foto.gif`, // an extension we do not make
+      `/uploads/team-photo/2026/${id}-foto.svg`, // an extension we do not make
       `/uploads/team-photo/2026/${id}-../x.jpg`,
       `/uploads/team-photo/2026/foto.jpg`,
       "/images/../etc/passwd",

@@ -13,6 +13,14 @@ describe("checkUploadFile", () => {
     expect(checkUploadFile(file("foto.jpg", 1, "image/jpeg"), "blog-image")).toBeNull();
   });
 
+  test("GIF: the blog's images take it, nothing else does (the legacy blog took it, the team form did not)", () => {
+    expect(checkUploadFile(file("animasi.gif", 100_000, "image/gif"), "blog-image")).toBeNull();
+    expect(checkUploadFile(file("animasi.GIF", 100_000, ""), "blog-image")).toBeNull();
+    expect(checkUploadFile(file("animasi.gif", 100_000, "image/gif"), "team-photo")).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP.");
+    expect(checkUploadFile(file("animasi.gif", 100_000, "image/gif"), "resource")).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP, PDF.");
+    expect(checkUploadFile(file("animasi.svg", 10, "image/svg+xml"), "blog-image")).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP, GIF.");
+  });
+
   test("an empty file", () => {
     expect(checkUploadFile(file("foto.png", 0, "image/png"), "team-photo")).toBe("File kosong.");
   });
@@ -57,6 +65,7 @@ describe("the kinds", () => {
   test("acceptFor lists types and extensions, so the picker filters by either", () => {
     expect(acceptFor("report")).toBe("application/pdf,.pdf");
     expect(acceptFor("team-photo")).toBe("image/png,.png,image/jpeg,.jpg,.jpeg,image/webp,.webp");
+    expect(acceptFor("blog-image")).toBe("image/png,.png,image/jpeg,.jpg,.jpeg,image/webp,.webp,image/gif,.gif");
   });
 });
 

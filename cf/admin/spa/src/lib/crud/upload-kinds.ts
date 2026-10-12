@@ -7,12 +7,13 @@
 // `KIND_RULES` in src/uploads/kinds.ts; test/crud-spa-contract.test.ts fails when the two differ.
 
 export type UploadKindName = "team-photo" | "blog-image" | "report" | "resource" | "registration-document";
-export type FileTypeName = "png" | "jpeg" | "webp" | "pdf";
+export type FileTypeName = "png" | "jpeg" | "webp" | "gif" | "pdf";
 
 export const FILE_TYPES: Record<FileTypeName, { label: string; mime: string; extensions: readonly string[] }> = {
   png: { label: "PNG", mime: "image/png", extensions: [".png"] },
   jpeg: { label: "JPEG", mime: "image/jpeg", extensions: [".jpg", ".jpeg"] },
   webp: { label: "WebP", mime: "image/webp", extensions: [".webp"] },
+  gif: { label: "GIF", mime: "image/gif", extensions: [".gif"] },
   pdf: { label: "PDF", mime: "application/pdf", extensions: [".pdf"] },
 };
 
@@ -27,7 +28,7 @@ const IMAGES = ["png", "jpeg", "webp"] as const;
 
 export const UPLOAD_KINDS: Record<UploadKindName, UploadKindRule> = {
   "team-photo": { area: "konten", maxBytes: 5_000_000, types: IMAGES },
-  "blog-image": { area: "konten", maxBytes: 5_000_000, types: IMAGES },
+  "blog-image": { area: "konten", maxBytes: 5_000_000, types: [...IMAGES, "gif"] },
   report: { area: "konten", maxBytes: 20_000_000, types: ["pdf"] },
   resource: { area: "pendaftaran", maxBytes: 25_000_000, types: [...IMAGES, "pdf"] },
   "registration-document": { area: "pendaftaran", maxBytes: 25_000_000, types: [...IMAGES, "pdf"] },

@@ -13,7 +13,7 @@ import type { Persona } from "./persona";
 // A file named `gagal-...` is refused with a server error, to see that state: "gagal-besar.png" answers 413,
 // anything else starting with "gagal" answers 500.
 
-const EXTENSION: Record<FileTypeName, string> = { png: "png", jpeg: "jpg", webp: "webp", pdf: "pdf" };
+const EXTENSION: Record<FileTypeName, string> = { png: "png", jpeg: "jpg", webp: "webp", gif: "gif", pdf: "pdf" };
 
 function slug(name: string): string {
   const stem = name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : name;
