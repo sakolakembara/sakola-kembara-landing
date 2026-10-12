@@ -1,0 +1,324 @@
+---
+import { Image, getImage } from 'astro:assets';
+import prapembinaanPhoto from '@root/public/images/program/prapembinaan.jpg';
+import pembinaanPhoto from '@root/public/images/program/pembinaan.jpg';
+import pascaPembinaanPhoto from '@root/public/images/program/pasca-pembinaan.jpg';
+import kbmPekananPhoto from '@root/public/images/program/kbm-pekanan.jpg';
+import asramaAkhirTahunPhoto from '@root/public/images/program/asrama-akhir-tahun.jpg';
+import asramaIntensifPhoto from '@root/public/images/program/asrama-intensif.jpg';
+import mentoringPhoto from '@root/public/images/program/mentoring.jpg';
+import Button from '~/components/Button.astro';
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon from '~/components/Icon.astro';
+import SectionHeader from '~/components/SectionHeader.astro';
+import Tag from '~/components/Tag.astro';
+import Base from '~/layouts/Base.astro';
+import { galleryAlt, getProgramGallery, gallerySrcset } from '~/lib/gallery';
+import { programSeo, programs, type Program, type ProgramPhoto } from '~/lib/programs';
+
+// One static HTML file per program stage (program/<id>.html), served by the assets
+// layer. An id that is not in getStaticPaths() matches no file and no route: the
+// Worker answers it with the 404 page and a real 404 status. `/program` itself is a
+// 307 to /program/prapembinaan in the redirect table.
+export const prerender = true;
+
+export function getStaticPaths() {
+  return programs.map((program) => ({ params: { id: program.id }, props: { program } }));
+}
+
+interface Props {
+  program: Program;
+}
+const { program } = Astro.props;
+
+const photos: Record<ProgramPhoto, ImageMetadata> = {
+  prapembinaan: prapembinaanPhoto,
+  pembinaan: pembinaanPhoto,
+  'pasca-pembinaan': pascaPembinaanPhoto,
+  'kbm-pekanan': kbmPekananPhoto,
+  'asrama-akhir-tahun': asramaAkhirTahunPhoto,
+  'asrama-intensif': asramaIntensifPhoto,
+  mentoring: mentoringPhoto,
+};
+
+const currentIndex = programs.findIndex((p) => p.id === program.id);
+const nextProgram = programs[currentIndex + 1] ?? null;
+
+// Share image: the stage photo at 1200 px wide instead of the multi-megabyte original.
+const shareImage = await getImage({ src: photos[program.photo], width: 1200, format: 'jpeg', quality: 80 });
+const { seo, jsonLd } = programSeo(program, shareImage.src);
+
+// Read from the build-time manifest (scripts/build-gallery.mjs); [] hides the section.
+const gallery = getProgramGallery(program.id);
+---
+
+<Base seo={seo} jsonLd={jsonLd}>
+  <main class="min-h-screen bg-white">
+    {/* Shared hero: the three stages read as one journey. The page's h1 is the stage
+        title below, so each URL keeps its own heading. */}
+    <section class="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[var(--hero-top,8rem)] pb-28 md:pb-32">
+      <Container>
+        {/* The same header as the homepage's Activities section. */}
+        <SectionHeader
+          tone="dark"
+          as="p"
+          eyebrow="Program Kami"
+          title="Apa saja yang dilalui penerima manfaat Sakola Kembara?"
+        />
+      </Container>
+    </section>
+
+    {/* Stage tabs. Each tab is a link to that stage's own URL, so stages stay shareable,
+        server-rendered, and work with Back. */}
+    <Container class="-mt-20 md:-mt-24 relative z-10">
+      <nav
+        aria-label="Tahapan program"
+        class="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-primary-blue/10 px-3 py-5 sm:px-8 sm:py-7"
+      >
+        <ol class="relative grid grid-cols-3 gap-2 sm:gap-4">
+          {/* Connector from the first circle's centre to the last one's */}
+          <span aria-hidden="true" class="absolute top-5 sm:top-[22px] left-[16.67%] right-[16.67%] h-0.5 bg-gray-200"></span>
+          {
+            programs.map((stage, index) => {
+              const active = stage.id === program.id;
+              return (
+                <li class="relative">
+                  <a
+                    href={`/program/${stage.id}`}
+                    aria-current={active ? 'page' : undefined}
+                    class="group flex flex-col items-center gap-2 text-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-blue"
+                  >
+                    <span
+                      class={`flex w-10 h-10 sm:w-11 sm:h-11 items-center justify-center rounded-full border-2 font-bold transition-colors ${
+                        active
+                          ? 'bg-primary-blue border-primary-blue text-white'
+                          : 'bg-white border-gray-200 text-gray-500 group-hover:border-primary-blue/50 group-hover:text-primary-blue'
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span
+                      class={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${
+                        active ? 'text-primary-blue' : 'text-gray-500'
+                      }`}
+                    >
+                      {stage.tag}
+                    </span>
+                    <span
+                      class={`hidden sm:block text-base font-bold ${
+                        active ? 'text-primary-blue' : 'text-gray-700 group-hover:text-primary-blue'
+                      }`}
+                    >
+                      {stage.title}
+                    </span>
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ol>
+      </nav>
+    </Container>
+
+    {/* Stage intro. The photo is the page's LCP image. */}
+    <Container as="section" class="pt-12 md:pt-16 pb-6">
+      <div class="anim-fade-up grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+        <div class="relative h-[240px] sm:h-[320px] md:h-[360px] rounded-2xl overflow-hidden">
+          <Image
+            src={photos[program.photo]}
+            alt={program.title}
+            width={1200}
+            widths={[640, 960, 1200]}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            format="webp"
+            quality={75}
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            class="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
+        <div class="flex flex-col items-start gap-4">
+          <Tag>
+            Tahap {currentIndex + 1} · {program.tag}
+          </Tag>
+          <Heading level="article" class="text-gray-900">
+            {program.title}
+          </Heading>
+          <p class="text-base md:text-lg text-gray-700 leading-relaxed">
+            {program.description}
+          </p>
+          <ul class="space-y-2.5">
+            {
+              program.points.map((point) => (
+                <li class="flex gap-2.5 text-[15px] text-gray-700 leading-relaxed">
+                  <span class="mt-2 w-1.5 h-1.5 rounded-full bg-secondary-green flex-shrink-0" />
+                  <span>{point}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </Container>
+
+    {/* Sub Programs Section */}
+    <section class="py-12 md:py-16">
+      <Container>
+        <SectionHeader align="left" title="Kegiatan" class="mb-8 md:mb-10" />
+
+        <div class="grid md:grid-cols-2 gap-6">
+          {
+            program.subPrograms.map((subProgram, index) => (
+              <div
+                class="anim-fade-up bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden hover:border-primary-blue/20 hover:shadow-lg transition-all duration-300 flex flex-col"
+                style={`animation-delay: ${(0.1 + index * 0.08).toFixed(2)}s`}
+              >
+                {subProgram.photo && (
+                  <div class="relative h-[180px] sm:h-[220px] w-full">
+                    <Image
+                      src={photos[subProgram.photo]}
+                      alt={`Kegiatan ${subProgram.title}`}
+                      width={960}
+                      widths={[480, 768, 960]}
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      format="webp"
+                      quality={75}
+                      loading="lazy"
+                      decoding="async"
+                      class="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <div class="p-6 md:p-8 flex-1 flex flex-col">
+                  <div class="flex items-start gap-4">
+                    <div class="flex-shrink-0">
+                      <div class="w-10 h-10 bg-primary-blue/10 rounded-full flex items-center justify-center">
+                        <Icon name="circle-check" size={20} class="text-primary-blue" />
+                      </div>
+                    </div>
+                    <div class="min-w-0">
+                      <Heading level="card" class="text-gray-900 mb-2">
+                        {subProgram.title}
+                      </Heading>
+                      {subProgram.hours && (
+                        <Tag tone="soft" class="mb-3">
+                          <Icon name="clock" size={14} />
+                          {subProgram.hours}
+                        </Tag>
+                      )}
+                      <p class="text-gray-600 leading-relaxed">{subProgram.description}</p>
+                    </div>
+                  </div>
+
+                  {subProgram.attachment && (
+                    <Button
+                      href={subProgram.attachment.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="outline"
+                      class="mt-5 sm:ml-14 sm:self-start"
+                    >
+                      <Icon name="file-text" size={16} />
+                      {subProgram.attachment.label} (PDF)
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </Container>
+    </section>
+
+    {/* Timeline Placeholder.
+        SAKEM-057: kept exactly as the legacy page has it. Whether this section is
+        replaced or removed is decided on that ticket, not in the Astro port. */}
+    <section class="py-16 bg-gray-50">
+      <Container class="text-center">
+        <SectionHeader
+          title="Timeline Kegiatan"
+          lead="Jadwal dan timeline kegiatan akan segera diperbarui."
+          class="mb-8"
+        />
+        <div class="bg-white rounded-2xl p-12 border border-gray-200">
+          <p class="text-gray-400">Konten timeline akan ditambahkan</p>
+        </div>
+      </Container>
+    </section>
+
+    {/* Gallery. No photos in the program's folder: the whole section is left out. */}
+    {
+      gallery.length > 0 && (
+        <section class="py-16">
+          <Container>
+            <SectionHeader
+              align="left"
+              title="Galeri Foto"
+              lead={`Dokumentasi kegiatan program ${program.title}.`}
+              class="mb-8"
+            />
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+              {gallery.map((photo, index) => (
+                <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100">
+                  <img
+                    src={photo.variants[photo.variants.length - 1].src}
+                    srcset={gallerySrcset(photo)}
+                    sizes="(min-width: 768px) 33vw, 50vw"
+                    width={photo.width}
+                    height={photo.height}
+                    alt={galleryAlt(program.title, index)}
+                    loading="lazy"
+                    decoding="async"
+                    class="absolute inset-0 h-full w-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )
+    }
+
+    <section class="pb-16 md:pb-24">
+      <Container class="flex flex-col gap-8">
+        {/* Next stage */}
+        {
+          nextProgram && (
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 md:p-8 border border-gray-200 rounded-2xl">
+              <div>
+                <span class="block text-sm text-gray-500 mb-1">Tahap berikutnya</span>
+                <span class="text-lg md:text-xl font-bold text-gray-900">
+                  {nextProgram.tag} · {nextProgram.title}
+                </span>
+              </div>
+              <Button href={`/program/${nextProgram.id}`} variant="outline" class="self-start sm:self-auto">
+                Lanjut ke Tahap {currentIndex + 2}
+              </Button>
+            </div>
+          )
+        }
+
+        {/* Download PitchDeck CTA */}
+        <div class="bg-gradient-to-br from-primary-blue to-accent-navy rounded-2xl p-8 md:p-10 text-center relative overflow-hidden">
+          <div class="absolute inset-0">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div class="absolute bottom-0 left-0 w-64 h-64 bg-secondary-yellow/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+          </div>
+          <div class="relative z-10">
+            <Heading level="panel" as="h2" class="text-white mb-3">Ingin Tahu Lebih Lanjut?</Heading>
+            <p class="text-white/80 mb-6 max-w-[600px] mx-auto">
+              Download PitchDeck kami untuk informasi lengkap tentang program, dampak, dan cara berkontribusi.
+            </p>
+            <Button href="/files/pitchdeck-sakola-kembara.pdf" download variant="yellow-on-navy" size="lg">
+              <Icon name="download" size={20} />
+              Download PitchDeck
+            </Button>
+          </div>
+        </div>
+      </Container>
+    </section>
+  </main>
+</Base>

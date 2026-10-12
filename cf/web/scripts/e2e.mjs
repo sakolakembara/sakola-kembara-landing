@@ -171,7 +171,7 @@ await check('canonical-url', 'prerendered article with a trailing slash: the ass
 
 // ---------------------------------------------------------------- pass-through
 const legacyPages = ['/login', '/register', '/forgot-password', '/reset-password?token=abc', '/verify-email?token=abc',
-  '/program/prapembinaan', '/laporan', '/donasi', '/kontak', '/gabung-siswa', '/gabung-siswa/docs'];
+  '/laporan', '/kontak', '/gabung-siswa', '/gabung-siswa/docs'];
 for (const p of legacyPages) {
   await check('pass-through', `GET ${p} reaches the origin (200)`, async () => {
     clearStub();
@@ -342,6 +342,133 @@ await check('shortlinks', 'static pages win over the catch-all: /blog and / neve
   await get('/blog');
   await get('/');
   assert.equal(stubHits().length, 0);
+});
+
+// ---------------------------------------------------------------- /program/<id> and /donasi
+const PROGRAM_IDS = ['prapembinaan', 'pembinaan', 'pasca-pembinaan'];
+const logStart = stack.output().length; // the error check below reads only what the Worker logged from here on
+const imgTags = (html) => [...html.matchAll(/<img [^>]*>/g)].map((m) => m[0]);
+const attrOf = (el, name) => el.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
+
+for (const id of PROGRAM_IDS) {
+  await check('program', `/program/${id}: 200 html from the assets layer, one h1, SEO tags and Program JSON-LD`, async () => {
+    clearStub();
+    const res = await get(`/program/${id}`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /text\/html/);
+    assert.equal(stubHits().length, 0, 'must not reach the origin');
+    const html = await text(res);
+    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+    assert.match(tag(html, /<title>([^<]*)<\/title>/), /^Program .+ \| Sakola Kembara$/);
+    assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), `https://sakolakembara.org/program/${id}`);
+    assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), `https://sakolakembara.org/program/${id}`);
+    assert.match(html, /<meta name="robots" content="index, follow">/);
+    assert.match(tag(html, /<meta property="og:image" content="([^"]*)"/), /^https:\/\/sakolakembara\.org\/_astro\/.+\.jpe?g$/);
+    const ld = JSON.parse(tag(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/));
+    assert.equal(ld['@type'], 'EducationalOccupationalProgram');
+    assert.equal(ld.url, `https://sakolakembara.org/program/${id}`);
+    assert.match(html, /aria-current="page"/);
+    assert.match(html, /Timeline Kegiatan/);
+  });
+
+  await check('program', `/program/${id}: gallery images and the share image are served by the assets layer (webp, immutable), never by the origin`, async () => {
+    const html = await text(await get(`/program/${id}`));
+    const imgs = imgTags(html);
+    const gallery = imgs.filter((i) => /alt="Dokumentasi /.test(i));
+    assert.ok(gallery.length >= 1, 'the repo has photos for every program');
+    for (const img of gallery) {
+      assert.match(img, /\sloading="lazy"/);
+      assert.match(img, /\swidth="\d+"/);
+      assert.match(img, /\sheight="\d+"/);
+    }
+    clearStub();
+    const urls = new Set(gallery.flatMap((i) => [attrOf(i, 'src'), ...attrOf(i, 'srcset').split(', ').map((c) => c.split(' ')[0])]));
+    for (const url of urls) {
+      const res = await get(url);
+      assert.equal(res.status, 200, url);
+      assert.equal(res.headers.get('content-type'), 'image/webp', url);
+      assert.match(res.headers.get('cache-control'), /immutable/, url);
+    }
+    const og = tag(html, /<meta property="og:image" content="https:\/\/sakolakembara\.org([^"]*)"/);
+    const ogRes = await get(og);
+    assert.equal(ogRes.status, 200);
+    assert.match(ogRes.headers.get('content-type'), /image\/jpeg/);
+    const hero = imgs.find((i) => /fetchpriority="high"/.test(i));
+    assert.ok(hero && /loading="eager"/.test(hero));
+    const heroRes = await get(attrOf(hero, 'src'));
+    assert.equal(heroRes.status, 200);
+    assert.equal(stubHits().length, 0, 'no image went through the pass-through');
+  });
+}
+for (const p of ['/program/unknown', '/program/PRAPEMBINAAN', '/program/prapembinaan/extra', '/program/pra-pembinaan']) {
+  await check('program', `GET ${p} is a real 404 with the 404 page, origin not asked`, async () => {
+    clearStub();
+    const res = await get(p);
+    assert.equal(res.status, 404);
+    const html = await text(res);
+    assert.match(html, /Halaman tidak ditemukan/);
+    assert.match(html, /<meta name="robots" content="noindex">/);
+    assert.equal(stubHits().length, 0);
+  });
+}
+await check('program', 'one URL per stage: the assets layer redirects /program/<id>.html and /program/<id>/ to /program/<id> (307)', async () => {
+  for (const [from, to] of [['/program/prapembinaan.html', '/program/prapembinaan'], ['/program/pembinaan/', '/program/pembinaan']]) {
+    clearStub();
+    const res = await get(from);
+    assert.equal(res.status, 307, from);
+    assert.equal(res.headers.get('location'), to, from);
+    assert.equal(stubHits().length, 0);
+  }
+});
+await check('program', '/program redirects (307) to stage 1, and that page is a 200', async () => {
+  clearStub();
+  const res = await get('/program');
+  assert.equal(res.status, 307);
+  assert.equal(res.headers.get('location'), '/program/prapembinaan');
+  assert.equal((await get(res.headers.get('location'))).status, 200);
+  assert.equal(stubHits().length, 0);
+});
+await check('program', 'the sitemap lists the three program URLs and /donasi', async () => {
+  const xml = await text(await get('/sitemap.xml'));
+  for (const id of PROGRAM_IDS) assert.ok(xml.includes(`<loc>https://sakolakembara.org/program/${id}</loc>`), id);
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/donasi</loc>'));
+});
+
+await check('donasi', '/donasi: 200 html from the assets layer, one h1, SEO tags, no JSON-LD', async () => {
+  clearStub();
+  const res = await get('/donasi');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.equal(stubHits().length, 0, 'must not reach the origin');
+  const html = await text(res);
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  assert.match(html, /<title>Donasi \| Sakola Kembara<\/title>/);
+  assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/donasi');
+  assert.match(html, /<meta name="description" content="Dukung pendidikan setara untuk anak Indonesia\./);
+  assert.ok(!html.includes('application/ld+json'));
+  assert.match(html, /Bank Muamalat/);
+  assert.match(html, /1010 141 940/);
+  assert.match(html, /data-copy-account="1010141940"/);
+});
+await check('donasi', '/donasi: the QRIS image is a plain <img> with dimensions, served as a hashed PNG by the assets layer, and the download link points at it', async () => {
+  const html = await text(await get('/donasi'));
+  const qr = imgTags(html).find((i) => /alt="QRIS Sakola Kembara"/.test(i));
+  assert.ok(qr);
+  assert.equal(attrOf(qr, 'width'), '280');
+  assert.equal(attrOf(qr, 'height'), '373');
+  assert.equal(attrOf(qr, 'loading'), 'lazy');
+  assert.ok(!/srcset=/.test(qr));
+  clearStub();
+  const src = attrOf(qr, 'src');
+  const res = await get(src);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'image/png');
+  assert.match(res.headers.get('cache-control'), /immutable/);
+  assert.equal(stubHits().length, 0);
+  assert.ok(html.includes(`href="${src}" download="qris-sakola-kembara.png"`) || html.includes(`download="qris-sakola-kembara.png"`) && html.includes(`href="${src}"`));
+});
+await check('donasi', 'the Worker logged no error while serving the program pages and /donasi', async () => {
+  assert.doesNotMatch(stack.output().slice(logStart), /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
 });
 
 // ---------------------------------------------------------------- /tim

@@ -52,6 +52,11 @@ describe('design-system class strings are the root ones', () => {
     expect(tag).toContain('bg-primary-blue text-white');
     expect(tag).toContain('px-2.5 py-1');
     expect(tagClasses('sm')).toContain('px-2.5 py-1');
+    // `soft` is the quiet chip of the legacy Tag ("290+ jam belajar setahun"); brand stays the default.
+    expect(tagClasses('md', undefined, 'soft')).toContain('bg-primary-blue/10 text-primary-blue');
+    expect(tagClasses('md', undefined, 'soft')).not.toContain('bg-primary-blue text-white');
+    expect(tagClasses()).toBe(tagClasses('md', undefined, 'brand'));
+    expect(tag).toContain('soft: "bg-primary-blue/10 text-primary-blue"');
     expect(eyebrow).toContain('inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider');
     expect(eyebrowClasses('dark')).toContain('text-secondary-yellow');
     expect(eyebrowClasses()).toContain('text-primary-blue');

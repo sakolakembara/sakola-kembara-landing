@@ -57,9 +57,7 @@ export const LEGACY_PATHS: readonly LegacyPath[] = [
 ];
 
 export const NOT_YET_PORTED: readonly LegacyPath[] = [
-  { path: '/program', why: 'Program stage pages: /program/prapembinaan, /program/pembinaan, /program/pasca-pembinaan.' },
   { path: '/laporan', why: 'Impact reports (reads Postgres).' },
-  { path: '/donasi', why: 'Donation page.' },
   { path: '/kontak', why: 'Contact page with the message form (server action + Postgres).' },
   { path: '/gabung-siswa', why: 'Student recruitment page and /gabung-siswa/docs (reads Postgres).' },
 ];
