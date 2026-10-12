@@ -1,10 +1,35 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { accessTo } from "../spa/src/lib/access";
-import { resetFailure, resetRequestFailureMessage, signInFailureMessage, verifyOutcome } from "../spa/src/lib/auth-errors";
+import {
+  CAPTCHA_FAILED_MESSAGE,
+  CAPTCHA_UNAVAILABLE_MESSAGE,
+  EMAIL_UNAVAILABLE_MESSAGE,
+  resetFailure,
+  resetRequestFailureMessage,
+  signInFailureMessage,
+  verifyOutcome,
+} from "../spa/src/lib/auth-errors";
+import { parsePublicConfig, TURNSTILE_HEADER as SPA_TURNSTILE_HEADER, TURNSTILE_ROUTES } from "../spa/src/lib/captcha";
 import { decideGuard } from "../spa/src/lib/guard";
 import { parseMe } from "../spa/src/lib/me";
 import { visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
-import { call, cookiesOf, createVerifiedUser, emailsTo, linkIn, PASSWORD, revokeArea, signedInCookie, signUp, uniqueEmail } from "./helpers";
+import { findPolicy } from "../src/auth/gate";
+import { TURNSTILE_HEADER as WORKER_TURNSTILE_HEADER, TURNSTILE_TEST_SECRETS, TURNSTILE_TEST_SITE_KEYS } from "../src/security/turnstile";
+import {
+  call,
+  CAPTCHA,
+  cookiesOf,
+  createVerifiedUser,
+  emailsTo,
+  fakeNetwork,
+  linkIn,
+  PASSWORD,
+  productionLike,
+  revokeArea,
+  signedInCookie,
+  signUp,
+  uniqueEmail,
+} from "./helpers";
 
 // What the SPA sends and expects back, checked against the real Worker in
 // workerd. The SPA tests (spa/test) stub the API, so these are what keep the
@@ -244,6 +269,133 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
     expect(me.role).toBe("student");
     expect(visibleNav(me)).toEqual([]);
     expect(decideGuard({ status: "ready", me }, { pathname: "/" }).kind).toBe("no-admin-access");
+  });
+});
+
+// The security check (SAKEM-082): the widget's token goes in a header, each page
+// names its own action, and three answers have Indonesian text in the SPA. The
+// SPA's side is `spa/src/lib/captcha.ts` and `auth-errors.ts`, pure files read here.
+describe("the security check as the SPA uses it", () => {
+  const SPA_HEADERS = { [SPA_TURNSTILE_HEADER]: CAPTCHA };
+
+  test("the header the SPA sends is the one the Worker reads", () => {
+    expect(SPA_TURNSTILE_HEADER.toLowerCase()).toBe(WORKER_TURNSTILE_HEADER);
+  });
+
+  test("each action the SPA declares is the one the Worker asks for on that route", () => {
+    for (const [action, route] of Object.entries(TURNSTILE_ROUTES)) {
+      expect(findPolicy("POST", route)?.turnstile, route).toBe(action);
+    }
+  });
+
+  test("sign-in the way the SPA sends it (token in the header) passes the check, and the token goes to Siteverify", async () => {
+    const email = uniqueEmail();
+    await createVerifiedUser(email);
+    const network = fakeNetwork();
+    const res = await call("/api/auth/sign-in/email", {
+      method: "POST",
+      json: { email, password: PASSWORD, callbackURL: "/verify-email?status=success" },
+      headers: SPA_HEADERS,
+      env: productionLike,
+    });
+    expect(res.status).toBe(200);
+    expect(network.siteverify.map((request) => request.response)).toEqual([CAPTCHA]);
+  });
+
+  test("forgot-password the way the SPA sends it passes the check too", async () => {
+    const network = fakeNetwork();
+    const res = await call("/api/auth/request-password-reset", {
+      method: "POST",
+      json: { email: uniqueEmail(), redirectTo: "/reset-password" },
+      headers: SPA_HEADERS,
+      env: productionLike,
+    });
+    expect(res.status).toBe(200);
+    expect(network.siteverify.map((request) => request.response)).toEqual([CAPTCHA]);
+  });
+
+  test("without a token: 403 captcha_failed, and the SPA says to try again", async () => {
+    fakeNetwork();
+    const signIn = await failureOf(
+      await call("/api/auth/sign-in/email", { method: "POST", json: { email: uniqueEmail(), password: PASSWORD }, env: productionLike }),
+    );
+    expect(signIn).toMatchObject({ status: 403, code: "captcha_failed" });
+    expect(signInFailureMessage(signIn)).toBe(CAPTCHA_FAILED_MESSAGE);
+
+    const forgot = await failureOf(
+      await call("/api/auth/request-password-reset", {
+        method: "POST",
+        json: { email: uniqueEmail(), redirectTo: "/reset-password" },
+        env: productionLike,
+      }),
+    );
+    expect(forgot).toMatchObject({ status: 403, code: "captcha_failed" });
+    expect(resetRequestFailureMessage(forgot)).toBe(CAPTCHA_FAILED_MESSAGE);
+  });
+
+  test("a token Cloudflare says was already used: the same 403, the same line", async () => {
+    fakeNetwork();
+    const spent = await failureOf(
+      await call("/api/auth/sign-in/email", {
+        method: "POST",
+        json: { email: uniqueEmail(), password: PASSWORD },
+        headers: SPA_HEADERS,
+        env: { ...productionLike, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRETS.spent },
+      }),
+    );
+    expect(spent).toMatchObject({ status: 403, code: "captcha_failed" });
+    expect(signInFailureMessage(spent)).toBe(CAPTCHA_FAILED_MESSAGE);
+  });
+
+  test("Siteverify unreachable, or no secret in production: 503 captcha_unavailable, and the SPA says to wait", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("network down"));
+    const down = await failureOf(
+      await call("/api/auth/request-password-reset", {
+        method: "POST",
+        json: { email: uniqueEmail(), redirectTo: "/reset-password" },
+        headers: SPA_HEADERS,
+        env: productionLike,
+      }),
+    );
+    expect(down).toMatchObject({ status: 503, code: "captcha_unavailable" });
+    expect(resetRequestFailureMessage(down)).toBe(CAPTCHA_UNAVAILABLE_MESSAGE);
+
+    const noSecret = await failureOf(
+      await call("/api/auth/sign-in/email", {
+        method: "POST",
+        json: { email: uniqueEmail(), password: PASSWORD },
+        headers: SPA_HEADERS,
+        env: { ...productionLike, TURNSTILE_SECRET_KEY: undefined },
+      }),
+    );
+    expect(noSecret).toMatchObject({ status: 503, code: "captcha_unavailable" });
+    expect(signInFailureMessage(noSecret)).toBe(CAPTCHA_UNAVAILABLE_MESSAGE);
+  });
+
+  test("no email provider in production: forgot-password answers 503 email_unavailable before the token is spent", async () => {
+    const network = fakeNetwork();
+    const missing = await failureOf(
+      await call("/api/auth/request-password-reset", {
+        method: "POST",
+        json: { email: uniqueEmail(), redirectTo: "/reset-password" },
+        headers: SPA_HEADERS,
+        env: { ENVIRONMENT: "production", TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRETS.alwaysPass },
+      }),
+    );
+    expect(missing).toMatchObject({ status: 503, code: "email_unavailable" });
+    expect(resetRequestFailureMessage(missing)).toBe(EMAIL_UNAVAILABLE_MESSAGE);
+    expect(network.siteverify).toHaveLength(0);
+  });
+
+  test("GET /api/config gives the SPA the site key, and only the site key", async () => {
+    const key = TURNSTILE_TEST_SITE_KEYS.alwaysPass;
+    const withKey = await call("/api/config", { env: { TURNSTILE_SITE_KEY: key, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRETS.alwaysPass } });
+    const body = await withKey.json();
+    expect(parsePublicConfig(body)).toEqual({ google: false, turnstileSiteKey: key });
+    expect(JSON.stringify(body)).not.toContain(TURNSTILE_TEST_SECRETS.alwaysPass);
+
+    // A Worker without Turnstile configured: no widget in the SPA.
+    expect(parsePublicConfig(await (await call("/api/config")).json())).toEqual({ google: false, turnstileSiteKey: null });
   });
 });
 

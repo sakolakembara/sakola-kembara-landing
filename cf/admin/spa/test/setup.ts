@@ -16,6 +16,10 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   setTransport(null);
+  // Cloudflare's script and what it defines (test/fake-turnstile.ts), and any env a test stubbed.
+  document.head.querySelectorAll("script[data-sakem-turnstile]").forEach((script) => script.remove());
+  delete window.turnstile;
+  vi.unstubAllEnvs();
   document.title = "";
   document.body.style.overflow = "";
   const unexpected = problems.splice(0);

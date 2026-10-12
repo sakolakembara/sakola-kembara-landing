@@ -26,7 +26,17 @@ function* walk(dir) {
 }
 
 // Strings that exist only in the mock.
-const MOCK_MARKERS = ["Mode mock", "sakem-admin-mock", "mock-batch-2026", "belum-verifikasi@", "createMockTransport"];
+const MOCK_MARKERS = [
+  "Mode mock",
+  "sakem-admin-mock",
+  "mock-batch-2026",
+  "belum-verifikasi@",
+  "createMockTransport",
+  // The stand-in for Cloudflare's widget (spa/src/mock/turnstile.ts).
+  "Pemeriksaan keamanan tiruan",
+  "mock-turnstile-token-",
+  "mock-site-key",
+];
 
 // Classes used by this app's own files and not by components/ui (the shell's
 // frame, the auth card, the drawer). If they are missing, Tailwind did not scan the SPA.

@@ -1,3 +1,5 @@
+import { TURNSTILE_HEADER } from "./captcha";
+
 export type Severity = "info" | "warning" | "urgent";
 
 export interface Announcement {
@@ -47,12 +49,22 @@ function retryAfterSeconds(res: Response): number | undefined {
   return Number(raw.trim());
 }
 
+export interface ApiInit {
+  method?: string;
+  json?: unknown;
+  /** The Turnstile widget's token, for the routes the Worker protects with it. Sent in a header, never in the URL or the body. A token works once. */
+  turnstileToken?: string | null;
+}
+
 /** JSON call to this app's own API. Cookies go along (same origin). Never throws. */
-export async function api<T>(path: string, init: { method?: string; json?: unknown } = {}): Promise<ApiResult<T>> {
+export async function api<T>(path: string, init: ApiInit = {}): Promise<ApiResult<T>> {
+  const headers: Record<string, string> = {};
+  if (init.json !== undefined) headers["Content-Type"] = "application/json";
+  if (init.turnstileToken) headers[TURNSTILE_HEADER] = init.turnstileToken;
   try {
     const res = await transport(path, {
       method: init.method ?? "GET",
-      headers: init.json === undefined ? undefined : { "Content-Type": "application/json" },
+      headers: Object.keys(headers).length === 0 ? undefined : headers,
       body: init.json === undefined ? undefined : JSON.stringify(init.json),
       credentials: "same-origin",
     });

@@ -24,6 +24,10 @@ export function meBody(role: Role, granted: Area[] = [], extra: Record<string, u
 export interface Call {
   method: string;
   path: string;
+  /** The URL exactly as the page asked for it, query included. */
+  url: string;
+  /** Request headers, names in lower case. */
+  headers: Record<string, string>;
   body: Record<string, unknown> | null;
 }
 
@@ -42,6 +46,8 @@ export function stubApi(routes: Record<string, Handler>) {
     const call: Call = {
       method,
       path: url.pathname,
+      url: path,
+      headers: Object.fromEntries(new Headers(init.headers).entries()),
       body: init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : null,
     };
     calls.push(call);

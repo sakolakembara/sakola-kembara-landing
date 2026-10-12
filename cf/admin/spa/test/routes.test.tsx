@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, test } from "vitest";
@@ -137,7 +137,8 @@ describe("placeholder pages", () => {
       const view = renderApp(path);
       expect(await screen.findByRole("heading", { level: 1, name: title }), path).toBeTruthy();
       expect(screen.getByText("Belum tersedia di admin baru"), path).toBeTruthy();
-      expect(document.title).toBe(`${title} | Admin Sakola Kembara`);
+      // The tab title is set in an effect that can land just after the heading is drawn.
+      await waitFor(() => expect(document.title, path).toBe(`${title} | Admin Sakola Kembara`));
       view.unmount();
     }
   });

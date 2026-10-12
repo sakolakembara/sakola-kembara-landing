@@ -1,12 +1,15 @@
-import { type FormEvent, type SVGProps, useEffect, useRef, useState } from "react";
+import { type FormEvent, type SVGProps, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { TurnstileWidget } from "~/components/TurnstileWidget";
 import { api } from "~/lib/api";
 import { GENERIC_SIGN_IN_ERROR, queryErrorMessage, signInFailureMessage } from "~/lib/auth-errors";
 import { focusFirstInvalid, useAutoFocus, usePageTitle, useSubmitLock } from "~/lib/hooks";
 import { safeFrom } from "~/lib/guard";
+import { usePublicConfig } from "~/lib/public-config";
+import { useTurnstile } from "~/lib/turnstile";
 import { type FieldErrors, validateLogin } from "~/lib/validation";
 import { AuthShell } from "./AuthShell";
 
@@ -33,21 +36,12 @@ export function LoginPage() {
 
   const [message, setMessage] = useState<string | null>(errorParam ? queryErrorMessage(errorParam) : null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<"email" | "password">>({});
-  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const { google: googleEnabled, turnstileSiteKey } = usePublicConfig();
+  const turnstile = useTurnstile("login", turnstileSiteKey);
   const { pending, run } = useSubmitLock();
   const form = useRef<HTMLFormElement>(null);
   const emailInput = useRef<HTMLInputElement>(null);
   useAutoFocus(emailInput);
-
-  useEffect(() => {
-    let cancelled = false;
-    api<{ google: boolean }>("/api/config").then((result) => {
-      if (!cancelled && result.ok) setGoogleEnabled(result.data.google === true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,11 +54,15 @@ export function LoginPage() {
       return;
     }
     setFieldErrors({});
+    // The button is disabled until the check has a token; this covers a submit that does not come from it (a script).
+    if (turnstile.blocked) return;
     void run(async () => {
       setMessage(null);
       const result = await api("/api/auth/sign-in/email", {
         method: "POST",
         json: { ...checked.values, callbackURL: VERIFY_CALLBACK },
+        // Spent by this request whatever the answer; take() starts the next challenge.
+        turnstileToken: turnstile.take(),
       });
       if (result.ok) {
         navigate(from ?? "/", { replace: true });
@@ -120,8 +118,9 @@ export function LoginPage() {
         >
           <Input type="password" name="password" required autoComplete="current-password" />
         </Field>
-        <Button type="submit" fullWidth disabled={pending}>
-          {pending ? "Memproses…" : "Masuk"}
+        <TurnstileWidget turnstile={turnstile} />
+        <Button type="submit" fullWidth disabled={pending || turnstile.blocked}>
+          {pending ? "Memproses…" : turnstile.checking ? "Memeriksa…" : "Masuk"}
         </Button>
       </form>
       {googleEnabled && (

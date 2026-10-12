@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
+  CAPTCHA_FAILED_MESSAGE,
+  CAPTCHA_UNAVAILABLE_MESSAGE,
+  EMAIL_UNAVAILABLE_MESSAGE,
   GENERIC_SIGN_IN_ERROR,
   NETWORK_ERROR,
   queryErrorMessage,
@@ -8,6 +11,7 @@ import {
   resetRequestFailureMessage,
   signInFailureMessage,
   verifyOutcome,
+  WIDGET_ERROR_MESSAGE,
 } from "~/lib/auth-errors";
 import { formatWait } from "~/lib/format";
 
@@ -68,6 +72,48 @@ describe("resetRequestFailureMessage", () => {
   });
   test("the success line does not say whether the account exists", () => {
     expect(RESET_REQUESTED_MESSAGE.startsWith("Kalau email tersebut terdaftar")).toBe(true);
+  });
+});
+
+// The Worker's answers to the security check and to a route that must send an
+// email. The codes are pinned against the real Worker in test/spa-contract.test.ts.
+describe("the security check and the email service", () => {
+  test("captcha_failed on sign-in and on forgot-password: ask to try again", () => {
+    expect(signInFailureMessage({ status: 403, code: "captcha_failed" })).toBe(
+      "Verifikasi keamanan gagal. Tunggu pemeriksaan selesai, lalu coba lagi.",
+    );
+    expect(resetRequestFailureMessage({ status: 403, code: "captcha_failed" })).toBe(CAPTCHA_FAILED_MESSAGE);
+    expect(signInFailureMessage({ status: 403, code: "captcha_failed" })).toBe(CAPTCHA_FAILED_MESSAGE);
+  });
+
+  test("captcha_unavailable on sign-in and on forgot-password: try again later", () => {
+    expect(signInFailureMessage({ status: 503, code: "captcha_unavailable" })).toBe(
+      "Verifikasi keamanan sedang tidak tersedia. Coba lagi beberapa saat lagi.",
+    );
+    expect(resetRequestFailureMessage({ status: 503, code: "captcha_unavailable" })).toBe(CAPTCHA_UNAVAILABLE_MESSAGE);
+  });
+
+  test("email_unavailable on forgot-password: the link could not be sent", () => {
+    expect(resetRequestFailureMessage({ status: 503, code: "email_unavailable" })).toBe(
+      "Layanan email sedang tidak tersedia, jadi tautan belum bisa dikirim. Silakan coba lagi nanti.",
+    );
+    expect(resetRequestFailureMessage({ status: 503, code: "email_unavailable" })).toBe(EMAIL_UNAVAILABLE_MESSAGE);
+  });
+
+  test("the three lines are different, so a person can tell what happened", () => {
+    expect(new Set([CAPTCHA_FAILED_MESSAGE, CAPTCHA_UNAVAILABLE_MESSAGE, EMAIL_UNAVAILABLE_MESSAGE, WIDGET_ERROR_MESSAGE]).size).toBe(4);
+  });
+
+  test("the code decides, not the status, and a limit still wins", () => {
+    // Rate limits are counted before the check, so a 429 never carries a captcha code; if it did, the wait is what matters.
+    expect(signInFailureMessage({ status: 429, code: "captcha_failed", retryAfter: 60 })).toContain("1 menit");
+    expect(signInFailureMessage({ status: 500, code: "captcha_failed" })).toBe(CAPTCHA_FAILED_MESSAGE);
+    expect(signInFailureMessage({ status: 403, code: "CAPTCHA_FAILED" })).toBe(GENERIC_SIGN_IN_ERROR);
+  });
+
+  test("email_unavailable says nothing about the account, and sign-in does not claim it", () => {
+    expect(resetRequestFailureMessage({ status: 503, code: "email_unavailable" })).not.toMatch(/terdaftar|akun/i);
+    expect(signInFailureMessage({ status: 503, code: "email_unavailable" })).toBe(GENERIC_SIGN_IN_ERROR);
   });
 });
 

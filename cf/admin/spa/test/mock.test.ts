@@ -1,9 +1,10 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, setTransport } from "~/lib/api";
 import { parseDashboard } from "~/lib/dashboard";
 import { parseMe } from "~/lib/me";
 import { parsePersona } from "~/mock/persona";
 import { createMockTransport, type MockConfig } from "~/mock/transport";
+import { installMockTurnstile, MOCK_SITE_KEY, MOCK_TOKEN_PREFIX } from "~/mock/turnstile";
 
 // The mock is not shipped, but it is how the screens are reviewed without a
 // backend, so it has to keep speaking the same shapes as the real API.
@@ -26,6 +27,21 @@ describe("parsePersona", () => {
   });
 });
 
+/** What the sign-in page sends: the made-up token the mock widget hands out, in the real header. */
+function signIn(local: string, token?: string) {
+  return api("/api/auth/sign-in/email", {
+    method: "POST",
+    json: { email: `${local}@contoh.test`, password: "x" },
+    turnstileToken: token,
+  });
+}
+const forgot = (local: string, token?: string) =>
+  api("/api/auth/request-password-reset", {
+    method: "POST",
+    json: { email: `${local}@contoh.test`, redirectTo: "/reset-password" },
+    turnstileToken: token,
+  });
+
 function setup(overrides: Partial<MockConfig> = {}) {
   let signedIn = false;
   setTransport(
@@ -43,7 +59,7 @@ describe("mock transport", () => {
   test("no session until sign-in, and again after sign-out", async () => {
     setup();
     expect(await api("/api/me")).toMatchObject({ ok: false, status: 401 });
-    expect((await api("/api/auth/sign-in/email", { method: "POST", json: { email: "ani@contoh.test", password: "x" } })).ok).toBe(true);
+    expect((await signIn("ani", "mock-turnstile-token-1")).ok).toBe(true);
     const me = await api<unknown>("/api/me");
     expect(me.ok && parseMe(me.data)).toMatchObject({
       role: "editor",
@@ -55,11 +71,12 @@ describe("mock transport", () => {
 
   test("the documented sign-in failures", async () => {
     setup();
-    const signIn = (local: string) => api("/api/auth/sign-in/email", { method: "POST", json: { email: `${local}@contoh.test`, password: "x" } });
-    expect(await signIn("salah")).toMatchObject({ ok: false, status: 401, code: "INVALID_EMAIL_OR_PASSWORD" });
-    expect(await signIn("belum-verifikasi")).toMatchObject({ ok: false, status: 403, code: "EMAIL_NOT_VERIFIED" });
-    expect(await signIn("dibatasi")).toMatchObject({ ok: false, status: 429, retryAfter: 60 });
-    expect(await signIn("offline")).toEqual({ ok: false, status: 0 });
+    let n = 0;
+    const attempt = (local: string) => signIn(local, `${MOCK_TOKEN_PREFIX}f${(n += 1)}`);
+    expect(await attempt("salah")).toMatchObject({ ok: false, status: 401, code: "INVALID_EMAIL_OR_PASSWORD" });
+    expect(await attempt("belum-verifikasi")).toMatchObject({ ok: false, status: 403, code: "EMAIL_NOT_VERIFIED" });
+    expect(await attempt("dibatasi")).toMatchObject({ ok: false, status: 429, retryAfter: 60 });
+    expect(await attempt("offline")).toEqual({ ok: false, status: 0 });
   });
 
   test("reset: any token works except the spent one", async () => {
@@ -95,5 +112,87 @@ describe("mock transport", () => {
   test("an unknown route is a 404", async () => {
     setup();
     expect(await api("/api/nope")).toMatchObject({ ok: false, status: 404 });
+  });
+});
+
+describe("the mock's security check", () => {
+  test("/api/config offers a site key, so the pages draw the (mock) widget", async () => {
+    setup();
+    expect(await api("/api/config")).toEqual({ ok: true, data: { google: true, turnstileSiteKey: MOCK_SITE_KEY } });
+  });
+
+  test("sign-in and forgot-password refuse a request without a made-up token, like the Worker", async () => {
+    setup();
+    expect(await signIn("ani")).toMatchObject({ ok: false, status: 403, code: "captcha_failed" });
+    expect(await forgot("ani")).toMatchObject({ ok: false, status: 403, code: "captcha_failed" });
+    expect(await signIn("ani", "not-from-the-widget")).toMatchObject({ ok: false, status: 403, code: "captcha_failed" });
+    expect((await forgot("ani", `${MOCK_TOKEN_PREFIX}1`)).ok).toBe(true);
+  });
+
+  test("a token works once: a page that forgets to reset the widget meets captcha_failed here too", async () => {
+    setup();
+    expect(await signIn("salah", `${MOCK_TOKEN_PREFIX}7`)).toMatchObject({ ok: false, status: 401 }); // spent, whatever the answer
+    expect(await signIn("ani", `${MOCK_TOKEN_PREFIX}7`)).toMatchObject({ ok: false, status: 403, code: "captcha_failed" });
+    expect((await signIn("ani", `${MOCK_TOKEN_PREFIX}8`)).ok).toBe(true);
+  });
+
+  test("the documented addresses: captcha-gagal, captcha-tidak-tersedia, email-tidak-tersedia", async () => {
+    setup();
+    expect(await signIn("captcha-gagal", `${MOCK_TOKEN_PREFIX}1`)).toMatchObject({ ok: false, status: 403, code: "captcha_failed" });
+    expect(await signIn("captcha-tidak-tersedia", `${MOCK_TOKEN_PREFIX}2`)).toMatchObject({ ok: false, status: 503, code: "captcha_unavailable" });
+    expect(await forgot("captcha-gagal", `${MOCK_TOKEN_PREFIX}3`)).toMatchObject({ ok: false, status: 403, code: "captcha_failed" });
+    expect(await forgot("captcha-tidak-tersedia", `${MOCK_TOKEN_PREFIX}4`)).toMatchObject({ ok: false, status: 503, code: "captcha_unavailable" });
+    expect(await forgot("email-tidak-tersedia", `${MOCK_TOKEN_PREFIX}5`)).toMatchObject({ ok: false, status: 503, code: "email_unavailable" });
+  });
+
+  test("in the Worker's order: no email service, then the rate limit, then the token", async () => {
+    setup();
+    expect(await forgot("email-tidak-tersedia")).toMatchObject({ status: 503, code: "email_unavailable" }); // no token needed to hear it
+    expect(await forgot("dibatasi")).toMatchObject({ status: 429, retryAfter: 60 });
+    expect(await signIn("dibatasi")).toMatchObject({ status: 429, retryAfter: 60 });
+  });
+});
+
+describe("the mock widget", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    delete window.turnstile;
+  });
+
+  test("solves itself after a moment, and again after every reset, with a new made-up token each time", () => {
+    vi.useFakeTimers();
+    installMockTurnstile();
+    const box = document.createElement("div");
+    const tokens: string[] = [];
+    const id = window.turnstile!.render(box, {
+      sitekey: MOCK_SITE_KEY,
+      action: "login",
+      theme: "light",
+      size: "flexible",
+      language: "id",
+      callback: (token) => tokens.push(token),
+      "expired-callback": () => {},
+      "timeout-callback": () => {},
+      "error-callback": () => {},
+    })!;
+    expect(box.textContent).toContain("memeriksa");
+    expect(tokens).toEqual([]);
+
+    vi.advanceTimersByTime(1000);
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0]).toMatch(new RegExp(`^${MOCK_TOKEN_PREFIX}`));
+    expect(box.textContent).toContain("berhasil");
+
+    window.turnstile!.reset(id);
+    expect(box.textContent).toContain("memeriksa");
+    vi.advanceTimersByTime(1000);
+    expect(tokens).toHaveLength(2);
+    expect(tokens[1]).not.toBe(tokens[0]);
+
+    window.turnstile!.remove(id);
+    expect(box.textContent).toBe("");
+    window.turnstile!.reset(id); // unknown now: nothing happens
+    vi.advanceTimersByTime(5000);
+    expect(tokens).toHaveLength(2);
   });
 });
