@@ -17,7 +17,7 @@ describe("Field", () => {
     expect(html).toContain('for="email"');
     expect(html).toContain('id="email"');
     expect(html).toContain('aria-describedby="email-hint"');
-    expect(html).not.toContain("aria-invalid");
+    expect(html).not.toContain('aria-invalid="');
   });
 
   it("swaps the hint for the error and marks the input invalid", () => {
@@ -34,6 +34,12 @@ describe("Field", () => {
     expect(html).toContain('aria-invalid="true"');
     expect(html).toContain("Format email belum benar.");
     expect(html).not.toContain("Petunjuk");
+  });
+
+  it("styles an invalid control with a red border, also while focused", () => {
+    const html = renderToStaticMarkup(h(Input, { type: "email", "aria-invalid": true }));
+    expect(html).toContain("aria-invalid:border-danger-fg");
+    expect(html).toContain("aria-invalid:focus:border-danger-fg");
   });
 });
 
