@@ -24,13 +24,16 @@ export function batchSummary(batch: DashboardBatch): { text: string; attention: 
 
 /**
  * "Perlu perhatian": what is waiting for someone, each tile a link to the list
- * already filtered to it (the filters are in the URL: docs/cloudflare/admin-ia.md).
- * Tiles with something to do take the amber look of the legacy stat cards.
+ * already filtered to it. The server decides which tiles there are (only those
+ * of areas the caller may see) and where each leads (`to`); this draws what it
+ * is given, in a fixed order. Tiles with something to do take the amber look of
+ * the legacy stat cards. When there is nothing to show, or every count is zero
+ * and no batch needs a look, it says so.
  */
 export function Attention({ attention }: { attention: Dashboard["attention"] }) {
   const { pendingApplications, underReviewApplications, unreadMessages, batch } = attention;
   const batchInfo = batch ? batchSummary(batch) : null;
-  const nothing = pendingApplications === 0 && underReviewApplications === 0 && unreadMessages === 0 && !batch;
+  const nothing = (pendingApplications?.count ?? 0) === 0 && (underReviewApplications?.count ?? 0) === 0 && (unreadMessages?.count ?? 0) === 0 && !batch;
 
   return (
     <section aria-labelledby="dash-attention" className="mb-8">
@@ -43,30 +46,36 @@ export function Attention({ attention }: { attention: Dashboard["attention"] }) 
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Tile
-            to="/applications?status=pending"
-            icon={UserPlus}
-            label="Pendaftar pending"
-            value={String(pendingApplications)}
-            attention={pendingApplications > 0}
-          />
-          <Tile
-            to="/applications?status=under_review"
-            icon={ClipboardCheck}
-            label="Pendaftar dalam review"
-            value={String(underReviewApplications)}
-            attention={underReviewApplications > 0}
-          />
-          <Tile
-            to="/messages?filter=unread"
-            icon={Inbox}
-            label="Pesan belum dibaca"
-            value={String(unreadMessages)}
-            attention={unreadMessages > 0}
-          />
+          {pendingApplications && (
+            <Tile
+              to={pendingApplications.to}
+              icon={UserPlus}
+              label="Pendaftar pending"
+              value={String(pendingApplications.count)}
+              attention={pendingApplications.count > 0}
+            />
+          )}
+          {underReviewApplications && (
+            <Tile
+              to={underReviewApplications.to}
+              icon={ClipboardCheck}
+              label="Pendaftar dalam review"
+              value={String(underReviewApplications.count)}
+              attention={underReviewApplications.count > 0}
+            />
+          )}
+          {unreadMessages && (
+            <Tile
+              to={unreadMessages.to}
+              icon={Inbox}
+              label="Pesan belum dibaca"
+              value={String(unreadMessages.count)}
+              attention={unreadMessages.count > 0}
+            />
+          )}
           {batch && batchInfo && (
             <Tile
-              to={`/batches/${encodeURIComponent(batch.id)}`}
+              to={batch.to}
               icon={CalendarRange}
               label={`Batch ${batch.year}`}
               value={batchInfo.text}

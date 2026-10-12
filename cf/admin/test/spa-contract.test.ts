@@ -10,10 +10,12 @@ import {
   verifyOutcome,
 } from "../spa/src/lib/auth-errors";
 import { parsePublicConfig, TURNSTILE_HEADER as SPA_TURNSTILE_HEADER, TURNSTILE_ROUTES } from "../spa/src/lib/captcha";
+import { expectedDashboardTiles, parseDashboard } from "../spa/src/lib/dashboard";
 import { decideGuard } from "../spa/src/lib/guard";
 import { parseMe } from "../spa/src/lib/me";
-import { visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
+import { navItemFor, visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
 import { findPolicy } from "../src/auth/gate";
+import * as schema from "../src/db/schema";
 import { TURNSTILE_HEADER as WORKER_TURNSTILE_HEADER, TURNSTILE_TEST_SECRETS, TURNSTILE_TEST_SITE_KEYS } from "../src/security/turnstile";
 import {
   call,
@@ -30,6 +32,7 @@ import {
   signUp,
   uniqueEmail,
 } from "./helpers";
+import { DAY, insertMany, orm } from "./public-helpers";
 
 // What the SPA sends and expects back, checked against the real Worker in
 // workerd. The SPA tests (spa/test) stub the API, so these are what keep the
@@ -277,6 +280,75 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
     expect(me.role).toBe("student");
     expect(visibleNav(me)).toEqual([]);
     expect(decideGuard({ status: "ready", me }, { pathname: "/" }).kind).toBe("no-admin-access");
+  });
+});
+
+// GET /api/dashboard as the SPA reads it (SAKEM-082): the real answer of the
+// Worker, for every role and combination of areas, through the SPA's own parser,
+// and each link in it against the SPA's own menu.
+describe("/api/dashboard as the SPA reads it", () => {
+  async function world() {
+    const batchId = crypto.randomUUID();
+    await orm()
+      .insert(schema.admissionBatches)
+      .values({ id: batchId, year: 2026, name: "Batch contoh", opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY) });
+    await insertMany(schema.studentApplications, [
+      { batchId, fullName: "Contoh Satu", email: "satu@example.test", whatsapp: "0800", schoolName: "SMA Contoh", graduationYear: "2026", status: "pending" as const },
+      { batchId, fullName: "Contoh Dua", email: "dua@example.test", whatsapp: "0800", schoolName: "SMA Contoh", graduationYear: "2026", status: "under_review" as const },
+    ]);
+    await insertMany(schema.contactMessages, [{ fullName: "Contoh Tiga", email: "tiga@example.test", subject: "other" as const, message: "Halo" }]);
+  }
+
+  const personas: [string, "viewer" | "editor" | "super_admin", ("pendaftaran" | "komunikasi" | "konten")[]][] = [
+    ["a viewer", "viewer", []],
+    ["a super_admin", "super_admin", []],
+    ["an editor of every area", "editor", ["pendaftaran", "komunikasi", "konten"]],
+    ["an editor of pendaftaran", "editor", ["pendaftaran"]],
+    ["an editor of komunikasi", "editor", ["komunikasi"]],
+    ["an editor of konten", "editor", ["konten"]],
+    ["an editor of komunikasi and konten", "editor", ["komunikasi", "konten"]],
+    ["an editor with no areas", "editor", []],
+  ];
+
+  test.each(personas)("%s: the answer parses, has as many tiles as the SPA expects, and every link leads to a page they may open", async (_label, role, granted) => {
+    await world();
+    const cookie = await signedInCookie(uniqueEmail(role), role, granted);
+    const me = parseMe(await (await call("/api/me", { cookie })).json())!;
+    const res = await call("/api/dashboard", { cookie });
+    expect(res.status).toBe(200);
+    const dashboard = parseDashboard(await res.json());
+    expect(dashboard).not.toBeNull();
+
+    // The loading placeholders are as many as the tiles that arrive.
+    expect(Object.keys(dashboard!.attention)).toHaveLength(expectedDashboardTiles(me));
+
+    const links = [
+      dashboard!.attention.pendingApplications?.to,
+      dashboard!.attention.underReviewApplications?.to,
+      dashboard!.attention.unreadMessages?.to,
+      dashboard!.attention.batch?.to,
+    ].filter((to): to is string => to !== undefined);
+    for (const to of links) {
+      const item = navItemFor(new URL(to, "http://admin.invalid").pathname);
+      expect(item, to).not.toBeNull(); // a route the SPA has
+      expect(accessTo(me, item!.section), `${role} [${granted}] ${to}`).not.toBe("none"); // and one this user can open
+    }
+  });
+
+  test("the filters in the links are the ones the lists read (status and filter values the placeholders already name)", async () => {
+    await world();
+    const cookie = await signedInCookie(uniqueEmail("viewer"), "viewer");
+    const { attention } = parseDashboard(await (await call("/api/dashboard", { cookie })).json())!;
+    expect(attention.pendingApplications).toEqual({ count: 1, to: "/applications?status=pending" });
+    expect(attention.underReviewApplications).toEqual({ count: 1, to: "/applications?status=under_review" });
+    expect(attention.unreadMessages).toEqual({ count: 1, to: "/messages?filter=unread" });
+    expect(attention.batch).toMatchObject({ year: 2026, phase: "awaiting_decisions", undecided: 2 });
+  });
+
+  test("a student is refused, and the SPA reads that as an error it can show (403)", async () => {
+    const res = await call("/api/dashboard", { cookie: await signedInCookie(uniqueEmail("student"), "student") });
+    expect(res.status).toBe(403);
+    expect(parseDashboard(await res.json())).toBeNull();
   });
 });
 

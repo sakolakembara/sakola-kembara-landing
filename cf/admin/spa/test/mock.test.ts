@@ -42,6 +42,9 @@ const forgot = (local: string, token?: string) =>
     turnstileToken: token,
   });
 
+/** A session that is already there, for the tests that are not about signing in. */
+const SIGNED_IN: MockConfig["session"] = { get: () => true, set: () => {} };
+
 function setup(overrides: Partial<MockConfig> = {}) {
   let signedIn = false;
   setTransport(
@@ -89,16 +92,41 @@ describe("mock transport", () => {
     });
   });
 
-  test("the dashboard answers in the documented shape, in every mode", async () => {
-    for (const dashboard of ["ready", "empty"] as const) {
-      setup({ dashboard });
-      const result = await api<unknown>("/api/dashboard");
-      expect(result.ok && parseDashboard(result.data), dashboard).not.toBeNull();
+  test("the dashboard answers in the documented shape, in every mode, for every persona", async () => {
+    for (const persona of ["viewer", "editor", "editor:konten", "editor:komunikasi", "editor:-", "super_admin"]) {
+      for (const dashboard of ["ready", "empty"] as const) {
+        setup({ dashboard, persona: parsePersona(persona), session: SIGNED_IN });
+        const result = await api<unknown>("/api/dashboard");
+        expect(result.ok && parseDashboard(result.data), `${persona} ${dashboard}`).not.toBeNull();
+      }
     }
-    setup({ dashboard: "error" });
+    setup({ dashboard: "error", session: SIGNED_IN });
     expect(await api("/api/dashboard")).toMatchObject({ ok: false, status: 500 });
-    setup({ dashboard: "unavailable" });
+    setup({ dashboard: "unavailable", session: SIGNED_IN });
     expect(await api("/api/dashboard")).toMatchObject({ ok: false, status: 404 });
+  });
+
+  test("the mock dashboard holds only what the persona may see, like the Worker", async () => {
+    const attentionOf = async (persona: string) => {
+      setup({ persona: parsePersona(persona), session: SIGNED_IN });
+      const result = await api<{ attention: Record<string, unknown> }>("/api/dashboard");
+      return result.ok ? Object.keys(result.data.attention).sort() : result;
+    };
+    const full = ["batch", "pendingApplications", "underReviewApplications", "unreadMessages"];
+    expect(await attentionOf("super_admin")).toEqual(full);
+    expect(await attentionOf("viewer")).toEqual(full);
+    expect(await attentionOf("editor")).toEqual(full);
+    expect(await attentionOf("editor:pendaftaran")).toEqual(["batch", "pendingApplications", "underReviewApplications"]);
+    expect(await attentionOf("editor:komunikasi")).toEqual(["unreadMessages"]);
+    expect(await attentionOf("editor:konten")).toEqual([]);
+    expect(await attentionOf("editor:-")).toEqual([]);
+  });
+
+  test("the mock dashboard is refused to a student and to nobody signed in, like the Worker", async () => {
+    setup({ persona: { role: "student", granted: [] }, session: SIGNED_IN });
+    expect(await api("/api/dashboard")).toMatchObject({ ok: false, status: 403 });
+    setup();
+    expect(await api("/api/dashboard")).toMatchObject({ ok: false, status: 401 });
   });
 
   test("a viewer cannot create an announcement, like the Worker", async () => {
