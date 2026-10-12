@@ -179,6 +179,16 @@ describe("deactivate", () => {
     expect(api.calls.filter((call) => call.method === "POST")).toEqual([]);
   });
 
+  // Negative check: the screen stops asking for the kit's red button (`destructive: true` of the deactivate action).
+  test("the confirm button is the kit's red one (it takes a person's way in away), and 'Batal' stays neutral", async () => {
+    const user = userEvent.setup();
+    const { dialog } = await ask(user);
+    const confirm = within(dialog).getByRole("button", { name: "Nonaktifkan" });
+    expect(confirm.className).toContain("bg-red-600");
+    expect(confirm.className).not.toContain("bg-primary-blue");
+    expect(within(dialog).getByRole("button", { name: "Batal" }).className).not.toContain("bg-red-600");
+  });
+
   test("confirming sends the POST once, however often it is pressed, then a notice and a fresh list", async () => {
     const user = userEvent.setup();
     const gate = deferred<Response>();
@@ -246,7 +256,11 @@ describe("reactivate", () => {
     const dialog = await screen.findByRole("alertdialog", { name: "Aktifkan kembali admin?" });
     expect(dialog.textContent).toContain("bisa masuk lagi dengan peran Viewer");
     expect(dialog.textContent).toContain("Sesi yang lama tidak dipulihkan");
-    await user.click(within(dialog).getByRole("button", { name: "Aktifkan kembali" }));
+    // A way back, not a loss: the kit's primary button, not the red one.
+    const confirm = within(dialog).getByRole("button", { name: "Aktifkan kembali" });
+    expect(confirm.className).toContain("bg-primary-blue");
+    expect(confirm.className).not.toContain("bg-red-600");
+    await user.click(confirm);
     expect((await screen.findByRole("status")).textContent).toContain("Admin dewi@contoh.test diaktifkan kembali.");
     expect(api.count(`POST ${LIST}/u1/reactivate`)).toBe(1);
     expect(api.count(`GET ${LIST}`)).toBe(2);

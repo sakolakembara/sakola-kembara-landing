@@ -18,6 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply sakem-admin --local",
     "db:seed:local": "tsx scripts/seed.ts",
+    "first-admin": "tsx scripts/create-first-admin.ts",
+    "check:first-admin": "node scripts/check-first-admin.mjs",
     "db:drift": "node scripts/check-migrations.mjs",
     "measure": "tsx scripts/measure.ts",
     "measure:public": "node scripts/measure-public.mjs",

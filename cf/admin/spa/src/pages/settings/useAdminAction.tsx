@@ -23,7 +23,11 @@ export interface AdminActionOptions {
   describe: (row: AdminItem) => ReactNode;
   confirmLabel: string;
   pendingLabel: string;
-  /** Red button. Neither verb here is final (an account is never deleted), so the screens leave it off. */
+  /**
+   * The kit's red button, for what takes something away from a person: "Nonaktifkan" ends their sessions and their
+   * way in at once, so it is red even though it can be undone. A way back ("Aktifkan kembali") leaves it off and
+   * keeps the kit's primary button. Default off.
+   */
   destructive?: boolean;
   onDone: (row: AdminItem) => void;
   onReload: () => void;

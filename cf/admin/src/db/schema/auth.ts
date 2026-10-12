@@ -23,8 +23,10 @@ export const users = sqliteTable(
      * deactivated user cannot sign in by any method and every session was
      * revoked at that moment; the row, its audit trail and its role stay.
      * Additional field for Better Auth (`input: false`), so no client can set it.
-     * The migration also adds a trigger that refuses to remove the last active
-     * super_admin (see migrations/0006_keep_one_super_admin.sql).
+     * The migrations also add a trigger that refuses to remove the last super_admin
+     * who can sign in (not deactivated, email verified, has an account): see
+     * migrations/0006_keep_one_super_admin.sql and, for the current definition and
+     * the view it reads, migrations/0010_last_super_admin_signin.sql.
      */
     deactivatedAt: timestampMs("deactivated_at"),
     createdAt: createdAt(),

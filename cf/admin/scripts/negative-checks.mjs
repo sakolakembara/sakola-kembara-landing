@@ -622,7 +622,7 @@ const checks = [
   // ------------------------------------------------------- admin users API
   {
     name: "the last super_admin trigger does nothing",
-    file: "migrations/0006_keep_one_super_admin.sql",
+    file: "migrations/0010_last_super_admin_signin.sql",
     from: "SELECT RAISE(ABORT, 'last_super_admin');",
     to: "SELECT 1;",
     tests: "test/admin-users.test.ts",

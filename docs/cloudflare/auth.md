@@ -17,7 +17,8 @@ Decided by Dzul, not reopened here: passwords stay for students and admins; Goog
 | **Sign in** | `POST /api/auth/sign-in/email`. An unverified account answers 403 `EMAIL_NOT_VERIFIED` and gets a fresh link; a deactivated one 403 `ACCOUNT_DEACTIVATED`. |
 | **Forgot password** | `POST /api/auth/request-password-reset`, same answer for every address. The link (30 minutes, single use) goes to the SPA with `?token=`; `POST /api/auth/reset-password` redeems it. **All sessions of that user end.** Redeeming proves the mailbox, so it also marks the address verified. |
 | **Google** | `POST /api/auth/sign-in/social` then the callback. Disabled (and the route absent) until both Google variables are set. See [account linking](#account-linking). |
-| **Admin invited** | A super_admin posts `POST /api/admin/users`. The invitee gets a link valid 7 days; opening it lands on `/reset-password?invite=1&token=...`, they choose a password, and from then on they sign in like anyone. |
+| **First super_admin** | There is no public sign-up and Pengaturan needs a super_admin, so the first one on an empty database comes from outside the app: the owner runs `pnpm first-admin` on their own machine. [`first-super-admin.md`](first-super-admin.md). |
+| **Admin invited** | A super_admin posts `POST /api/admin/users`. The invitee gets a link valid 7 days; opening it lands on `/reset-password?invite=1&token=...`, they choose a password, and from then on they sign in like anyone. Until they do, an invited super_admin is **not** counted as one who can sign in ([the last super_admin](#the-last-super_admin)). |
 | **Admin deactivated** | Sessions deleted now, sign-in refused by every method, outstanding links deleted. Reversible. |
 | **Sign out** | `POST /api/auth/sign-out`. |
 
@@ -190,13 +191,38 @@ All routes need the `sistem` area (super_admin). Every mutation and its audit ro
 | `GET /api/admin/users/:id` | One admin, `{ item }`, with an `ETag` (the admin's `updatedAt`). |
 | `PUT /api/admin/users/:id` | The edit form as one change: `{ name, role, areas }` with `If-Match` (428 without, 409 `stale`), one transaction, one `admin.update` audit row; 409 `last_super_admin` with the `role` field. [`admin-sistem.md`](admin-sistem.md#43-the-edit-form-one-put). |
 | `POST /api/admin/users` | `{ email, name?, role, password?, areas? }`, `role` one of `viewer`, `editor`, `super_admin`; `areas` only for an editor, saved with the account. **Without `password` it is an invitation**: the account exists (unverified, no password) and an email carries a 7-day link. **With `password`** the account can sign in once its verification email is confirmed (nothing is verified on the super_admin's word: a typo in the address must not hand someone an admin account). 201 `{ item, user, email: { sent, kind } }`; 409 `email_taken` for an address with any account (students are not promoted here); 400 `invalid`; 503 when production has no email provider; **502** with the created user when the email did not go out. |
-| `PATCH /api/admin/users/:id` | `{ role?, name? }`. Moving away from `editor` removes that user's area grants in the same transaction. 409 `last_super_admin` (legacy message) when it would leave no active super_admin. No change = 200 and no audit row. |
+| `PATCH /api/admin/users/:id` | `{ role?, name? }`. Moving away from `editor` removes that user's area grants in the same transaction. 409 `last_super_admin` (legacy message) when it would leave no super_admin who can sign in ([the rule](#the-last-super_admin)). No change = 200 and no audit row. |
 | `POST /api/admin/users/:id/deactivate` | Sets `deactivated_at`, deletes the sessions and any outstanding reset or invite links. Idempotent. 409 `cannot_deactivate_self`, 409 `last_super_admin`. |
 | `POST /api/admin/users/:id/reactivate` | Clears it. They sign in again; old sessions are not restored. Idempotent. |
 | `POST /api/admin/users/:id/resend-invite` | Only while `status` is `invited`: a new link, the old one stops working. 409 `not_pending_invite` otherwise. |
 | `PUT /api/admin/users/:id/areas` | Part A. |
 
-**The last super_admin.** The API answers 409 first; underneath, migration `0006_keep_one_super_admin.sql` is a trigger that aborts any `UPDATE` of `role` or `deactivated_at` that would leave no active super_admin. It runs inside the same transaction, so two super_admins demoting or deactivating each other at the same moment cannot both succeed (tested with concurrent requests: one 200, one 409) and neither can a script.
+### The last super_admin
+
+Pengaturan is the only place admins are invited, given areas or deactivated, so the system must never be left without a super_admin who can open it. The rule, since SAKEM-087 (migration `0010_last_super_admin_signin.sql`): **the last super_admin who can sign in can be neither demoted nor deactivated.**
+
+**Who "can sign in".** A super_admin counts when all three hold. They are the conditions the sign-in itself enforces, so the count cannot say "yes" for someone who would be turned away:
+
+| Condition | Why it is the sign-in's own condition |
+| --- | --- |
+| `deactivated_at` is null | The session hook (`databaseHooks.session.create.before` in `src/auth/factory.ts`) refuses a session to a deactivated account, by every method. |
+| `email_verified = 1` | `emailAndPassword.requireEmailVerification` is on: a password sign-in of an unverified address is refused (403 `EMAIL_NOT_VERIFIED`), and Google only links to a local account whose address is verified. An invited admin becomes verified only by redeeming the invite link (`onPasswordReset` sets it); one created with a password only by opening the verification email. |
+| an `account` row exists | A password (`credential`) or a linked Google account. An invitation nobody has accepted has none: the invite link is what creates the credential account. |
+
+The first version of the rule (migration `0006`) asked only for `deactivated_at is null`, so an invitation nobody had opened counted. The only super_admin who could sign in could then step down while the other had never accepted, and nobody could open Pengaturan again.
+
+**One definition, two readers.** It lives in one place, the view `signable_super_admins` (the ids of the super_admins who can sign in). The trigger `users_keep_one_super_admin` and the API (`wouldLeaveNoSignableSuperAdmin` in `src/api/admin-users.ts`) both read the view, so the friendly 409 and the guarantee underneath it cannot drift apart. Changing the definition means a new migration that replaces the view.
+
+**What it does.** The API answers 409 first, from one read (is this person one of them, and is there another?), before anything is written. Underneath, the trigger aborts any `UPDATE` of `role` or `deactivated_at` that would take the last one out, inside the same transaction, so two super_admins demoting or deactivating each other at the same moment cannot both succeed (tested with concurrent requests, with an unopened invitation waiting as the tempting third: one 200, one 409) and neither can a script. Messages and status codes are the legacy ones.
+
+**What it does not guard.** Someone who cannot sign in anyway (a pending invitation, a deactivated account) takes nobody away when they are demoted or deactivated, so that is allowed. Statements that change the three conditions by another route are not guarded either, as before: no API route deletes a user or an account, unlinks a provider or un-verifies an address (Better Auth's `delete-user`, `change-email` and `unlink-account` are not exposed, see the route table), and a direct `DELETE` or `UPDATE` by the owner on the database is the owner's to do carefully. A password-created admin whose verification link is still unopened shows as "Aktif" in the list (it has an account) but does not count: [Open decisions of `admin-sistem.md`](admin-sistem.md#open-decisions).
+
+**Deploy order.** Apply `0010` before the Worker that reads the view: the old Worker keeps working on the new trigger (stricter, same 409 and message), the new Worker on the old schema fails on the missing view. After applying it to a real database, check the guard is there:
+
+```sql
+SELECT type, name FROM sqlite_master WHERE name IN ('signable_super_admins', 'users_keep_one_super_admin');
+-- two rows: a view and a trigger
+```
 
 **Invite links** are Better Auth reset tokens (same table, same hashing, same `/reset-password` endpoint), created by us with a 7-day life instead of 30 minutes. Redeeming one sets the password, marks the address verified, ends any session and is single use. The SPA route that receives it is `/reset-password?invite=1&token=...`.
 
@@ -250,7 +276,7 @@ pnpm dev                        # builds the SPA, then wrangler dev
 
 Register and read the link: `curl -s localhost:8787/api/dev/mailbox` (nothing is printed to the console). To exercise Turnstile for real, put one of the test secrets from `dev.vars.example` in `.dev.vars` and send the dummy token. Without `TURNSTILE_SECRET_KEY` the check is skipped. A local `wrangler dev` has the rate limit bindings; without them the in-memory fallback applies.
 
-If you ran the part A migrations before: `pnpm db:migrate:local` applies `0005` (deactivation) and `0006` (the trigger) on top; nothing needs wiping.
+If you ran the part A migrations before: `pnpm db:migrate:local` applies `0005` (deactivation), `0006` (the trigger) and `0010` (the view and the new trigger) on top; nothing needs wiping. `pnpm db:seed:local` creates a super_admin who can sign in; on an empty database of your own, `pnpm first-admin` does ([`first-super-admin.md`](first-super-admin.md)).
 
 ## Tests
 

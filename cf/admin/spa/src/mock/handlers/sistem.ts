@@ -16,7 +16,9 @@ import type { MockHandler, MockRequest } from "../handlers";
 //
 // Made-up addresses in the invented rows are reserved example domains. A new admin's email can end in a name that
 // plays up: `email-gagal@...` is created but the invitation fails to send (502), `email-tidak-tersedia@...` has no
-// email service (503). Nothing leaves memory; a reload starts again from the seed.
+// email service (503), and `sudah-masuk@...` is an admin who has already opened the invitation and chosen a password
+// (the mock has no email to open, and a super_admin only counts as another once they can sign in). Nothing leaves
+// memory; a reload starts again from the seed.
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -173,7 +175,11 @@ export function createSistemMock(): MockHandler {
     audit!.unshift({ id: `z${String(counter).padStart(5, "0")}`, createdAt: Date.now(), action, actorEmail: request.self.email, actorName: request.self.name, resourceType: "admin_user", resourceId, metadata });
   }
 
-  const activeSuperAdmins = (except?: string) => admins!.filter((row) => row.role === "super_admin" && !row.deactivated && row.id !== except).length;
+  // The Worker's rule (migration 0010, the view `signable_super_admins`): the last super_admin who can sign in is the
+  // last one. Someone who cannot (an invitation nobody opened, an address not verified yet) neither counts nor needs
+  // protecting.
+  const canSignIn = (row: AdminRow) => row.role === "super_admin" && !row.deactivated && row.emailVerified && row.hasAccount;
+  const wouldLeaveNoSuperAdmin = (row: AdminRow) => canSignIn(row) && !admins!.some((other) => other.id !== row.id && canSignIn(other));
 
   // ---------------------------------------------------------------------------------------- GET /audit
   function listAudit(url: URL): Response {
@@ -288,6 +294,8 @@ export function createSistemMock(): MockHandler {
     const local = form.email.split("@")[0]!;
     if (local === "email-tidak-tersedia") return error(503, "email_unavailable", "Layanan email sedang tidak tersedia. Silakan coba lagi nanti.");
 
+    // `sudah-masuk@...`: has already opened the invitation (see the header).
+    const accepted = local === "sudah-masuk";
     const now = Date.now();
     counter += 1;
     const row: AdminRow = {
@@ -296,9 +304,9 @@ export function createSistemMock(): MockHandler {
       email: form.email,
       role: form.role,
       areas: form.areas,
-      hasAccount: form.password !== "",
+      hasAccount: form.password !== "" || accepted,
       deactivated: false,
-      emailVerified: false,
+      emailVerified: accepted,
       lastSessionAt: null,
       createdAt: now,
       updatedAt: now,
@@ -322,7 +330,7 @@ export function createSistemMock(): MockHandler {
 
     const changes = form.role !== row.role || form.name !== row.name || form.areas.join() !== (row.role === "editor" ? row.areas : []).join();
     if (!changes) return json({ item: presentAdmin(row) }, 200, { ETag: ifMatch(new Date(row.updatedAt).toISOString()) });
-    if (form.role !== row.role && row.role === "super_admin" && !row.deactivated && activeSuperAdmins(row.id) === 0) {
+    if (form.role !== row.role && wouldLeaveNoSuperAdmin(row)) {
       return error(409, "last_super_admin", LAST_DEMOTE, { fields: { role: "Minimal satu super admin harus tersedia" } });
     }
     const before = { role: row.role, name: row.name, areas: row.role === "editor" ? [...row.areas] : [] };
@@ -342,7 +350,7 @@ export function createSistemMock(): MockHandler {
     if (name === "deactivate") {
       if (row.deactivated) return json({ user: presentAdmin(row) });
       if (row.id === request.self.id) return error(409, "cannot_deactivate_self", "Tidak dapat menonaktifkan akun sendiri.");
-      if (row.role === "super_admin" && activeSuperAdmins(row.id) === 0) return error(409, "last_super_admin", LAST_DEACTIVATE);
+      if (wouldLeaveNoSuperAdmin(row)) return error(409, "last_super_admin", LAST_DEACTIVATE);
       row.deactivated = true;
       row.lastSessionAt = null;
       touch();

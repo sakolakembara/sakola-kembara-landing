@@ -206,8 +206,9 @@ export async function revokeArea(userId: string, area: GrantableArea) {
 
 /**
  * Changes a role straight in the table. The database refuses to leave the
- * system without an active super_admin (migration 0006), so demoting the only
- * one first creates a stand-in, as a real deployment would have a second one.
+ * system without a super_admin who can sign in (migrations 0006 and 0010), so
+ * demoting the only one first creates a stand-in, as a real deployment would
+ * have a second one.
  */
 export async function setRole(email: string, role: UserRole) {
   const current = await env.DB.prepare("SELECT id, role FROM users WHERE email = ?").bind(email).first<{ id: string; role: string }>();
@@ -215,13 +216,36 @@ export async function setRole(email: string, role: UserRole) {
   await env.DB.prepare("UPDATE users SET role = ? WHERE email = ?").bind(role, email).run();
 }
 
-/** A second active super_admin, so the first can be demoted or deactivated in a test. */
+/**
+ * A second super_admin who can sign in (verified, with an account), so the first can be demoted or deactivated in
+ * a test. An invitation that was never accepted would not do: it does not count (migration 0010).
+ */
 export async function ensureAnotherSuperAdmin(exceptId: string) {
-  const other = await env.DB.prepare("SELECT 1 AS found FROM users WHERE role = 'super_admin' AND deactivated_at IS NULL AND id <> ?").bind(exceptId).first();
+  const other = await env.DB.prepare("SELECT 1 AS found FROM signable_super_admins WHERE id <> ?").bind(exceptId).first();
   if (other) return;
-  await env.DB.prepare("INSERT INTO users (id, name, email, email_verified, role) VALUES (?, 'Stand-in', ?, 1, 'super_admin')")
-    .bind(crypto.randomUUID(), uniqueEmail("standin"))
+  await insertSuperAdmin({ email: uniqueEmail("standin"), name: "Stand-in" });
+}
+
+/**
+ * A super_admin straight into the tables, in whichever state a test needs. The defaults are the one who can sign
+ * in; `verified: false`, `account: false` (an invitation nobody opened) and `deactivated` each take a way of it away.
+ * `account: "google"` links a Google account instead of a password. Returns the id.
+ */
+export async function insertSuperAdmin(
+  options: { email?: string; name?: string; role?: UserRole; verified?: boolean; account?: boolean | "google"; deactivated?: boolean } = {},
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const email = options.email ?? uniqueEmail("super");
+  await env.DB.prepare("INSERT INTO users (id, name, email, email_verified, role, deactivated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, options.name ?? "Super Admin", email, options.verified === false ? 0 : 1, options.role ?? "super_admin", options.deactivated ? Date.now() : null)
     .run();
+  if (options.account !== false) {
+    const provider = options.account === "google" ? "google" : "credential";
+    await env.DB.prepare("INSERT INTO account (id, account_id, provider_id, user_id, password) VALUES (?, ?, ?, ?, ?)")
+      .bind(crypto.randomUUID(), provider === "google" ? `google-${id}` : id, provider, id, provider === "credential" ? "x" : null)
+      .run();
+  }
+  return id;
 }
 
 export async function signIn(email: string, password = PASSWORD, ip?: string) {

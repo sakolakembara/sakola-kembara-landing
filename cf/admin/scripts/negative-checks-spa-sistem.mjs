@@ -168,9 +168,32 @@ export const sistemSpaChecks = [
   {
     name: "sistem: the mock lets the last super_admin step down",
     file: "spa/src/mock/handlers/sistem.ts",
-    from: 'if (form.role !== row.role && row.role === "super_admin" && !row.deactivated && activeSuperAdmins(row.id) === 0) {',
+    from: "if (form.role !== row.role && wouldLeaveNoSuperAdmin(row)) {",
     to: "if (false) {",
     tests: t(MOCK),
+  },
+  {
+    name: "last-super-admin: the mock counts an invitation nobody opened as another super_admin who can sign in",
+    file: "spa/src/mock/handlers/sistem.ts",
+    from: "const canSignIn = (row: AdminRow) => row.role === \"super_admin\" && !row.deactivated && row.emailVerified && row.hasAccount;",
+    to: "const canSignIn = (row: AdminRow) => row.role === \"super_admin\" && !row.deactivated;",
+    tests: t(MOCK),
+  },
+
+  // ------------------------------------------- the confirm buttons of Nonaktifkan and Aktifkan kembali (SAKEM-087)
+  {
+    name: "last-super-admin: the confirm of Nonaktifkan is the primary (blue) button again",
+    file: "spa/src/pages/settings/SettingsPage.tsx",
+    from: "    destructive: true,\n",
+    to: "",
+    tests: t(SETTINGS),
+  },
+  {
+    name: "last-super-admin: the confirm of Aktifkan kembali is red (a way back made to look like a loss)",
+    file: "spa/src/pages/settings/SettingsPage.tsx",
+    from: '    confirmLabel: "Aktifkan kembali",\n    pendingLabel: "Mengaktifkan...",\n',
+    to: '    confirmLabel: "Aktifkan kembali",\n    pendingLabel: "Mengaktifkan...",\n    destructive: true,\n',
+    tests: t(SETTINGS),
   },
   {
     name: "sistem: the mock's email search is a substring",

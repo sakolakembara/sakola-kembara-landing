@@ -42,6 +42,8 @@ export function SettingsPage() {
     ),
     confirmLabel: "Nonaktifkan",
     pendingLabel: "Menonaktifkan...",
+    // Red, like the kit's other confirm buttons that take something away (docs/cloudflare/admin-sistem.md#46-the-screens).
+    destructive: true,
     onDone: (row) => {
       notice.show({ tone: "success", text: `Admin ${row.email} dinonaktifkan.` });
       list.refetch();

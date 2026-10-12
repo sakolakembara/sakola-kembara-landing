@@ -167,7 +167,7 @@ describe("Pengaturan", () => {
     expect((await ask("PUT", "/api/admin/users/none", { name: "A", role: "viewer", areas: [] }, { "If-Match": '"x"' }))!.status).toBe(404);
   });
 
-  test("the last super_admin: the only one cannot step down or be deactivated by themselves; with a second one the first can", async () => {
+  test("the last super_admin is the last one who can sign in: an invitation nobody opened does not count; with a second who can, the first can step down", async () => {
     const ask = setup();
     const self = "mock-user";
     const v = await version(ask, self);
@@ -180,8 +180,16 @@ describe("Pengaturan", () => {
     });
     expect((await ask("POST", `/api/admin/users/${self}/deactivate`, {}))!.body.error).toBe("cannot_deactivate_self");
 
-    const second = await ask("POST", "/api/admin/users", { email: "kedua@contoh.test", name: "Kedua", role: "super_admin" });
+    // An invitation is an account that exists and cannot be signed in to: it is not "another".
+    const invited = await ask("POST", "/api/admin/users", { email: "undangan@contoh.test", name: "Undangan", role: "super_admin" });
+    expect(invited!.status).toBe(201);
+    expect(invited!.body.item).toMatchObject({ status: "invited", emailVerified: false });
+    const stillRefused = await ask("PUT", `/api/admin/users/${self}`, { name: "Pengguna Contoh", role: "viewer", areas: [] }, { "If-Match": `"${v}"` });
+    expect(stillRefused!.status).toBe(409);
+    // ...and one who has opened it (a made-up address of the mock) is.
+    const second = await ask("POST", "/api/admin/users", { email: "sudah-masuk@contoh.test", name: "Kedua", role: "super_admin" });
     expect(second!.status).toBe(201);
+    expect(second!.body.item).toMatchObject({ status: "active", emailVerified: true });
     const allowed = await ask("PUT", `/api/admin/users/${self}`, { name: "Pengguna Contoh", role: "viewer", areas: [] }, { "If-Match": `"${v}"` });
     expect(allowed!.status).toBe(200);
     // And now the new one is the last: it cannot be deactivated by anyone.
