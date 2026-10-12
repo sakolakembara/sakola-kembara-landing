@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
-import { call, signedInCookie, uniqueEmail } from "./helpers";
+import { call, cookiesOf, createVerifiedUser, grantArea, revokeArea, setRole, signedInCookie, signIn, uniqueEmail } from "./helpers";
 
 const valid = {
   title: "Pendaftaran Angkatan 2026 Dibuka",
@@ -42,19 +42,25 @@ describe("announcements: who may do what (role guard matrix)", () => {
     expect(await count("audit_log")).toBe(0);
   });
 
-  // Negative test: change `admin-write` in src/auth/roles.ts to include "viewer"
-  // (or make `can()` return true) and the viewer and student cases below fail.
+  // Announcements are the `komunikasi` area. Negative test (scripts/negative-checks.mjs):
+  // make the viewer rule or the area check in src/auth/permissions.ts permissive and the
+  // viewer, stray-grant and wrong-area cases below fail.
   const cases = [
-    { role: "student", read: 403, write: 403 },
-    { role: "viewer", read: 200, write: 403 },
-    { role: "editor", read: 200, write: "ok" },
-    { role: "super_admin", read: 200, write: "ok" },
+    { label: "student", role: "student", areas: [], read: 403, write: 403 },
+    { label: "viewer", role: "viewer", areas: [], read: 200, write: 403 },
+    // A grant row on a viewer is inert: viewer is read-only by role.
+    { label: "viewer with a stray komunikasi grant", role: "viewer", areas: ["komunikasi"], read: 200, write: 403 },
+    { label: "editor with no grants", role: "editor", areas: [], read: 200, write: 403 },
+    { label: "editor granted other areas only", role: "editor", areas: ["pendaftaran", "konten"], read: 200, write: 403 },
+    { label: "editor granted komunikasi", role: "editor", areas: ["komunikasi"], read: 200, write: "ok" },
+    { label: "editor granted every area", role: "editor", areas: ["pendaftaran", "komunikasi", "konten"], read: 200, write: "ok" },
+    { label: "super_admin", role: "super_admin", areas: [], read: 200, write: "ok" },
   ] as const;
 
-  for (const { role, read, write } of cases) {
-    test(`${role}: read ${read}, write ${write === "ok" ? "allowed" : "403"}`, async () => {
+  for (const { label, role, areas, read, write } of cases) {
+    test(`${label}: read ${read}, write ${write === "ok" ? "allowed" : "403"}`, async () => {
       const email = uniqueEmail(role);
-      const cookie = await signedInCookie(email, role);
+      const cookie = await signedInCookie(email, role, areas);
       const id = await seedAnnouncement();
 
       expect((await call("/api/announcements", { cookie })).status).toBe(read);
@@ -78,31 +84,36 @@ describe("announcements: who may do what (role guard matrix)", () => {
 
   test("a role changed in the database applies to the very next request", async () => {
     const email = uniqueEmail("demoted");
-    const cookie = await signedInCookie(email, "editor");
+    const cookie = await signedInCookie(email, "editor", ["komunikasi"]);
     expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(201);
 
-    await env.DB.prepare("UPDATE users SET role = 'viewer' WHERE email = ?").bind(email).run();
+    await setRole(email, "viewer");
     expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(403);
     expect((await call("/api/announcements", { cookie })).status).toBe(200);
 
-    await env.DB.prepare("UPDATE users SET role = 'student' WHERE email = ?").bind(email).run();
+    await setRole(email, "student");
     expect((await call("/api/announcements", { cookie })).status).toBe(403);
   });
 
-  test("a row with an unknown role is treated as a student", async () => {
-    const email = uniqueEmail("odd");
-    const cookie = await signedInCookie(email);
-    await env.DB.prepare("UPDATE users SET role = 'owner' WHERE email = ?").bind(email).run();
-    expect((await call("/api/announcements", { cookie })).status).toBe(403);
-    const me = await call("/api/me", { cookie });
-    expect(await me.json()).toMatchObject({ user: { role: "student" } });
+  test("a grant revoked or added applies to the very next request", async () => {
+    const email = uniqueEmail("regranted");
+    const userId = await createVerifiedUser(email, "editor", ["komunikasi"]);
+    const cookie = cookiesOf(await signIn(email));
+    expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(201);
+
+    await revokeArea(userId, "komunikasi");
+    expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(403);
+    expect((await call("/api/announcements", { cookie })).status).toBe(200); // still reads
+
+    await grantArea(userId, "komunikasi");
+    expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(201);
   });
 });
 
 describe("announcements: behaviour for an editor", () => {
   test("create returns the row, records who made it, and writes one audit row", async () => {
     const email = uniqueEmail("editor");
-    const cookie = await signedInCookie(email, "editor");
+    const cookie = await signedInCookie(email, "editor", ["komunikasi"]);
 
     const res = await call("/api/announcements", {
       method: "POST",
@@ -131,7 +142,7 @@ describe("announcements: behaviour for an editor", () => {
   });
 
   test("update and delete work on an existing row, 404 on a missing one, each with an audit row", async () => {
-    const cookie = await signedInCookie(uniqueEmail("editor"), "editor");
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
     const id = await seedAnnouncement();
 
     const updated = await call(`/api/announcements/${id}`, { method: "PUT", cookie, json: { ...valid, title: "Judul baru", severity: "urgent" } });
@@ -147,7 +158,7 @@ describe("announcements: behaviour for an editor", () => {
   });
 
   test("validation keeps the legacy rules and messages", async () => {
-    const cookie = await signedInCookie(uniqueEmail("editor"), "editor");
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
     const post = (json: unknown) => call("/api/announcements", { method: "POST", cookie, json });
     const fieldErrors = async (res: Response) => ((await res.json()) as { fieldErrors: Record<string, string[]> }).fieldErrors;
 
@@ -167,7 +178,7 @@ describe("announcements: behaviour for an editor", () => {
   });
 
   test("a body that is not JSON is refused (this is what stops a cross-site form post)", async () => {
-    const cookie = await signedInCookie(uniqueEmail("editor"), "editor");
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
     const form = await call("/api/announcements", {
       method: "POST",
       cookie,
@@ -181,7 +192,7 @@ describe("announcements: behaviour for an editor", () => {
   });
 
   test("a mutation and its audit row commit together or not at all", async () => {
-    const cookie = await signedInCookie(uniqueEmail("editor"), "editor");
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
     // Make the audit insert fail (NOT NULL actor_email cannot be satisfied if the table is gone).
     await env.DB.exec("ALTER TABLE audit_log RENAME TO audit_log_gone");
     try {

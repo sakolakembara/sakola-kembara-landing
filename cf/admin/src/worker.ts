@@ -1,8 +1,11 @@
 import { Hono } from "hono";
+import { adminUserRoutes } from "./api/admin-users";
 import { announcementRoutes } from "./api/announcements";
 import { AUTH_BASE_PATH } from "./auth/factory";
+import { loadAccess } from "./auth/guard";
+import { visibleAreas, writableAreas } from "./auth/permissions";
 import { authRateLimit } from "./auth/rate-limit";
-import { authContext, currentUser } from "./auth/session";
+import { authContext } from "./auth/session";
 import type { AppEnv } from "./context";
 
 // Only /api/* reaches this Worker (`run_worker_first` in wrangler.jsonc). The
@@ -25,13 +28,26 @@ app.get("/api/config", (c) =>
   c.json({ google: Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) }),
 );
 
+// Who is signed in and what they may do. `areas` is computed by the same
+// functions the guards use (src/auth/permissions.ts), so the SPA never has to
+// repeat the rules: `visible` are the menus to show, `writable` the ones whose
+// buttons to enable, `granted` the editor's raw grants (for Pengaturan).
 app.get("/api/me", async (c) => {
-  const user = await currentUser(c);
-  if (!user) return c.json({ error: "unauthenticated" }, 401);
-  return c.json({ user });
+  const access = await loadAccess(c);
+  if (!access) return c.json({ error: "unauthenticated" }, 401);
+  const { user, grantedAreas } = access;
+  return c.json({
+    user,
+    areas: {
+      granted: grantedAreas,
+      visible: visibleAreas(user.role, grantedAreas),
+      writable: writableAreas(user.role, grantedAreas),
+    },
+  });
 });
 
 app.route("/api/announcements", announcementRoutes);
+app.route("/api/admin/users", adminUserRoutes);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 

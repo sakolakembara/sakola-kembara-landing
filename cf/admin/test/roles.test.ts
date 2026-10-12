@@ -1,39 +1,23 @@
 import { describe, expect, test } from "vitest";
-import { adminRoles, can, isAdminRole, userRoles, type Access } from "../src/auth/roles";
+import { adminRoles, isAdminRole, isUserRole, userRoles } from "../src/auth/roles";
 
-// The role matrix of the legacy app (docs/architecture/authentication.md),
-// ported to the new guard. SAKEM-013: viewer is read-only.
-const matrix: Record<string, Record<Access, boolean>> = {
-  student: { "admin-read": false, "admin-write": false, "super-admin": false },
-  viewer: { "admin-read": true, "admin-write": false, "super-admin": false },
-  editor: { "admin-read": true, "admin-write": true, "super-admin": false },
-  super_admin: { "admin-read": true, "admin-write": true, "super-admin": true },
-};
-
-describe("role matrix", () => {
-  for (const [role, access] of Object.entries(matrix)) {
-    for (const [level, expected] of Object.entries(access)) {
-      test(`${role} ${expected ? "may" : "may not"} ${level}`, () => {
-        expect(can(role, level as Access)).toBe(expected);
-      });
-    }
-  }
-
-  test("covers every role the schema knows", () => {
-    expect(Object.keys(matrix).sort()).toEqual([...userRoles].sort());
+// Role names only. What each role may do in each area is test/permissions.test.ts.
+describe("role names", () => {
+  test("the four roles of the legacy app, in privilege order", () => {
+    expect([...userRoles]).toEqual(["student", "viewer", "editor", "super_admin"]);
   });
 
-  test("unknown, empty and non-string roles get nothing", () => {
-    for (const role of ["admin", "SUPER_ADMIN", "", null, undefined, 7, {}]) {
-      for (const level of ["admin-read", "admin-write", "super-admin"] as const) {
-        expect(can(role, level), `${String(role)} ${level}`).toBe(false);
-      }
-    }
-  });
-
-  test("isAdminRole matches the legacy list", () => {
+  test("admin roles are every role except student (the legacy list)", () => {
     expect([...adminRoles]).toEqual(["viewer", "editor", "super_admin"]);
     expect(isAdminRole("student")).toBe(false);
     expect(isAdminRole("viewer")).toBe(true);
+    expect(isAdminRole("super_admin")).toBe(true);
+  });
+
+  test("anything that is not exactly a role name is not a role", () => {
+    for (const role of ["admin", "SUPER_ADMIN", " editor", "", null, undefined, 7, {}, ["editor"]]) {
+      expect(isUserRole(role), String(role)).toBe(false);
+      expect(isAdminRole(role), String(role)).toBe(false);
+    }
   });
 });

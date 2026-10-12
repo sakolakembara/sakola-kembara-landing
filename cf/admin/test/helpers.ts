@@ -1,8 +1,10 @@
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { vi } from "vitest";
-import worker from "../src/worker";
+import type { GrantableArea } from "../src/auth/permissions";
+import type { UserRole } from "../src/auth/roles";
 import type { Bindings } from "../src/env";
+import worker from "../src/worker";
 
 export const ORIGIN = "https://admin.test";
 export const PASSWORD = "correct horse battery staple";
@@ -107,8 +109,12 @@ export async function signUp(email: string, password = PASSWORD, name = "Tester"
   });
 }
 
-/** Sign up, follow the emailed verification link, and return the user id. */
-export async function createVerifiedUser(email: string, role?: "student" | "viewer" | "editor" | "super_admin") {
+/**
+ * Sign up, follow the emailed verification link, and return the user id.
+ * `areas` are inserted into admin_area_grants (for editors; for any other role
+ * they are the stray rows the permission model must ignore).
+ */
+export async function createVerifiedUser(email: string, role?: UserRole, areas: readonly GrantableArea[] = []) {
   const capturing = fetchSpy !== undefined && vi.isMockFunction(globalThis.fetch);
   if (!capturing) installEmailCapture();
   const before = outbox.length;
@@ -122,7 +128,21 @@ export async function createVerifiedUser(email: string, role?: "student" | "view
   }
   if (role) await env.DB.prepare("UPDATE users SET role = ? WHERE email = ?").bind(role, email).run();
   const row = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: string }>();
+  for (const area of areas) await grantArea(row!.id, area);
   return row!.id;
+}
+
+/** Straight into the table, bypassing the API (tests of the API itself use the API). */
+export async function grantArea(userId: string, area: GrantableArea) {
+  await env.DB.prepare("INSERT INTO admin_area_grants (user_id, area) VALUES (?, ?)").bind(userId, area).run();
+}
+
+export async function revokeArea(userId: string, area: GrantableArea) {
+  await env.DB.prepare("DELETE FROM admin_area_grants WHERE user_id = ? AND area = ?").bind(userId, area).run();
+}
+
+export async function setRole(email: string, role: UserRole) {
+  await env.DB.prepare("UPDATE users SET role = ? WHERE email = ?").bind(role, email).run();
 }
 
 export async function signIn(email: string, password = PASSWORD, ip?: string) {
@@ -130,8 +150,8 @@ export async function signIn(email: string, password = PASSWORD, ip?: string) {
 }
 
 /** Verified user, signed in. Returns the Cookie header to use on later calls. */
-export async function signedInCookie(email: string, role?: "student" | "viewer" | "editor" | "super_admin") {
-  await createVerifiedUser(email, role);
+export async function signedInCookie(email: string, role?: UserRole, areas: readonly GrantableArea[] = []) {
+  await createVerifiedUser(email, role, areas);
   const res = await signIn(email);
   if (res.status !== 200) throw new Error(`sign-in failed: ${res.status}`);
   return cookiesOf(res);

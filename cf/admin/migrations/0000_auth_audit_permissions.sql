@@ -16,38 +16,6 @@ CREATE TABLE `account` (
 );
 --> statement-breakpoint
 CREATE INDEX `account_user_id_idx` ON `account` (`user_id`);--> statement-breakpoint
-CREATE TABLE `announcements` (
-	`id` text PRIMARY KEY NOT NULL,
-	`title` text NOT NULL,
-	`body` text NOT NULL,
-	`severity` text DEFAULT 'info' NOT NULL,
-	`cta_label` text,
-	`cta_url` text,
-	`active` integer DEFAULT false NOT NULL,
-	`starts_at` integer,
-	`ends_at` integer,
-	`created_by` text,
-	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
-);
---> statement-breakpoint
-CREATE INDEX `announcements_active_idx` ON `announcements` (`active`,`starts_at`,`ends_at`);--> statement-breakpoint
-CREATE TABLE `audit_log` (
-	`id` text PRIMARY KEY NOT NULL,
-	`actor_id` text,
-	`actor_email` text NOT NULL,
-	`action` text NOT NULL,
-	`resource_type` text,
-	`resource_id` text,
-	`metadata` text,
-	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	FOREIGN KEY (`actor_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
-);
---> statement-breakpoint
-CREATE INDEX `audit_log_actor_idx` ON `audit_log` (`actor_id`);--> statement-breakpoint
-CREATE INDEX `audit_log_created_at_idx` ON `audit_log` (`created_at`);--> statement-breakpoint
-CREATE INDEX `audit_log_resource_idx` ON `audit_log` (`resource_type`,`resource_id`);--> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,
@@ -70,7 +38,8 @@ CREATE TABLE `users` (
 	`image` text,
 	`role` text DEFAULT 'student' NOT NULL,
 	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	CONSTRAINT "users_role_check" CHECK("users"."role" in ('student', 'viewer', 'editor', 'super_admin'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);--> statement-breakpoint
@@ -84,4 +53,31 @@ CREATE TABLE `verification` (
 	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);
+CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);--> statement-breakpoint
+CREATE TABLE `admin_area_grants` (
+	`user_id` text NOT NULL,
+	`area` text NOT NULL,
+	`granted_by` text,
+	`granted_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	PRIMARY KEY(`user_id`, `area`),
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`granted_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "admin_area_grants_area_check" CHECK("admin_area_grants"."area" in ('pendaftaran', 'komunikasi', 'konten'))
+);
+--> statement-breakpoint
+CREATE TABLE `audit_log` (
+	`id` text PRIMARY KEY NOT NULL,
+	`actor_id` text,
+	`actor_email` text NOT NULL,
+	`action` text NOT NULL,
+	`resource_type` text,
+	`resource_id` text,
+	`metadata` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	FOREIGN KEY (`actor_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "audit_log_metadata_json_check" CHECK("audit_log"."metadata" is null or json_valid("audit_log"."metadata"))
+);
+--> statement-breakpoint
+CREATE INDEX `audit_log_actor_idx` ON `audit_log` (`actor_id`);--> statement-breakpoint
+CREATE INDEX `audit_log_created_at_idx` ON `audit_log` (`created_at`);--> statement-breakpoint
+CREATE INDEX `audit_log_resource_idx` ON `audit_log` (`resource_type`,`resource_id`);
