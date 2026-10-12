@@ -1,0 +1,49 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Admin/portal backend (SAKEM-078). Public repo: no account ids, no resource
+  // ids, no secrets. The D1 binding below has no database_id on purpose; it is
+  // only usable locally (`wrangler dev`, `wrangler d1 ... --local`, tests).
+  // Real resources are attached in the deploy ticket, see docs/cloudflare/admin-skeleton.md.
+  "name": "sakem-admin",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Anything that is not production must say so in untracked .dev.vars
+  // (ENVIRONMENT=development). A deployed worker with this file as-is is
+  // production: email fails closed and tokenized URLs are never logged.
+  "vars": { "ENVIRONMENT": "production" },
+
+  "assets": {
+    "directory": "./dist/spa",
+    "binding": "ASSETS",
+    // Unknown paths get index.html (React Router handles them in the browser).
+    "not_found_handling": "single-page-application",
+    // Only the API runs the Worker. Every other request is answered by the
+    // assets layer, which costs no Worker CPU and no Worker request. (The
+    // Assafar studio uses `true` because it also serves /oauth/* and
+    // /.well-known/*; this app has nothing outside /api.)
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sakem-admin",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Cloudflare's rate limit binding: counted per Cloudflare location, eventually
+  // consistent, period is 10 or 60 seconds only. namespace_id is a number we
+  // choose, unique per account; it is not a resource id.
+  "ratelimits": [
+    // One client guessing one account: 5 tries per minute per route+IP+email.
+    { "name": "AUTH_PAIR_LIMIT", "namespace_id": "7801", "simple": { "limit": 5, "period": 60 } },
+    // One account attacked from many addresses: 20 per minute per route+email.
+    { "name": "AUTH_EMAIL_LIMIT", "namespace_id": "7802", "simple": { "limit": 20, "period": 60 } },
+    // One address flooding the routes that send email: 10 per minute per route+IP.
+    { "name": "AUTH_IP_LIMIT", "namespace_id": "7803", "simple": { "limit": 10, "period": 60 } }
+  ]
+}
