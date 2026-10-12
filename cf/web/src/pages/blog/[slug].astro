@@ -1,4 +1,5 @@
 ---
+import { env } from 'cloudflare:workers';
 import BlogUnavailable from '~/components/BlogUnavailable.astro';
 import Container from '~/components/Container.astro';
 import Heading from '~/components/Heading.astro';
@@ -10,6 +11,7 @@ import { coverAttrs, getBlogSource, headerSource } from '~/lib/blog';
 import { blogRuntime } from '~/lib/blog-runtime';
 import { contentPageHeaders } from '~/lib/content-api';
 import { articleJsonLd } from '~/lib/seo';
+import { rewriteUploadsInHtml } from '~/lib/uploads';
 
 // SSR: the article comes from the content API at request time (a new or edited article shows
 // without a rebuild) through the Cache API, 60 s fresh and stale-if-error (lib/content-api.ts).
@@ -32,8 +34,11 @@ Astro.response.headers.set('x-blog-source', result.source);
 
 const page = result.data;
 const article = page?.article;
-const cover = article ? coverAttrs(article.image, article.imageWidth, article.imageHeight) : null;
-const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttrs(item.image, item.imageWidth, item.imageHeight) }));
+// Covers and images uploaded in the admin live in R2 on their own domain (docs/cloudflare/uploads.md);
+// empty = same-origin paths and the HTML exactly as the API sent it.
+const uploadsBase = env.UPLOADS_BASE_URL;
+const cover = article ? coverAttrs(article.image, article.imageWidth, article.imageHeight, uploadsBase) : null;
+const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttrs(item.image, item.imageWidth, item.imageHeight, uploadsBase) }));
 ---
 
 ---
@@ -104,7 +109,7 @@ const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttr
       <Container size="reading">
         <div class="bg-white rounded-2xl shadow-sm p-6 md:p-10 -mt-8 relative z-10">
           {/* Trusted: the API sanitizes the HTML when the article is saved (see BlogArticle.contentHtml). */}
-          <div class="blog-content" set:html={article.contentHtml} />
+          <div class="blog-content" set:html={rewriteUploadsInHtml(article.contentHtml, uploadsBase)} />
         </div>
       </Container>
     </article>

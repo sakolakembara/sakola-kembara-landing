@@ -17,6 +17,7 @@ import {
   loadReports,
 } from '~/lib/reports';
 import { buttonClasses } from '~/lib/ui';
+import { uploadUrl } from '~/lib/uploads';
 
 // SSR: the reports come from the content API at request time (see lib/content-api.ts for the
 // timeout, the 60 s cache and stale-if-error). Ported from app/(public)/laporan/.
@@ -106,7 +107,7 @@ const totalReports = reports?.length ?? 0;
                         )}
                         <div class="text-xs text-gray-500 mb-4">PDF · {formatBytes(r.fileSize)}</div>
                         {/* The path is the API's, used as it is (uploads are never proxied by this Worker). */}
-                        <a href={r.filePath} target="_blank" rel="noopener noreferrer" class={buttonClasses({})}>
+                        <a href={uploadUrl(r.filePath, env.UPLOADS_BASE_URL)} target="_blank" rel="noopener noreferrer" class={buttonClasses({})}>
                           <Icon name="download" size={16} />
                           Unduh Laporan
                         </a>

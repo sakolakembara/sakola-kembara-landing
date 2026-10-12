@@ -10,6 +10,7 @@ import Base from '~/layouts/Base.astro';
 import { contentRuntime } from '~/lib/content-api';
 import { loadTeam } from '~/lib/team';
 import { CATEGORY_DESCRIPTION, TEAM_CATEGORY_LABEL, groupTeam } from '~/lib/team-types';
+import { uploadUrl } from '~/lib/uploads';
 
 // SSR: the team comes from the content API at request time (see lib/team.ts for
 // the timeout, cache and stale-if-error behaviour). Where the API is (the `API` service binding in
@@ -22,6 +23,8 @@ const { members, source } = await loadTeam({
   freshTtlSeconds: Number(env.TEAM_CACHE_FRESH_SECONDS) || undefined,
 });
 const groups = groupTeam(members);
+// Photos uploaded in the admin live in R2 on their own domain (docs/cloudflare/uploads.md); empty = same-origin paths.
+const uploadsBase = env.UPLOADS_BASE_URL;
 Astro.response.headers.set('x-team-source', source);
 ---
 
@@ -67,7 +70,7 @@ Astro.response.headers.set('x-team-source', source);
                     <div class="w-28 h-28 mx-auto mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                       {member.image ? (
                         <img
-                          src={member.image}
+                          src={uploadUrl(member.image, uploadsBase)}
                           alt={member.name}
                           width="112"
                           height="112"
@@ -136,7 +139,7 @@ Astro.response.headers.set('x-team-source', source);
                 <div class="w-36 h-36 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center mb-4 border-4 border-white shadow-md">
                   {member.image ? (
                     <img
-                      src={member.image}
+                      src={uploadUrl(member.image, uploadsBase)}
                       alt={member.name}
                       width="144"
                       height="144"

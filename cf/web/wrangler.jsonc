@@ -38,6 +38,13 @@
   //   are for local runs and CI (a URL wins over the binding), and set in production they would move
   //   the reads or the contact form off the binding onto public HTTP. Locally the vars come from an
   //   untracked .dev.vars; copy dev.vars.example (it carries Cloudflare's always-pass TEST site key).
+  // - UPLOADS_BASE_URL (a "vars" entry too): the public origin of the R2 bucket that holds the files the
+  //   admin uploads, e.g. `https://files.<your-domain>`, without a trailing slash. The API keeps the
+  //   paths root-relative (`/uploads/...`); this site puts the origin in front when it renders team
+  //   photos, report and document files, blog covers and the images and links inside an article.
+  //   Empty or unset (local, CI, today) changes nothing. Set it with the deploy (`wrangler deploy
+  //   --var UPLOADS_BASE_URL:https://...` or the deploy config), never in git. Steps for the owner:
+  //   docs/cloudflare/uploads.md.
   // - "ratelimits": the rate-limit binding of the contact form, binding name CONTACT_LIMITER:
   //     "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "<a positive integer you choose>",
   //                      "simple": { "limit": 5, "period": 60 } }]
