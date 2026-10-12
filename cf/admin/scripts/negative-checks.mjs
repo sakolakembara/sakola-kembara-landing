@@ -12,6 +12,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { uploadChecks } from "./negative-checks-uploads.mjs";
+import { crudChecks } from "./negative-checks-crud.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -30,6 +31,9 @@ const PUBLIC_FACE = "test/public-face.test.ts";
 const checks = [
   // The upload API (SAKEM-082): scripts/negative-checks-uploads.mjs.
   ...uploadChecks,
+
+  // The admin CRUD kit (SAKEM-082): scripts/negative-checks-crud.mjs.
+  ...crudChecks,
 
   // ---------------------------------------------------------------- auth
   {
@@ -165,16 +169,16 @@ const checks = [
   },
   {
     name: "announcement writes only need read access",
-    file: "src/api/announcements.ts",
-    from: 'announcementRoutes.post("/", requireArea("komunikasi", "write"),',
-    to: 'announcementRoutes.post("/", requireArea("komunikasi", "read"),',
+    file: "src/api/crud/resource.ts",
+    from: 'app.post("/", requireArea(config.area, "write"), handlers.create);',
+    to: 'app.post("/", requireArea(config.area, "read"), handlers.create);',
     tests: "test/announcements.test.ts",
   },
   {
     name: "announcements guarded by the wrong area",
     file: "src/api/announcements.ts",
-    from: 'announcementRoutes.delete("/:id", requireArea("komunikasi", "write"),',
-    to: 'announcementRoutes.delete("/:id", requireArea("konten", "write"),',
+    from: 'area: "komunikasi",',
+    to: 'area: "konten",',
     tests: "test/announcements.test.ts",
   },
   {

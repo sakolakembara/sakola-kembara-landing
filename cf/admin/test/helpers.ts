@@ -45,11 +45,13 @@ interface CallInit extends RequestInit {
   json?: unknown;
   /** Sent as X-Turnstile-Token. */
   captcha?: string;
+  /** Another handler instead of the worker: a test mounts routes of its own (test/crud-app.ts). */
+  via?: { fetch: (request: Request, env: Bindings, ctx: ExecutionContext) => Response | Promise<Response> };
 }
 
 /** Calls the worker like the Workers runtime does, and waits for `waitUntil` work. */
 export async function call(path: string, init: CallInit = {}): Promise<Response> {
-  const { env: overrides, ip, cookie, json, captcha, origin, ...rest } = init;
+  const { env: overrides, ip, cookie, json, captcha, origin, via, ...rest } = init;
   const headers = new Headers(rest.headers);
   if (ip !== null) headers.set("cf-connecting-ip", ip ?? freshIp());
   if (cookie) headers.set("cookie", cookie);
@@ -65,7 +67,7 @@ export async function call(path: string, init: CallInit = {}): Promise<Response>
 
   const ctx = createExecutionContext();
   const bindings = { ...env, ...overrides } as Bindings;
-  const response = await worker.fetch!(new Request(`${ORIGIN}${path}`, { ...rest, headers, body, redirect: "manual" }), bindings, ctx);
+  const response = await (via ?? worker).fetch!(new Request(`${ORIGIN}${path}`, { ...rest, headers, body, redirect: "manual" }), bindings, ctx);
   await waitOnExecutionContext(ctx);
   return response;
 }

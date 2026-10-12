@@ -102,7 +102,7 @@ describe("unknown roles", () => {
       env.DB.prepare("UPDATE users SET role = 'owner' WHERE email = ?").bind(email),
       env.DB.prepare("PRAGMA ignore_check_constraints = OFF"),
     ]);
-    expect((await call("/api/announcements", { cookie })).status).toBe(403);
+    expect((await call("/api/admin/announcements", { cookie })).status).toBe(403);
     expect((await call("/api/admin/users", { cookie })).status).toBe(403);
     const me = (await (await call("/api/me", { cookie })).json()) as { user: { role: string }; areas: { visible: string[] } };
     expect(me.user.role).toBe("student");
@@ -201,20 +201,20 @@ describe("PUT /api/admin/users/:id/areas (grant and revoke)", () => {
     const editorEmail = uniqueEmail("editor");
     const editorId = await createVerifiedUser(editorEmail, "editor");
     const editor = cookiesOf(await signIn(editorEmail));
-    const post = () => call("/api/announcements", { method: "POST", cookie: editor, json: announcement });
+    const post = () => call("/api/admin/announcements", { method: "POST", cookie: editor, json: announcement });
 
     expect((await post()).status).toBe(403);
     expect((await putAreas(editorId, boss, { areas: ["komunikasi"] })).status).toBe(200);
     expect((await post()).status).toBe(201);
     expect((await putAreas(editorId, boss, { areas: ["konten"] })).status).toBe(200); // komunikasi replaced by konten
     expect((await post()).status).toBe(403);
-    expect((await call("/api/announcements", { cookie: editor })).status).toBe(403); // and the area's reads go with it
+    expect((await call("/api/admin/announcements", { cookie: editor })).status).toBe(403); // and the area's reads go with it
     expect((await putAreas(editorId, boss, { areas: ["komunikasi", "konten"] })).status).toBe(200);
     expect((await post()).status).toBe(201);
-    expect((await call("/api/announcements", { cookie: editor })).status).toBe(200);
+    expect((await call("/api/admin/announcements", { cookie: editor })).status).toBe(200);
     expect((await putAreas(editorId, boss, { areas: [] })).status).toBe(200);
     expect((await post()).status).toBe(403);
-    expect((await call("/api/announcements", { cookie: editor })).status).toBe(403);
+    expect((await call("/api/admin/announcements", { cookie: editor })).status).toBe(403);
   });
 
   test("is idempotent: the same set again changes nothing and writes no audit row; untouched grants keep their history", async () => {
@@ -312,7 +312,7 @@ describe("PUT /api/admin/users/:id/areas (grant and revoke)", () => {
     const id = await createVerifiedUser(email, "editor");
     const cookie = cookiesOf(await signIn(email));
     await putAreas(id, boss, { areas: ["komunikasi"] });
-    const post = () => call("/api/announcements", { method: "POST", cookie, json: announcement });
+    const post = () => call("/api/admin/announcements", { method: "POST", cookie, json: announcement });
 
     expect((await post()).status).toBe(201);
     await setRole(email, "viewer");
