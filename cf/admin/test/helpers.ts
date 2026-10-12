@@ -7,6 +7,7 @@ import { mailbox, type RecordedEmail } from "../src/email/send";
 import type { Bindings } from "../src/env";
 import { SITEVERIFY_URL, TURNSTILE_TEST_SECRETS } from "../src/security/turnstile";
 import worker from "../src/worker";
+import { limiterBindings } from "./limiter-clock";
 
 export const ORIGIN = "https://admin.test";
 export const PASSWORD = "correct horse battery staple";
@@ -18,24 +19,17 @@ export function freshIp(): string {
   return `203.0.113.${(counter % 250) + 1}`;
 }
 
-/**
- * The rate limit bindings count in windows that line up with the clock, so a
- * test that makes several slow calls (Better Auth's resend route takes half a
- * second by design) and counts exactly would fail now and then if the minute
- * turned in the middle. Waits out the last `needMs` of a minute instead.
- */
-export async function awaitFreshWindow(needMs = 6000) {
-  const into = Date.now() % 60_000;
-  if (into > 60_000 - needMs) await new Promise((resolve) => setTimeout(resolve, 60_000 - into + 50));
-}
-
 export function uniqueEmail(label = "user"): string {
   counter += 1;
   return `${label}-${counter}-${crypto.randomUUID().slice(0, 8)}@example.test`;
 }
 
 interface CallInit extends RequestInit {
-  /** Replaces bindings for this call only, e.g. { ENVIRONMENT: "production" }. */
+  /**
+   * Replaces bindings for this call only, e.g. { ENVIRONMENT: "production" }. The rate limit bindings are the test's
+   * own (test/limiter-clock.ts: Miniflare's contract, a clock the test moves); `RL_X: undefined` leaves one out
+   * (the in-memory fallback), `RL_X: env.RL_X` asks for the real one (then use `inOneRealWindow`).
+   */
   env?: Partial<Bindings>;
   /** The client address (CF-Connecting-IP). `null` sends none, like a local run without the edge. */
   ip?: string | null;
@@ -66,7 +60,7 @@ export async function call(path: string, init: CallInit = {}): Promise<Response>
   else if (origin === undefined && rest.method && rest.method !== "GET" && !headers.has("origin")) headers.set("origin", ORIGIN);
 
   const ctx = createExecutionContext();
-  const bindings = { ...env, ...overrides } as Bindings;
+  const bindings = { ...env, ...limiterBindings(), ...overrides } as Bindings;
   const response = await (via ?? worker).fetch!(new Request(`${ORIGIN}${path}`, { ...rest, headers, body, redirect: "manual" }), bindings, ctx);
   await waitOnExecutionContext(ctx);
   return response;

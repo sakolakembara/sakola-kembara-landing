@@ -9,6 +9,7 @@ import type { ContentChange } from "../src/public/purge";
 import { checkLimits } from "../src/security/rate-limit";
 import { appAround, ifMatchOf, spyOnD1 } from "./crud-app";
 import { CAPTCHA, call, cookiesOf, createVerifiedUser, fakeNetwork, PASSWORD, productionLike, signedInCookie, uniqueEmail } from "./helpers";
+import { withFrozenDate } from "./limiter-clock";
 import { internalFetch } from "./public-helpers";
 import { auditRows, clearBucket, mediaRows, objectKeys, png, upload, type Uploaded } from "./uploads-helpers";
 
@@ -1010,12 +1011,16 @@ describe("blog: preview", () => {
 
     test("without the binding a local run counts in memory with the same numbers (60 a minute, per user); production would refuse", async () => {
       const cookie = await editor();
-      const statuses: number[] = [];
-      for (let i = 0; i < 61; i++) statuses.push((await send(cookie, { env: { RL_BLOG_PREVIEW: undefined }, ip: "203.0.113.40" })).status);
-      expect(statuses).toEqual([...Array(60).fill(200), 429]);
+      const other = await editor();
+      // The fallback's window lasts a minute by the wall clock from the first preview: frozen, a slow run cannot outlast it.
+      await withFrozenDate(async () => {
+        const statuses: number[] = [];
+        for (let i = 0; i < 61; i++) statuses.push((await send(cookie, { env: { RL_BLOG_PREVIEW: undefined }, ip: "203.0.113.40" })).status);
+        expect(statuses).toEqual([...Array(60).fill(200), 429]);
 
-      // Another person is not held back by it.
-      expect((await send(await editor(), { env: { RL_BLOG_PREVIEW: undefined }, ip: "203.0.113.40" })).status).toBe(200);
+        // Another person is not held back by it.
+        expect((await send(other, { env: { RL_BLOG_PREVIEW: undefined }, ip: "203.0.113.40" })).status).toBe(200);
+      });
 
       // The same lookup in production: no binding, nothing throttles, so the request is refused (503), not allowed.
       expect(await checkLimits({ ENVIRONMENT: "production" }, [{ name: "blogPreview", key: "blog-preview:someone" }])).toEqual({ allowed: false, reason: "unavailable", name: "blogPreview" });

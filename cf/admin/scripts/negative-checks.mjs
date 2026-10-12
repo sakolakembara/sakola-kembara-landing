@@ -469,6 +469,59 @@ const checks = [
     tests: "test/rate-limit.test.ts",
   },
 
+  // ------------------------------------------- rate limits against a held clock (SAKEM-088)
+  // The route tests count against the test's own limiter with a clock that only the test moves (test/limiter-clock.ts),
+  // and the in-memory fallback runs with `Date` frozen. Run with `--only "rate limit:"`.
+  {
+    name: "rate limit: a binding's refusal is ignored (nothing is ever limited)",
+    file: "src/security/rate-limit.ts",
+    from: 'return success ? { allowed: true } : { allowed: false, reason: "limited", name };',
+    to: "return { allowed: true };",
+    tests: "test/rate-limit.test.ts test/gate.test.ts test/uploads.test.ts",
+  },
+  {
+    name: "rate limit: the sign-in limit in the table is higher than the one wrangler.jsonc declares",
+    file: "src/security/rate-limit.ts",
+    from: 'binding: "RL_LOGIN",\n    limit: 5,',
+    to: 'binding: "RL_LOGIN",\n    limit: 500,',
+    tests: "test/rate-limit.test.ts",
+  },
+  {
+    name: "rate limit: the in-memory fallback never starts a new window",
+    file: "src/security/rate-limit.ts",
+    from: "if (!current || current.resetsAt <= now) {",
+    to: "if (!current) {",
+    tests: "test/rate-limit.test.ts",
+  },
+  {
+    name: "rate limit: the in-memory fallback never refuses",
+    file: "src/security/rate-limit.ts",
+    from: "return current.count <= config.limit;",
+    to: "return true;",
+    tests: "test/rate-limit.test.ts test/uploads.test.ts",
+  },
+  {
+    name: "rate limit: the contact limiter never starts a new window",
+    file: "src/public/contact-deps.ts",
+    from: "const hits = current && current.start === start ? current.hits + 1 : 1;",
+    to: "const hits = current ? current.hits + 1 : 1;",
+    tests: "test/public-contact.test.ts",
+  },
+  {
+    name: "rate limit: the test double of the binding never starts a new window",
+    file: "test/limiter-clock.ts",
+    from: "const count = bucket && bucket.epoch === epoch ? bucket.count : 0;",
+    to: "const count = bucket ? bucket.count : 0;",
+    tests: "test/rate-limit.test.ts",
+  },
+  {
+    name: "rate limit: the test double of the binding never refuses",
+    file: "test/limiter-clock.ts",
+    from: "if (count >= config.limit) return { success: false };",
+    to: "if (count >= config.limit + 1000) return { success: false };",
+    tests: "test/rate-limit.test.ts",
+  },
+
   // ------------------------------------------------------------- Turnstile
   {
     name: "Turnstile answer never checked (every token passes)",
