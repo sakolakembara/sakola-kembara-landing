@@ -19,8 +19,8 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 | --- | --- |
 | `pnpm build` | Syncs a few root files (`scripts/sync-assets.mjs`), builds `dist/client` (assets) and `dist/server` (Worker) |
 | `pnpm check` | `astro check` (types for `.astro` and `.ts`) |
-| `pnpm test` | 368 unit tests (vitest); the `built.test.ts` ones need `pnpm build` first and are skipped without it |
-| `pnpm test:e2e` | 267 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
+| `pnpm test` | 475 unit tests (vitest); `built.test.ts`, `home-built.test.ts` and `home-dom.test.ts` read `dist/` and need `pnpm build` first (skipped without it) |
+| `pnpm test:e2e` | 273 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
 | `pnpm measure [-- --next http://127.0.0.1:3055]` | Sizes, warm timings, and the "does the Worker run?" experiment; writes `.measure/results.json` |
 | `pnpm exec wrangler deploy --dry-run --outdir <dir> -c dist/server/wrangler.json` | Bundle size, no login needed |
 
@@ -30,7 +30,7 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 
 | URL | Served as | Notes |
 | --- | --- | --- |
-| `/` | prerendered, **assets layer** | Hero + "Program Kami" only (2 of 7 sections), verbatim copy; Organization JSON-LD |
+| `/` | prerendered, **assets layer** | All 7 sections (Hero, Mengapa Kami Ada?, Program Kami, Dampak, Partner, CTA, Cerita & Inspirasi), verbatim copy; Organization JSON-LD; the lazy Leaflet map (see "JS and CSS budget") |
 | `/blog` | **SSR** | List with `?page=N` (15 per page), reads only a small metadata index bundled in the Worker |
 | `/blog/<slug>` | prerendered, **assets layer**, 80 pages | Built from the root `content/blog/*.md`; Article JSON-LD, related articles |
 | `/tim` | **SSR** | `${CONTENT_API_URL}/api/public/team`, 2 s timeout, `caches.default`, stale-if-error |
@@ -41,7 +41,7 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 | `/program/*`, `/laporan`, `/donasi`, `/kontak`, `/gabung-siswa*` | forwarded to the legacy origin | Not ported yet |
 | `/<slug>` (single segment, slug grammar) | forwarded to the legacy origin | Admin-managed shortlinks live in Postgres |
 
-Client JS is two inline scripts and no framework: (1) **navbar script** (about 3.4 KB raw, 1.5 KB gzip, on every page): mobile menu toggle, the auth-aware button (`/api/auth/session` -> Masuk / Portal / Dashboard), the announcement strip (`/api/announcements/current`) and the footer year (DESIGN.md says it is "computed live"); (2) **/tim dialog opener** (about 0.3 KB): opens a member's native `<dialog>`. Both exist because that state lives on the legacy app or in the browser. Everything else is HTML and CSS; the entrance animations are CSS (`.anim-fade-up`), framer-motion is not used.
+Client JS has no framework. On every page: the **navbar script** (about 3.4 KB raw, 1.5 KB gzip, inline): mobile menu toggle, the auth-aware button (`/api/auth/session` -> Masuk / Portal / Dashboard), the announcement strip (`/api/announcements/current`) and the footer year (DESIGN.md says it is "computed live"); it exists because that state lives on the legacy app or in the browser. On `/tim`: a **dialog opener** (about 0.3 KB) for a member's native `<dialog>`. On `/` three more: the **stat dialog opener** (0.3 KB), the **carousel controls** (1 KB) and the **map loader** (3 KB, a file because it holds dynamic imports) that fetches Leaflet only when the map is within 400 px of the viewport. The numbers, what each one is for and the enforced budget are in "JS and CSS budget" below. Everything else is HTML and CSS; the entrance animations are CSS (`.anim-fade-up` on load, `.anim-reveal` on a view timeline), framer-motion is not used.
 
 ## Decisions and why
 
@@ -56,6 +56,12 @@ Client JS is two inline scripts and no framework: (1) **navbar script** (about 3
 - **Images.** Plain `<img>` with `width`/`height`; `loading="lazy"` except the hero photo (`loading="eager" fetchpriority="high"`). Images the components import (hero, program photos, logos) are hashed and the photos resized at build time with sharp (`imageService: { build: 'compile', runtime: 'passthrough' }`; no Cloudflare Images): the hero went from a 1.4 MB PNG to an 85 KB webp at 800 px. Blog covers and inline article images are **not** resized (see gaps).
 - **Security headers** that Caddy adds today (HSTS, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy) are re-added for Worker and asset responses (`public/_headers` and the middleware); a test keeps them equal to the Caddyfile.
 - **Team API contract** (`src/lib/team-types.ts`): `GET ${CONTENT_API_URL}/api/public/team` returns `{ "members": TeamMember[] }` shaped like the `team_members` row of `lib/db/schema/team-members.ts` (dates as ISO strings); a bare array is accepted. **This endpoint does not exist in the legacy app yet.** Cache: 5 min fresh, 7 days stale; on failure the stale copy is also re-served as fresh for 30 s so an outage costs one 2 s wait per 30 s, not one per request. `TEAM_CACHE_FRESH_SECONDS` tunes the fresh window.
+
+- **Home sections (SAKEM-080 part A).** Copy and data are in `src/lib/home-data.ts` (a file of its own, so parallel pages do not collide in `site.ts`); `tests/home.test.ts` compares every value with the root `lib/data.ts` (it imports it) and every phrase with the legacy components. Photos and logos are imported by the components, keyed by `id`, and resized at build time: the seven testimonial portraits went from up to 1.1 MB JPEGs to webp at 256, 384 and 640 px; the six logos to webp at 136 and 272 px; the page references 49 image files (srcset variants included), the largest 157 KB (the 1200 px hero), and no original.
+- **Testimonial carousel: CSS scroll-snap, not a slider.** The track is an `overflow-x` scroll-snap row (two cards at a time from `md`, one below) in a focusable `role="region"` with `aria-roledescription="carousel"`; arrow keys, touch and trackpad scroll it with no JS. About 1 KB of script adds the previous/next buttons (they wrap around, like the Next version) and the dots; until it runs those controls are `hidden`, so there is never a dead button. `scrollTo` carries no `behavior`, so CSS decides (smooth, or instant under `prefers-reduced-motion`). Differences from the Next carousel: one card per testimonial in the HTML (Next rendered every card twice, once per slide), the last position shows cards 6 and 7 instead of 7 and 1, there is one dot fewer than cards when two are in view, and the dots have a larger invisible hit area.
+- **Map: server-rendered list, Leaflet loaded lazily.** The panel is HTML first: the eight branches as a list (what crawlers, screen readers and a visitor without JS get). The map loader (an `IntersectionObserver`, `rootMargin` 400 px) dynamically imports Leaflet, its CSS and the marker CSS the first time the panel is near the viewport, draws one marker per list item (the list items carry the coordinates and the popup markup, so the script holds no copy) and then swaps the list for the map. A visit that never scrolls to the map never requests the Leaflet chunk (about 145 KB raw, 42 KB gzip). The CSS is imported with `?inline` and injected as a `<style>`: a plain CSS import in that script made Astro add a render-blocking `<link>` for all of Leaflet's CSS to the page. If the chunk cannot load, the list stays. Tiles still come from `tile.openstreetmap.org`, as before. Marker pulse keyframes are named `map-pulse`, so they cannot shadow Tailwind's `pulse`.
+- **Entrance motion on the home sections is CSS only**: `.anim-reveal` (`src/styles/reveal.css`, inlined by Astro as a 349-byte `<style>`) runs a fade-up on a view timeline (`animation-timeline: view()`), staggered per card with `--i`. It sits behind `@supports (animation-timeline: view())`, so a browser without it just shows the content (nothing is hidden up front), and `prefers-reduced-motion` switches it off. It is not the 0.6 s time-based reveal of framer-motion; whether it feels right is a visual check nobody has done.
+- **Tests that run the real scripts.** `tests/home-dom.test.ts` loads the built `index.html` into happy-dom (a dev dependency) and runs the page's actual scripts: it opens the dialog, drives the carousel (geometry stubbed, there is no layout), runs the lazy map (Leaflet really loads and draws the eight markers and a popup) and checks that nothing logs a console error. It proves the markup and the scripts agree; it is not a browser.
 
 ## Pass-through
 
@@ -86,27 +92,51 @@ How it works: the middleware (`src/middleware.ts`) checks the redirect table, th
 - **Server actions** post to the page URL (`/login`, `/portal/daftar`): the e2e posts with a `next-action` header and a body, and it reaches the stub unchanged.
 - `/blog/page/N?utm=x` loses the incoming query (`_redirects` keeps the destination's own query only). Not worth a code path.
 
+## JS and CSS budget (home page)
+
+The home page is the only page with more than the navbar script, so its client weight is fixed in a test: `tests/home-built.test.ts` (needs `pnpm build`) fails when the page ships more than the numbers below. The limits are what the build measured plus about 15%; raising one is a decision, made in the PR that needs it, with the reason written here.
+
+| Part | Measured (raw / gzip) | Limit (raw / gzip) | Loaded |
+| --- | --- | --- | --- |
+| Navbar script (inline, every page) | 3,444 / 1,581 B | | on every page |
+| Stat dialog opener (inline) | 266 / 200 B | | on `/` |
+| Carousel controls (inline) | 1,028 / 532 B | | on `/` |
+| Map loader (`ImpactMap...js`, a file) | 3,071 / 1,560 B | | on `/`; half of it is Vite's dynamic-import helper |
+| **Eager JS of `/`** | **7,809 / 3,873 B** | **9,000 / 4,600 B** | |
+| Leaflet + its CSS + marker CSS (3 lazy chunks) | 166,150 / 50,000 B | 190,000 / 58,000 B | only when the map is within 400 px of the viewport |
+| CSS of `/` (one stylesheet + inline `<style>`) | 58,373 / 10,444 B | 67,000 / 12,200 B | render blocking, on every page (the stylesheet is shared) |
+
+What each island is for, and why it is not CSS:
+
+- **Navbar script**: the signed-in state and the announcement live on the legacy app; the menu toggle and the year need a script (see "What is built").
+- **Stat dialog opener**: `showModal()` has no HTML-only form. Everything else about the dialog is native (focus trap, Escape, the `method="dialog"` Tutup button).
+- **Carousel controls**: scrolling and snapping are CSS; the script only moves one card per click (wrapping) and syncs the dots. Without it the carousel still scrolls.
+- **Map loader + Leaflet**: a map needs a map library. It is the one piece of real JS, so it is lazy (nothing of it is in the HTML, a test checks there is no `leaflet` and no `modulepreload` there) and it replaces a complete server-rendered list rather than an empty box. A static SVG map was rejected: there is no coastline data in the repo, and a drawn Indonesia would be new art.
+- **No animation library**: entrance motion is CSS (`reveal.css`, `.anim-fade-up`). A test fails if `framer-motion` or `gsap` appears in any shipped JS.
+
+The e2e script repeats the eager-JS check on the bytes the Worker serves, and checks that the lazy chunks are plain static files (200, immutable, never forwarded to the origin). `pnpm measure` prints the same page-weight numbers.
+
 ## Results (local, this machine)
 
-**Tests.** `pnpm test`: 368 passed (11 files). `pnpm test:e2e`: 267 of 267 checks. `pnpm check`: 0 errors, 0 warnings. Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
+**Tests.** `pnpm test`: 475 passed (14 files). `pnpm test:e2e`: 273 of 273 checks. `pnpm check`: 0 errors, 0 warnings. Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
 
 **What `/` loads** (JS means JS referenced by the HTML):
 
 | | HTML raw / gzip | JS raw / gzip | CSS raw / gzip |
 | --- | --- | --- | --- |
-| Astro `/` (2 of 7 sections) | 28.0 / 7.2 KB | 3.4 / 1.5 KB (1 inline script, 0 files) | 45.9 / 8.7 KB |
-| Astro `/blog/<slug>` | 30.5 / 8.7 KB | 3.4 / 1.5 KB | 45.9 / 8.7 KB |
+| Astro `/` (all 7 sections) | 77.3 / 15.3 KB | 7.6 / 3.5 KB (3 inline scripts + 1 file, Leaflet lazy and not counted) | 57.0 / 10.2 KB (one file + a 0.3 KB inline `<style>`) |
+| Astro `/blog/<slug>` | 30.5 / 8.7 KB | 3.4 / 1.5 KB | 56.7 / 10.1 KB |
 | Next `/` (all sections) | 131.7 / 22.0 KB | 1026.8 / 316.6 KB in 15 files, plus 32.2 / 8.4 KB in 16 inline scripts | 99.4 / 15.7 KB |
 
-The Next row is measured from `next start` (the Next 16 build output no longer prints a First Load JS column). It is **not like for like**: it is the full homepage, and the Astro page has two sections. The remaining sections are mostly HTML; the Leaflet map in the Impact section is the one piece that would add real JS.
+The Next row is measured from `next start` (the Next 16 build output no longer prints a First Load JS column) and dates from the first slice. The Astro home row is now like for like (all seven sections): about 4 KB of JS gzip up front instead of about 317 KB, and the Leaflet map (about 50 KB gzip with its CSS) is fetched only when the map is about to be seen. The HTML grew because the page now carries the testimonial quotes, the eight branches and the stat detail text as real markup. Next had measured the CSS of the whole app; Astro's single stylesheet is Tailwind's output for this app.
 
-**Worker bundle** (`wrangler deploy --dry-run`, no login): 19 modules, **725 KiB raw, 181 KiB gzip** against 3 MB compressed on Free. `dist/client`: 126 files, 4.5 MB (80 article pages, resized images, fonts, CSS).
+**Worker bundle** (`wrangler deploy --dry-run`, no login): 19 modules, **729 KiB raw, 182 KiB gzip** against 3 MB compressed on Free (the home page is prerendered, so its sections add almost nothing to the Worker). `dist/client`: 162 files, 5.2 MB (80 article pages, resized images, fonts, CSS, the Leaflet chunk).
 
 **Warm response time**, client wall clock through `wrangler dev` (workerd, loopback stub, N=60; **proxy numbers, not CPU time**):
 
 | Route | Status | Median | p95 |
 | --- | --- | --- | --- |
-| `/` (prerendered) | 200 | 1.3 ms | 2.0 ms |
+| `/` (prerendered, 77 KB HTML) | 200 | 2.4 ms | 3.5 ms |
 | `/blog` (SSR) | 200 | 2.2 ms | 3.2 ms |
 | `/blog/<slug>` (prerendered) | 200 | 1.3 ms | 1.8 ms |
 | `/tim` (SSR, cache hit) | 200 | 2.1 ms | 2.7 ms |
@@ -131,7 +161,7 @@ The Next row is measured from `next start` (the Next 16 build output no longer p
 | `robots.txt` | same rules and `Host`/`Sitemap` lines | headers-sitemap.test, e2e |
 | 404 | **real 404** with the 404 page and noindex, for unknown articles, unknown paths and `/404`; Next answered 200 with an empty shell for unknown slugs | e2e (8 URLs) |
 | WordPress redirects | all 80 `sourceUrl` -> `/blog/<slug>`, 308, with and without the trailing slash; every rule of `next.config.ts` present with the same status; plus `/wp-content/uploads/*` (308) and `/program` (307) | redirects.test (table and generated `_redirects`), e2e |
-| Images | `width`/`height` on every `<img>`; lazy except the hero | built.test, blog.test |
+| Images | `width`/`height` on every `<img>`; lazy except the hero (also on the full home page) | built.test, home-built.test, blog.test |
 | Headings, skip link, one `<h1>` per page | same | built.test, e2e |
 | Self-hosted fonts | no Google Fonts request | tokens.test, built.test |
 
@@ -139,7 +169,9 @@ Deliberate differences, for review: sitemap `lastmod` as above; trailing-slash a
 
 ## Known gaps
 
-- **Not a complete site.** Home has 2 of 7 sections; 5 public routes plus `/gabung-siswa/docs` and three program pages are forwarded to the legacy app. Mixed mode means the old and new navbar differ until the rest is ported.
+- **Not a complete site.** The home page is complete, but 5 public routes plus `/gabung-siswa/docs` and three program pages are still forwarded to the legacy app (SAKEM-080 parts B onward). Mixed mode means the old and new navbar differ until the rest is ported.
+- **Home news covers are the blog's originals.** The three covers in "Cerita & Inspirasi" are `/blog/images/*` files at their original size (the two newest are 570 KB and 675 KB, one is 1.9 MB), served by the origin through the pass-through, one Worker request each, until the blog image derivatives exist (same gap as `/blog`). They are lazy, below the fold.
+- **The map's tiles and the lazy chunk were not seen in a browser.** The loader and Leaflet run in the happy-dom test (markers, popup, CSS injection), but no tile, marker pulse, popup placement or layout was looked at.
 - **Blog and team images are not optimized.** Covers and inline images are the originals (up to several hundred KB) served from the origin; the Next app resized them. Fix: build-time derivatives into this app's assets, then R2.
 - **No visual QA.** Nothing was rendered in a browser. Utilities were checked in the built CSS, copy against the legacy source (tests/copy.test.ts), tokens against the root file.
 - **Font fallback metrics.** `next/font` generates size-adjusted fallbacks; `@fontsource` does not, so a font swap can shift layout slightly (CLS).
@@ -158,7 +190,7 @@ Deliberate differences, for review: sitemap `lastmod` as above; trailing-slash a
 
 Relative sizes are opinion (S: a few hours, M: about a day, L: several days).
 
-- [ ] **Home, remaining sections.** Problem (S: infographic charts are plain markup; the "Mengapa ini terjadi?" `<dialog>` needs a tiny opener), Partners (S), CTA (S), News (S: the three newest articles from the blog index), **Impact (L)**: testimonial carousel plus the Leaflet map, the only real JS decision (static SVG map, or a lazy island).
+- [x] **Home, remaining sections** (SAKEM-080 part A). Problem (charts as markup, native `<dialog>` with a 0.3 KB opener), Impact (metrics, the lazy Leaflet map, the scroll-snap carousel), Partners (active and past, resized logos), CTA (the four role cards, with the documented orange exception) and News (the three newest articles from the blog index, guarded against a missing cover). Decisions: "Home sections", the carousel, the map and the CSS motion above; budget below. Note for the ticket text: the legacy CTA has four cards ("Empat peran"), not three.
 - [ ] **Program x3** `/program/<id>` (M): stepper, activity cards with PDFs, `programJsonLd`, prerender the three pages. The photo gallery reads a folder at request time (`lib/gallery.ts`), which a Worker cannot do: needs a build-time manifest or R2.
 - [ ] **`/laporan`** (M): reads Postgres; needs `/api/public/reports` in the legacy app (or the new API) and an SSR page like `/tim`.
 - [ ] **`/donasi`** (S-M): static copy, QRIS image, copy-account-number button (one small script).
