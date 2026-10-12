@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 /**
- * The auth page layout: a narrow centered column on a plain page, no card
- * (the login-2 block Dzul picked). The legacy /login used a card
- * (app/(auth)/login/page.tsx); the copy is the same.
+ * The auth page layout: a narrow centered column on a plain page, no card,
+ * one heading (the login-2 block Dzul picked). The legacy /login used a card
+ * with the brand name above it (app/(auth)/login/page.tsx).
  */
 export function AuthShell({
   title,
@@ -22,9 +22,6 @@ export function AuthShell({
     <main className="flex min-h-screen items-center justify-center bg-white">
       <div className="flex flex-1 flex-col justify-center px-4 py-10 lg:px-6">
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <div className="mb-8 text-center">
-            <p className="inline-block font-[family-name:var(--font-display)] text-2xl text-gray-900">Sakola Kembara</p>
-          </div>
           <h1 className="text-center font-[family-name:var(--font-display)] text-xl font-semibold text-gray-900">{title}</h1>
           {description && <p className="mt-2 text-center text-sm text-gray-600">{description}</p>}
           <div className="mt-6 space-y-4">{children}</div>

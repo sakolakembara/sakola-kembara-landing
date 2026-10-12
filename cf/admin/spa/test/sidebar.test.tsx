@@ -115,7 +115,7 @@ describe("Keluar", () => {
       "POST /api/auth/sign-out": respond({ success: true }),
     });
     await user.click(screen.getAllByRole("button", { name: "Keluar" })[0]!);
-    await screen.findByRole("heading", { name: "Selamat datang kembali" });
+    await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(out.count("POST /api/auth/sign-out")).toBe(1);
     expect(out.last("POST /api/auth/sign-out")?.body).toEqual({});
     expect(screen.getByTestId("location").textContent).toBe("/login");
@@ -133,7 +133,7 @@ describe("Keluar", () => {
     const button = (await screen.findAllByRole("button", { name: "Keluar" }))[0]!;
     await user.dblClick(button);
     gate.resolve(respond({ success: true }));
-    await screen.findByRole("heading", { name: "Selamat datang kembali" });
+    await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(api.count("POST /api/auth/sign-out")).toBe(1);
   });
 

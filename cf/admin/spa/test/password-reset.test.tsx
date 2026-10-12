@@ -202,7 +202,7 @@ describe("reset password", () => {
       await user.type(fresh(), "kata sandi baru");
       await user.type(confirm(), "kata sandi baru");
       await user.click(save());
-      await screen.findByRole("heading", { name: "Selamat datang kembali" });
+      await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
       expect(api.last("POST /api/auth/reset-password")?.body).toEqual({ newPassword: "kata sandi baru", token: "tok-123" });
       expect(location()).toBe("/login?reset=1");
       expect(screen.getByRole("status").textContent).toContain("Password berhasil diganti");
@@ -266,7 +266,7 @@ describe("reset password", () => {
       fireEvent.submit(save().closest("form")!);
       expect(api.count("POST /api/auth/reset-password")).toBe(1);
       gate.resolve(respond({ status: true }));
-      await screen.findByRole("heading", { name: "Selamat datang kembali" });
+      await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
       expect(api.count("POST /api/auth/reset-password")).toBe(1);
     });
   });

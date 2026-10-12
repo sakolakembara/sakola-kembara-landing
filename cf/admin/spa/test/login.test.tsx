@@ -12,7 +12,7 @@ const submit = () => screen.getByRole("button", { name: /^(Masuk|Memproses…)$/
 async function openLogin(path = "/login", routes: Parameters<typeof stubApi>[0] = {}) {
   const api = stubApi({ ...config, ...routes });
   renderApp(path);
-  await screen.findByRole("heading", { name: "Selamat datang kembali" });
+  await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
   return api;
 }
 
