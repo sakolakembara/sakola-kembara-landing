@@ -4,6 +4,7 @@ import { type AdminArea, isAdminRole, parseMe } from "~/lib/me";
 import { TURNSTILE_HEADER } from "~/lib/captcha";
 import { mockDashboard, mockMeBody } from "./fixtures";
 import { MOCK_HANDLERS } from "./handlers";
+import { createKomunikasiMock } from "./komunikasi";
 import type { Persona } from "./persona";
 import { MOCK_RESOURCES } from "./registry";
 import { createMockResources } from "./resources";
@@ -59,6 +60,7 @@ export function createMockTransport(config: MockConfig): Transport {
   // Every resource registered in mock/resources/ (list, item, create, update, delete, uploads' areas), with the persona's rights.
   const accessOf = (area: AdminArea) => accessTo(parseMe(mockMeBody(config.persona)), area);
   const resources = createMockResources(MOCK_RESOURCES, accessOf);
+  const komunikasi = createKomunikasiMock(accessOf);
   const spentTokens = new Set<string>();
 
   /** The Worker's security check: null when the token is good (it is then spent), otherwise the refusal. */
@@ -135,8 +137,9 @@ export function createMockTransport(config: MockConfig): Transport {
         return json(mockDashboard(config.persona, config.dashboard === "empty" ? "empty" : "ready"));
 
       default:
-        // A registered resource (mock/resources/), a registered handler (mock/handlers/), or nobody's path.
-        return resources.handle(method, url, init) ?? answeredByHandler(method, url, init) ?? json({ error: "not_found" }, 404);
+        // The Komunikasi screens (mock/komunikasi.ts: the inbox, and the status of the announcements the generic store lists),
+        // a registered resource (mock/resources/), a registered handler (mock/handlers/), or nobody's path.
+        return (await komunikasi.handle(method, url, init, resources)) ?? resources.handle(method, url, init) ?? answeredByHandler(method, url, init) ?? json({ error: "not_found" }, 404);
     }
   };
 }

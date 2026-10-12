@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
-import { formatWindow, fromLocalDatetime, isCurrentlyShown, toBody, toLocalDatetime, toValues } from "~/pages/announcements/model";
+import { ANNOUNCEMENT_STATUSES, formatWindow, fromLocalDatetime, STATUS_VIEW, toBody, toLocalDatetime, toValues } from "~/pages/announcements/model";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
 // The reference screens of docs/cloudflare/admin-crud.md: the list (ListPage), and the form (FormShell with the
@@ -23,6 +23,8 @@ function item(overrides: Record<string, unknown> = {}) {
     endsAt: null,
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",
+    // What the Worker says about the row (the strip's own rule, worked out on the server): this one is the one shown.
+    status: "current",
     ...overrides,
   };
 }
@@ -82,25 +84,43 @@ describe("the list: who sees what", () => {
 });
 
 describe("the list: loading, errors, rows", () => {
-  test("a table named for screen readers, the legacy columns, the severity as a tag, the window and the status", async () => {
+  test("a table named for screen readers, the legacy columns, the severity as a tag, the window and the status the Worker computed", async () => {
     await openList(["viewer", []], {
       [`GET ${LIST}`]: respond(
         envelope([
           item(),
-          item({ id: "m2", title: "Jadwal berubah", severity: "urgent", active: true, startsAt: "2999-01-01T00:00:00.000Z" }),
-          item({ id: "m3", title: "Lama", severity: "warning", active: false }),
+          item({ id: "m2", title: "Jadwal berubah", severity: "urgent", active: true, startsAt: "2999-01-01T00:00:00.000Z", status: "outside_window" }),
+          item({ id: "m3", title: "Lama", severity: "warning", active: false, status: "inactive" }),
+          item({ id: "m4", title: "Tertutup", active: true, status: "superseded" }),
         ]),
       ),
     });
     const grid = screen.getByRole("table", { name: /Daftar pengumuman/ });
     expect(within(grid).getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Pesan", "Severity", "Jadwal", "Status", "Aksi"]);
-    expect(within(grid).getByText("Info")).toBeTruthy();
+    expect(within(grid).getAllByText("Info")).toHaveLength(2);
     expect(within(grid).getByText("Mendesak")).toBeTruthy();
     expect(within(grid).getByText("Peringatan")).toBeTruthy();
-    expect(within(grid).getByText("Tampil")).toBeTruthy(); // active, inside its window
-    expect(within(grid).getByText("Aktif, di luar jadwal")).toBeTruthy(); // active, starts in 2999
+    expect(within(grid).getByText("Tampil sekarang")).toBeTruthy(); // the one the strip shows
+    expect(within(grid).getByText("Aktif, di luar jadwal")).toBeTruthy();
     expect(within(grid).getByText("Tidak aktif")).toBeTruthy();
-    expect(screen.getByText("3 total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal.")).toBeTruthy();
+    expect(within(grid).getByText("Aktif, tertutup yang lebih baru")).toBeTruthy();
+    expect(screen.getByText("4 total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal. Bila ada beberapa, yang terakhir dibuat yang tampil.")).toBeTruthy();
+  });
+
+  // Negative test (scripts/negative-checks-spa-komunikasi.mjs): work the status out from the dates again, in the
+  // browser, and this fails.
+  test("the status is the Worker's word, not the browser's clock: a row that is active and long past its window still says what the Worker said", async () => {
+    await openList(["viewer", []], {
+      [`GET ${LIST}`]: respond(envelope([item({ active: true, startsAt: "2000-01-01T00:00:00.000Z", endsAt: "2000-01-02T00:00:00.000Z", status: "current" })])),
+    });
+    // Had the page worked it out from the dates, this would say "Aktif, di luar jadwal".
+    expect(within(screen.getByRole("table")).getByText("Tampil sekarang")).toBeTruthy();
+    expect(screen.queryByText("Aktif, di luar jadwal")).toBeNull();
+  });
+
+  test("a status this screen does not know yet is shown as it came, never an empty cell", async () => {
+    await openList(["viewer", []], { [`GET ${LIST}`]: respond(envelope([item({ status: "baru-dari-server" })])) });
+    expect(within(screen.getByRole("table")).getByText("baru-dari-server")).toBeTruthy();
   });
 
   test("a list that fails to load says so in a sentence, with 'Coba lagi', which asks again", async () => {
@@ -452,13 +472,9 @@ describe("the model", () => {
     expect(formatWindow("2026-11-01T00:00:00.000Z", "2026-11-30T00:00:00.000Z")).toContain(" – ");
   });
 
-  test("shown means active and inside the window", () => {
-    const now = Date.parse("2026-11-15T00:00:00.000Z");
-    expect(isCurrentlyShown({ active: true, startsAt: null, endsAt: null }, now)).toBe(true);
-    expect(isCurrentlyShown({ active: false, startsAt: null, endsAt: null }, now)).toBe(false);
-    expect(isCurrentlyShown({ active: true, startsAt: "2026-11-16T00:00:00.000Z", endsAt: null }, now)).toBe(false);
-    expect(isCurrentlyShown({ active: true, startsAt: null, endsAt: "2026-11-14T00:00:00.000Z" }, now)).toBe(false);
-    expect(isCurrentlyShown({ active: true, startsAt: "2026-11-01T00:00:00.000Z", endsAt: "2026-11-30T00:00:00.000Z" }, now)).toBe(true);
+  test("every status the Worker can say has a label and a look, and the labels are the legacy ones plus the two new", () => {
+    expect(Object.keys(STATUS_VIEW).sort()).toEqual([...ANNOUNCEMENT_STATUSES].sort());
+    expect(Object.values(STATUS_VIEW).map((view) => view.label)).toEqual(["Tampil sekarang", "Aktif, tertutup yang lebih baru", "Aktif, di luar jadwal", "Tidak aktif"]);
   });
 
   test("a local date-time and the ISO the API takes round-trip, whatever the time zone", () => {
