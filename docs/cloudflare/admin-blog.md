@@ -124,7 +124,7 @@ The form (create and update):
 
 Rules that need the stored row: the slug of a published article cannot change (400 on `slug`: "Slug tidak bisa diubah setelah artikel terbit"); a published article must keep a date (400 on `date`, "Format harus YYYY-MM-DD").
 
-**Audit rows** (field names only, never a value): `blog.create`, `blog.update` (the names that changed), `blog.publish` (`["status", "publishedAt"]` the first time, `["status"]` after), `blog.unpublish`, `blog.delete`; label = the title (public content). `blog.publish` and `blog.unpublish` are new names in `src/db/audit.ts`; the Aktivitas labels (`lib/audit-labels.ts`) need two entries when that menu is ported.
+**Audit rows** (field names only, never a value): `blog.create`, `blog.update` (the names that changed), `blog.publish` (`["status", "publishedAt"]` the first time, `["status"]` after), `blog.unpublish`, `blog.delete`; label = the title (public content). `blog.publish` and `blog.unpublish` are new names: declared in `src/db/audit.ts` and in `src/audit/lists.ts` (the list Aktivitas filters by; the compiler fails until both agree), with the labels "Artikel diterbitkan" and "Artikel dikembalikan menjadi draf" in `spa/src/lib/audit.ts` ([`admin-sistem.md`](admin-sistem.md)).
 
 **Public side.** A change that touches an article that is, or just stopped being, public calls `notifyContentChanged({ area: "blog", slug })` after the commit. A draft's own edits call nothing. With the default purger that is the TTL, as in [`public-api.md`](public-api.md).
 
