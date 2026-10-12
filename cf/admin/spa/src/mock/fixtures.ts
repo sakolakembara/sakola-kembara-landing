@@ -49,7 +49,7 @@ export function mockDashboard(persona: Persona, variant: "ready" | "empty"): Das
         ];
     rows.batches = empty
       ? []
-      : [{ id: "mock-batch-2026", year: 2026, opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY), resultsPublishedAt: null }];
+      : [{ id: "mock-batch-2026", year: 2026, opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY), resultsPublishedAt: null, hasApplications: true }];
   }
   if (visible.includes("komunikasi")) rows.unreadMessages = empty ? 0 : 4;
   return buildDashboard(rows, new Date());

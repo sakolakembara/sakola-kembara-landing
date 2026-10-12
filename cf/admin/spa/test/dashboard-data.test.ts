@@ -26,6 +26,12 @@ describe("parseDashboard: the contract at the top of lib/dashboard.ts", () => {
     for (const key of ["pendingApplications", "underReviewApplications", "batch"]) expect(key in data!.attention).toBe(false);
   });
 
+  test("every phase of the contract is read, closed_empty included", () => {
+    for (const phase of ["upcoming", "open", "awaiting_decisions", "ready_to_publish", "closed_empty", "published"]) {
+      expect(parseDashboard({ attention: { batch: { ...batch, phase } } })?.attention.batch?.phase, phase).toBe(phase);
+    }
+  });
+
   test("an empty attention is valid: an editor of Konten alone has nothing here", () => {
     expect(parseDashboard({ attention: {} })).toEqual({ attention: {} });
   });

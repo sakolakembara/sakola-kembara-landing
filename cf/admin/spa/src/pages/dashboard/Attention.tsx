@@ -17,6 +17,9 @@ export function batchSummary(batch: DashboardBatch): { text: string; attention: 
       return { text: `Menunggu keputusan: ${batch.undecided} belum diputuskan`, attention: true };
     case "ready_to_publish":
       return { text: "Siap dipublikasikan", attention: true };
+    case "closed_empty":
+      // Closed and nobody applied: nothing to decide or publish, so a quiet tile.
+      return { text: "Ditutup, tanpa pendaftar", attention: false };
     case "published":
       return { text: "Hasil dipublikasikan", attention: false };
   }

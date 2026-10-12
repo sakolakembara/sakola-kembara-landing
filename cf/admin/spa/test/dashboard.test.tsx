@@ -77,11 +77,25 @@ describe("dashboard: data", () => {
     ["open", "Buka sampai"],
     ["awaiting_decisions", "Menunggu keputusan: 10 belum diputuskan"],
     ["ready_to_publish", "Siap dipublikasikan"],
+    ["closed_empty", "Ditutup, tanpa pendaftar"],
     ["published", "Hasil dipublikasikan"],
   ])("batch phase %s reads %s", async (phase, text) => {
     await open("viewer", [], respond({ attention: { ...full.attention, batch: { ...batch, phase } } }));
     const link = (await screen.findByText("Batch 2026")).closest("a")!;
     expect(link.textContent).toContain(text);
+  });
+
+  test.each([
+    ["awaiting_decisions", true],
+    ["ready_to_publish", true],
+    ["closed_empty", false], // nothing to decide or publish: a quiet tile
+    ["published", false],
+    ["open", false],
+    ["upcoming", false],
+  ])("batch phase %s: the tile is amber (needs a person): %s", async (phase, amber) => {
+    await open("viewer", [], respond({ attention: { batch: { ...batch, phase, undecided: 0 } } }));
+    const link = (await screen.findByText("Batch 2026")).closest("a")!;
+    expect(link.className.includes("amber")).toBe(amber);
   });
 
   test("a count of zero is a quiet tile, not an alert", async () => {

@@ -34,11 +34,13 @@ import type { Me } from "./me";
 // `phase` is worked out by the server (the SPA must not use the browser's
 // clock for it): upcoming (opensAt in the future), open, awaiting_decisions
 // (closed, some applicants undecided), ready_to_publish (closed, none
-// undecided, results not published), published. Which batch is shown when
-// there are several is also the server's choice (src/dashboard/payload.ts).
+// undecided, at least one application, results not published), closed_empty
+// (closed, results not published, and nobody applied: publishing is refused
+// for it, so it is not "ready"), published. Which batch is shown when there
+// are several is also the server's choice (src/dashboard/payload.ts).
 
-export type BatchPhase = "upcoming" | "open" | "awaiting_decisions" | "ready_to_publish" | "published";
-const PHASES: readonly string[] = ["upcoming", "open", "awaiting_decisions", "ready_to_publish", "published"];
+export type BatchPhase = "upcoming" | "open" | "awaiting_decisions" | "ready_to_publish" | "closed_empty" | "published";
+const PHASES: readonly string[] = ["upcoming", "open", "awaiting_decisions", "ready_to_publish", "closed_empty", "published"];
 
 export interface DashboardItem {
   count: number;
