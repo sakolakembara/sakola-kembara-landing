@@ -2,6 +2,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv, AuthUser } from "../context";
 import { loadGrantedAreas } from "../db/grants";
 import { can, type AdminArea, type AreaAction, type GrantableArea } from "./permissions";
+import { isAdminRole } from "./roles";
 import { currentUser } from "./session";
 
 export interface Access {
@@ -24,6 +25,24 @@ export async function loadAccess(c: Context<AppEnv>): Promise<Access | null> {
   if (!user) return null;
   const grantedAreas = user.role === "editor" ? await loadGrantedAreas(c.env.DB, user.id) : [];
   return { user, grantedAreas };
+}
+
+/**
+ * Guard for what has no area of its own and is open to every admin role: the
+ * dashboard. 401 when nobody is signed in, 403 for an account that is not an
+ * admin (a student, an unknown role). An editor with no grants passes (they
+ * have the dashboard and nothing else); what the route may then show them is
+ * decided by their visible areas, which it reads from `grantedAreas`.
+ */
+export function requireAdmin(): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    const access = await loadAccess(c);
+    if (!access) return c.json({ error: "unauthenticated" }, 401);
+    if (!isAdminRole(access.user.role)) return c.json({ error: "forbidden" }, 403);
+    c.set("user", access.user);
+    c.set("grantedAreas", access.grantedAreas);
+    await next();
+  };
 }
 
 /**
