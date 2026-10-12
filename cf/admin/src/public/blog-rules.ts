@@ -22,14 +22,17 @@ export function cleanExcerpt(excerpt: string): string {
 }
 
 /**
- * A query-string integer: optional sign and digits only. Anything else
- * ("abc", "", "3abc", "1.5") is `undefined`, which callers turn into the
+ * A query-string integer, read the way the legacy page reads `?page=` and the
+ * way cf/web's shared rules do (`intOr` in cf/web/blog-contract.mjs):
+ * `parseInt` semantics, so "2.9" is 2 and "3abc" is 3. Anything that is not
+ * a number at all ("abc", "") is `undefined`, which callers turn into the
  * default, so a bad value is never an error (contract).
  */
 export function parseIntParam(raw: string | undefined): number | undefined {
-  if (raw === undefined || !/^[+-]?\d+$/.test(raw.trim())) return undefined;
+  if (raw === undefined) return undefined;
   // A very long run of digits becomes Infinity, which the callers clamp like any other out-of-range value.
-  return Number(raw.trim());
+  const n = Number.parseInt(raw, 10);
+  return Number.isNaN(n) ? undefined : n;
 }
 
 /** `pageSize`: default 15, bounded to 1..50. */

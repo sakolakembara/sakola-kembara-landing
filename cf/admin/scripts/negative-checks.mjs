@@ -15,7 +15,7 @@ const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/annou
 
 // The public API (SAKEM-081, part C): docs/cloudflare/public-api.md.
 const PUBLIC_READ = "test/public-read.test.ts";
-const PUBLIC_BLOG = "test/public-blog.test.ts";
+const PUBLIC_BLOG = "test/public-blog.test.ts test/public-blog-parity.test.ts";
 const PUBLIC_LEAK = "test/public-leak.test.ts";
 const PUBLIC_CONTACT = "test/public-contact.test.ts";
 const PUBLIC_BUDGET = "test/public-budget.test.ts";

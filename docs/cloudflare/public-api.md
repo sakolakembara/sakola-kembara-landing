@@ -39,7 +39,7 @@ Astro Worker ──service binding, entrypoint "PublicApi"──▶ GET /api/pub
 - The internal app marks every request (`markServiceBindingCall`), and the contact route refuses a request without the mark (`requireServiceBinding`). That is the second layer: a future edit that mounts the contact route on the public app by mistake still answers 404, instead of trusting a forged header. Test: "a mistake in the wiring still fails closed".
 - Only the contact route reads `X-Sakem-Client-Ip`, only behind that mark. Spoofing tests: a forged header on the public face changes nothing (12 posts, all 404, nothing stored); on the internal face the rate-limit bucket is the header's value and never `CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP` or `Forwarded`; with the header missing the post is refused (`invalid_client_ip`) even if the others are present.
 
-What the Astro Worker (`cf/web`) must add to its `wrangler.jsonc`, with the name of this Worker (`sakem-admin` in `cf/admin/wrangler.jsonc`) and **the entrypoint** (without `entrypoint` the binding reaches the public face, and the contact route is a 404):
+**One change is needed in the Astro Worker.** `cf/web/wrangler.jsonc` declares today `"services": [{ "binding": "API", "service": "sakola-kembara-api" }]`: a placeholder name and **no `entrypoint`**. A binding without `entrypoint` reaches the public face, where the contact route does not exist (a 404, which the site shows as "unavailable"). It must name this Worker (`sakem-admin` in `cf/admin/wrangler.jsonc`, or whatever the deployed name is) and the entrypoint:
 
 ```jsonc
 "services": [
@@ -47,22 +47,9 @@ What the Astro Worker (`cf/web`) must add to its `wrangler.jsonc`, with the name
 ]
 ```
 
-```ts
-// in the Astro Worker, for the contact form
-const res = await env.API.fetch("https://api.internal/api/public/contact", {
-  method: "POST",
-  headers: {
-    "content-type": "application/json",
-    "x-sakem-client-ip": visitorIp, // the visitor's address as the Astro Worker saw it (CF-Connecting-IP)
-    "x-sakem-turnstile-token": token, // only once Turnstile is wired in, see below
-  },
-  body: JSON.stringify({ fullName, email, subject, message, website }),
-});
-```
+Nothing else changes on that side: the form's call (`src/lib/contact-submit.ts`: JSON to `https://api.internal/api/public/contact` with `x-sakem-client-ip` set from `CF-Connecting-IP`) is what the route expects, and its handling of `201`, `400 validation_failed`, `429 rate_limited` and `429 duplicate_recent` matches the codes below. Two things it does not know yet: the `X-Sakem-Turnstile-Token` header and the `400 turnstile_failed` answer (it would show the latter as "unavailable"), both only relevant once Turnstile is wired. The host in the URL is ignored by a service binding. The read endpoints go through the same binding (`env.API.fetch("https://api.internal/api/public/team")`) or over public HTTP (`CONTENT_API_URL`); the answers are identical.
 
-The host in that URL is ignored by a service binding. The read endpoints can go through the same binding (`env.API.fetch("https://api.internal/api/public/team")`) or over public HTTP (`CONTENT_API_URL`); the answers are identical.
-
-**Verified:** the two-face split and the header rules by the tests above, through the runtime's own entrypoint dispatch (`ctx.exports.PublicApi`, the loopback of a service binding); a real binding between two local `wrangler dev` processes (see [How it was run](#how-it-was-run-locally)). **Not verified:** a deployed zone, and what `CF-Connecting-IP` looks like inside a binding call. That a public hostname cannot address a named entrypoint follows from how Workers dispatch routes to the default export, and the documentation presents named entrypoints only as service-binding targets; I found no sentence that states the negative outright, so check it once on the real zone: `curl -X POST https://<host>/api/public/contact` must be a 404 (it is, locally, because the default export has no such route, which is the guarantee this design leans on).
+**Verified:** the two-face split and the header rules by the tests above, through the runtime's own entrypoint dispatch (`ctx.exports.PublicApi`, the loopback of a service binding); a real binding between local `wrangler dev` processes, with a probe Worker and with the built Astro site itself (see [How it was run](#how-it-was-run-locally)). **Not verified:** a deployed zone, and what `CF-Connecting-IP` looks like inside a binding call. That a public hostname cannot address a named entrypoint follows from how Workers dispatch routes to the default export, and the documentation presents named entrypoints only as service-binding targets; I found no sentence that states the negative outright, so check it once on the real zone: `curl -X POST https://<host>/api/public/contact` must be a 404 (it is, locally, because the default export has no such route, which is the guarantee this design leans on).
 
 ## Read endpoints
 
@@ -78,7 +65,7 @@ Exactly the contract's shapes, orders and headers. Each response is built by a s
 | `blog/{slug}` | 2 (2); 3 (3) when nothing is related | article, related, fallback |
 
 - **Order ties.** Every `ORDER BY` ends with the row order (`rowid`), so articles saved in the same instant keep one stable order across pages.
-- **Parameters are never an error** (contract): a non-integer `page` or `pageSize` is the default, an out-of-range one is clamped. So there is no `400` on the read endpoints; a slug that cannot exist (not `[a-z0-9]` words joined by single hyphens, or over 160 characters) is a `404` without touching D1, and an unpublished article is the same `404` as an unknown one.
+- **Parameters are never an error** (contract): they are read like `parseInt`, as the legacy page and `cf/web/blog-contract.mjs` do (`2.9` is 2, `3abc` is 3, `abc` and an empty value are the default), and an out-of-range one is clamped. So there is no `400` on the read endpoints; a slug that cannot exist (not `[a-z0-9]` words joined by single hyphens, or over 160 characters) is a `404` without touching D1, and an unpublished article is the same `404` as an unknown one.
 - **`blog`** is answered from the three statements in one batch; the page is fetched with an optimistic offset and refetched only when `page` was out of range. The featured article is found by the query `ORDER BY featured DESC, published_at DESC LIMIT 1` over published rows, which the new index turns into a seek. `total` is the published count minus the featured one.
 - **Dates** (`date`, `dateISO`, `modifiedISO`) are derived in Asia/Jakarta by arithmetic (`src/public/dates.ts`), at the 17:00 UTC boundary too.
 - **`related`** is the contract's rule (same category, or published less than 180 Jakarta days apart; the first three, newest first; else the three newest others) done in SQL: the window is a plain range on `published_at`. The pure reference (`pickRelatedArticles`, a port of the legacy function) is in `blog-rules.ts`, and a test runs both over a mixed set of 36 articles and compares them for every article.
@@ -167,7 +154,7 @@ None in a payload, header value, status or order that the contract defines. Addi
 
 Not done, on purpose: the HMAC option C (`401`, `503`), `ETag`/`Last-Modified`, CORS, upload endpoints (milestone M3), the rendering of `contentHtml` (the blog save path renders it; the read path only returns it).
 
-The fixture server of `cf/web` (`scripts/fixture-api.mjs`) differs from the contract in one way: its team members carry `displayOrder`, `createdAt` and `updatedAt`. The contract says they are not part of it (the Astro parser defaults them), so the API does not send them; everything else matched field by field when the fixture's rows were loaded into the API's database (see [How it was run](#how-it-was-run-locally)).
+The fixture server of `cf/web` (`scripts/fixture-api.mjs`) differs from the contract in one way: its team members carry `displayOrder`, `createdAt` and `updatedAt`. The contract says they are not part of it (the Astro parser defaults them), so the API does not send them. Everything else matched, field by field, when the fixture's rows were loaded into the API's database, and the blog matched the fixture (which applies `cf/web/blog-contract.mjs` to the 80 migrated articles) for 104 requests (see [How it was run](#how-it-was-run-locally)). The blog rules exist twice by necessity (JavaScript on the site and in the fixture, SQL here); `test/public-blog-parity.test.ts` imports the site's module and fails if the SQL ever disagrees with it.
 
 ## Purge options
 
@@ -212,11 +199,13 @@ Beyond the tests, with `wrangler dev` only (no account, `WRANGLER_SEND_METRICS=f
 
 - **Every endpoint by `curl`** on the dev server: 200s with the contract's shapes and headers, an unpublished and an impossible slug as 404, the contact post on the public face as 404 with a forged `X-Sakem-Client-Ip`.
 - **The fixture's rows loaded into the API's database**, then the API and the fixture server (`cf/web/scripts/fixture-api.mjs`) compared field by field: `reports` and `resources` identical (same order, same fields, same values); `team` identical except that the fixture also sends `displayOrder`, `createdAt` and `updatedAt` on every member, which the contract says are not part of it (18 differences, all of that kind).
-- **The built consumer** (`cf/web`, `pnpm build`, then its own harness with `wrangler dev`) rendered `/tim`, `/laporan` and `/gabung-siswa/docs` twice, once backed by the fixture and once by this API with the same rows: **the HTML is byte for byte identical** for all three (37,807, 29,966 and 36,553 bytes), with the same `Cache-Control`.
-- **A real service binding** between two local `wrangler dev` processes (a probe Worker with `{ "binding": "API", "service": "sakem-admin", "entrypoint": "PublicApi" }`, reported by wrangler as `local [connected]`): a post is `201`; the same email again is `429 duplicate_recent` with `Retry-After: 300`; six posts from one reported address are `201 x5` then `429`; a read through the binding answers like the public one. The dev server's log contains no email, name or message text, and the audit rows carry no text.
+- **The blog against the fixture**: the 80 migrated articles (read with the site's own build-time reader, so with the rendered HTML) were stored as an import would store them, and 104 requests were compared with the fixture server's answers: 21 list variants (pages 0, -3, 999, `abc`, `2abc`, `1.9`, `99999999999999999999`; sizes 0, -4, 7.9, 51, `abc`, 50, 1), every one of the 80 articles with its `related`, and three unknown slugs. **Zero differences**, `Cache-Control` included.
+- **The built consumer** (`cf/web`, `pnpm build`, then its own harness with `wrangler dev`) rendered 13 pages twice, once backed by the fixture and once by this API with the same rows (`/tim`, `/laporan`, `/gabung-siswa/docs`, `/blog`, `/blog?page=2`, `?page=6`, `?page=999`, four articles, an unknown article, `/sitemap.xml`): **the HTML is byte for byte identical** on every one, with the same `Cache-Control`.
+- **The Astro site itself through the binding**: the built Worker, with its `API` binding pointed at `sakem-admin#PublicApi` (wrangler reports `local [connected]`), served `/blog` identical to the page it serves over `CONTENT_API_URL`, and a real `POST /kontak` form post (same-origin) answered `303` to `/kontak?terkirim=1`, stored the message, and the same email again was refused (`429`).
+- **A real service binding** with a probe Worker (`{ "binding": "API", "service": "sakem-admin", "entrypoint": "PublicApi" }`): a post is `201`; the same email again is `429 duplicate_recent` with `Retry-After: 300`; six posts from one reported address are `201 x5` then `429`; a read through the binding answers like the public one; the same post on the Worker's public port with a forged `X-Sakem-Client-Ip` is `404`. The dev server's log contains no email, name or message text, and the audit rows carry no text.
 - **Wall time** per route, in [Query budget](#query-budget), with `scripts/measure-public.mjs`.
 
-Not run: anything on a Cloudflare zone or account (SAKEM-084), a browser (no visual QA applies: this is JSON), and the Astro form posting to the contact endpoint (the form is wired by another worker).
+Not run: anything on a Cloudflare zone or account (SAKEM-084), a browser (no visual QA applies: this is JSON), and the Astro form's own rate limit and Turnstile (not wired).
 
 ## Open decisions
 

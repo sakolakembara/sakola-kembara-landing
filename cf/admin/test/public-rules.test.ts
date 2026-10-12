@@ -6,9 +6,9 @@ import { dayNumberJakarta, isoDayJakarta, longDateJakarta, startOfDayJakarta } f
 // public-blog.test.ts compares the two end to end.
 
 describe("query parameters", () => {
-  test("an integer is optional sign and digits only", () => {
-    expect(["1", "+2", "-3", " 4 ", "007", "0"].map(parseIntParam)).toEqual([1, 2, -3, 4, 7, 0]);
-    for (const raw of [undefined, "", " ", "abc", "1.5", "2abc", "1e3", "0x10", "--1", "٣"]) expect(parseIntParam(raw), String(raw)).toBeUndefined();
+  test("an integer is read like parseInt, as the legacy page and cf/web's shared rules do", () => {
+    expect(["1", "+2", "-3", " 4 ", "007", "0", "2abc", "1.5", "2.9", "1e3", "0x10"].map(parseIntParam)).toEqual([1, 2, -3, 4, 7, 0, 2, 1, 2, 1, 0]);
+    for (const raw of [undefined, "", " ", "abc", "--1", "٣", "e3", "."]) expect(parseIntParam(raw), String(raw)).toBeUndefined();
   });
 
   test("a very long run of digits is out of range, not an error", () => {
@@ -18,7 +18,7 @@ describe("query parameters", () => {
   });
 
   test("pageSize defaults to 15 and is bounded to 1..50", () => {
-    expect([undefined, "", "abc", "0", "-1", "1", "15", "50", "51", "1000"].map(resolvePageSize)).toEqual([15, 15, 15, 1, 1, 1, 15, 50, 50, 50]);
+    expect([undefined, "", "abc", "0", "-1", "1", "15", "50", "51", "1000", "7.9"].map(resolvePageSize)).toEqual([15, 15, 15, 1, 1, 1, 15, 50, 50, 50, 7]);
   });
 
   test("the page is clamped to 1..totalPages and totalPages is at least 1", () => {

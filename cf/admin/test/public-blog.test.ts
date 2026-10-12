@@ -132,7 +132,7 @@ describe("GET /api/public/blog", () => {
       ["page=-4", 1],
       ["page=abc", 1],
       ["page=", 1],
-      ["page=2abc", 1],
+      ["page=2abc", 2],
       ["page=1.5", 1],
       ["page=%20", 1],
       ["page=99999999999999999999999999", 3],
@@ -158,7 +158,7 @@ describe("GET /api/public/blog", () => {
       ["pageSize=", 15],
       ["pageSize=50", 50],
       ["pageSize=1", 1],
-      ["pageSize=7.5", 15],
+      ["pageSize=7.5", 7],
     ];
     for (const [query, expected] of cases) {
       const body = await json<ListBody>(await get(`/api/public/blog?${query}`));
