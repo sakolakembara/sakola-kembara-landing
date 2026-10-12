@@ -1,0 +1,84 @@
+import { describe, expect, test, vi } from "vitest";
+import { api, setTransport } from "~/lib/api";
+import { respond } from "./helpers";
+
+describe("api()", () => {
+  test("returns the parsed body on success", async () => {
+    setTransport(async () => respond({ hello: "dunia" }));
+    expect(await api("/api/x")).toEqual({ ok: true, data: { hello: "dunia" } });
+  });
+
+  test("a 204 has no body", async () => {
+    setTransport(async () => respond(null, 204));
+    expect(await api("/api/x", { method: "DELETE" })).toEqual({ ok: true, data: null });
+  });
+
+  test("sends JSON with the content type the Worker requires, and cookies", async () => {
+    const transport = vi.fn(async () => respond({}));
+    setTransport(transport);
+    await api("/api/x", { method: "POST", json: { a: 1 } });
+    const [path, init] = transport.mock.calls[0] as unknown as [string, RequestInit];
+    expect(path).toBe("/api/x");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+    expect(init.body).toBe('{"a":1}');
+    expect(init.credentials).toBe("same-origin");
+  });
+
+  test("a GET sends no body and no content type", async () => {
+    const transport = vi.fn(async () => respond({}));
+    setTransport(transport);
+    await api("/api/x");
+    const init = (transport.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+    expect(init.headers).toBeUndefined();
+  });
+
+  test("a failure carries the status and the Better Auth code", async () => {
+    setTransport(async () => respond({ code: "EMAIL_NOT_VERIFIED", message: "Email not verified" }, 403));
+    expect(await api("/api/x")).toMatchObject({ ok: false, status: 403, code: "EMAIL_NOT_VERIFIED" });
+  });
+
+  test("or the Worker's `error`", async () => {
+    setTransport(async () => respond({ error: "forbidden" }, 403));
+    expect(await api("/api/x")).toMatchObject({ ok: false, status: 403, code: "forbidden" });
+  });
+
+  test("field errors come through", async () => {
+    setTransport(async () => respond({ error: "invalid", fieldErrors: { title: ["Judul minimal 3 karakter"] } }, 400));
+    expect(await api("/api/x")).toMatchObject({ ok: false, status: 400, fieldErrors: { title: ["Judul minimal 3 karakter"] } });
+  });
+
+  test("reads Retry-After in seconds", async () => {
+    setTransport(async () => respond({ error: "rate_limited" }, 429, { "Retry-After": "60" }));
+    expect(await api("/api/x")).toMatchObject({ ok: false, status: 429, retryAfter: 60 });
+  });
+
+  test("ignores a Retry-After that is a date", async () => {
+    setTransport(async () => respond({}, 429, { "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT" }));
+    const result = await api("/api/x");
+    expect(result).toMatchObject({ ok: false, status: 429 });
+    expect((result as { retryAfter?: number }).retryAfter).toBeUndefined();
+  });
+
+  test("a body that is not JSON still gives a failure", async () => {
+    setTransport(async () => new Response("<html>bad gateway</html>", { status: 502 }));
+    expect(await api("/api/x")).toMatchObject({ ok: false, status: 502, code: undefined });
+  });
+
+  test("never throws: no answer is status 0", async () => {
+    setTransport(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    expect(await api("/api/x")).toEqual({ ok: false, status: 0 });
+  });
+
+  test("setTransport(null) restores fetch", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(respond({ via: "fetch" }));
+    setTransport(async () => respond({ via: "stub" }));
+    setTransport(null);
+    expect(await api("/api/x")).toEqual({ ok: true, data: { via: "fetch" } });
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+});

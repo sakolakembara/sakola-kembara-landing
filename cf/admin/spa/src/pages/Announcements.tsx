@@ -1,11 +1,14 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Navigate } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { Table, TableCard, TBody, Td, Th, THead } from "@/components/ui/table";
 import { Tag, type TagTone } from "@/components/ui/tag";
-import { type Announcement, api, type Me, type Severity } from "~/lib/api";
+import { PageHeader } from "~/components/PageHeader";
+import { accessTo } from "~/lib/access";
+import { type Announcement, api, type Severity } from "~/lib/api";
+import { useSubmitLock } from "~/lib/hooks";
+import { useMe } from "~/lib/session";
 
 // Labels, tones and window text come from app/(admin)/admin/announcements/page.tsx.
 const SEVERITY_LABEL: Record<Severity, string> = { info: "Info", warning: "Peringatan", urgent: "Mendesak" };
@@ -24,55 +27,31 @@ function isCurrentlyShown(row: Announcement): boolean {
 }
 
 export function AnnouncementsPage() {
-  const [me, setMe] = useState<Me | null | undefined>(undefined);
+  const me = useMe();
   const [rows, setRows] = useState<Announcement[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const list = await api<{ announcements: Announcement[] }>("/api/announcements");
     if (list.ok) setRows(list.data.announcements);
-    else if (list.status !== 401 && list.status !== 403) setError("Gagal memuat pengumuman.");
+    else setError("Gagal memuat pengumuman.");
   }, []);
 
   useEffect(() => {
-    api<{ user: Me }>("/api/me").then((result) => {
-      setMe(result.ok ? result.data.user : null);
-      if (result.ok) void load();
-    });
+    void load();
   }, [load]);
 
-  if (me === undefined) return null;
-  if (me === null) return <Navigate to="/login" replace />;
-  if (me.role === "student") {
-    return (
-      <main className="p-6 md:p-10">
-        <Alert>Halaman itu hanya untuk pengurus yayasan.</Alert>
-      </main>
-    );
-  }
-
-  // Viewer is read-only: the form is not offered, and the API refuses writes anyway.
-  const canWrite = me.role === "editor" || me.role === "super_admin";
+  // The form is only offered to someone who may change Komunikasi (a viewer, or
+  // an editor without that area, reads only). The API refuses their writes anyway.
+  const canWrite = accessTo(me, "komunikasi") === "write";
 
   return (
-    <main className="p-6 md:p-10">
-      <header className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h1 className="mb-1 font-[family-name:var(--font-display)] text-2xl leading-tight text-gray-900 md:text-3xl">Pengumuman</h1>
-          <p className="text-gray-600">
-            {rows.length} total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal.
-          </p>
-        </div>
-        <Button
-          variant="neutral"
-          onClick={async () => {
-            await api("/api/auth/sign-out", { method: "POST", json: {} });
-            setMe(null);
-          }}
-        >
-          Keluar
-        </Button>
-      </header>
+    <div className="p-6 md:p-10">
+      <PageHeader title="Pengumuman">
+        <p className="text-gray-600">
+          {rows.length} total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal.
+        </p>
+      </PageHeader>
 
       {error && <Alert className="mb-4">{error}</Alert>}
 
@@ -129,16 +108,16 @@ export function AnnouncementsPage() {
           </Table>
         )}
       </TableCard>
-    </main>
+    </div>
   );
 }
 
 function CreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
-  const [pending, setPending] = useState(false);
+  const { pending, run } = useSubmitLock();
   const [message, setMessage] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -146,31 +125,31 @@ function CreateForm({ onCreated }: { onCreated: () => Promise<void> }) {
       const value = String(data.get(name) ?? "");
       return value ? new Date(value).toISOString() : null; // datetime-local is local time
     };
-    setPending(true);
-    setMessage(null);
-    const result = await api("/api/announcements", {
-      method: "POST",
-      json: {
-        title: data.get("title"),
-        body: data.get("body"),
-        severity: data.get("severity"),
-        ctaLabel: data.get("ctaLabel"),
-        ctaUrl: data.get("ctaUrl"),
-        active: data.get("active") === "on",
-        startsAt: date("startsAt"),
-        endsAt: date("endsAt"),
-      },
+    void run(async () => {
+      setMessage(null);
+      const result = await api("/api/announcements", {
+        method: "POST",
+        json: {
+          title: data.get("title"),
+          body: data.get("body"),
+          severity: data.get("severity"),
+          ctaLabel: data.get("ctaLabel"),
+          ctaUrl: data.get("ctaUrl"),
+          active: data.get("active") === "on",
+          startsAt: date("startsAt"),
+          endsAt: date("endsAt"),
+        },
+      });
+      if (result.ok) {
+        form.reset();
+        setFieldErrors({});
+        setMessage({ tone: "success", text: "Pengumuman berhasil disimpan." });
+        await onCreated();
+      } else {
+        setFieldErrors(result.fieldErrors ?? {});
+        setMessage({ tone: "danger", text: "Periksa kembali isian formulir." });
+      }
     });
-    setPending(false);
-    if (result.ok) {
-      form.reset();
-      setFieldErrors({});
-      setMessage({ tone: "success", text: "Pengumuman berhasil disimpan." });
-      await onCreated();
-    } else {
-      setFieldErrors(result.fieldErrors ?? {});
-      setMessage({ tone: "danger", text: "Periksa kembali isian formulir." });
-    }
   }
 
   return (

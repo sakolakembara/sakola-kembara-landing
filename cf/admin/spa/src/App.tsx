@@ -1,15 +1,65 @@
-import { Navigate, Route, Routes } from "react-router";
+import type { ComponentType } from "react";
+import { Route, Routes } from "react-router";
+import { RequireAuth, RequireSection } from "./components/RequireAuth";
+import { Shell } from "./components/Shell";
+import { NAV_ITEMS, type NavItem } from "./lib/nav";
 import { AnnouncementsPage } from "./pages/Announcements";
-import { AuthErrorPage } from "./pages/AuthError";
-import { LoginPage } from "./pages/Login";
+import { AuthErrorPage } from "./pages/auth/AuthError";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPassword";
+import { LoginPage } from "./pages/auth/Login";
+import { ResetPasswordPage } from "./pages/auth/ResetPassword";
+import { VerifyEmailPage } from "./pages/auth/VerifyEmail";
+import { DashboardPage } from "./pages/dashboard/DashboardPage";
+import { NotFoundPage } from "./pages/NotFound";
+import { PlaceholderPage } from "./pages/Placeholder";
+
+// Pages that exist, by menu path (lib/nav.ts). A menu entry not listed here
+// gets the placeholder. Everything below a menu entry ("/blog/new",
+// "/blog/<id>/edit") also gets the placeholder until its page is built.
+const PAGES: Partial<Record<string, ComponentType>> = {
+  "/announcements": AnnouncementsPage,
+};
+
+/** The menu entries that share one area, as they appear in lib/nav.ts. */
+function itemsBySection(): [NavItem["section"], NavItem[]][] {
+  const groups = new Map<NavItem["section"], NavItem[]>();
+  for (const item of NAV_ITEMS) {
+    if (item.section === "umum") continue; // the dashboard is the index route
+    groups.set(item.section, [...(groups.get(item.section) ?? []), item]);
+  }
+  return [...groups];
+}
 
 export function App() {
   return (
     <Routes>
+      {/* Open to anyone. */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/auth/error" element={<AuthErrorPage />} />
-      <Route path="/announcements" element={<AnnouncementsPage />} />
-      <Route path="*" element={<Navigate to="/announcements" replace />} />
+
+      {/* Signed-in admins only: not signed in goes to /login?from=<this page>. */}
+      <Route element={<RequireAuth />}>
+        <Route element={<Shell />}>
+          <Route index element={<DashboardPage />} />
+          {itemsBySection().map(([section, items]) => (
+            // Not allowed to open the area: the 403 page, same shell.
+            <Route key={section} element={<RequireSection section={section} />}>
+              {items.flatMap((item) => {
+                const Page = PAGES[item.path];
+                const path = item.path.slice(1);
+                return [
+                  <Route key={item.path} path={path} element={Page ? <Page /> : <PlaceholderPage item={item} />} />,
+                  <Route key={`${item.path}/*`} path={`${path}/*`} element={<PlaceholderPage item={item} />} />,
+                ];
+              })}
+            </Route>
+          ))}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Route>
     </Routes>
   );
 }
