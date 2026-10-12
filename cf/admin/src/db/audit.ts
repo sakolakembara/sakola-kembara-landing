@@ -27,6 +27,9 @@ export type AuditAction =
   | "contact_message.submit"
   | "contact_message.read"
   | "contact_message.unread"
+  // New in D1 (the legacy blog had no draft state: every saved article was public). Docs: docs/cloudflare/admin-blog.md.
+  | "blog.publish"
+  | "blog.unpublish"
   // Pengaturan. Legacy labels: "Admin ditambahkan", "Admin diubah". `admin.update` is
   // used for area grants and for a role change; metadata.field says which.
   | "admin.create"

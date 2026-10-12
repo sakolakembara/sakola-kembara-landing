@@ -24,6 +24,7 @@
     "measure:upload": "tsx scripts/measure-upload.ts",
     "measure:blog": "tsx scripts/measure-blog.ts",
     "blog:legacy-images": "node scripts/gen-legacy-images.mjs",
+    "blog:import:local": "tsx scripts/import-legacy-blog.ts",
     "test:negative": "node scripts/negative-checks.mjs",
     "test:negative:spa": "node scripts/negative-checks-spa.mjs"
   },

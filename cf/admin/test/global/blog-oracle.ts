@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { TestProject } from "vitest/node";
+import { importSql, readLegacyArticles } from "../../scripts/import-legacy-blog";
 
 // The ORACLE of the blog tests, computed in Node before the Worker tests run (workerd has no file system and
 // cannot import cf/web's build plugin, so the comparison data is made here and handed to the tests with
@@ -51,6 +52,8 @@ export interface BlogOracle {
   payloads: Record<string, unknown>;
   /** `srcsetFor(entry)` of the manifest for every legacy blog image, and its `[width, height, hash]`. */
   legacyImages: Record<string, { srcset: string; entry: [number, number, string] }>;
+  /** The SQL file `scripts/import-legacy-blog.ts` writes (one statement per line): the tests run it against the test D1. */
+  importSql: string;
 }
 
 declare module "vitest" {
@@ -108,5 +111,8 @@ export default async function setup(project: TestProject): Promise<void> {
     if (urlPath.startsWith("/blog/images/")) legacyImages[urlPath] = { srcset: srcsetFor(entry), entry: [entry.width, entry.height, entry.hash] };
   }
 
-  project.provide("blogOracle", { articles, lists, payloads, legacyImages });
+  // What the import script would apply, from the same files and manifest.
+  const importFile = importSql(await readLegacyArticles({ contentDir, manifestFile }));
+
+  project.provide("blogOracle", { articles, lists, payloads, legacyImages, importSql: importFile });
 }
