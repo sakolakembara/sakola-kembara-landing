@@ -1,16 +1,16 @@
 ---
-import { Image } from 'astro:assets';
-import heroImage from '@root/public/images/hero-team.png';
 import Button from '~/components/Button.astro';
 import Container from '~/components/Container.astro';
 import Eyebrow from '~/components/Eyebrow.astro';
 import Heading from '~/components/Heading.astro';
+import Img from '~/components/Img.astro';
 import { heroStats } from '~/lib/site';
 
 /**
  * Homepage hero. Copy is verbatim from the root components/sections/HeroSection.tsx.
- * The photo is the LCP element: eager, fetchpriority="high", resized at build
- * time (the original is a 1.4 MB PNG), width/height set. Entrance motion is
+ * The photo is the LCP element: eager, fetchpriority="high", a WebP ladder made
+ * at build time (the original is a 1.4 MB PNG; the 1304 px WebP is about 180 KB),
+ * width/height set. Entrance motion is
  * pure CSS (.anim-fade-up); the photo panel only scales in, it does not fade,
  * so it can paint as LCP right away.
  */
@@ -77,17 +77,12 @@ import { heroStats } from '~/lib/site';
         <div
           class="w-full aspect-[4/3] md:aspect-auto md:h-[450px] rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl overflow-hidden relative"
         >
-          <Image
-            src={heroImage}
+          <Img
+            src="/images/hero-team.png"
             alt="Siswa Sakola Kembara belajar bersama"
-            width={1200}
-            widths={[480, 800, 1200]}
             sizes="(min-width: 1024px) 560px, 100vw"
-            format="webp"
-            quality={78}
             loading="eager"
             fetchpriority="high"
-            decoding="async"
             class="absolute inset-0 h-full w-full object-cover"
           />
         </div>

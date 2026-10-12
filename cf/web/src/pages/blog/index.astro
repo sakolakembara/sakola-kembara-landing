@@ -51,6 +51,8 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
                   {featured.image && (
                     <img
                       src={featured.image}
+                      srcset={featured.imageSrcset ?? undefined}
+                      sizes="(min-width: 1200px) 576px, (min-width: 768px) 50vw, 100vw"
                       alt={featured.title}
                       width={featured.imageWidth ?? undefined}
                       height={featured.imageHeight ?? undefined}
@@ -102,6 +104,8 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
                   {article.image && (
                     <img
                       src={article.image}
+                      srcset={article.imageSrcset ?? undefined}
+                      sizes="(min-width: 1200px) 363px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                       alt={article.title}
                       width={article.imageWidth ?? undefined}
                       height={article.imageHeight ?? undefined}

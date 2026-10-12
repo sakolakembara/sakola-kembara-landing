@@ -5,10 +5,10 @@
 //
 //   app/favicon.ico, app/icon.png, app/apple-icon.png  <link rel="icon"> targets
 //   public/og-default.jpg                              default og:image / twitter:image
-//   public/images/logo-sakola-kembara.png              Organization/Article JSON-LD logo URL
 //
-// Everything else the pages use is imported by the components, which gives it a
-// hashed URL and (for photos) a build-time resize. See docs/cloudflare/web-skeleton.md.
+// Images under public/images and public/blog/images (the logo URL used by the
+// JSON-LD included) are the asset pipeline's job: scripts/build-assets.mjs.
+// See docs/cloudflare/web-skeleton.md.
 
 import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -23,7 +23,6 @@ export const SYNCED = [
   ['app/icon.png', 'icon.png'],
   ['app/apple-icon.png', 'apple-icon.png'],
   ['public/og-default.jpg', 'og-default.jpg'],
-  ['public/images/logo-sakola-kembara.png', 'images/logo-sakola-kembara.png'],
 ];
 
 export function syncAssets() {

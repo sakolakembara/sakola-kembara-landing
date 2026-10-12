@@ -14,8 +14,11 @@ export interface BlogMeta {
   featured: boolean;
   /** Cover image path, e.g. /blog/images/2026/05/x.jpg ("" when none). */
   image: string;
+  /** Size of the file served at `image` (null when the pipeline has no such file). */
   imageWidth: number | null;
   imageHeight: number | null;
+  /** WebP ladder for the cover's `srcset` (null when there is none). */
+  imageSrcset: string | null;
   author: string;
   /** Origin URL when scraped from WordPress; empty for dashboard-authored. */
   sourceUrl: string;

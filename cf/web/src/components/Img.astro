@@ -1,0 +1,30 @@
+---
+import { imgAttrs } from '~/lib/images';
+
+/**
+ * A plain <img> for an image of the root public/ (no runtime transform, no
+ * Cloudflare Images): `src` is the URL path below public/, e.g.
+ * "/images/program/mentoring.jpg". The build (scripts/build-assets.mjs) has
+ * already made the WebP ladder; this adds srcset, sizes, width and height from
+ * the manifest. An unknown path fails the build.
+ *
+ * Lazy by default; the one image that is the LCP element passes
+ * loading="eager" fetchpriority="high".
+ */
+interface Props {
+  src: string;
+  alt: string;
+  /** Layout width of the image, e.g. "(min-width: 1024px) 380px, (min-width: 768px) 50vw, 100vw". */
+  sizes: string;
+  loading?: 'lazy' | 'eager';
+  fetchpriority?: 'high' | 'low' | 'auto';
+  /** Skip ladder steps narrower than this many px. */
+  minWidth?: number;
+  class?: string;
+  [attr: string]: unknown;
+}
+const { src, alt, sizes, loading = 'lazy', fetchpriority, minWidth, class: className, ...rest } = Astro.props;
+const attrs = imgAttrs(src, sizes, { minWidth });
+---
+
+<img {...attrs} alt={alt} loading={loading} decoding="async" fetchpriority={fetchpriority} class={className} {...rest} />
