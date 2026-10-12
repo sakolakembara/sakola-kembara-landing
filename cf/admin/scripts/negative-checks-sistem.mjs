@@ -10,6 +10,9 @@
 
 const AUDIT = "test/audit-viewer.test.ts";
 const USERS = "test/sistem-users.test.ts";
+// SAKEM-087: the last super_admin is the last one who can sign in (migration 0010's view).
+const SIGNIN = "test/last-super-admin.test.ts test/admin-users.test.ts test/sistem-users.test.ts";
+const VIEW = "migrations/0010_last_super_admin_signin.sql";
 
 export const sistemChecks = [
   // ------------------------------------------------------- Aktivitas: who may read
@@ -226,11 +229,71 @@ export const sistemChecks = [
       },
       // The trigger itself, so nothing underneath holds the line either.
       {
-        file: "migrations/0006_keep_one_super_admin.sql",
+        file: "migrations/0010_last_super_admin_signin.sql",
         from: "SELECT RAISE(ABORT, 'last_super_admin');",
         to: "SELECT 1;",
       },
     ],
     tests: USERS,
+  },
+
+  // ------------------------------------------------------- the last super_admin is the last who can sign in (SAKEM-087)
+  // One definition, the view `signable_super_admins`, read by the trigger and by the API. Taking any of its three
+  // conditions out brings back a way for the only super_admin who can sign in to step down.
+  {
+    name: "last-super-admin: an unopened invitation counts again (the view no longer asks for an account)",
+    file: VIEW,
+    from: "  AND `u`.`email_verified` = 1\n  AND EXISTS (SELECT 1 FROM `account` AS `a` WHERE `a`.`user_id` = `u`.`id`);",
+    to: "  AND `u`.`email_verified` = 1;",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: an address nobody has verified counts again (the view no longer asks for email_verified)",
+    file: VIEW,
+    from: "  AND `u`.`email_verified` = 1\n",
+    to: "",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: a deactivated super_admin counts again (the view no longer asks for deactivated_at)",
+    file: VIEW,
+    from: "  AND `u`.`deactivated_at` IS NULL\n",
+    to: "",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: the trigger counts 'another' the way migration 0006 did (an invitation is one)",
+    file: VIEW,
+    from: "AND NOT EXISTS (SELECT 1 FROM `signable_super_admins` WHERE `id` <> OLD.`id`)",
+    to: "AND NOT EXISTS (SELECT 1 FROM `users` WHERE `role` = 'super_admin' AND `deactivated_at` IS NULL AND `id` <> OLD.`id`)",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: the trigger also guards a row that cannot sign in anyway (a pending invitation cannot be demoted)",
+    file: VIEW,
+    from: "WHEN OLD.`id` IN (SELECT `id` FROM `signable_super_admins`)\n  AND (",
+    to: "WHEN OLD.`role` = 'super_admin' AND OLD.`deactivated_at` IS NULL\n  AND (",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: the API asks the old question (any super_admin who is not deactivated) before writing",
+    file: "src/api/admin-users.ts",
+    from: "exists (select 1 from ${SIGNABLE_SUPER_ADMINS} where id <> ?1) as other",
+    to: "exists (select 1 from users where role = 'super_admin' and deactivated_at is null and id <> ?1) as other",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: the API does not ask at all (only the trigger refuses, after a write was sent)",
+    file: "src/api/admin-users.ts",
+    from: "return row?.self === 1 && row.other === 0;",
+    to: "return false;",
+    tests: SIGNIN,
+  },
+  {
+    name: "last-super-admin: the API refuses a target who cannot sign in anyway (it ignores who the target is)",
+    file: "src/api/admin-users.ts",
+    from: "return row?.self === 1 && row.other === 0;",
+    to: "return row?.other === 0;",
+    tests: SIGNIN,
   },
 ];

@@ -538,7 +538,7 @@ describe("PUT /:id: name, role and areas as one change, guarded by If-Match", ()
 
 // ───────────────────────────────────────────────────── the last super_admin, over HTTP
 
-describe("the last active super_admin, through the HTTP layer", () => {
+describe("the last super_admin who can sign in, through the HTTP layer", () => {
   const LEGACY = "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu.";
 
   test("the only one cannot step down through the edit form: 409 with the message and the role field, and nothing changes", async () => {
@@ -552,17 +552,19 @@ describe("the last active super_admin, through the HTTP layer", () => {
     expect(await auditRows("admin.update")).toEqual([]);
   });
 
-  test("with a second active super_admin the same save works, and then the remaining one is the last", async () => {
+  test("with a second super_admin who can sign in the same save works, and then the remaining one is the last", async () => {
     const root = await boss();
     const second = await createAdmin(root.cookie, "super_admin");
-    expect((await save(root.cookie, root.id, { role: "viewer", areas: [] })).res.status).toBe(200);
-    // root is now a viewer: their session still works (a viewer reads), but the second one is the last super_admin.
+    // An invitation nobody has opened is not "another": root cannot step down yet (test/last-super-admin.test.ts).
+    expect((await save(root.cookie, root.id, { role: "viewer", areas: [] })).res.status).toBe(409);
+    // The invitee opens the link and chooses a password: now they can sign in, and root may step down.
     const secondCookie = await (async () => {
-      await env.DB.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").bind(second.id).run();
       const token = resetTokenIn(emailsTo(second.email)[0]!);
       await call("/api/auth/reset-password", { method: "POST", json: { token, newPassword: PASSWORD } });
       return cookiesOf(await signIn(second.email));
     })();
+    expect((await save(root.cookie, root.id, { role: "viewer", areas: [] })).res.status).toBe(200);
+    // root is now a viewer: their session still works (a viewer reads), but the second one is the last super_admin.
     const { res, body } = await save(secondCookie, second.id, { role: "editor" });
     expect(res.status).toBe(409);
     expect(body.error).toBe("last_super_admin");

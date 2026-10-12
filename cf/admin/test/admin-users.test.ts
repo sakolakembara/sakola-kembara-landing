@@ -10,6 +10,7 @@ import {
   emailsTo,
   ensureAnotherSuperAdmin,
   fakeNetwork,
+  insertSuperAdmin,
   linkIn,
   ORIGIN,
   PASSWORD,
@@ -459,7 +460,7 @@ describe("changing a role", () => {
   describe("the last super_admin", () => {
     const LEGACY = "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu.";
 
-    // Negative check: remove the guard (the pre-check and the trigger) for demotion.
+    // Negative check: remove the guard (the pre-check and the trigger) for demotion. The same guard when an invitation waits: test/last-super-admin.test.ts.
     test("cannot be demoted: 409 with the legacy message, the role stays, no audit row", async () => {
       const boss = await superAdmin();
       const before = await count("audit_log");
@@ -470,18 +471,19 @@ describe("changing a role", () => {
       expect(await count("audit_log")).toBe(before);
     });
 
-    test("with a second super_admin one of them can step down, and then the other is the last", async () => {
+    // A second super_admin who can sign in. An invitation nobody has opened does not count: test/last-super-admin.test.ts.
+    test("with a second super_admin who can sign in one of them can step down, and then the other is the last", async () => {
       const boss = await superAdmin();
-      const second = await invite(boss.cookie, "super_admin");
-      expect((await patch(boss.cookie, second.body.user!.id, { role: "viewer" })).status).toBe(200); // not the last
+      const second = await insertSuperAdmin();
+      expect((await patch(boss.cookie, second, { role: "viewer" })).status).toBe(200); // not the last
       // Now `boss` is alone again.
       expect((await patch(boss.cookie, boss.id, { role: "editor" })).status).toBe(409);
     });
 
     test("a super_admin who is deactivated does not count as 'another'", async () => {
       const boss = await superAdmin();
-      const second = await invite(boss.cookie, "super_admin");
-      expect((await post(boss.cookie, `/api/admin/users/${second.body.user!.id}/deactivate`)).status).toBe(200);
+      const second = await insertSuperAdmin();
+      expect((await post(boss.cookie, `/api/admin/users/${second}/deactivate`)).status).toBe(200);
       expect((await patch(boss.cookie, boss.id, { role: "viewer" })).status).toBe(409);
     });
 
@@ -496,7 +498,7 @@ describe("changing a role", () => {
       expect((await userRow(boss.email))?.role).toBe("viewer");
     });
 
-    // Negative check: remove the `mentions(error, "last_super_admin")` mapping, or the trigger in migration 0006.
+    // Negative check: remove the `mentions(error, "last_super_admin")` mapping, or the trigger in migration 0010.
     test("two super_admins stepping down at the same moment: one wins, the other gets a 409 from the trigger, one stays", async () => {
       const first = await superAdmin();
       const secondEmail = uniqueEmail("boss2");
@@ -626,15 +628,15 @@ describe("deactivating and reactivating", () => {
 
   test("nobody can deactivate themselves", async () => {
     const boss = await superAdmin();
-    await invite(boss.cookie, "super_admin"); // so it is not also "the last one"
+    await insertSuperAdmin(); // so it is not also "the last one" (the refusal for oneself comes first either way)
     const res = await post(boss.cookie, `/api/admin/users/${boss.id}/deactivate`);
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "cannot_deactivate_self", message: "Tidak dapat menonaktifkan akun sendiri." });
     expect((await userRow(boss.email))?.deactivatedAt).toBeNull();
   });
 
-  // Through the API the only way to hit "the last active super_admin" is a race: the actor is itself an
-  // active super_admin, so there is always another one at the time of the check. The trigger decides.
+  // Through the API the only way to hit "the last super_admin who can sign in" is a race: the actor is itself
+  // one, so there is always another at the time of the check. The trigger decides.
   test("two super_admins deactivating each other at the same moment: one wins, the other gets a 409, one stays active", async () => {
     const first = await superAdmin();
     const secondEmail = uniqueEmail("boss2");
@@ -652,8 +654,8 @@ describe("deactivating and reactivating", () => {
 
   test("the stand-alone check: with every other super_admin deactivated, the one left cannot be deactivated or demoted", async () => {
     const boss = await superAdmin();
-    const second = await invite(boss.cookie, "super_admin");
-    await post(boss.cookie, `/api/admin/users/${second.body.user!.id}/deactivate`);
+    const second = await insertSuperAdmin();
+    await post(boss.cookie, `/api/admin/users/${second}/deactivate`);
     // `boss` is the only active super_admin: a second admin who is only an editor cannot touch that, and boss cannot step down.
     expect((await patch(boss.cookie, boss.id, { role: "editor" })).status).toBe(409);
     expect((await userRow(boss.email))?.role).toBe("super_admin");

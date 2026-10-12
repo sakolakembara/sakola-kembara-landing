@@ -1,5 +1,5 @@
 import { createEmailVerificationToken } from "better-auth/api";
-import { and, asc, count, eq, gte, inArray, lt, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono } from "hono";
@@ -50,9 +50,9 @@ import { readJson } from "./json";
 //   - nobody is deleted: an account is deactivated (sessions revoked, cannot
 //     sign in by any method) so the audit trail keeps pointing at a real row,
 //     and it can be reactivated
-//   - the last active super_admin can be neither demoted nor deactivated, and a
-//     database trigger (migration 0006) holds that line even if two of them
-//     try it at once
+//   - the last super_admin who can sign in can be neither demoted nor deactivated
+//     (an unaccepted invitation is not one), and a database trigger holds that line
+//     even if two of them try it at once (migrations 0006 and 0010)
 //   - nobody can deactivate themselves
 //   - students are not touched here: an address that already has an account of
 //     any role answers 409 email_taken
@@ -167,6 +167,9 @@ function present(row: AdminUserRow) {
   };
 }
 
+/** The super_admins who can sign in now. Defined once, in migration 0010; the trigger reads the same view. */
+const SIGNABLE_SUPER_ADMINS = "signable_super_admins";
+
 /** True when the account has a way to sign in. */
 const HAS_ACCOUNT = sql<number>`exists (select 1 from account where account.user_id = users.id)`;
 /** The newest unexpired session's start, in epoch milliseconds, or null. */
@@ -218,16 +221,20 @@ function mentions(error: unknown, text: string): boolean {
   return false;
 }
 
-/** Another active super_admin exists besides `userId`. The trigger is the guarantee; this is the friendly answer first. */
-async function hasOtherSuperAdmin(c: Context<AppEnv>, userId: string): Promise<boolean> {
-  const db = drizzle(c.env.DB, { schema });
-  const row = await db
-    .select({ id: schema.users.id })
-    .from(schema.users)
-    .where(and(eq(schema.users.role, "super_admin"), sql`${schema.users.deactivatedAt} is null`, ne(schema.users.id, userId)))
-    .limit(1)
-    .get();
-  return row !== undefined;
+/**
+ * Would taking `userId` out of the super_admins who can sign in leave nobody? True only when `userId` is one of
+ * them and is the only one. "Can sign in" is the view `signable_super_admins` (migration 0010: not deactivated,
+ * email verified, has an account), which the trigger of the same migration reads too, so this friendly answer and
+ * the guarantee underneath it cannot disagree. Someone who cannot sign in anyway (a pending invitation) is not
+ * one of them, so demoting or deactivating them is never refused: it takes nobody away.
+ */
+async function wouldLeaveNoSignableSuperAdmin(c: Context<AppEnv>, userId: string): Promise<boolean> {
+  const row = await c.env.DB.prepare(
+    `select exists (select 1 from ${SIGNABLE_SUPER_ADMINS} where id = ?1) as self, exists (select 1 from ${SIGNABLE_SUPER_ADMINS} where id <> ?1) as other`,
+  )
+    .bind(userId)
+    .first<{ self: number; other: number }>();
+  return row?.self === 1 && row.other === 0;
 }
 
 function randomToken(): string {
@@ -447,7 +454,7 @@ async function verificationLink(c: Context<AppEnv>, email: string): Promise<stri
  * Changes an admin's role and/or name. Moving away from `editor` removes that
  * user's area grants in the same transaction (grants mean nothing for other
  * roles, and an old grant must not come back by surprise if they are made an
- * editor again). The last active super_admin cannot be demoted.
+ * editor again). The last super_admin who can sign in cannot be demoted.
  */
 adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
   const raw = await readJson(c);
@@ -467,7 +474,7 @@ adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
   const nameChanges = newName !== target.name;
   if (!roleChanges && !nameChanges) return c.json({ user: present(target) });
 
-  if (roleChanges && target.role === "super_admin" && !target.deactivatedAt && !(await hasOtherSuperAdmin(c, id))) {
+  if (roleChanges && (await wouldLeaveNoSignableSuperAdmin(c, id))) {
     return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEMOTE }, 409);
   }
 
@@ -506,8 +513,8 @@ adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
  * and after and the areas before and after for what changed). PATCH and `PUT /:id/areas` above remain, for
  * scripts and for the tests written against them; the SPA uses this.
  *
- * The last active super_admin cannot be demoted: 409 `last_super_admin` with the message and the `role` field,
- * answered first from a read and, for two requests racing, by the trigger of migration 0006 inside the batch.
+ * The last super_admin who can sign in cannot be demoted: 409 `last_super_admin` with the message and the `role` field,
+ * answered first from a read and, for two requests racing, by the trigger of migration 0010 inside the batch.
  */
 adminUserRoutes.put("/:id", requireArea("sistem", "write"), async (c) => {
   const precondition = readIfMatch(c);
@@ -532,7 +539,7 @@ adminUserRoutes.put("/:id", requireArea("sistem", "write"), async (c) => {
     return c.json({ item: present(target) });
   }
 
-  if (roleChanges && target.role === "super_admin" && !target.deactivatedAt && !(await hasOtherSuperAdmin(c, id))) {
+  if (roleChanges && (await wouldLeaveNoSignableSuperAdmin(c, id))) {
     return fail(c, 409, "last_super_admin", LAST_SUPER_ADMIN_DEMOTE, { fields: { role: "Minimal satu super admin harus tersedia" } });
   }
 
@@ -590,7 +597,7 @@ adminUserRoutes.put("/:id", requireArea("sistem", "write"), async (c) => {
  * Deactivates an account: it cannot sign in by any method, every session is
  * deleted now, and outstanding reset or invite links are deleted. Idempotent
  * (a second call changes nothing and writes no audit row). Not on yourself, and
- * not on the last active super_admin.
+ * not on the last super_admin who can sign in.
  */
 adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"), async (c) => {
   const actor = c.get("user");
@@ -602,7 +609,7 @@ adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"), async (c
   if (id === actor.id) {
     return c.json({ error: "cannot_deactivate_self", message: "Tidak dapat menonaktifkan akun sendiri." }, 409);
   }
-  if (target.role === "super_admin" && !(await hasOtherSuperAdmin(c, id))) {
+  if (await wouldLeaveNoSignableSuperAdmin(c, id)) {
     return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEACTIVATE }, 409);
   }
   try {
