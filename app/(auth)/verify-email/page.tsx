@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { CheckCircle2, XCircle } from "lucide-react";
 import { verifyEmailByToken } from "@/lib/account-service";
 import { writeAudit } from "@/lib/audit";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { AuthShell } from "../_auth-shell";
 
 export const metadata: Metadata = {
   title: "Verifikasi Email",
@@ -28,9 +28,8 @@ export default async function VerifyEmailPage({ searchParams }: PageProps) {
       action: "user.email_verified",
     });
     return (
-      <Shell
-        icon={<CheckCircle2 size={40} className="text-secondary-green" />}
-        eyebrow="Terverifikasi"
+      <Outcome
+        tone="success"
         headline="Email kamu berhasil diverifikasi"
         body="Akun kamu sekarang sudah aktif sepenuhnya. Kamu bisa langsung mengisi formulir pendaftaran dari portal siswa."
         primaryLabel="Ke Portal Siswa"
@@ -49,9 +48,8 @@ export default async function VerifyEmailPage({ searchParams }: PageProps) {
   };
 
   return (
-    <Shell
-      icon={<XCircle size={40} className="text-red-600" />}
-      eyebrow="Gagal"
+    <Outcome
+      tone="danger"
       headline="Tautan verifikasi tidak dapat diproses"
       body={messages[result.reason]}
       primaryLabel="Masuk"
@@ -60,36 +58,27 @@ export default async function VerifyEmailPage({ searchParams }: PageProps) {
   );
 }
 
-function Shell({
-  icon,
-  eyebrow,
+// The result of the link: the headline says what happened, the colored
+// banner carries the details, and one button goes on.
+function Outcome({
+  tone,
   headline,
   body,
   primaryLabel,
   primaryHref,
 }: {
-  icon: React.ReactNode;
-  eyebrow: string;
+  tone: "success" | "danger";
   headline: string;
   body: string;
   primaryLabel: string;
   primaryHref: string;
 }) {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-5">
-            {icon}
-          </div>
-          <Eyebrow className="mb-3">{eyebrow}</Eyebrow>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl text-gray-900 leading-tight mb-3">
-            {headline}
-          </h1>
-          <p className="text-gray-600 leading-relaxed mb-6">{body}</p>
-          <Button href={primaryHref}>{primaryLabel}</Button>
-        </div>
-      </div>
-    </main>
+    <AuthShell title={headline}>
+      <Alert tone={tone}>{body}</Alert>
+      <Button href={primaryHref} size="lg" fullWidth>
+        {primaryLabel}
+      </Button>
+    </AuthShell>
   );
 }

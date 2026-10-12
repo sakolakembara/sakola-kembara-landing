@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { authStatus, signIn } from "@/auth";
 import { Alert } from "@/components/ui/alert";
+import { AUTH_LINK, AuthDivider, AuthShell } from "../_auth-shell";
 import { CredentialsForm } from "./_credentials-form";
 import { GoogleButton } from "./_google-button";
 
@@ -41,65 +42,34 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     });
   }
 
+  // Shared by students and admins, so the heading names the site, not a role.
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <Link
-            href="/"
-            className="inline-block font-[family-name:var(--font-display)] text-2xl text-gray-900 hover:opacity-80 transition-opacity"
-          >
-            Sakola Kembara
-          </Link>
-          <p className="text-sm text-gray-500 mt-1">
-            Masuk untuk mendaftar sebagai calon siswa Sakola Kembara.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
-          <div>
-            <h1 className="font-[family-name:var(--font-display)] text-xl text-gray-900 mb-1">
-              Selamat datang kembali
-            </h1>
-            <p className="text-sm text-gray-600">
-              Gunakan akun Google atau email + password kamu untuk melanjutkan.
-            </p>
-          </div>
-
-          {errorMessage && <Alert>{errorMessage}</Alert>}
-
-          {authStatus.googleConfigured && (
-            <form action={signInWithGoogle}>
-              <GoogleButton />
-            </form>
-          )}
-
-          {authStatus.googleConfigured && (
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-                  atau
-                </span>
-              </div>
-            </div>
-          )}
-
-          <CredentialsForm from={safeFrom} />
-        </div>
-
-        <p className="text-center text-sm text-gray-600 mt-6">
+    <AuthShell
+      title="Masuk ke Sakola Kembara"
+      footer={
+        <>
           Belum punya akun?{" "}
           <Link
             href={safeFrom ? `/register?from=${encodeURIComponent(safeFrom)}` : "/register"}
-            className="text-primary-blue font-semibold hover:underline"
+            className={AUTH_LINK}
           >
             Daftar di sini
           </Link>
-        </p>
-      </div>
-    </main>
+        </>
+      }
+    >
+      {errorMessage && <Alert>{errorMessage}</Alert>}
+
+      <CredentialsForm from={safeFrom} />
+
+      {authStatus.googleConfigured && (
+        <>
+          <AuthDivider />
+          <form action={signInWithGoogle}>
+            <GoogleButton />
+          </form>
+        </>
+      )}
+    </AuthShell>
   );
 }
