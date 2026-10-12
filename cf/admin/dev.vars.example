@@ -1,0 +1,26 @@
+# Copy to .dev.vars (untracked, ignored by .gitignore) and fill with FAKE local values.
+# Never put real secrets in this repo.
+
+# Anything other than "production" enables local conveniences (emails are printed
+# to the console when RESEND_API_KEY is empty). Omit it and the app runs as production.
+ENVIRONMENT=development
+
+# Required. At least 32 random characters. Generate one with: openssl rand -base64 32
+BETTER_AUTH_SECRET=local-only-fake-secret-change-me-32-chars-min
+
+# Comma-separated browser origins allowed to call the API with cookies.
+# Not needed for same-origin use; the request origin is always trusted.
+TRUSTED_ORIGINS=http://localhost:5173
+
+# Cross-subdomain cookie domain. Leave empty locally (host-only cookies).
+# Production value is in docs/cloudflare/admin-skeleton.md.
+COOKIE_DOMAIN=
+
+# Email (Resend). Empty in development = print to console. In production this
+# must be set, otherwise sending fails closed.
+RESEND_API_KEY=
+EMAIL_FROM=Sakola Kembara <no-reply@example.test>
+
+# Google sign-in is offered only when both are set.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

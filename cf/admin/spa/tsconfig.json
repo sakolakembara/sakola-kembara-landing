@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./src/*"],
+      "@/*": ["../../../*"],
+      "next/link": ["./src/shims/next-link.tsx"],
+      // The shared kit lives outside cf/admin; resolve its packages from here.
+      "react": ["../node_modules/@types/react"],
+      "react/jsx-runtime": ["../node_modules/@types/react/jsx-runtime"],
+      "class-variance-authority": ["../node_modules/class-variance-authority"],
+      "tailwind-merge": ["../node_modules/tailwind-merge"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}
