@@ -21,8 +21,8 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 | `pnpm build` | `pnpm assets`, then `dist/client` (assets) and `dist/server` (Worker), then `check-dist` (the asset guard) |
 | `pnpm check:dist` | The guard alone, on an existing `dist/` (`-- --list` prints every `<img>` of the prerendered pages) |
 | `pnpm check` | `astro check` (types for `.astro` and `.ts`); it only builds the image manifest, not the images |
-| `pnpm test` | 534 unit tests (vitest, `pnpm assets` first); the ones that read `dist/` need `pnpm build` first and are skipped without it |
-| `pnpm test:e2e` | 289 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
+| `pnpm test` | 641 unit tests (vitest, `pnpm assets` first); the ones that read `dist/` (`built`, `home-built`, `home-dom`, the dist audit in `assets`) need `pnpm build` first and are skipped without it |
+| `pnpm test:e2e` | 295 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
 | `pnpm measure [-- --next http://127.0.0.1:3055]` | Sizes, warm timings, and the "does the Worker run?" experiment; writes `.measure/results.json` |
 | `pnpm exec wrangler deploy --dry-run --outdir <dir> -c dist/server/wrangler.json` | Bundle size, no login needed |
 
@@ -94,7 +94,7 @@ Every image and file is a **static asset** (free and unlimited; anything that go
 4. In a blog article nothing changes: `![](/blog/images/...)` in the markdown gets `srcset`, `sizes`, `width` and `height` from the same manifest; covers carry `imageSrcset` in the metadata.
 5. Budgets: keep each source reasonable (the pipeline caps at 1600 px and every generated image is asserted under 1 MiB), do not add thousands of files (the Workers limit is 20,000 per version; the build fails above 10,000), and avoid characters other than letters, digits, `/ . _ -` in names: a literal `@` (five existing blog images) is answered by the assets layer with a **307** to the `%40` form, so markup carries `%40` (`assetUrl`) and the guard flags a literal `@`; the tests fail on any other character.
 
-**Other image paths in the tree today.** A few components still import an image (`import photo from '@root/public/...'`), which makes Astro hash and resize it into `/_astro/` (`astro:assets`): the logos in the navbar and footer, the program page's stage and activity photos, and the QRIS on `/donasi`. They work and are not wrong; the QRIS stays an import on purpose, because its download link must be the original bytes. Everything new should use `<Img>` or the manifest so there is one system; moving the program page photos over is a follow-up (it touches that page and three of its tests).
+**Other image paths in the tree today.** A few components still import an image (`import photo from '@root/public/...'`), which makes Astro hash and resize it into `/_astro/` (`astro:assets`): the logos in the navbar and footer, the partner logos and testimonial portraits of the home page, the program page's stage and activity photos, and the QRIS on `/donasi`. They work and are not wrong; the QRIS stays an import on purpose, because its download link must be the original bytes. Everything new should use `<Img>` or the manifest so there is one system; moving those over is a follow-up (each touches a page or component of its own and its tests).
 
 **Before and after** (this machine; sizes of the files the Worker serves):
 
@@ -178,7 +178,7 @@ The e2e script repeats the eager-JS check on the bytes the Worker serves, and ch
 
 ## Results (local, this machine)
 
-**Tests.** `pnpm test`: 620 passed (17 files). `pnpm test:e2e`: 287 of 287 checks. `pnpm check`: 0 errors, 0 warnings (1 hint: the deprecated `document.execCommand` in `donasi.astro`). Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
+**Tests.** `pnpm test`: 641 passed (19 files). `pnpm test:e2e`: 295 of 295 checks. `pnpm check`: 0 errors, 0 warnings (1 hint: the deprecated `document.execCommand` in `donasi.astro`). Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
 
 **What `/` loads** (JS means JS referenced by the HTML):
 
@@ -190,7 +190,7 @@ The e2e script repeats the eager-JS check on the bytes the Worker serves, and ch
 
 The Next row is measured from `next start` (the Next 16 build output no longer prints a First Load JS column) and dates from the first slice. The Astro home row is now like for like (all seven sections): about 4 KB of JS gzip up front instead of about 317 KB, and the Leaflet map (about 50 KB gzip with its CSS) is fetched only when the map is about to be seen. The HTML grew because the page now carries the testimonial quotes, the eight branches and the stat detail text as real markup. Next had measured the CSS of the whole app; Astro's single stylesheet is Tailwind's output for this app.
 
-**Worker bundle** (`wrangler deploy --dry-run`, no login): 18 modules, **769 KiB raw, 190 KiB gzip** against 3 MB compressed on Free (the image manifest is about 44 KiB of that). `dist/client`: 1,000 files, 136 MiB (80 article pages, 890 generated images and files, fonts, CSS); the asset pipeline numbers are in the next section.
+**Worker bundle** (`wrangler deploy --dry-run`, no login): 18 modules, **776 KiB raw, 192 KiB gzip** against 3 MB compressed on Free (the asset pipeline added about 47 KiB raw, 10 KiB gzip, mostly the image manifest that `<Img>` and the gallery read; the home page is prerendered, so its sections add almost nothing). `dist/client`: 1,068 files, 139 MiB (80 article pages, 890 generated images and files, fonts, CSS, the Leaflet chunk); the asset pipeline numbers are in "Images and other static assets".
 
 **Warm response time**, client wall clock through `wrangler dev` (workerd, loopback stub, N=60; **proxy numbers, not CPU time**):
 
