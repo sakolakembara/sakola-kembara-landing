@@ -1,8 +1,9 @@
 import type { Transport } from "~/lib/api";
 import { accessTo } from "~/lib/access";
-import { isAdminRole, parseMe } from "~/lib/me";
+import { type AdminArea, isAdminRole, parseMe } from "~/lib/me";
 import { TURNSTILE_HEADER } from "~/lib/captcha";
 import { mockDashboard, mockMeBody } from "./fixtures";
+import { MOCK_HANDLERS } from "./handlers";
 import type { Persona } from "./persona";
 import { MOCK_RESOURCES } from "./registry";
 import { createMockResources } from "./resources";
@@ -56,7 +57,8 @@ function bodyOf(init: RequestInit): Record<string, unknown> {
 
 export function createMockTransport(config: MockConfig): Transport {
   // Every resource registered in mock/resources/ (list, item, create, update, delete, uploads' areas), with the persona's rights.
-  const resources = createMockResources(MOCK_RESOURCES, (area) => accessTo(parseMe(mockMeBody(config.persona)), area));
+  const accessOf = (area: AdminArea) => accessTo(parseMe(mockMeBody(config.persona)), area);
+  const resources = createMockResources(MOCK_RESOURCES, accessOf);
   const spentTokens = new Set<string>();
 
   /** The Worker's security check: null when the token is good (it is then spent), otherwise the refusal. */
@@ -67,6 +69,15 @@ export function createMockTransport(config: MockConfig): Transport {
       return json({ error: "captcha_failed" }, 403);
     }
     spentTokens.add(token);
+    return null;
+  }
+
+  const self = mockMeBody(config.persona).user;
+  function answeredByHandler(method: string, url: URL, init: RequestInit): Response | null {
+    for (const handler of MOCK_HANDLERS) {
+      const answer = handler({ method, url, init, accessOf, self });
+      if (answer) return answer;
+    }
     return null;
   }
 
@@ -124,8 +135,8 @@ export function createMockTransport(config: MockConfig): Transport {
         return json(mockDashboard(config.persona, config.dashboard === "empty" ? "empty" : "ready"));
 
       default:
-        // A registered resource (mock/resources/), or nobody's path.
-        return resources.handle(method, url, init) ?? json({ error: "not_found" }, 404);
+        // A registered resource (mock/resources/), a registered handler (mock/handlers/), or nobody's path.
+        return resources.handle(method, url, init) ?? answeredByHandler(method, url, init) ?? json({ error: "not_found" }, 404);
     }
   };
 }

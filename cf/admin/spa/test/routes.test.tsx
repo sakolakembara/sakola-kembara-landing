@@ -142,11 +142,12 @@ describe("403 inside the shell", () => {
     }
   });
 
-  test("super_admin opens Pengaturan", async () => {
-    stubApi({ "GET /api/me": respond(meBody("super_admin")) });
+  test("super_admin opens Pengaturan: the page itself, no longer the placeholder (test/settings.test.tsx has the rest)", async () => {
+    stubApi({ "GET /api/me": respond(meBody("super_admin")), "GET /api/admin/users": respond({ items: [], users: [], page: 1, pageSize: 50, total: 0 }) });
     renderApp("/settings");
     expect(await screen.findByRole("heading", { level: 1, name: "Pengaturan" })).toBeTruthy();
-    expect(screen.getByText("Belum tersedia di admin baru")).toBeTruthy();
+    expect(await screen.findByText("Belum ada admin terdaftar.")).toBeTruthy();
+    expect(screen.queryByText("Belum tersedia di admin baru")).toBeNull();
   });
 });
 
@@ -161,8 +162,7 @@ describe("placeholder pages", () => {
       ["/reports", "Laporan"],
       ["/team", "Tim"],
       ["/shortlinks", "Shortlink"],
-      ["/audit", "Aktivitas"],
-      ["/settings", "Pengaturan"],
+      // Aktivitas and Pengaturan are pages now (test/audit-page.test.tsx, test/settings.test.tsx).
     ];
     for (const [path, title] of titles) {
       stubApi({ "GET /api/me": respond(meBody("super_admin")) });
@@ -189,7 +189,7 @@ describe("placeholder pages", () => {
     await check(["editor", ["konten", "komunikasi"]], "/messages", "Bisa mengubah", "Hanya baca");
     await check(["viewer"], "/blog", "Hanya baca", "Bisa mengubah");
     await check(["viewer"], "/messages", "Hanya baca", "Bisa mengubah");
-    await check(["super_admin"], "/audit", "Bisa mengubah", "Hanya baca");
+    await check(["super_admin"], "/blog", "Bisa mengubah", "Hanya baca");
   });
 
   test("a deep link below an entry works on reload and offers the way back", async () => {
