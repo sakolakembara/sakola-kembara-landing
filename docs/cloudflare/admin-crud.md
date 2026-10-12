@@ -350,6 +350,8 @@ export default resource;
 
 `mock/resources/announcements.ts` is the worked one. A mock never touches the network and never stores anything outside memory (a page reload starts from the seed again).
 
+**When the generic store is not enough** (a verb route such as `POST /:id/deactivate`, a list with a cursor, an answer that depends on state across routes) add one file `spa/src/mock/handlers/<name>.ts` with a `default` export of a `MockHandler` (`mock/handlers.ts`: it receives the method, the URL, the init, `accessOf` and who the persona is, and returns a `Response` or `null` for a request that is not its own). It is picked up by `import.meta.glob` like `mock/resources/`, and `mock/transport.ts` asks the handlers after the resource store; `mock/handlers/sistem.ts` is the worked one (Aktivitas and Pengaturan, [`admin-sistem.md`](admin-sistem.md#5-the-mock)).
+
 ## 17. Tests and negative checks
 
 Worker (`cf/admin/test/`, workerd, real D1):

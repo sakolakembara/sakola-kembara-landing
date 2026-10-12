@@ -488,6 +488,8 @@ describe("the form: edit", () => {
     const summary = await screen.findByRole("alert");
     expect(summary.textContent).toContain(message);
     expect(within(summary).getByRole("link", { name: "Peran: Minimal satu super admin harus tersedia" })).toBeTruthy();
+    // ...and under the role itself, where the person is looking when it was the role they changed.
+    expect(within(screen.getByRole("group", { name: /Peran/ })).getByText("Minimal satu super admin harus tersedia")).toBeTruthy();
     expect(screen.queryByText(/Perubahan berhasil disimpan/)).toBeNull();
     expect((screen.getByRole("radio", { name: /Viewer/ }) as HTMLInputElement).checked).toBe(true);
     expect(screen.queryByRole("button", { name: "Muat ulang" })).toBeNull(); // not a stale save

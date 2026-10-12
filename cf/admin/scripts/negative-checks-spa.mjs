@@ -8,12 +8,16 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
+import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
 const checks = [
   // The admin CRUD kit (SAKEM-082): scripts/negative-checks-spa-crud.mjs.
   ...crudSpaChecks,
+
+  // Aktivitas and Pengaturan (SAKEM-082): scripts/negative-checks-spa-sistem.mjs.
+  ...sistemSpaChecks,
 
   // Who may see and do what
   {
