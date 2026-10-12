@@ -19,7 +19,11 @@ One Worker (`sakem-admin`, future host `admin.<domain>`):
 | Throttling | Cloudflare rate limit bindings (3 buckets) |
 | Sample content | `announcements`, with `audit_log` rows |
 
+<<<<<<< HEAD
 Routes: `GET /api/me`, `GET /api/config`, `/api/auth/*` (Better Auth), `GET|POST /api/announcements`, `PUT|DELETE /api/announcements/:id`, `GET /api/dashboard` (SAKEM-082, any admin role, the items of the areas the caller may see); since SAKEM-081 also `GET /api/admin/users` and `PUT /api/admin/users/:id/areas`; the full list with what protects each route is in [`auth.md`](auth.md#endpoints). SPA routes: the sign-in pages (`/login`, `/forgot-password`, `/reset-password`, `/verify-email`, `/auth/error`), the dashboard (`/`) and one route per menu entry; see [SPA shell](#spa-shell-sakem-082-part-a).
+=======
+Routes: `GET /api/me`, `GET /api/config`, `/api/auth/*` (Better Auth), `GET|POST /api/admin/announcements`, `GET|PUT|DELETE /api/admin/announcements/:id` (the convention of [`admin-crud.md`](admin-crud.md)); since SAKEM-081 also `GET /api/admin/users` and `PUT /api/admin/users/:id/areas`; the full list with what protects each route is in [`auth.md`](auth.md#endpoints). SPA routes: the sign-in pages (`/login`, `/forgot-password`, `/reset-password`, `/verify-email`, `/auth/error`), the dashboard (`/`) and one route per menu entry; see [SPA shell](#spa-shell-sakem-082-part-a).
+>>>>>>> 21cc225 (docs(cf): admin CRUD doc matches the kit; links, new announcements path, UPLOADS_BASE_URL (SAKEM-082))
 
 Layout: `src/worker.ts` (app and the cron handler), `src/auth/` (factory, gate, register, password, guard, permissions, roles, session), `src/security/` (rate limits, Turnstile, same-origin guard, client address), `src/email/` (Resend, templates, mailbox), `src/cron/` (daily cleanup), `src/api/` (announcements, admin users), `src/db/` (schema in `schema/`, audit, grants), `migrations/`, `spa/`, `test/`, `scripts/`. The full D1 schema is described in [`d1-schema.md`](d1-schema.md).
 
@@ -198,7 +202,7 @@ The mock is loaded only when `VITE_ADMIN_MOCK=true`, which a normal build never 
 2. Build the page as `pages/<Name>.tsx` and register it in `PAGES` in `App.tsx` by path. Start with `<PageHeader title=...>` (it sets the tab title and supports `back`, `overline` and `actions`), pad the page itself (`p-6 md:p-10`), and take the user from `useMe()`.
 3. Gate every create, edit and delete control with `accessTo(me, "<section>") === "write"`. Do not compare roles anywhere else. The API route must use the matching `requireArea` (`src/auth/guard.ts`).
 4. Talk to the server only through `api()` (so the mock and the tests can stand in), keep Indonesian text next to the page or in `lib/`, use `useSubmitLock` for anything that sends, and add the page's tests.
-5. If the page needs a new mock answer, add it in `spa/src/mock/transport.ts`; `test/mock.test.ts` keeps the mock in the documented shapes.
+5. If the page needs a new mock answer, add a file to `spa/src/mock/resources/` for a CRUD resource ([`admin-crud.md`](admin-crud.md#16-the-mock-build-a-screen-without-a-backend)) or a case in `spa/src/mock/transport.ts` for anything else; `test/mock.test.ts` keeps the mock in the documented shapes.
 
 ### Tests
 

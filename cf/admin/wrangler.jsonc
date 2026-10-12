@@ -17,7 +17,9 @@
   //   AUDIT_RETENTION_DAYS  days to keep audit_log rows ("" or "0" = keep all).
   //                         365 = one year; see docs/cloudflare/auth.md#retention.
   // Not here, set per deploy: TURNSTILE_SITE_KEY (public widget key, served by
-  // GET /api/config), EMAIL_FROM, TRUSTED_ORIGINS, COOKIE_DOMAIN (normally unset).
+  // GET /api/config), UPLOADS_BASE_URL (the public files domain, also served by
+  // GET /api/config; empty = same origin), EMAIL_FROM, TRUSTED_ORIGINS, COOKIE_DOMAIN
+  // (normally unset).
   // Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, TURNSTILE_SECRET_KEY,
   // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) are set with `wrangler secret put`.
   "vars": { "ENVIRONMENT": "production", "AUDIT_RETENTION_DAYS": "365" },

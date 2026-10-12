@@ -59,7 +59,7 @@ Everything is under `/api/admin/`. The resource name is the plural menu key of `
 | `POST /api/admin/<resource>/:id/<verb>` | a state change that is not an edit (`publish`, `read`, `accept`) | write | `200` `{ item }` |
 
 - **No `PATCH`.** A form saves everything it shows (`PUT`); a one-field change that is not an edit is a verb route. This keeps "what did this request change" answerable from the audit row.
-- The old sample path `/api/announcements` was moved to `/api/admin/announcements` by this PR; nothing else used it.
+- The old sample path `/api/announcements` was moved to `/api/admin/announcements` by this PR; it no longer exists.
 - **SPA routes** mirror the menu: `/<menu>` (list), `/<menu>/new`, `/<menu>/:id/edit` (`activityHref` in `spa/src/lib/audit.ts` already links to these).
 - Ids are opaque strings (UUIDs, or a slug where the legacy used one). An id longer than 128 characters is a `404` without touching D1.
 - The same-origin guard, `Cache-Control: no-store` and the session are applied to all of `/api/*` in `src/worker.ts`; a resource does not repeat them. Mounting is one line in `worker.ts`: `app.route("/api/admin/<resource>", routes)`.
@@ -72,7 +72,7 @@ Everything is under `/api/admin/`. The resource name is the plural menu key of `
 | --- | --- |
 | `page` | Integer from 1. Anything else (missing, `0`, `abc`, `-3`) is `1`. At most `10000`. |
 | `pageSize` | Integer from 1. Default **20**, at most **100**; a larger number is clamped to 100, anything else is 20. |
-| `q` | Free text, trimmed, cut to 100 characters. A case-insensitive *contains* over the columns the resource lists as searchable (`LIKE '%q%' ESCAPE '\'`; `%`, `_` and `\` in `q` match only themselves). Empty means no search. |
+| `q` | Free text, trimmed, cut to **48 characters**. A case-insensitive (ASCII) *contains* over the columns the resource lists as searchable (`LIKE '%q%' ESCAPE '!'`; `%`, `_` and `!` in `q` match only themselves). Empty means no search. D1 refuses a LIKE pattern over **50 bytes** ("LIKE or GLOB pattern too complex"), and the pattern is `%`, the text with its wildcards escaped, `%`: so a longer search, or one full of wildcards or multi-byte characters, is trimmed from the end until the pattern fits. It becomes a search for its first characters, never an error. |
 | resource filters | One parameter per filter the resource declares, named after the field (`severity`, `status`, `batch`, `active`). A **value the filter does not know is `400 invalid_query`** (it would silently return something else). An empty value means "no filter". |
 | `sort` | `<field>` ascending or `-<field>` descending, from the resource's whitelist (a map from the public name to a column). Missing is the resource's default. **A name not in the whitelist is `400 invalid_query`**, never put in SQL. `id` is always added as the last tie-breaker so pages never overlap. |
 
@@ -99,14 +99,14 @@ Every non-2xx answer from this API has one shape:
 - `error`: a stable machine code (below). The SPA branches on it.
 - `message`: optional, Indonesian, ready to show. When it is missing the SPA uses its own line for the code (`spa/src/lib/crud/errors.ts`), so the guards (`unauthenticated`, `forbidden`) need not repeat texts.
 - `fields`: optional, only for `invalid` and a `conflict` that belongs to one field: `{ "<field name>": "<one Indonesian message>" }`. Names are the JSON property names of the body; a nested one is a dotted path (`educationHistory.0.institution`). Only the first message per field is kept.
-- Extra keys only where listed (`usedBy` on `in_use`, `maxBytes` on `too_large`).
+- Extra keys only where listed (`usedBy` on `in_use`, `maxBytes` on `too_large`, `param` on `invalid_query`: the name of the parameter, never its value).
 - Never in an error: a stack, SQL, an id of another row, the value that was rejected, the contents of the body.
 
 | Status | `error` | When |
 | --- | --- | --- |
 | 400 | `invalid` | the body does not pass the schema; `fields` says where |
 | 400 | `invalid_json` | the body is not JSON |
-| 400 | `invalid_query` | an unknown `sort` or filter value |
+| 400 | `invalid_query` | an unknown `sort` or filter value; `param` names the parameter |
 | 401 | `unauthenticated` | no session (from the guard) |
 | 403 | `forbidden` | the role or grants do not allow it (from the guard); also a cross-origin write (`reason` is added by the same-origin guard) |
 | 404 | `not_found` | no such row, or an id that cannot exist |
@@ -188,7 +188,7 @@ The numbers (esbuild bundle of one small object schema, the Worker's resolution 
 | --- | --- |
 | zod 4 alone (one schema, unminified, as `wrangler deploy --dry-run` bundles) | ~741 KiB, ~115 KiB gzip |
 | the Worker before this PR | 2,913.66 KiB, 503.16 KiB gzip |
-| the Worker after this PR | see [Measured](#20-measured) |
+| the Worker after this PR | 2,935.37 KiB, 509.54 KiB gzip (see [Measured](#20-measured)) |
 | Workers Free limit | 3 MiB compressed |
 
 zod is imported by `src/api/announcements.ts` and `src/api/admin-users.ts` already, so using it for every new resource adds **its schemas, not the library**: the kit adds about `src/api/crud` plus a few kilobytes. The alternative (hand-written validators) would save nothing the Worker does not already carry, and would repeat what zod gives for free: type inference from the schema (the `Input` type of a resource is `z.infer`), `refine` for cross-field rules (`endsAt >= startsAt`), `pipe`/`transform` for trimming and dates. It would also give four workers four dialects of the 400 body. If a later budget review wants the library out, `zod/mini` has the same schemas as functions and tree-shakes, and only the schema files change.
@@ -208,7 +208,7 @@ Free tier: 5,000,000 rows read and 100,000 rows written per day; a query that go
 | delete | 1 read of the row, then 2 in one `db.batch` (delete, audit) | 2 |
 
 - **Batch, never loop.** One `await` per round trip; no `await` inside a `for` over rows. A list that needs related data joins or does one `IN (...)` query, never one query per row.
-- **`EXPLAIN QUERY PLAN` every new list and filter** and keep the plan in the PR: the filter and the sort must show `SEARCH ... USING INDEX` or `USING COVERING INDEX`, not `SCAN`. A `SCAN` of a table that can only stay small (team, resources) is acceptable; say so in the PR. `crud-budget` in `test/` shows how the contract test asserts a plan.
+- **`EXPLAIN QUERY PLAN` every new list and filter** and keep the plan in the PR: the filter and the sort must show `SEARCH ... USING INDEX` or `USING COVERING INDEX`, not `SCAN`. A `SCAN` of a table that can only stay small (team, resources) is acceptable; say so in the PR. The "D1 budget" tests of `test/crud-contract.test.ts` show how a test counts the round trips of a request (a spy on the binding) and asserts a plan.
 - **Indexes only through migrations** (`pnpm db:generate`, `db:drift` must stay clean), and only when a plan shows a scan on a table that can grow. An index costs one written row per insert and update of every row it covers.
 - **Writes:** a save writes the row, one row per index, and the audit row with its three indexes: budget about 8 to 10 written rows. At 100,000 a day that is 10,000 saves a day, far above what a school does.
 - Never `select *` into a response, and never select a long column (`content_html`, `body_text`) for a list.
@@ -231,37 +231,52 @@ The Worker has 10 ms of CPU per request on Free; waiting for D1 or R2 is not CPU
 
 | File | What it gives |
 | --- | --- |
-| `pagination.ts` | `parsePage`, `pageOf` (the list envelope), `parseSort`, `parseSearch`, `likeContains`, `parseEnumFilter`, `parseListQuery` (all of the above for a resource spec, or the `400`) |
-| `errors.ts` | `validationError`, `invalidQuery`, `notFound`, `stale`, `inUse`, `conflict`, `tooLarge`, `preconditionRequired`, `invalidJson`, `jsonRequired`, `isUniqueViolation`, `isForeignKeyViolation` |
-| `validation.ts` | `parseBody(c, schema, { maxBytes })` (415, 400, 413 or the parsed value), `fieldsOf(zodError)`, `uploadPath(kinds)` |
-| `concurrency.ts` | `etagOf(date)`, `readIfMatch(c)`, `nextVersion(previous)` |
-| `audit.ts` | `withAudit(db, actor, entry, statements)`, `changedFields(before, after)` |
-| `resource.ts` | `crudRoutes(config, deps?)`, plus `listRows`, `findRow`, `createRow`, `updateRow`, `deleteRow` (what it is built from) |
+| `pagination.ts` | `parsePage`, `pageOf` (the list envelope), `parseSort`, `parseSearch`, `likePattern`, `likeContains`, `enumFilter`, `booleanFilter`, `parseListQuery` (all of the above for a resource's spec, or the `400`), `reader` |
+| `errors.ts` | `validationError`, `invalidQuery`, `notFound`, `stale`, `inUse`, `conflict`, `tooLarge`, `preconditionRequired`, `invalidJson`, `jsonRequired`, `fail`, `isUniqueViolation`, `isForeignKeyViolation` |
+| `validation.ts` | `parseBody(c, schema, { maxBytes })` (415, 413, 400 or the parsed value), `fieldsOf(zodError)`, `uploadPath(kinds)`, `isAllowedFilePath` |
+| `concurrency.ts` | `etagOf(date)`, `parseEtag`, `readIfMatch(c)`, `matches`, `nextVersion(previous)` |
+| `audit.ts` | `withAudit(db, actor, note, statements)`, `changedFields(before, after)`, `auditMetadata` |
+| `resource.ts` | `crudRoutes(config, deps?)`: the five routes behind `requireArea`; `crudHandlers(config, deps?)`: the five handlers alone, for a router that adds routes next to them |
 
-A resource config (`crudRoutes`):
+The order in which each route answers, so every resource says the same thing to the same mistake:
+
+| Route | Order of the checks |
+| --- | --- |
+| `GET /` | guard, query (`400 invalid_query`), one batch of two statements |
+| `GET /:id` | guard, id, one statement (`404`) |
+| `POST /` | guard, body (415, 413, 400 `invalid_json`, 400 `invalid`), one batch (insert, audit; a unique index is a `409 conflict`) |
+| `PUT /:id` | guard, `If-Match` (428), body, one read (404), version (409 `stale`), nothing changed (200, no write), one batch (update where the version still matches, audit; zero rows is `409 stale`) |
+| `DELETE /:id` | guard, one read (404), `If-Match` if sent (409 `stale`), one batch (delete, audit; a foreign key is `409 in_use`) |
+
+**A bad form is answered before any D1 read.** The audit row is an `insert ... select ... where changes() > 0` in the same `db.batch` (Drizzle's D1 batch only carries its own query builders, so a raw `run` cannot be used), which is what makes "a lost race leaves no audit row" true; `test/crud-audit.test.ts` proves it on the real D1.
+
+A resource config (`crudRoutes`), from `src/api/announcements.ts`:
 
 ```ts
 export const announcementRoutes = crudRoutes({
-  area: "komunikasi",                    // read on GET, write on the rest
-  table: schema.announcements,           // needs `id`; `version` below is the updated_at column
-  version: schema.announcements.updatedAt,
+  area: "komunikasi",                          // read on GET, write on POST, PUT, DELETE
+  table: schema.announcements,                 // needs an `id` column
+  version: schema.announcements.updatedAt,     // the updated_at column: If-Match and ETag; leave out and there is no PUT
   audit: { name: "announcement", type: "announcement", label: (row) => row.title },
-  schema: announcementInput,             // zod schema of the form (create and update)
-  toRow: (input, { user, mode }) => ({ ...input, ...(mode === "create" ? { createdBy: user.id } : {}) }),
-  present: presentAnnouncement,          // row -> what the API returns
+  schema: announcementInput,                   // the zod schema of the form, for create and update
+  toRow: (input, { user, mode }) => ({ ...columns of the form..., ...(mode === "create" ? { createdBy: user.id } : {}) }),
+  present,                                     // row -> what the API returns (an explicit field list)
   list: {
     search: [schema.announcements.title, schema.announcements.body],
-    filters: { severity: enumFilter(schema.announcements.severity, announcementSeverity) },
+    filters: { severity: enumFilter(schema.announcements.severity, announcementSeverity), active: booleanFilter(schema.announcements.active) },
     sorts: { createdAt: schema.announcements.createdAt, title: schema.announcements.title },
     defaultSort: "-createdAt",
   },
-  purge: { area: "announcement" },       // optional
-  uploads: (row) => [],                  // optional: the paths a row holds
+  purge: { area: "announcement" },             // optional: a ContentChange, or a function of the row
+  uploads: (row) => [row.image],               // optional: the paths a row holds
+  unique: { "shortlinks.slug": { field: "slug", message: "Slug sudah dipakai" } },   // optional: a unique index -> 409 conflict on a field
+  inUse: { usedBy: ["Pendaftar"] },            // optional: what to say when a foreign key refuses the delete
   routes: { create: true, update: true, delete: true },   // optional switches
+  maxBodyBytes: 512 * 1024,                    // optional: this resource's own limit
 });
 ```
 
-`deps` (`{ notify, deleteUpload }`) exists so a test can pass spies; production code never passes it.
+`deps` (`{ notify, deleteUpload }`) exists so a test can pass spies; production code never passes it. `createAnnouncementRoutes(deps)` shows how a resource exposes it for its own tests.
 
 ## 15. The SPA kit
 
@@ -271,48 +286,55 @@ export const announcementRoutes = crudRoutes({
 
 | Piece | What it does |
 | --- | --- |
-| `useList(path, spec)` | page, search, filters and sort live in the URL query (so reload, back and a shared link keep them); loads with `api()`, aborts on unmount and when the query changes, keeps the previous rows while refreshing, says `loading`, `ready` or `error`, moves to the last page when a page past the end is asked for, `refetch()` |
-| `useItem(path)` | `GET /:id` with the same states; `path` `null` means "new" and loads nothing |
-| `useMutation(run)` | submit lock (a second submit while one is in flight is ignored, by ref, not by state), maps the 400 `fields` onto `Field` errors, a `formError`, `stale` for 409, and a plain sentence for 403, 429, network and 5xx |
-| `useFormValues(initial)` | values, `set`, `dirty`, `reset(next)`, `bind(name)` for controlled inputs |
-| `useUnsavedGuard(dirty)` | `beforeunload` and an in-app blocker (a data router: `useBlocker`) that asks before leaving |
-| `useFlash()` / `flashState()` | a success or error notice that survives a route change (it travels in the navigation's history state) |
-| `describeFailure(failure)` | one line per error code, `fields` from the 400 |
-| `parseListQuery` / `toSearchParams` (`query.ts`) | the pure URL query logic |
+| `useList(path, spec)` | page, search, filters and sort live in the URL query (so reload, back and a shared link keep them); loads with `api()`, aborts the request in flight when the query changes and when the page goes away, keeps the previous rows while refreshing, says `loading`, `ready` or `error`, moves to the last page when a page past the end is asked for, `refetch()` |
+| `useItem(path)` | `GET /:id` with the same states; `path` `null` means "new" and loads nothing; `replace(item)` puts in what a save answered |
+| `useMutation(run)` | submit lock (a second submit while one is in flight is ignored, by ref, not by state), maps the 400 `fields` onto `Field` errors, a `formError`, `stale` for 409, `succeededRef` for the guard, a plain sentence for 403, 429, network and 5xx |
+| `useFormValues(initial)` | values, `set`, `dirty`, `field(name)` and `checkbox(name)` props (the control's `id` is the field name), `reset(next)` |
+| `useDeleteAction(options)` | the question, the `DELETE` with the row's version, and what each answer means; gives the props of `ConfirmDialog` |
+| `useFlash()` / `flashState()` | a notice that survives a route change (it travels in the navigation's history state and is taken out once read); `show` raises one on the page itself |
+| `describeFailure(failure)` (`errors.ts`) | one line per error code, `fields` from the 400, `stale`; the Worker's `message` wins when there is one |
+| `parseListQuery`, `toSearchParams`, `toApiQuery` (`query.ts`) | the pure URL query logic (defaults left out of the address bar, everything sent explicitly to the API) |
 | `ifMatch(updatedAt)` | the `If-Match` value |
-| `uploadFile`, `checkUploadFile`, `UPLOAD_KINDS`, `uploadUrl` (`uploads.ts`) | the client side of [uploads](#10-files-upload-references): checks that mirror the server's limits, XHR with progress, the table of kinds (a Worker test fails when it differs from `KIND_RULES`), `uploadUrl(path, base)` like the public site's |
+| `upload-kinds.ts` | the table of kinds (a Worker test fails when it differs from `KIND_RULES`), `checkUploadFile` (the Worker's own words), `acceptFor`, `uploadUrl(path, base)` (the public site's rule) |
+| `upload-client.ts` | `xhrUploader` (progress, abort, error mapping), `setUploader` (the seam the mock and the tests use), `discardUpload`, `useUploadsBase()` |
 
 **Components**
 
 | Piece | What it is |
 | --- | --- |
 | `PageHeader` (existing) | has the `actions` slot (the "Pengumuman Baru" button); show it only to someone who can write |
-| `ListPage` | header, flash, filter bar, table, pagination and the delete dialog composed from the pieces below, for the common list; or use the pieces yourself |
-| `FilterBar` | the legacy filter row: labelled controls, "Terapkan", a "Hapus filter" link; it writes the URL query |
-| `DataTable` | the kit `Table` with columns, a row-actions slot, and empty, loading and error rows (a `role="status"` / `role="alert"` row, `aria-busy` on the table, "Coba lagi") |
+| `ListPage` | header, notice, filter bar, table, pagination and the delete dialog composed from the pieces below, for the common list. A screen with more to show uses the pieces itself |
+| `FilterBar` | the legacy filter row: labelled controls, "Terapkan", a "Hapus filter" button; it applies on submit and writes the URL query |
+| `DataTable` | the kit `Table` with columns, a row-actions slot, and loading, error and empty rows (`role="status"` / `role="alert"`, `aria-busy`, "Coba lagi"), a caption that names the table |
 | `Pagination` | "Sebelumnya", numbered pages with `aria-current="page"`, "Berikutnya", and "Menampilkan 21 sampai 40 dari 87"; real links (keyboard, middle click) |
-| `ConfirmDialog` | the native `<dialog>` with `showModal()` the design system prescribes: destructive style, names the item, Escape and the backdrop cancel (not while a request is in flight), focus starts on "Batal" and returns to the button that opened it |
-| `FormShell` | the legacy editor frame: sticky bar with back link and "Simpan" / "Batal", titled `FormSection`s, error summary linking to the fields, the stale alert, the unsaved-changes dialog |
-| `Flash` | the notice (`Alert`, `role="status"` for success and `role="alert"` for errors), dismissible |
+| `ConfirmDialog` | the native `<dialog>` with `showModal()` the design system prescribes, as an `alertdialog`: destructive style, names the item, Escape and the backdrop cancel (not while a request is in flight), focus starts on "Batal" and returns to the opener (or to the main area when the opener is gone) |
+| `FormShell`, `FormSection` | the legacy editor frame: sticky bar with back link and "Simpan" / "Batal", titled sections, the error summary linking to the fields, the stale alert with "Muat ulang", the unsaved-changes guard |
+| `Flash` | the notice (`Alert`: `role="status"` for success, `role="alert"` for errors), dismissible |
 | `StatusTag` | `makeStatusMap({ value: { label, tone } })` and `<StatusTag map value />`: an unknown value is a gray tag with the raw text, never a crash |
 | `UploadField` | file picker with client checks, progress bar (`role="progressbar"`), preview, replace and remove; keyboard and screen reader friendly |
 
-**Who can see what.** A write affordance (the create button, "Edit"/"Hapus" in rows, the form's Simpan) appears only when `accessTo(me, area) === "write"`. A read-only role gets the list and the form **read-only** (`FormShell` with `readOnly`: fields disabled, no Simpan, no unsaved guard). The server refuses the write anyway; hiding is only so nobody is offered a button that cannot work. `accessTo` is never edited by a screen.
+**The shape of a form screen** (see `pages/announcements/AnnouncementFormPage.tsx`). The page loads the item (`useItem`) and owns the notice (`useFlash`); the form is a child **keyed by the item's `updatedAt`**, so "Muat ulang" and a save simply mount a fresh form with the fresh values and `dirty` starts false. The notice must be owned by the page, not the form, or it dies with the remount. After a create the page navigates to the edit route with `flashState(...)`; after an update it stays and shows the notice, as the legacy admin did.
 
-**Router.** The app runs under a data router (`createBrowserRouter` in `main.tsx`, one splat route that renders `<App />`), because `FormShell`'s unsaved-changes guard needs `useBlocker`. Tests render with `renderApp` (`spa/test/helpers.tsx`), which does the same with `createMemoryRouter`.
+**Who can see what.** A write affordance (the create button, "Edit" and "Hapus" in rows, the form's Simpan) appears only when `accessTo(me, area) === "write"`. A read-only role gets the list, a "Lihat" link, and the form **read-only** (`FormShell` with `readOnly`: fields disabled through a `<fieldset disabled>`, no Simpan, no unsaved guard). The server refuses the write anyway; hiding is only so nobody is offered a button that cannot work. `accessTo` is never edited by a screen.
 
-**`GET /api/config`** now answers `uploadsBaseUrl` (the public Worker variable `UPLOADS_BASE_URL`, `""` when unset, so in development `/uploads/...` stays same-origin through the Vite proxy). `useUploadsBase()` reads it once per page load; `uploadUrl(path, base)` puts it in front of a `/uploads/` path and leaves every other path alone.
+**Registering a screen.** `pages/screens/<area>.ts` (`komunikasi.ts`, `pendaftaran.ts`, `konten.ts`, `sistem.ts`) maps a menu path to `{ index, routes: [{ path: "new", Page }, { path: ":id/edit", Page }] }`; `App.tsx` only merges the four, so four workers do not edit the same lines. A path not registered still shows the "Belum tersedia di admin baru" placeholder.
+
+**Router.** The app runs under a data router (`createBrowserRouter` in `main.tsx`, one splat route that renders `<App />`), because `FormShell`'s unsaved-changes guard needs `useBlocker` (it also catches the browser's back button, which a click handler cannot). Tests render with `renderApp` and `renderAt` (`spa/test/helpers.tsx`), which do the same with `createMemoryRouter`. This costs bundle size, see [Measured](#20-measured).
+
+**`GET /api/config`** now answers `uploadsBaseUrl` (the variable `UPLOADS_BASE_URL`, normalised like the public site's: an http(s) origin without a trailing slash, else `""`, so in development `/uploads/...` stays same-origin through the Vite proxy). `useUploadsBase()` reads it once per page load; `uploadUrl(path, base)` puts it in front of a `/uploads/` path and leaves every other path alone.
+
+**The dialog's look.** DESIGN.md describes the public site's modal (navy, white text, a yellow "Tutup") and the legacy admin used the browser's `confirm()`. `ConfirmDialog` is that modal's structure (native `<dialog>`, `m-auto`, `rounded-2xl`, the navy blurred backdrop) with a white card and the kit's `Button` (`neutral` for "Batal", `danger` for "Hapus"). It is the one visual decision of this PR that Dzul should look at.
 
 ## 16. The mock: build a screen without a backend
 
-`pnpm dev:spa:mock` (in `cf/admin`) serves the SPA against an in-memory API (`?mock=viewer|editor|editor:konten,komunikasi|super_admin|student`). The kit adds a **generic in-memory resource store** (`spa/src/mock/resources.ts`) with the same contract as the Worker: list (`page`, `pageSize`, `q`, filters, `sort`), `GET /:id`, create (`201`), update (checks `If-Match` and answers `409 stale`), delete (`204`, `409 in_use` when the spec says so), validation as the 400 shape, `403` when the persona cannot read or write the resource's area (the Worker's own `can()` is what `accessTo` reads), and a fake `POST` for uploads that returns a path.
+`pnpm dev:spa:mock` (in `cf/admin`) serves the SPA against an in-memory API (`?mock=viewer|editor|editor:konten,komunikasi|super_admin|student`). The kit adds a **generic in-memory resource store** (`spa/src/mock/resources.ts`) with the same contract as the Worker: list (`page`, `pageSize`, `q`, filters, `sort`, clamped and strict like the Worker), `GET /:id` (with `ETag`), create (`201`), update (`428` without `If-Match`, `409 stale` for an old one, a new version every save), delete (`204`, `404`, `409 stale`, `409 in_use` when the spec says so), validation as the 400 shape, and `403` when the persona cannot read or write the resource's area (it asks `accessTo`, which reads the Worker's own `visibleAreas` and `writableAreas`). Uploads go through XMLHttpRequest, not the transport, so the mock replaces the uploader (`mock/uploads.ts`): the same area check, size limit and type check as the Worker, a progress bar that fills in about a second, and a made-up path. A file named `gagal-besar.png` answers 413 and any other `gagal-*.png` answers 500, to see those states.
 
-To mock a resource, **add one file** `spa/src/mock/resources/<name>.ts` (they are picked up with `import.meta.glob`, so there is no central list to edit and parallel workers do not conflict):
+To mock a resource, **add one file** `spa/src/mock/resources/<name>.ts` with a `default` export (it is picked up with `import.meta.glob`, so there is no central list to edit and parallel workers do not conflict):
 
 ```ts
 import type { MockResource } from "../resources";
 
-const resource: MockResource = {
+const resource: MockResource<Report> = {
   path: "/api/admin/reports",
   area: "konten",
   seed: () => [{ id: "r1", title: "Laporan Tahunan 2025", category: "yearly", year: "2025", createdAt: "...", updatedAt: "..." }],
@@ -321,58 +343,91 @@ const resource: MockResource = {
   sorts: ["title", "year"],
   defaultSort: "-year",
   parse: (body) => (String(body.title ?? "").trim().length < 3 ? { ok: false, fields: { title: "Judul minimal 3 karakter" } } : { ok: true, values: { title: String(body.title).trim(), ... } }),
+  inUse: (row) => null,           // optional: names of what refers to it -> 409 in_use on delete
 };
 export default resource;
 ```
 
-`mock/resources/announcements.ts` is the worked one. A mock never touches the network and never stores anything outside memory.
+`mock/resources/announcements.ts` is the worked one. A mock never touches the network and never stores anything outside memory (a page reload starts from the seed again).
 
 ## 17. Tests and negative checks
 
 Worker (`cf/admin/test/`, workerd, real D1):
 
-- `crud-helpers.test.ts`: unit tests of every helper (clamping, the sort whitelist, `LIKE` escaping, error shapes, `fieldsOf`, ETags, the body limit).
-- `crud-audit.test.ts`: `withAudit` against D1: one transaction, no row when the statement before it changed nothing, names only.
-- `crud-contract.test.ts`: a throwaway resource mounted in the test under `/api/admin/__example` (not shipped; it has its own table) that proves the conventions end to end: list, filters, sort, pagination, create, update, a stale update, a missing `If-Match`, delete, validation, 403 per role and area, the audit rows, the purge hook, upload cleanup, the 409s, and that the SPA's own query builder, error mapper and upload table agree with the Worker.
-- `announcements.test.ts` (updated) and the other suites that used `/api/announcements`.
+- `crud-helpers.test.ts`: unit tests of every helper (clamping, the sort whitelist, `LIKE` escaping and D1's 50-byte limit, error shapes, `fieldsOf`, ETags, the body limit and its order, file paths).
+- `crud-audit.test.ts`: `withAudit` against D1: one transaction, no row when the statement before it changed nothing, names only, a value that looks like SQL is bound.
+- `crud-contract.test.ts`: a throwaway resource that exists only in this file (its own table, mounted under `/api/admin/__example` behind the same middleware chain as the real Worker, `test/crud-app.ts`) that proves the conventions end to end: list, filters, sort, pagination, search, create, update, a stale update, three saves racing for one version, a missing `If-Match`, delete, validation, 403 per role and area (including a `sistem` resource), the audit rows and that they hold names only, the purge hook, upload cleanup with the real R2 emulation, the 409s, and the D1 round trips per request counted by a spy on the binding, with an `EXPLAIN QUERY PLAN`.
+- `crud-spa-contract.test.ts`: the SPA's own `api()` over the real Worker: the query it builds, every error mapped to a sentence, the `If-Match` it builds accepted, the upload table and the words of its refusals equal to the Worker's, `uploadUrl` equal to the public site's, `GET /api/config`.
+- `announcements.test.ts` (rewritten for the convention, the same legacy rules kept) and the other suites that used `/api/announcements` (new path).
 
-SPA (`cf/admin/spa/test/crud/`, vitest and jsdom): one file per block (keyboard, focus, `aria-*`, error mapping, `stale`, the unsaved guard, upload checks and progress with a stubbed `XMLHttpRequest`), the reference screen, and the mock store. `spa/test/setup.ts` fails any test that logs to `console.error` or `console.warn`.
+SPA (`cf/admin/spa/test/crud/` and `announcements.test.tsx`, vitest and jsdom): one file per block (keyboard, focus, `aria-*`, error mapping, `stale`, the unsaved guard, upload checks and progress with a stubbed `XMLHttpRequest`), the reference screens, and the mock store. `spa/test/setup.ts` fails any test that logs to `console.error` or `console.warn` and gives jsdom the `<dialog>` methods it lacks (`spa/test/dialog-shim.ts`).
 
-Negative checks: `scripts/negative-checks-crud.mjs` (Worker) and `scripts/negative-checks-spa-crud.mjs` (SPA) break one safeguard at a time (the area check on writes, the stale check, the validation, the audit transaction, the sort whitelist, hidden write buttons for read-only roles, the upload client limits) and require the tests to fail; `pnpm test:negative` and `pnpm test:negative:spa` run them with the existing ones.
+Negative checks: `scripts/negative-checks-crud.mjs` (Worker, 40) and `scripts/negative-checks-spa-crud.mjs` (SPA, 39) break one safeguard at a time (the area check on writes, the stale check, the atomic version, validation, the audit transaction, the sort whitelist, the LIKE limits, the purge, the upload cleanup; hidden write buttons for read-only roles, the unsaved guard, the submit lock, the dialog's focus and Escape, the upload limits in the browser) and require the tests to fail; `pnpm test:negative` and `pnpm test:negative:spa` run them with the existing ones.
 
-**Not verified here:** anything visual or in a browser (nothing was opened; Dzul checks the look, the focus behaviour of the native dialog and the real upload with `pnpm dev:spa:mock` and `pnpm dev`), Worker CPU, real D1 row counts, and the native `<dialog>` focus trap (jsdom has no `showModal`; the tests stub it and assert what our code does around it).
+**Not verified here:** anything visual or in a browser (nothing was opened; Dzul checks the look, the focus behaviour of the native dialog, the sticky bar, the progress bar and a real upload with `pnpm dev:spa:mock` and `pnpm dev`), Worker CPU, real D1 row counts, and the native `<dialog>` top layer, inert page and focus trap (jsdom has no `showModal`; the tests give it a stand-in and assert what our code does around it).
 
 ## 18. Worked example: a resource end to end
 
 A new resource "Shortlink" (`konten`), from the table to the screen. Every step names the file a worker creates or edits.
 
 1. **Table and migration** exist already (`shortlinks`, with a unique `slug`). New columns or indexes: a migration, `pnpm db:generate`, `pnpm db:drift`.
-2. **Schema** (the form, Indonesian messages) in `src/api/shortlinks.ts`:
+2. **Schema** (the form, Indonesian messages for every rule) and **routes** in `src/api/shortlinks.ts`:
    ```ts
    const shortlinkInput = z.object({
      slug: z.string().trim().toLowerCase().min(1, "Slug wajib diisi").max(64, "Slug maksimal 64 karakter").regex(SLUG, "Slug hanya boleh huruf kecil, angka, dan tanda hubung"),
      targetUrl: z.string().trim().min(1, "URL tujuan wajib diisi").max(2000, "URL tujuan terlalu panjang"),
-     note: z.string().trim().max(500).nullish().transform((v) => v || null),
+     note: z.string().trim().max(500, "Catatan maksimal 500 karakter").nullish().transform((v) => v || null),
      active: z.boolean().default(true),
    });
+
+   export const shortlinkRoutes = crudRoutes({
+     area: "konten",
+     table: schema.shortlinks,
+     version: schema.shortlinks.updatedAt,
+     audit: { name: "shortlink", type: "shortlink", label: (row) => row.slug },
+     schema: shortlinkInput,
+     toRow: (input, { user, mode }) => ({ ...input, ...(mode === "create" ? { createdBy: user.id } : {}) }),
+     present: (row) => ({ id: row.id, slug: row.slug, targetUrl: row.targetUrl, note: row.note, active: row.active, clickCount: row.clickCount, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() }),
+     list: { search: [schema.shortlinks.slug, schema.shortlinks.note], filters: { active: booleanFilter(schema.shortlinks.active) }, sorts: { slug: schema.shortlinks.slug, createdAt: schema.shortlinks.createdAt, clickCount: schema.shortlinks.clickCount }, defaultSort: "-createdAt" },
+     unique: { "shortlinks.slug": { field: "slug", message: "Slug sudah dipakai" } },
+   });
    ```
-3. **Routes**: `crudRoutes({ area: "konten", table: schema.shortlinks, version: schema.shortlinks.updatedAt, audit: { name: "shortlink", type: "shortlink", label: (row) => row.slug }, schema: shortlinkInput, toRow, present, list: {...}, purge: ... })`. A duplicate slug: the unique index raises, `crudRoutes` maps `isUniqueViolation(error, "shortlinks.slug")` through the config's `unique: { "shortlinks.slug": { field: "slug", message: "Slug sudah dipakai" } }` to `409 conflict` with `fields.slug`.
-4. **Mount** in `src/worker.ts`: `app.route("/api/admin/shortlinks", shortlinkRoutes);` (one line).
-5. **Mock**: `spa/src/mock/resources/shortlinks.ts` (above), so the screens work with `pnpm dev:spa:mock`.
-6. **SPA pages** in `spa/src/pages/shortlinks/`: `ShortlinksPage` (a `ListPage` with columns, a `FilterBar` for status, row actions Edit and Hapus), `ShortlinkFormPage` (`useItem`, `useFormValues`, `useMutation`, a `FormShell` with `FormSection`s and `Field`s); route them in `App.tsx` (`/shortlinks`, `/shortlinks/new`, `/shortlinks/:id/edit`).
-7. **Tests**: a Worker test for what is specific (the slug rules, a reserved slug), the SPA tests of the two pages (read-only role sees no buttons; the form maps a 409 onto the slug field). The contract suite already proves the generic behaviour; do not copy it.
-8. **Docs**: if the change is structural, update `docs/current-state/`; the PR template asks.
+3. **Mount** in `src/worker.ts`: `app.route("/api/admin/shortlinks", shortlinkRoutes);` (one line). `clickCount` is written by the redirect, not by this form: `toRow` leaves it out, so a save never resets it.
+4. **Mock**: `spa/src/mock/resources/shortlinks.ts` (section 16), so the screens work with `pnpm dev:spa:mock`.
+5. **SPA pages** in `spa/src/pages/shortlinks/`: a `model.ts` (the path, the spec, the form values), `ShortlinksPage` (a `ListPage` with columns, a `FilterBar` for status, a "Salin" row action), `ShortlinkFormPage` (`useItem`, `useFormValues`, `useMutation`, a `FormShell` with `FormSection`s and `Field`s, the item's `updatedAt` as the form's key). Register both in `pages/screens/konten.ts`.
+6. **Tests**: a Worker test for what is specific (the slug grammar, the reserved slugs), and the SPA tests of the two pages (a read-only role sees no buttons; the form maps a 409 onto the slug field). The contract suite already proves the generic behaviour; do not copy it.
+7. **Docs**: if the change is structural (a route, a dependency, a deploy step, the data model) update `docs/current-state/`; the PR template asks.
 
 Look at `src/api/announcements.ts`, `spa/src/pages/announcements/` and `spa/src/mock/resources/announcements.ts`: they are this, for announcements.
 
 ## 19. Who owns the announcements reference
 
-This PR **converts** what existed (list, create, edit, delete of announcements) to the convention and to the new blocks; it adds no rule. **`src/api/announcements.ts`, `spa/src/pages/announcements/` and their tests belong to the Komunikasi worker** from the day this merges. Still to do there, not here: the "one current announcement" rule (what happens when two are active), publish windows in the editor (`startsAt`/`endsAt` validation against `now`), the Tampil / Aktif di luar jadwal tag computed on the server, the CTA URL rules (internal path or `https://`), the Komunikasi label in Aktivitas, and the preview of the strip. Their tests keep proving the convention; they must not weaken the contract suite.
+This PR **converts** what existed (list, create, edit, delete of announcements) to the convention and to the new blocks; it adds no rule. **`src/api/announcements.ts`, `spa/src/pages/announcements/`, `spa/src/mock/resources/announcements.ts` and their tests belong to the Komunikasi worker** from the day this merges. Still to do there, not here: the "one current announcement" rule (what happens when two are active), publish windows in the editor (`startsAt` and `endsAt` against now), the Tampil / Aktif di luar jadwal tag computed on the server instead of the browser's clock, the CTA URL rules (an internal path or `https://`), the Komunikasi label in Aktivitas, and the preview of the strip. Their tests keep proving the convention; they must not weaken the contract suite. Two small behaviour changes happened in the conversion, both toward the convention: the list answers `{ items, page, pageSize, total }` with `updatedAt` and no `createdBy`, and `PUT` needs `If-Match`.
 
 ## 20. Measured
 
-Filled in at the end of the work (see the PR description for the commands): Worker bundle before and after (`wrangler deploy --dry-run`), SPA bundle before and after (`pnpm build:spa`).
+Taken on the base of this branch (`origin/cloudflare` at PR #58), the same machine, `WRANGLER_SEND_METRICS=false CI=1`. CPU cannot be measured locally (workerd freezes its timers during synchronous code); these are sizes and counts.
+
+| | Before | After | Change |
+| --- | --- | --- | --- |
+| Worker (`wrangler deploy --dry-run`) | 2,913.66 KiB, 503.16 KiB gzip | 2,935.37 KiB, 509.54 KiB gzip | +21.7 KiB, +6.4 KiB gzip (the kit, the converted announcements, `base-url.ts`; zod was already in: 19 `ZodObject` matches before and after) |
+| SPA JS | 348.73 kB, 109.99 kB gzip | 430.61 kB, 134.90 kB gzip | +81.9 kB, +24.9 kB gzip |
+| SPA CSS | 42.15 kB, 11.27 kB gzip | 48.36 kB, 12.15 kB gzip | +6.2 kB, +0.9 kB gzip |
+
+Of the SPA JS growth, **+55.8 kB (+17.1 kB gzip) is the data router** (`createBrowserRouter` and `RouterProvider` instead of `BrowserRouter`, measured by building the kit with `BrowserRouter` again: 374.77 kB, 117.81 kB gzip), and the kit and the rebuilt announcements are +26.0 kB (+7.8 kB gzip). The router is the price of an unsaved-changes guard that also catches the back button; if that is not worth 17 kB gzip, the alternative is a click-and-`beforeunload` guard on the declarative router, which cannot stop the back button. The SPA is static assets (no Worker CPU).
+
+Worker tests: 891 before, 1,082 after (`pnpm test:worker`); SPA tests: 463 before, 657 after; negative checks: Worker 125 before, 165 after; SPA 37 before, 76 after.
+
+D1 per request (counted on the real D1 by a spy on the binding, `test/crud-contract.test.ts`): list 1 round trip of 2 statements; one item 1 statement; create 1 round trip of 2; update and delete a read and then 1 round trip of 2.
 
 ## 21. Open decisions
 
-For Dzul, in order of weight: see the PR description (kept there so this page records only decisions that were made).
+For Dzul, in order of weight; the PR description repeats them.
+
+1. **The data router costs 17 kB gzip** of the SPA for an unsaved-changes guard that catches the back button. Keep it, or fall back to the lighter guard (links and tab close only)?
+2. **`ConfirmDialog` look.** A white card on DESIGN.md's navy blurred backdrop (the modal's structure, the kit's red button). The legacy admin had only the browser's `confirm()`. Needs a look in a browser.
+3. **`PUT` requires `If-Match`, and a stale delete is refused.** Deleting a row someone edited after the list was loaded gives "Muat ulang" instead of deleting. Right, or should a delete ignore the version?
+4. **Search is `LIKE '%q%'`, at most 48 characters** (D1 refuses a LIKE pattern over 50 bytes). Fine for the tables of this school; the applications and audit lists must not use it (section 3). Agree?
+5. **Orphaned uploads.** A file uploaded and never saved (the form closed) stays in R2 and in `media`; only a replace in the same form deletes it. A weekly sweep of unreferenced `media` older than a week is not built. Worth a ticket?
+6. **`registration-document` kind and GIF.** The upload kinds table exists twice (`src/uploads/kinds.ts` and the SPA's `upload-kinds.ts`) and a Worker test fails when they differ. The PM's decisions (merge `registration-document` into `resource`, add GIF for `blog-image`) change both files together.
+7. **Announcements `GET` moved to `/api/admin/announcements`** with the `{ items }` envelope and `fields` errors. `/api/announcements` no longer exists. PR #59's tests that call the old path need the new one.
