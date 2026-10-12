@@ -263,6 +263,8 @@ What this says, plainly:
 
 ## 12. Tests and negative checks
 
+At the end of this work: Worker **1,323 tests** (41 files), SPA **761** (33 files), negative checks Worker **242** (56 of them for the blog and GIF), SPA **108** (24 for the blog); all exit 0, with `typecheck`, `build:spa`, `check:spa` and `db:drift`.
+
 Worker (`cf/admin/test/`, workerd, real D1 and R2): `blog.test.ts` (roles and areas for all eight routes and nine callers, create, the legacy validation, list and filters, update and the stale and race rules, publish and unpublish and their public effect, the slug and date rules, featured, the purge hook and upload cleanup, hero and inline images, preview, the D1 budget, query plans), `blog-render-parity.test.ts` (80 articles equal to the plugin; the legacy image table equal to the manifest), `blog-sanitize.test.ts` (the allow-list, the URL rules, 36 attacks), `blog-import.test.ts` (the 80 equal to the fixture API; idempotence), `blog-spa-contract.test.ts` (the SPA's limits, categories, dates, body and field names against the real Worker), and GIF cases in `uploads-sniff.test.ts` and `uploads.test.ts`.
 
 SPA (`cf/admin/spa/test/`, jsdom): `blog.test.tsx` (the list, the form, tabs and error reveal, publish and unpublish, read-only, preview, image insertion, the cover), `blog-preview.test.ts` (the hook: debounce, abort, memory, limits), `blog-mock.test.ts` (the mock behaves like the Worker).
