@@ -7,6 +7,21 @@ import type { MockResource } from "../resources";
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
+/** The Worker's CTA URL rule in miniature (src/announcements/rules.ts): a path of this site or an http(s) URL. Same words. */
+function ctaUrlProblem(raw: string): string | null {
+  const url = raw.trim();
+  if (url.startsWith("/")) {
+    if (url.startsWith("//")) return "Gunakan URL lengkap (https://...) untuk tujuan di luar situs ini.";
+    return /[\u0000-\u001f\u007f\\]/.test(url) ? "Format URL tidak valid. Gunakan https://... atau /path-di-situs-ini." : null;
+  }
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "http:" || protocol === "https:" ? null : "Hanya URL http:// atau https:// yang diizinkan.";
+  } catch {
+    return "Format URL tidak valid. Gunakan https://... atau /path-di-situs-ini.";
+  }
+}
+
 const resource: MockResource<AnnouncementItem> = {
   path: "/api/admin/announcements",
   area: "komunikasi",
@@ -27,6 +42,11 @@ const resource: MockResource<AnnouncementItem> = {
     const ctaLabel = text(body.ctaLabel) || null;
     const ctaUrl = text(body.ctaUrl) || null;
     if ((ctaLabel === null) !== (ctaUrl === null)) fields.ctaLabel = "Label dan URL CTA harus diisi keduanya";
+    if (ctaLabel !== null && ctaLabel.length > 60) fields.ctaLabel = "Label CTA maksimal 60 karakter";
+    if (ctaUrl !== null) {
+      const problem = ctaUrl.length > 500 ? "URL CTA maksimal 500 karakter" : ctaUrlProblem(ctaUrl);
+      if (problem) fields.ctaUrl = problem;
+    }
     const date = (value: unknown) => (typeof value === "string" && value !== "" ? new Date(value) : null);
     const startsAt = date(body.startsAt);
     const endsAt = date(body.endsAt);

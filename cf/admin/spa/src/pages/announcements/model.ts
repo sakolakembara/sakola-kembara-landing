@@ -1,18 +1,20 @@
 import type { TagTone } from "@/components/ui/tag";
 import { makeStatusMap } from "~/components/crud/StatusTag";
 import type { Announcement, Severity } from "~/lib/api";
-import type { ListSpec } from "~/lib/crud/query";
+import type { AnnouncementStatus } from "./spec";
 
-// What the announcements screens share: the types, the labels, the list's spec and the form's values.
+export { ANNOUNCEMENT_STATUSES, API_PATH, type AnnouncementStatus, LIST_SPEC, ROUTE } from "./spec";
+
+// What the announcements screens share: the types, the labels and the form's values (the API path, the list's spec
+// and the status values are in ./spec, which the Worker's tests can read).
 // The reference implementation of docs/cloudflare/admin-crud.md; the Komunikasi worker owns it from here.
 // Labels, tones and the window text are the legacy page's (app/(admin)/admin/announcements/page.tsx).
 
-/** The API collection and the SPA route of the menu. */
-export const API_PATH = "/api/admin/announcements";
-export const ROUTE = "/announcements";
-
 /** An item as the API answers it (`present` in src/api/announcements.ts). */
 export type AnnouncementItem = Announcement & { updatedAt: string };
+
+/** A row of the list: the item and what the public strip implies for it, worked out by the Worker with the strip's own rule. */
+export type AnnouncementListItem = AnnouncementItem & { status: AnnouncementStatus };
 
 export const SEVERITY_LABEL: Record<Severity, string> = { info: "Info", warning: "Peringatan", urgent: "Mendesak" };
 export const SEVERITY_TONE: Record<Severity, TagTone> = { info: "blue", warning: "amber", urgent: "red" };
@@ -29,11 +31,17 @@ export const SEVERITY_STATUS = makeStatusMap({
   urgent: { label: SEVERITY_LABEL.urgent, tone: SEVERITY_TONE.urgent },
 });
 
-/** What the list offers: the same names as the Worker's filters and sorts (src/api/announcements.ts). */
-export const LIST_SPEC: ListSpec = {
-  filters: ["severity", "active"],
-  sorts: ["createdAt", "updatedAt", "title", "startsAt"],
-  defaultSort: "-createdAt",
+/**
+ * The Status column. The legacy page had three words ("Tampil", "Aktif, di luar jadwal", "Tidak aktif") worked out in
+ * the browser, and marked EVERY row inside its window as "Tampil" although the strip shows only one. The Worker now says
+ * which one is shown ("Tampil sekarang") and which live ones are covered by a newer one. `tone` is the legacy look:
+ * green with a dot for what is on screen, amber for active but not showing, gray for off.
+ */
+export const STATUS_VIEW: Record<AnnouncementStatus, { label: string; tone: "shown" | "waiting" | "off" }> = {
+  current: { label: "Tampil sekarang", tone: "shown" },
+  superseded: { label: "Aktif, tertutup yang lebih baru", tone: "waiting" },
+  outside_window: { label: "Aktif, di luar jadwal", tone: "waiting" },
+  inactive: { label: "Tidak aktif", tone: "off" },
 };
 
 export function formatWindow(starts: string | null, ends: string | null): string {
@@ -41,10 +49,6 @@ export function formatWindow(starts: string | null, ends: string | null): string
   if (!starts && !ends) return "Tanpa batas";
   if (starts && ends) return `${fmt(starts)} – ${fmt(ends)}`;
   return starts ? `Mulai ${fmt(starts)}` : `Berakhir ${fmt(ends!)}`;
-}
-
-export function isCurrentlyShown(row: Pick<Announcement, "active" | "startsAt" | "endsAt">, now = Date.now()): boolean {
-  return row.active && (!row.startsAt || new Date(row.startsAt).getTime() <= now) && (!row.endsAt || new Date(row.endsAt).getTime() >= now);
 }
 
 // ----------------------------------------------------------------------- the form

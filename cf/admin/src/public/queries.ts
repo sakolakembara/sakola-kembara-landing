@@ -84,10 +84,21 @@ export const resourcesQuery = (db: Db) =>
 
 // ----------------------------------------------------------- announcement
 
+/** Inside its window: either end may be open, both ends are inclusive (the legacy reader's rule). `now` is a parameter. */
+export const announcementInWindow = (now: Date) => and(or(isNull(announcements.startsAt), lte(announcements.startsAt, now)), or(isNull(announcements.endsAt), gte(announcements.endsAt, now)));
+
+/** Switched on and inside its window: the announcements that may be shown at `now`. */
+export const announcementIsLive = (now: Date) => and(eq(announcements.active, true), announcementInWindow(now));
+
+/** When several are live, the most recently created is the one shown; the row order breaks a tie between two saved in the same instant. */
+export const announcementNewestFirst = [desc(announcements.createdAt), byRowidDesc] as const;
+
 /**
  * The one active announcement: switched on and inside its window (either end
  * may be open), the most recently created wins. `now` is a parameter: the
- * window is evaluated at request time, never read from a cache.
+ * window is evaluated at request time, never read from a cache. The admin's
+ * Pengumuman list marks "Tampil sekarang" with the same predicate and order
+ * (src/api/announcements.ts), so what it says is what this serves.
  */
 export const currentAnnouncementQuery = (db: Db, now: Date) =>
   db
@@ -99,8 +110,8 @@ export const currentAnnouncementQuery = (db: Db, now: Date) =>
       ctaUrl: announcements.ctaUrl,
     })
     .from(announcements)
-    .where(and(eq(announcements.active, true), or(isNull(announcements.startsAt), lte(announcements.startsAt, now)), or(isNull(announcements.endsAt), gte(announcements.endsAt, now))))
-    .orderBy(desc(announcements.createdAt), byRowidDesc)
+    .where(announcementIsLive(now))
+    .orderBy(...announcementNewestFirst)
     .limit(1);
 
 // ------------------------------------------------------------------ blog

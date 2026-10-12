@@ -2,11 +2,26 @@ import { Link } from "react-router";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { ListPage } from "~/components/crud/ListPage";
 import type { Column } from "~/components/crud/DataTable";
-import { API_PATH, type AnnouncementItem, formatWindow, isCurrentlyShown, LIST_SPEC, ROUTE, SEVERITIES, SEVERITY_LABEL, SEVERITY_STATUS } from "./model";
+import { type AnnouncementListItem, API_PATH, formatWindow, LIST_SPEC, ROUTE, SEVERITIES, SEVERITY_LABEL, SEVERITY_STATUS, STATUS_VIEW } from "./model";
 
 // The list of announcements, built with `ListPage`: the reference screen of docs/cloudflare/admin-crud.md.
 
-const COLUMNS: readonly Column<AnnouncementItem>[] = [
+/** The legacy Status look: a green dot and green text for what is on screen, amber for active but not showing, gray for off. */
+function StatusCell({ status }: { status: string }) {
+  const view = Object.hasOwn(STATUS_VIEW, status) ? STATUS_VIEW[status as keyof typeof STATUS_VIEW] : null;
+  if (!view) return <span className="text-xs text-gray-500">{status || "-"}</span>;
+  if (view.tone === "shown") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-green-500" />
+        {view.label}
+      </span>
+    );
+  }
+  return <span className={view.tone === "waiting" ? "text-xs text-amber-700" : "text-xs text-gray-500"}>{view.label}</span>;
+}
+
+const COLUMNS: readonly Column<AnnouncementListItem>[] = [
   {
     key: "message",
     header: "Pesan",
@@ -25,27 +40,17 @@ const COLUMNS: readonly Column<AnnouncementItem>[] = [
   {
     key: "status",
     header: "Status",
-    cell: (row) =>
-      isCurrentlyShown(row) ? (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
-          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-green-500" />
-          Tampil
-        </span>
-      ) : row.active ? (
-        <span className="text-xs text-amber-700">Aktif, di luar jadwal</span>
-      ) : (
-        <span className="text-xs text-gray-500">Tidak aktif</span>
-      ),
+    cell: (row) => <StatusCell status={row.status} />,
   },
 ];
 
 export function AnnouncementsPage() {
   return (
-    <ListPage<AnnouncementItem>
+    <ListPage<AnnouncementListItem>
       title="Pengumuman"
       description={(list) => (
         <p>
-          {list.total.toLocaleString("id-ID")} total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal.
+          {list.total.toLocaleString("id-ID")} total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal. Bila ada beberapa, yang terakhir dibuat yang tampil.
         </p>
       )}
       apiPath={API_PATH}
