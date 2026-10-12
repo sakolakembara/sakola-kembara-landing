@@ -21,6 +21,11 @@ export interface ApiFailure {
   status: number;
   /** Better Auth's `code` or this Worker's `error`, e.g. "EMAIL_NOT_VERIFIED". Never shown to people. */
   code?: string;
+  /** The CRUD API's `message` (docs/cloudflare/admin-crud.md#5-errors): Indonesian, ready to show. Missing for the guards' 401 and 403. */
+  message?: string;
+  /** The CRUD API's `fields`: `{ <field name>: <one Indonesian message> }`, for a 400 `invalid` and a 409 `conflict`. */
+  fields?: Record<string, string>;
+  /** The first sample's `{ name: string[] }` shape; no endpoint of this app sends it any more. */
   fieldErrors?: Record<string, string[]>;
   /** Seconds from the `Retry-After` header, when the server sent a number. */
   retryAfter?: number;
@@ -54,6 +59,17 @@ export interface ApiInit {
   json?: unknown;
   /** The Turnstile widget's token, for the routes the Worker protects with it. Sent in a header, never in the URL or the body. A token works once. */
   turnstileToken?: string | null;
+  /** The `If-Match` of a save or delete: the ETag of the version the person loaded (`ifMatch(updatedAt)` in lib/crud/etag.ts). */
+  ifMatch?: string;
+  /** Aborts the request (a page that goes away, a search that is replaced). An aborted call answers `{ ok: false, status: 0 }`. */
+  signal?: AbortSignal;
+}
+
+/** The `fields` of an error body, keeping only `string` values: whatever else arrives is not shown. */
+function stringFields(value: unknown): Record<string, string> | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string");
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
 /** JSON call to this app's own API. Cookies go along (same origin). Never throws. */
@@ -61,20 +77,25 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<ApiResul
   const headers: Record<string, string> = {};
   if (init.json !== undefined) headers["Content-Type"] = "application/json";
   if (init.turnstileToken) headers[TURNSTILE_HEADER] = init.turnstileToken;
+  if (init.ifMatch) headers["If-Match"] = init.ifMatch;
   try {
     const res = await transport(path, {
       method: init.method ?? "GET",
       headers: Object.keys(headers).length === 0 ? undefined : headers,
       body: init.json === undefined ? undefined : JSON.stringify(init.json),
       credentials: "same-origin",
-    });
+      signal: init.signal,
+    } as RequestInit); // the cast: the Worker's contract tests compile this file with the Workers types, which lack `credentials`
     const body = res.status === 204 ? null : await res.json().catch(() => null);
     if (res.ok) return { ok: true, data: body as T };
-    const failure = (body ?? {}) as { error?: string; code?: string; fieldErrors?: Record<string, string[]> };
+    const failure = (body ?? {}) as { error?: string; code?: string; message?: unknown; fields?: unknown; fieldErrors?: Record<string, string[]> };
     return {
       ok: false,
       status: res.status,
       code: failure.code ?? failure.error,
+      // Only this Worker's own errors carry a message meant for people. Better Auth's ({ code, message }) is English, for developers.
+      message: failure.code === undefined && typeof failure.message === "string" && failure.message.trim() !== "" ? failure.message : undefined,
+      fields: stringFields(failure.fields),
       fieldErrors: failure.fieldErrors,
       retryAfter: retryAfterSeconds(res),
     };

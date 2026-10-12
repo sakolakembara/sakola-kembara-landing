@@ -1,4 +1,6 @@
 import { setTransport } from "~/lib/api";
+import { setUploader } from "~/lib/crud/upload-client";
+import { createMockUploader } from "./uploads";
 import { parsePersona } from "./persona";
 import { createMockTransport, type DashboardMode } from "./transport";
 import { installMockTurnstile } from "./turnstile";
@@ -58,6 +60,9 @@ export function installMockApi(): void {
       },
     }),
   );
+
+  // Uploads go through XMLHttpRequest, not the transport: a fake with progress and a fake path (mock/uploads.ts).
+  setUploader(createMockUploader(persona));
 
   // The security check's widget: a stand-in, so Cloudflare's script is never fetched.
   installMockTurnstile();

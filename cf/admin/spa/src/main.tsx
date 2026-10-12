@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { createBrowserRouter, RouterProvider } from "react-router";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles.css";
@@ -13,13 +13,22 @@ async function start() {
     installMockApi();
   }
 
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <BrowserRouter>
+  // A data router (one splat route that renders <App />, which keeps its own <Routes>): the forms' unsaved-changes
+  // guard needs `useBlocker`, which only exists under one (docs/cloudflare/admin-crud.md#15-the-spa-kit).
+  const router = createBrowserRouter([
+    {
+      path: "*",
+      element: (
         <ErrorBoundary variant="app">
           <App />
         </ErrorBoundary>
-      </BrowserRouter>
+      ),
+    },
+  ]);
+
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <RouterProvider router={router} />
     </StrictMode>,
   );
 }

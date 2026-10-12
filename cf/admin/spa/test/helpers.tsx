@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router";
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { vi } from "vitest";
 import { App } from "~/App";
 import { setTransport } from "~/lib/api";
@@ -77,12 +77,43 @@ function LocationProbe() {
   return <span data-testid="location">{`${pathname}${search}`}</span>;
 }
 
-/** The whole app at `path`, with a probe that shows where the router is. */
+/**
+ * The whole app at `path`, with a probe that shows where the router is. Under a data router, like main.tsx:
+ * the forms' unsaved-changes guard (`useBlocker`) needs one.
+ */
 export function renderApp(path = "/") {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-      <LocationProbe />
-    </MemoryRouter>,
+  const router = createMemoryRouter(
+    [
+      {
+        path: "*",
+        element: (
+          <>
+            <App />
+            <LocationProbe />
+          </>
+        ),
+      },
+    ],
+    { initialEntries: [path] },
   );
+  return { ...render(<RouterProvider router={router} />), router };
+}
+
+/** One component at `path` under a data router (the guard of `FormShell` needs one), with the location probe. */
+export function renderAt(ui: React.ReactNode, path = "/") {
+  const router = createMemoryRouter(
+    [
+      {
+        path: "*",
+        element: (
+          <>
+            {ui}
+            <LocationProbe />
+          </>
+        ),
+      },
+    ],
+    { initialEntries: [path] },
+  );
+  return { ...render(<RouterProvider router={router} />), router };
 }

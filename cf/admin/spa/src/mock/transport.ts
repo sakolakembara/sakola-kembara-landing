@@ -2,8 +2,10 @@ import type { Transport } from "~/lib/api";
 import { accessTo } from "~/lib/access";
 import { isAdminRole, parseMe } from "~/lib/me";
 import { TURNSTILE_HEADER } from "~/lib/captcha";
-import { mockAnnouncements, mockDashboard, mockMeBody } from "./fixtures";
+import { mockDashboard, mockMeBody } from "./fixtures";
 import type { Persona } from "./persona";
+import { MOCK_RESOURCES } from "./registry";
+import { createMockResources } from "./resources";
 import { MOCK_SITE_KEY, MOCK_TOKEN_PREFIX } from "./turnstile";
 
 // MOCK, local development only. Answers the calls the SPA makes, in the shape
@@ -53,7 +55,8 @@ function bodyOf(init: RequestInit): Record<string, unknown> {
 }
 
 export function createMockTransport(config: MockConfig): Transport {
-  const announcements = mockAnnouncements();
+  // Every resource registered in mock/resources/ (list, item, create, update, delete, uploads' areas), with the persona's rights.
+  const resources = createMockResources(MOCK_RESOURCES, (area) => accessTo(parseMe(mockMeBody(config.persona)), area));
   const spentTokens = new Set<string>();
 
   /** The Worker's security check: null when the token is good (it is then spent), otherwise the refusal. */
@@ -77,7 +80,7 @@ export function createMockTransport(config: MockConfig): Transport {
 
     switch (route) {
       case "GET /api/config":
-        return json({ google: true, turnstileSiteKey: MOCK_SITE_KEY });
+        return json({ google: true, turnstileSiteKey: MOCK_SITE_KEY, uploadsBaseUrl: "" });
 
       case "GET /api/me":
         return config.session.get() ? json(mockMeBody(config.persona)) : json({ error: "unauthenticated" }, 401);
@@ -120,33 +123,9 @@ export function createMockTransport(config: MockConfig): Transport {
         if (config.dashboard === "slow") await sleep(4000);
         return json(mockDashboard(config.persona, config.dashboard === "empty" ? "empty" : "ready"));
 
-      case "GET /api/announcements":
-        // Like the Worker: an editor who was not granted Komunikasi may not even read it.
-        if (accessTo(parseMe(mockMeBody(config.persona)), "komunikasi") === "none") return json({ error: "forbidden" }, 403);
-        return json({ announcements });
-
-      case "POST /api/announcements": {
-        if (accessTo(parseMe(mockMeBody(config.persona)), "komunikasi") !== "write") return json({ error: "forbidden" }, 403);
-        const title = String(body.title ?? "").trim();
-        if (title.length < 3) return json({ error: "invalid", fieldErrors: { title: ["Judul minimal 3 karakter"] } }, 400);
-        const created = {
-          id: `mock-${announcements.length + 1}`,
-          title,
-          body: String(body.body ?? ""),
-          severity: body.severity === "warning" || body.severity === "urgent" ? body.severity : "info",
-          ctaLabel: null,
-          ctaUrl: null,
-          active: body.active === true,
-          startsAt: null,
-          endsAt: null,
-          createdAt: new Date().toISOString(),
-        } as const;
-        announcements.unshift(created);
-        return json({ announcement: created }, 201);
-      }
-
       default:
-        return json({ error: "not_found" }, 404);
+        // A registered resource (mock/resources/), or nobody's path.
+        return resources.handle(method, url, init) ?? json({ error: "not_found" }, 404);
     }
   };
 }
