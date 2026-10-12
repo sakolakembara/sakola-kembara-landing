@@ -32,7 +32,7 @@ function item(over: Partial<ResourceItem> = {}): ResourceItem {
     fileSize: 1_258_291,
     externalUrl: null,
     bodyText: null,
-    notes: "Dari Rommy",
+    notes: "Dari panitia",
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",
     ...over,
@@ -387,7 +387,7 @@ describe("the form: edit", () => {
     expect((screen.getByLabelText(/Deskripsi/) as HTMLTextAreaElement).value).toBe("Baca dulu sebelum mendaftar.");
     expect((screen.getByLabelText(/Kategori/) as HTMLSelectElement).value).toBe("panduan");
     expect((screen.getByLabelText(/Urutan Tampil/) as HTMLInputElement).value).toBe("10");
-    expect((screen.getByLabelText(/Catatan/) as HTMLInputElement).value).toBe("Dari Rommy");
+    expect((screen.getByLabelText(/Catatan/) as HTMLInputElement).value).toBe("Dari panitia");
     expect(screen.getByRole("link", { name: "panduan.pdf" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ganti" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Edit Berkas" })).toBeTruthy();

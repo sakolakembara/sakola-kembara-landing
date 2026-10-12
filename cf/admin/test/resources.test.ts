@@ -23,7 +23,7 @@ async function body<T = Record<string, unknown>>(response: Response) {
   return (await response.json()) as T;
 }
 
-const file = { title: "Panduan Pendaftaran", description: "Baca dulu", category: "panduan", displayOrder: 10, contentType: "file", filePath: "/resources/panduan.pdf", fileSize: 12345, notes: "Dari Rommy" };
+const file = { title: "Panduan Pendaftaran", description: "Baca dulu", category: "panduan", displayOrder: 10, contentType: "file", filePath: "/resources/panduan.pdf", fileSize: 12345, notes: "Dari panitia" };
 const link = { title: "Video Token Listrik", category: "tutorial", displayOrder: 5, contentType: "url", externalUrl: "https://youtube.com/watch?v=abc" };
 const snippet = { title: "Caption Instagram", category: "berkas-marketing", displayOrder: 1, contentType: "text", bodyText: "Aku daftar di Sakola Kembara!" };
 
@@ -85,7 +85,7 @@ describe("resources: the three shapes of a row", () => {
     const res = await create(cookie, file);
     expect(res.status).toBe(201);
     const { item } = await body<{ item: Item }>(res);
-    expect(item).toMatchObject({ title: "Panduan Pendaftaran", description: "Baca dulu", category: "panduan", displayOrder: 10, contentType: "file", filePath: "/resources/panduan.pdf", fileSize: 12345, externalUrl: null, bodyText: null, notes: "Dari Rommy" });
+    expect(item).toMatchObject({ title: "Panduan Pendaftaran", description: "Baca dulu", category: "panduan", displayOrder: 10, contentType: "file", filePath: "/resources/panduan.pdf", fileSize: 12345, externalUrl: null, bodyText: null, notes: "Dari panitia" });
     expect(Object.keys(item).sort()).toEqual(["bodyText", "category", "contentType", "createdAt", "description", "displayOrder", "externalUrl", "filePath", "fileSize", "id", "notes", "title", "updatedAt"]);
     expect(res.headers.get("etag")).toBe(`"${item.updatedAt}"`);
 
@@ -372,7 +372,7 @@ describe("resources: the public page is told, and what it is told is true", () =
     expect(listed.find((row) => row.id === l.id)).toMatchObject({ contentType: "url", externalUrl: link.externalUrl, filePath: null });
     // A text entry carries the text the page's copy button copies.
     expect(listed.find((row) => row.id === t.id)).toMatchObject({ contentType: "text", bodyText: snippet.bodyText });
-    expect(JSON.stringify(listed)).not.toContain("Dari Rommy");
+    expect(JSON.stringify(listed)).not.toContain("Dari panitia");
     for (const row of listed) expect(Object.keys(row)).not.toContain("notes");
 
     await call(`${LIST}/${f.id}`, { method: "PUT", cookie, headers: await etagOfRow("site_resources", f.id), json: { ...file, title: "Panduan 2027", category: "lainnya" } });
