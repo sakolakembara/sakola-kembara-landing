@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 
-/** The centered card the legacy /login uses (app/(auth)/login/page.tsx). */
+/**
+ * The auth page layout: a narrow centered column on a plain page, no card
+ * (the login-2 block Dzul picked). The legacy /login used a card
+ * (app/(auth)/login/page.tsx); the copy is the same.
+ */
 export function AuthShell({
   title,
   subtitle,
@@ -9,28 +13,26 @@ export function AuthShell({
   children,
 }: {
   title: string;
-  /** Under the brand name, above the card. */
+  /** Under the brand name, above the title. */
   subtitle?: string;
-  /** Under the card's title. */
+  /** Under the title. */
   description?: string;
-  /** Below a rule at the bottom of the card, e.g. the way back to sign-in. */
+  /** Below a rule at the bottom, e.g. the way back to sign-in. */
   footer?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <p className="inline-block font-[family-name:var(--font-display)] text-2xl text-gray-900">Sakola Kembara</p>
-          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
-        </div>
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-5">
-          <div>
-            <h1 className="font-[family-name:var(--font-display)] text-xl text-gray-900 mb-1">{title}</h1>
-            {description && <p className="text-sm text-gray-600">{description}</p>}
+    <main className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex flex-1 flex-col justify-center px-4 py-10 lg:px-6">
+        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+          <div className="mb-8 text-center">
+            <p className="inline-block font-[family-name:var(--font-display)] text-2xl text-gray-900">Sakola Kembara</p>
+            {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
           </div>
-          {children}
-          {footer && <div className="pt-2 border-t border-gray-100 text-center text-xs text-gray-500">{footer}</div>}
+          <h1 className="text-center font-[family-name:var(--font-display)] text-xl font-semibold text-gray-900">{title}</h1>
+          {description && <p className="mt-2 text-center text-sm text-gray-600">{description}</p>}
+          <div className="mt-6 space-y-4">{children}</div>
+          {footer && <div className="mt-6 border-t border-gray-100 pt-4 text-center text-xs text-gray-500">{footer}</div>}
         </div>
       </div>
     </main>

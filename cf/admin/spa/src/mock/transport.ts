@@ -56,7 +56,7 @@ export function createMockTransport(config: MockConfig): Transport {
 
     switch (route) {
       case "GET /api/config":
-        return json({ google: false });
+        return json({ google: true });
 
       case "GET /api/me":
         return config.session.get() ? json(mockMeBody(config.persona)) : json({ error: "unauthenticated" }, 401);
