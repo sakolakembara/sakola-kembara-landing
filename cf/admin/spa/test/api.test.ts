@@ -25,6 +25,27 @@ describe("api()", () => {
     expect(init.credentials).toBe("same-origin");
   });
 
+  test("a Turnstile token goes in the X-Turnstile-Token header, next to the JSON", async () => {
+    const transport = vi.fn(async () => respond({}));
+    setTransport(transport);
+    await api("/api/x", { method: "POST", json: { a: 1 }, turnstileToken: "token-123" });
+    const [path, init] = transport.mock.calls[0] as unknown as [string, RequestInit];
+    expect(path).toBe("/api/x"); // never in the address
+    expect(init.headers).toEqual({ "Content-Type": "application/json", "X-Turnstile-Token": "token-123" });
+    expect(init.body).toBe('{"a":1}'); // nor in the body
+  });
+
+  test("no token (none yet, or no Turnstile here) adds no header, not even an empty one", async () => {
+    const transport = vi.fn(async () => respond({}));
+    setTransport(transport);
+    await api("/api/x", { method: "POST", json: {}, turnstileToken: null });
+    await api("/api/x", { method: "POST", json: {}, turnstileToken: "" });
+    await api("/api/x", { method: "POST", json: {} });
+    for (const call of transport.mock.calls as unknown as [string, RequestInit][]) {
+      expect(call[1].headers).toEqual({ "Content-Type": "application/json" });
+    }
+  });
+
   test("a GET sends no body and no content type", async () => {
     const transport = vi.fn(async () => respond({}));
     setTransport(transport);

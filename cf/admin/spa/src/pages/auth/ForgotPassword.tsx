@@ -3,9 +3,12 @@ import { Link } from "react-router";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { TurnstileWidget } from "~/components/TurnstileWidget";
 import { api } from "~/lib/api";
 import { RESET_REQUESTED_MESSAGE, resetRequestFailureMessage } from "~/lib/auth-errors";
 import { focusFirstInvalid, useAutoFocus, usePageTitle, useSubmitLock } from "~/lib/hooks";
+import { usePublicConfig } from "~/lib/public-config";
+import { useTurnstile } from "~/lib/turnstile";
 import { validateForgot } from "~/lib/validation";
 import { AUTH_LINK, AuthShell } from "./AuthShell";
 
@@ -17,6 +20,7 @@ export function ForgotPasswordPage() {
   usePageTitle("Lupa Password");
   const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
   const [emailError, setEmailError] = useState<string | undefined>();
+  const turnstile = useTurnstile("forgot-password", usePublicConfig().turnstileSiteKey);
   const { pending, run } = useSubmitLock();
   const form = useRef<HTMLFormElement>(null);
   const emailInput = useRef<HTMLInputElement>(null);
@@ -41,11 +45,16 @@ export function ForgotPasswordPage() {
       return;
     }
 
+    // The button is disabled until the check has a token; this covers a submit that does not come from it (a script).
+    if (turnstile.blocked) return;
+
     void run(async () => {
       setNotice(null);
       const result = await api("/api/auth/request-password-reset", {
         method: "POST",
         json: { email: checked.values.email, redirectTo: RESET_PAGE },
+        // Spent by this request whatever the answer (the page stays open and may send again); take() starts the next challenge.
+        turnstileToken: turnstile.take(),
       });
       // Success reads the same whether or not the address has an account.
       setNotice(
@@ -86,8 +95,10 @@ export function ForgotPasswordPage() {
           />
         </Field>
 
-        <Button type="submit" size="lg" fullWidth disabled={pending}>
-          {pending ? "Mengirim…" : "Kirim tautan reset"}
+        <TurnstileWidget turnstile={turnstile} />
+
+        <Button type="submit" size="lg" fullWidth disabled={pending || turnstile.blocked}>
+          {pending ? "Mengirim…" : turnstile.checking ? "Memeriksa…" : "Kirim tautan reset"}
         </Button>
       </form>
     </AuthShell>

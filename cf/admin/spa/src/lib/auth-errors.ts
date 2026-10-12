@@ -20,12 +20,33 @@ function wait(retryAfter: number | undefined, fallback: string): string {
   return retryAfter !== undefined && retryAfter > 0 ? formatWait(retryAfter) : fallback;
 }
 
+// The Worker's answers to the security check (src/security/turnstile.ts) and to
+// a route that must send an email (src/auth/gate.ts). New text, in the voice of
+// the other auth lines. None of them depends on the address typed in the form.
+
+/** `captcha_failed` (403): the token was missing, refused or already used. The widget has been reset, so waiting for it and trying again is the way out. */
+export const CAPTCHA_FAILED_MESSAGE = "Verifikasi keamanan gagal. Tunggu pemeriksaan selesai, lalu coba lagi.";
+/** `captcha_unavailable` (503): the Worker could not reach Cloudflare to check the token, or has no secret. Not the visitor's doing. */
+export const CAPTCHA_UNAVAILABLE_MESSAGE = "Verifikasi keamanan sedang tidak tersedia. Coba lagi beberapa saat lagi.";
+/** `email_unavailable` (503): the Worker has no email service configured, so a route that sends a link refused before doing anything. */
+export const EMAIL_UNAVAILABLE_MESSAGE = "Layanan email sedang tidak tersedia, jadi tautan belum bisa dikirim. Silakan coba lagi nanti.";
+/** The widget itself could not run (its script was blocked or offline, or the challenge errored): no token will come until the page is reloaded. */
+export const WIDGET_ERROR_MESSAGE = "Pemeriksaan keamanan tidak dapat dijalankan. Periksa koneksi internet, lalu muat ulang halaman.";
+
+function captchaMessage(code: string | undefined): string | null {
+  if (code === "captcha_failed") return CAPTCHA_FAILED_MESSAGE;
+  if (code === "captcha_unavailable") return CAPTCHA_UNAVAILABLE_MESSAGE;
+  return null;
+}
+
 /** Message for a failed `POST /api/auth/sign-in/email`. */
 export function signInFailureMessage(failure: Failure): string {
   if (failure.status === 0) return NETWORK_ERROR;
   if (failure.status === 429) {
     return `Terlalu banyak percobaan masuk. Silakan tunggu ${wait(failure.retryAfter, "beberapa menit")} lalu coba lagi.`;
   }
+  const captcha = captchaMessage(failure.code);
+  if (captcha) return captcha;
   // 403 after a correct password: the Worker also sends a fresh link.
   if (failure.code === "EMAIL_NOT_VERIFIED") {
     return "Email belum diverifikasi. Kami sudah mengirim tautan verifikasi baru ke email kamu.";
@@ -48,6 +69,9 @@ export function resetRequestFailureMessage(failure: Failure): string {
   if (failure.status === 429) {
     return `Terlalu banyak permintaan. Silakan tunggu ${wait(failure.retryAfter, "beberapa menit")} lalu coba lagi.`;
   }
+  const captcha = captchaMessage(failure.code);
+  if (captcha) return captcha;
+  if (failure.code === "email_unavailable") return EMAIL_UNAVAILABLE_MESSAGE;
   return "Gagal mengirim permintaan. Silakan coba lagi.";
 }
 

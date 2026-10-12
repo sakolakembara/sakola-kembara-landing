@@ -1,8 +1,10 @@
 import type { Transport } from "~/lib/api";
 import { accessTo } from "~/lib/access";
 import { parseMe } from "~/lib/me";
+import { TURNSTILE_HEADER } from "~/lib/captcha";
 import { mockAnnouncements, mockDashboard, mockMeBody } from "./fixtures";
 import type { Persona } from "./persona";
+import { MOCK_SITE_KEY, MOCK_TOKEN_PREFIX } from "./turnstile";
 
 // MOCK, local development only. Answers the calls the SPA makes, in the shape
 // the Worker uses, so the screens can be worked on and reviewed without a
@@ -13,6 +15,13 @@ import type { Persona } from "./persona";
 //   belum-verifikasi account not verified (403)
 //   dibatasi         rate limited, Retry-After 60 (429)
 //   offline          the request fails before an answer (network error)
+//   captcha-gagal    the security check refuses the token (403 captcha_failed)
+//   captcha-tidak-tersedia  the check cannot run (503 captcha_unavailable)
+// "Lupa password" also knows:
+//   email-tidak-tersedia    no email service (503 email_unavailable)
+// Sign-in and "lupa password" need the made-up token the mock widget hands out
+// (mock/turnstile.ts) and accept each one once, like the Worker: without it, or
+// with one already used, they answer 403 captcha_failed.
 // Reset tokens: "kedaluwarsa" is refused as spent; any other token works.
 
 export type DashboardMode = "ready" | "empty" | "error" | "unavailable" | "slow";
@@ -45,6 +54,18 @@ function bodyOf(init: RequestInit): Record<string, unknown> {
 
 export function createMockTransport(config: MockConfig): Transport {
   const announcements = mockAnnouncements();
+  const spentTokens = new Set<string>();
+
+  /** The Worker's security check: null when the token is good (it is then spent), otherwise the refusal. */
+  function checkCaptcha(init: RequestInit, localPart: string): Response | null {
+    if (localPart === "captcha-tidak-tersedia") return json({ error: "captcha_unavailable" }, 503);
+    const token = new Headers(init.headers).get(TURNSTILE_HEADER);
+    if (localPart === "captcha-gagal" || !token || !token.startsWith(MOCK_TOKEN_PREFIX) || spentTokens.has(token)) {
+      return json({ error: "captcha_failed" }, 403);
+    }
+    spentTokens.add(token);
+    return null;
+  }
 
   return async (path, init) => {
     await sleep(config.delayMs);
@@ -56,7 +77,7 @@ export function createMockTransport(config: MockConfig): Transport {
 
     switch (route) {
       case "GET /api/config":
-        return json({ google: true });
+        return json({ google: true, turnstileSiteKey: MOCK_SITE_KEY });
 
       case "GET /api/me":
         return config.session.get() ? json(mockMeBody(config.persona)) : json({ error: "unauthenticated" }, 401);
@@ -64,6 +85,10 @@ export function createMockTransport(config: MockConfig): Transport {
       case "POST /api/auth/sign-in/email":
         if (localPart === "offline") throw new TypeError("mock: network down");
         if (localPart === "dibatasi") return json({ error: "rate_limited" }, 429, { "Retry-After": "60" });
+        {
+          const refused = checkCaptcha(init, localPart);
+          if (refused) return refused;
+        }
         if (localPart === "salah") return json({ code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" }, 401);
         if (localPart === "belum-verifikasi") return json({ code: "EMAIL_NOT_VERIFIED", message: "Email not verified" }, 403);
         config.session.set(true);
@@ -73,9 +98,14 @@ export function createMockTransport(config: MockConfig): Transport {
         config.session.set(false);
         return json({ success: true });
 
-      case "POST /api/auth/request-password-reset":
+      case "POST /api/auth/request-password-reset": {
+        // The Worker's order: no email service first, then the rate limit, then the security check.
+        if (localPart === "email-tidak-tersedia") return json({ error: "email_unavailable" }, 503);
         if (localPart === "dibatasi") return json({ error: "rate_limited" }, 429, { "Retry-After": "60" });
+        const refused = checkCaptcha(init, localPart);
+        if (refused) return refused;
         return json({ status: true });
+      }
 
       case "POST /api/auth/reset-password":
         if (body.token === "kedaluwarsa") return json({ code: "INVALID_TOKEN", message: "Invalid token" }, 400);

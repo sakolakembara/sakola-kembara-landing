@@ -1,6 +1,7 @@
 import { setTransport } from "~/lib/api";
 import { parsePersona } from "./persona";
 import { createMockTransport, type DashboardMode } from "./transport";
+import { installMockTurnstile } from "./turnstile";
 
 // MOCK, local development only. main.tsx imports this file only when
 // `VITE_ADMIN_MOCK=true` (`pnpm dev:spa:mock`), so a normal build does not
@@ -57,6 +58,9 @@ export function installMockApi(): void {
       },
     }),
   );
+
+  // The security check's widget: a stand-in, so Cloudflare's script is never fetched.
+  installMockTurnstile();
 
   const banner = document.createElement("div");
   banner.setAttribute("role", "note");
