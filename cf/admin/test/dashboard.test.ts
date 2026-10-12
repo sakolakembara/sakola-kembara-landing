@@ -319,6 +319,22 @@ describe("the tile of the batch, from real rows", () => {
     expect(await batchOf()).toMatchObject({ phase: "ready_to_publish", undecided: 0 });
   });
 
+  test("closed, not published and nobody ever applied: closed_empty (the publish button would refuse it, so it is not ready to publish)", async () => {
+    await addBatch(2026, -60, -10);
+    expect(await batchOf()).toMatchObject({ year: 2026, phase: "closed_empty", undecided: 0 });
+  });
+
+  test("closed_empty is about having no application at all: a batch whose applications were all decided is ready_to_publish", async () => {
+    const id = await addBatch(2026, -60, -10);
+    await addApplications(id, { rejected: 1 });
+    expect(await batchOf()).toMatchObject({ phase: "ready_to_publish" });
+  });
+
+  test("an open batch nobody has applied to yet is open", async () => {
+    await addBatch(2026, -5, 25);
+    expect(await batchOf()).toMatchObject({ phase: "open", undecided: 0 });
+  });
+
   test("closed and published: published", async () => {
     const id = await addBatch(2026, -60, -10, true);
     await addApplications(id, { accepted: 5, rejected: 2 });
@@ -426,8 +442,9 @@ describe("D1 cost: rows read follow what needs attention, not the history of the
     const waiting = 60;
     const unread = 12;
     // Waiting applications: an index entry and the row each (it needs the batch). Unread messages: index entries only.
-    // Batches: the newest three. A margin of 10 for the grouping's bookkeeping.
-    expect(cost.rowsRead).toBeLessThanOrEqual(2 * waiting + unread + 2 * BATCH_CANDIDATES + 10);
+    // Batches: the newest three, each an index entry, the row and the first application's entry (the EXISTS).
+    // A margin of 10 for the grouping's bookkeeping. Measured: 141 for these numbers.
+    expect(cost.rowsRead).toBeLessThanOrEqual(2 * waiting + unread + 3 * BATCH_CANDIDATES + 10);
   });
 });
 
@@ -451,26 +468,36 @@ describe("query plans (EXPLAIN QUERY PLAN)", () => {
     expect(await plan(unreadMessagesQuery(db()))).toEqual(["SEARCH contact_messages USING COVERING INDEX contact_messages_read_at_idx (read_at=?)"]);
   });
 
-  test("the batches: an ordered walk of the opens_at index that stops at the limit, no sort", async () => {
+  // Negative test (scripts/negative-checks.mjs): an EXISTS that cannot use the index would read every application of a batch.
+  test("the batches: an ordered walk of the opens_at index that stops at the limit, no sort, and for each batch an EXISTS on the batch_id index that stops at the first application", async () => {
     const lines = await plan(recentBatchesQuery(db()));
-    expect(lines).toEqual(["SCAN admission_batches USING INDEX admission_batches_opens_at_idx"]);
+    expect(lines).toEqual([
+      "SCAN admission_batches USING INDEX admission_batches_opens_at_idx",
+      "CORRELATED SCALAR SUBQUERY 1",
+      "SEARCH student_applications USING COVERING INDEX student_applications_batch_id_idx (batch_id=?)",
+    ]);
     // A scan in index order under a LIMIT reads that many rows and no more: checked in rows, not only in words.
-    for (let i = 0; i < 12; i++) await addBatch(2030 + i, i * 400, i * 400 + 90);
+    // Many applications in every batch must not matter either (the EXISTS stops at the first).
+    const ids: string[] = [];
+    for (let i = 0; i < 12; i++) ids.push(await addBatch(2030 + i, i * 400, i * 400 + 90));
+    for (const id of ids) await addApplications(id, { accepted: 30 });
     const { db: counted, stats } = instrumentD1(env.DB);
     const rows = await recentBatchesQuery(drizzle(counted, { schema }));
     expect(rows).toHaveLength(BATCH_CANDIDATES);
-    expect(stats.rowsRead).toBeLessThanOrEqual(2 * BATCH_CANDIDATES); // 12 batches exist, an index entry and a row for each of the 3 asked for
+    expect(rows.every((row) => row.hasApplications)).toBe(true);
+    // 12 batches and 360 applications exist; per batch asked for: an index entry, the row and the first application's index entry.
+    expect(stats.rowsRead).toBeLessThanOrEqual(3 * BATCH_CANDIDATES);
   });
 
-  test("no statement reads a table it should not: every plan names its own table only", async () => {
-    for (const [query, table] of [
-      [undecidedApplicationsQuery(db()), "student_applications"],
-      [unreadMessagesQuery(db()), "contact_messages"],
-      [recentBatchesQuery(db()), "admission_batches"],
+  test("no statement reads a table it should not: every plan names its own table only (the batches also look at the applications for the EXISTS)", async () => {
+    for (const [query, tables] of [
+      [undecidedApplicationsQuery(db()), ["student_applications"]],
+      [unreadMessagesQuery(db()), ["contact_messages"]],
+      [recentBatchesQuery(db()), ["admission_batches", "student_applications"]],
     ] as const) {
       const text = (await plan(query)).join(" ");
-      const tables = [...text.matchAll(/(?:SCAN|SEARCH) (\w+)/g)].map((m) => m[1]);
-      expect(new Set(tables)).toEqual(new Set([table]));
+      const found = [...text.matchAll(/(?:SCAN|SEARCH) (\w+)/g)].map((m) => m[1]);
+      expect(new Set(found)).toEqual(new Set(tables));
     }
   });
 });

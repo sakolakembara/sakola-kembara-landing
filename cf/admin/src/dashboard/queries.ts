@@ -2,7 +2,7 @@
 // 10 ms CPU a request; D1 Free: 5M rows read a day) sets three rules:
 //
 //   1. One statement per item, three at most: the applications still waiting,
-//      the unread messages, the newest batches. A caller who may not see an area
+//      the unread messages, the newest batches (each with whether anybody applied). A caller who may not see an area
 //      does not run that area's statements (an editor of `konten` alone runs
 //      none).
 //   2. Every statement is an index search or an ordered index walk with a limit,
@@ -15,7 +15,7 @@
 // The builders return unexecuted Drizzle queries so the plan test can explain
 // exactly what the route runs.
 
-import { count, desc, inArray, isNull } from "drizzle-orm";
+import { count, desc, inArray, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { AdminArea } from "../auth/permissions";
@@ -38,7 +38,12 @@ export const undecidedApplicationsQuery = (db: Db) =>
 /** Messages nobody has opened yet. Counts the `read_at` index entries that are NULL. */
 export const unreadMessagesQuery = (db: Db) => db.select({ n: count() }).from(contactMessages).where(isNull(contactMessages.readAt));
 
-/** The newest batches by opening date: an ordered walk of the `opens_at` index that stops at the limit. */
+/**
+ * The newest batches by opening date: an ordered walk of the `opens_at` index
+ * that stops at the limit, and for each one whether anybody applied (a seek on
+ * `batch_id` that stops at the first row: a batch nobody applied to is not
+ * "ready to publish", the publish button refuses it).
+ */
 export const recentBatchesQuery = (db: Db) =>
   db
     .select({
@@ -47,6 +52,10 @@ export const recentBatchesQuery = (db: Db) =>
       opensAt: admissionBatches.opensAt,
       closesAt: admissionBatches.closesAt,
       resultsPublishedAt: admissionBatches.resultsPublishedAt,
+      // One index entry at most per batch: EXISTS stops at the first application.
+      // Written out with its table names: in a one-table select Drizzle prints a column without its table, and
+      // inside the subquery a bare `id` would be the applications' own.
+      hasApplications: sql<boolean>`exists (select 1 from student_applications where student_applications.batch_id = admission_batches.id)`.mapWith(Boolean),
     })
     .from(admissionBatches)
     .orderBy(desc(admissionBatches.opensAt))

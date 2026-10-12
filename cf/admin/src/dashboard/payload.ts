@@ -17,7 +17,7 @@ export const DASHBOARD_LINKS = {
 
 export const batchLink = (id: string) => `/batches/${encodeURIComponent(id)}`;
 
-export type BatchPhase = "upcoming" | "open" | "awaiting_decisions" | "ready_to_publish" | "published";
+export type BatchPhase = "upcoming" | "open" | "awaiting_decisions" | "ready_to_publish" | "closed_empty" | "published";
 
 export interface DashboardItem {
   count: number;
@@ -54,6 +54,8 @@ export interface BatchRow {
   opensAt: Date;
   closesAt: Date;
   resultsPublishedAt: Date | null;
+  /** At least one application, of any status, was submitted to this batch. */
+  hasApplications: boolean;
 }
 
 /** Applications still waiting for a decision, counted per batch and status. */
@@ -67,13 +69,16 @@ export interface UndecidedRow {
  * Where a batch stands, worked out here so the browser's clock is never used.
  * The same reading as the legacy batch list (`batchState`): the window is
  * inclusive at both ends, and once it has closed a batch is published or
- * waiting. "Waiting" is split in two: still undecided applications, or all
- * decided and ready to publish.
+ * waiting. "Waiting" is split three ways: still undecided applications, all
+ * decided and ready to publish, or nobody applied at all (`closed_empty`:
+ * publishing is refused for a batch with no application, so "ready to publish"
+ * would send the admin to a button that does not work).
  */
-export function batchPhase(batch: Pick<BatchRow, "opensAt" | "closesAt" | "resultsPublishedAt">, undecided: number, now: Date): BatchPhase {
+export function batchPhase(batch: Pick<BatchRow, "opensAt" | "closesAt" | "resultsPublishedAt" | "hasApplications">, undecided: number, now: Date): BatchPhase {
   if (now < batch.opensAt) return "upcoming";
   if (now <= batch.closesAt) return "open";
   if (batch.resultsPublishedAt) return "published";
+  if (!batch.hasApplications) return "closed_empty";
   return undecided > 0 ? "awaiting_decisions" : "ready_to_publish";
 }
 
@@ -83,6 +88,8 @@ const PHASE_RANK: Record<BatchPhase, number> = {
   ready_to_publish: 0,
   open: 1,
   upcoming: 2,
+  // Nothing to do for either one: of the two, the newest is the one shown.
+  closed_empty: 3,
   published: 3,
 };
 
@@ -90,7 +97,8 @@ const PHASE_RANK: Record<BatchPhase, number> = {
  * The one batch the tile is about, out of the newest few. A batch that is
  * waiting for decisions or for its results to be published beats one that is
  * merely open (that is what needs a person), an open one beats one that has
- * not opened, and a published one comes last. Within a kind the newest wins,
+ * not opened, and a published one, or a closed one nobody applied to, comes
+ * last. Within a kind the newest wins,
  * except for upcoming ones, where the soonest to open does. Admission is yearly,
  * so a few candidates are enough to see last year's unfinished batch next to
  * this year's.

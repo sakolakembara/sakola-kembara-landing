@@ -91,6 +91,20 @@ const checks = [
     tests: t("dashboard.test.tsx"),
   },
   {
+    name: "the closed_empty phase is not known to the SPA (the whole dashboard turns into an error)",
+    file: "spa/src/lib/dashboard.ts",
+    from: '"ready_to_publish", "closed_empty", "published"];',
+    to: '"ready_to_publish", "published"];',
+    tests: t("dashboard-data.test.ts", "dashboard.test.tsx"),
+  },
+  {
+    name: "a closed batch nobody applied to is drawn as one that needs a person",
+    file: "spa/src/pages/dashboard/Attention.tsx",
+    from: 'return { text: "Ditutup, tanpa pendaftar", attention: false };',
+    to: 'return { text: "Ditutup, tanpa pendaftar", attention: true };',
+    tests: t("dashboard.test.tsx"),
+  },
+  {
     name: "a dashboard the server does not have is shown as an error with a retry",
     file: "spa/src/lib/use-dashboard.ts",
     from: "} else if (result.status === 404 || result.status === 501) {",

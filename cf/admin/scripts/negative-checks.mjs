@@ -280,6 +280,27 @@ const checks = [
     tests: DASHBOARD_TESTS,
   },
   {
+    name: "a closed batch nobody applied to is called ready to publish (the publish button refuses it)",
+    file: "src/dashboard/payload.ts",
+    from: 'if (!batch.hasApplications) return "closed_empty";',
+    to: "",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the batch query no longer finds the applications of a batch (every closed batch looks empty)",
+    file: "src/dashboard/queries.ts",
+    from: "student_applications.batch_id = admission_batches.id)`",
+    to: "student_applications.id = admission_batches.id)`",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the batch query counts every application of each batch instead of stopping at the first",
+    file: "src/dashboard/queries.ts",
+    from: "sql<boolean>`exists (select 1 from student_applications where student_applications.batch_id = admission_batches.id)`",
+    to: "sql<boolean>`(select count(*) from student_applications where student_applications.batch_id = admission_batches.id) > 0`",
+    tests: DASHBOARD_TESTS,
+  },
+  {
     name: "a batch waiting for decisions no longer outranks an open one",
     file: "src/dashboard/payload.ts",
     from: "  awaiting_decisions: 0,",

@@ -11,7 +11,7 @@ let counter = 0;
 function batch(over: Partial<BatchRow> & { opens?: number; closes?: number } = {}): BatchRow {
   counter += 1;
   const { opens = -60, closes = -10, ...rest } = over;
-  return { id: `b${counter}`, year: 2000 + counter, opensAt: day(opens), closesAt: day(closes), resultsPublishedAt: null, ...rest };
+  return { id: `b${counter}`, year: 2000 + counter, opensAt: day(opens), closesAt: day(closes), resultsPublishedAt: null, hasApplications: true, ...rest };
 }
 
 describe("batchPhase: the batch list's reading, with the closed state split in two", () => {
@@ -22,9 +22,14 @@ describe("batchPhase: the batch list's reading, with the closed state split in t
 
   test("inside the window: open, and both ends are inside it", () => {
     expect(batchPhase(batch({ opens: -1, closes: 5 }), 0, NOW)).toBe("open");
-    expect(batchPhase({ opensAt: NOW, closesAt: day(5), resultsPublishedAt: null }, 0, NOW)).toBe("open"); // exactly at the opening
-    expect(batchPhase({ opensAt: day(-5), closesAt: NOW, resultsPublishedAt: null }, 0, NOW)).toBe("open"); // exactly at the closing
-    expect(batchPhase({ opensAt: day(-5), closesAt: new Date(NOW.getTime() - 1), resultsPublishedAt: null }, 0, NOW)).not.toBe("open"); // one millisecond later
+    expect(batchPhase({ opensAt: NOW, closesAt: day(5), resultsPublishedAt: null, hasApplications: true }, 0, NOW)).toBe("open"); // exactly at the opening
+    expect(batchPhase({ opensAt: day(-5), closesAt: NOW, resultsPublishedAt: null, hasApplications: true }, 0, NOW)).toBe("open"); // exactly at the closing
+    expect(batchPhase({ opensAt: day(-5), closesAt: new Date(NOW.getTime() - 1), resultsPublishedAt: null, hasApplications: true }, 0, NOW)).not.toBe("open"); // one millisecond later
+  });
+
+  test("an open or upcoming batch nobody has applied to yet is still open or upcoming", () => {
+    expect(batchPhase(batch({ opens: -1, closes: 5, hasApplications: false }), 0, NOW)).toBe("open");
+    expect(batchPhase(batch({ opens: 1, closes: 30, hasApplications: false }), 0, NOW)).toBe("upcoming");
   });
 
   test("closed with applications still undecided: awaiting_decisions", () => {
@@ -34,6 +39,15 @@ describe("batchPhase: the batch list's reading, with the closed state split in t
 
   test("closed, nothing undecided, not published: ready_to_publish", () => {
     expect(batchPhase(batch(), 0, NOW)).toBe("ready_to_publish");
+  });
+
+  test("closed, not published, and nobody ever applied: closed_empty (publishing is refused for it, so it is not ready to publish)", () => {
+    expect(batchPhase(batch({ hasApplications: false }), 0, NOW)).toBe("closed_empty");
+    expect(batchPhase(batch({ hasApplications: true }), 0, NOW)).toBe("ready_to_publish");
+  });
+
+  test("a published batch is published, even one that has no application row any more", () => {
+    expect(batchPhase(batch({ resultsPublishedAt: day(-3), hasApplications: false }), 0, NOW)).toBe("published");
   });
 
   test("closed and published: published, whatever is undecided", () => {
@@ -72,6 +86,17 @@ describe("pickBatch: the one batch the tile is about", () => {
     const open = batch({ opens: -5, closes: 5 });
     expect(pickBatch([upcoming, published], none, NOW)?.phase).toBe("upcoming");
     expect(pickBatch([upcoming, open, published], none, NOW)?.batch.id).toBe(open.id);
+  });
+
+  test("a closed batch nobody applied to ranks with the published ones: the newest of them, after anything that needs a look", () => {
+    const empty = batch({ opens: -200, closes: -100, hasApplications: false });
+    const published = batch({ opens: -500, closes: -400, resultsPublishedAt: day(-390) });
+    expect(pickBatch([empty, published], none, NOW)?.batch.id).toBe(empty.id); // the newer of the two
+    expect(pickBatch([empty, published], none, NOW)?.phase).toBe("closed_empty");
+    const waiting = batch({ opens: -900, closes: -800 });
+    expect(pickBatch([empty, published, waiting], new Map([[waiting.id, 1]]), NOW)?.batch.id).toBe(waiting.id);
+    const upcoming = batch({ opens: 40, closes: 100 });
+    expect(pickBatch([upcoming, empty], none, NOW)?.batch.id).toBe(upcoming.id);
   });
 
   test("of several upcoming batches the soonest to open wins", () => {
@@ -133,6 +158,11 @@ describe("buildDashboard: only what the rows say, nothing else", () => {
   test("admission alone: no message item", () => {
     const dashboard = buildDashboard({ undecided: [], batches: [] }, NOW);
     expect("unreadMessages" in dashboard.attention).toBe(false);
+  });
+
+  test("a closed batch nobody applied to reads closed_empty in the payload, with its link", () => {
+    const b = batch({ id: "kosong", hasApplications: false });
+    expect(buildDashboard({ undecided: [], batches: [b] }, NOW).attention.batch).toMatchObject({ id: "kosong", phase: "closed_empty", undecided: 0, to: "/batches/kosong" });
   });
 
   test("the batch is described by its state and dates, with the dates as ISO strings and a link that encodes the id", () => {

@@ -345,6 +345,34 @@ describe("/api/dashboard as the SPA reads it", () => {
     expect(attention.batch).toMatchObject({ year: 2026, phase: "awaiting_decisions", undecided: 2 });
   });
 
+  test("every phase the Worker can send is one the SPA knows: a closed batch nobody applied to arrives as closed_empty and parses", async () => {
+    const cookie = await signedInCookie(uniqueEmail("viewer"), "viewer");
+    const phaseOf = async () => {
+      const parsed = parseDashboard(await (await call("/api/dashboard", { cookie })).json());
+      expect(parsed).not.toBeNull(); // an unknown phase would make the whole answer malformed
+      return parsed!.attention.batch?.phase;
+    };
+    const closed = { id: crypto.randomUUID(), year: 2026, name: "Batch contoh", opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY) };
+    const open = { id: crypto.randomUUID(), year: 2027, name: "Batch contoh dua", opensAt: new Date(Date.now() - 5 * DAY), closesAt: new Date(Date.now() + 25 * DAY) };
+    const upcoming = { id: crypto.randomUUID(), year: 2028, name: "Batch contoh tiga", opensAt: new Date(Date.now() + 30 * DAY), closesAt: new Date(Date.now() + 90 * DAY) };
+    await orm().insert(schema.admissionBatches).values(closed);
+    expect(await phaseOf()).toBe("closed_empty");
+    await insertMany(schema.studentApplications, [{ batchId: closed.id, fullName: "Contoh", email: "a@example.test", whatsapp: "0800", schoolName: "SMA", graduationYear: "2026", status: "accepted" as const }]);
+    expect(await phaseOf()).toBe("ready_to_publish");
+    await orm().update(schema.studentApplications).set({ status: "pending" });
+    expect(await phaseOf()).toBe("awaiting_decisions");
+    await orm().update(schema.admissionBatches).set({ resultsPublishedAt: new Date() });
+    expect(await phaseOf()).toBe("published");
+    await orm().update(schema.admissionBatches).set({ resultsPublishedAt: null });
+    await orm().delete(schema.studentApplications);
+    expect(await phaseOf()).toBe("closed_empty");
+    await orm().insert(schema.admissionBatches).values(open);
+    expect(await phaseOf()).toBe("open"); // an open window ranks above a closed batch with nothing to do
+    await orm().delete(schema.admissionBatches);
+    await orm().insert(schema.admissionBatches).values(upcoming);
+    expect(await phaseOf()).toBe("upcoming");
+  });
+
   test("a student is refused, and the SPA reads that as an error it can show (403)", async () => {
     const res = await call("/api/dashboard", { cookie: await signedInCookie(uniqueEmail("student"), "student") });
     expect(res.status).toBe(403);
