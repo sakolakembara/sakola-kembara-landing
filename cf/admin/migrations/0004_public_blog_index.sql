@@ -1,0 +1,1 @@
+CREATE INDEX `blog_posts_status_featured_published_idx` ON `blog_posts` (`status`,`featured`,`published_at`);

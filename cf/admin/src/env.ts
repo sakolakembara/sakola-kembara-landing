@@ -5,6 +5,8 @@ export interface Bindings {
   AUTH_PAIR_LIMIT: RateLimit;
   AUTH_EMAIL_LIMIT: RateLimit;
   AUTH_IP_LIMIT: RateLimit;
+  /** Contact form: 5 submissions per minute per visitor address. Optional so the route falls back to the in-memory limiter without it (src/public/contact-deps.ts). */
+  PUBLIC_CONTACT_LIMIT?: RateLimit;
 
   /** "production" unless set otherwise. Anything else is a local or test run. */
   ENVIRONMENT?: string;

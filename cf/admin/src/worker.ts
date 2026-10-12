@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { adminUserRoutes } from "./api/admin-users";
 import { announcementRoutes } from "./api/announcements";
+import { createPublicApp } from "./api/public";
 import { AUTH_BASE_PATH } from "./auth/factory";
 import { loadAccess } from "./auth/guard";
 import { visibleAreas, writableAreas } from "./auth/permissions";
@@ -12,6 +13,11 @@ import type { AppEnv } from "./context";
 // SPA and its assets are served by the assets layer without running any code.
 
 const app = new Hono<AppEnv>();
+
+// The public read API (/api/public/*, docs/cloudflare/public-api.md). Mounted
+// before the middleware below on purpose: it needs no session, builds no auth
+// and sets its own Cache-Control, which the blanket no-store must not replace.
+app.route("/", createPublicApp());
 
 app.use("/api/*", authContext, async (c, next) => {
   await next();
@@ -58,3 +64,7 @@ app.onError((error, c) => {
 });
 
 export default app;
+
+// The service-binding face of the public API (read endpoints + the contact
+// form). Not reachable from the internet: see src/api/public/internal.ts.
+export { PublicApi } from "./api/public/entrypoint";
