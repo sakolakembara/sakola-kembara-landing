@@ -94,7 +94,7 @@ Measured with that volume in the test run (round trips, statements and `rows_rea
 | `blog/{slug}` (13 KB body) | 2 | 2 | 4 | 1.8 / 2.4 | 13 KB |
 | unknown valid slug | 1 | 1 | 0 | 1.4 / 1.9 | 21 B |
 | impossible slug (`Tidak_Valid`) | 0 | 0 | 0 | not timed | 21 B |
-| contact: saved | 1 | 2 | about 10 written (message with its indexes, audit row; the estimate of `d1-schema.md`) | not timed (needs the binding) | 90 B |
+| contact: saved | 1 | 2 | about 13 written (message with its indexes, audit row of 8; the estimate of `d1-schema.md`) | not timed (needs the binding) | 90 B |
 | contact: refused as a duplicate | 1 | 2 | nothing written, one index search | not timed | 160 B |
 
 - **Plans.** The blog queries are index seeks and index-order walks with no sort (`blog_posts_status_featured_published_idx` for the featured article and the count, `blog_posts_status_published_idx` for pages and related, `blog_posts_slug_idx` for an article). `team`, `reports` and `resources` return every row of their table, so a scan reads no more than it returns; the sort of a few dozen small rows is why they read about twice the rows returned. `announcements` uses `announcements_active_idx`.

@@ -25,7 +25,15 @@ export const auditLog = sqliteTable(
   },
   (t) => [
     index("audit_log_actor_idx").on(t.actorId),
-    index("audit_log_created_at_idx").on(t.createdAt),
+    // The Aktivitas page walks the log newest first, `(created_at, id)` descending, and filters by one of
+    // action, resource type or actor email: each filter's index ends in the same two columns, so a page is a
+    // seek and a short walk (rows read follow the page size, not the table) and no sort is needed
+    // (docs/cloudflare/admin-sistem.md#query-plans-and-rows-read). Migration 0007; the old `created_at` index
+    // is replaced by the first of these (same leading column, so the retention job's range delete still seeks).
+    index("audit_log_created_at_id_idx").on(t.createdAt, t.id),
+    index("audit_log_action_created_idx").on(t.action, t.createdAt, t.id),
+    index("audit_log_resource_type_created_idx").on(t.resourceType, t.createdAt, t.id),
+    index("audit_log_actor_email_created_idx").on(t.actorEmail, t.createdAt, t.id),
     index("audit_log_resource_idx").on(t.resourceType, t.resourceId),
     jsonCheck("audit_log_metadata_json_check", t.metadata),
   ],

@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { uploadChecks } from "./negative-checks-uploads.mjs";
 import { crudChecks } from "./negative-checks-crud.mjs";
+import { sistemChecks } from "./negative-checks-sistem.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -34,6 +35,9 @@ const checks = [
 
   // The admin CRUD kit (SAKEM-082): scripts/negative-checks-crud.mjs.
   ...crudChecks,
+
+  // Aktivitas and Pengaturan (SAKEM-082): scripts/negative-checks-sistem.mjs.
+  ...sistemChecks,
 
   // ---------------------------------------------------------------- auth
   {
@@ -557,8 +561,8 @@ const checks = [
   {
     name: "the trigger's refusal is not turned into a 409",
     file: "src/api/admin-users.ts",
-    from: 'if (mentions(error, "last_super_admin")) {\n      return c.json({ error: "last_super_admin", message: "Tidak dapat menurunkan',
-    to: 'if (false) {\n      return c.json({ error: "last_super_admin", message: "Tidak dapat menurunkan',
+    from: 'if (mentions(error, "last_super_admin")) {\n      return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEMOTE',
+    to: 'if (false) {\n      return c.json({ error: "last_super_admin", message: LAST_SUPER_ADMIN_DEMOTE',
     tests: "test/admin-users.test.ts",
   },
   {

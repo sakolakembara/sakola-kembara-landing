@@ -124,7 +124,7 @@ Same columns. Unique index `shortlinks_slug_idx` kept. Added CHECKs: the legacy 
 
 ### `audit_log`
 
-Same columns. `metadata` jsonb becomes text JSON with a `json_valid` CHECK. `action` stays free text on purpose: legacy rows keep old action names, and the TypeScript union in `src/db/audit.ts` grows as each area is ported. Indexes `actor_id`, `created_at`, `(resource_type, resource_id)` kept. Append-only by convention.
+Same columns. `metadata` jsonb becomes text JSON with a `json_valid` CHECK. `action` stays free text on purpose: legacy rows keep old action names, and the TypeScript union in `src/db/audit.ts` grows as each area is ported. Indexes: `actor_id` and `(resource_type, resource_id)` kept; `created_at` is replaced by `(created_at, id)` and three are added, `(action, created_at, id)`, `(resource_type, created_at, id)` and `(actor_email, created_at, id)`, by migration `0007_audit_viewer_indexes`: the Aktivitas page walks the log newest first with a cursor and filters by one of the three, and without them every filter was a scan of the table (plans and rows read in [`admin-sistem.md`](admin-sistem.md#35-query-plans-and-rows-read)). An audit row therefore writes 8 D1 rows (the table, the `id` autoindex, six indexes). Append-only by convention.
 
 ## New tables
 
@@ -276,10 +276,10 @@ Rows **written** per day (the tighter budget; a row = the table row plus one per
 | --- | --- | --- |
 | Sign-up and email verification | about 8 | `users` 4, `account` 3, the verified flag 1 (verification links are signed tokens, not stored) |
 | Sign-in | about 4 | a `session` row with its 3 index entries |
-| Application submitted | about 12 | the row 7 (table, primary key, 5 indexes) plus its audit row 5 |
-| Admin save (any area) | about 6 to 10 | the change plus its audit row (5) |
+| Application submitted | about 15 | the row 7 (table, primary key, 5 indexes) plus its audit row 8 |
+| Admin save (any area) | about 9 to 13 | the change plus its audit row (8) |
 | Shortlink click | 1 | `click_count` update, one row |
-| Contact form | about 10 | the message 5 (table, primary key, 3 indexes) plus its audit row 5 |
+| Contact form | about 13 | the message 5 (table, primary key, 3 indexes) plus its audit row 8 |
 
 A typical day (a few dozen sign-ins, 20 admin actions) is under 1,000 writes; an admission-season peak (500 sign-ups in a day) is about 10,000, a tenth of the budget. **The one unbounded writer is the shortlink counter**: one write per click, so a viral link (100,000 clicks a day) would use the whole budget. Mitigate before launch (count in `waitUntil` with sampling, or off D1) when the shortlink API is built.
 
