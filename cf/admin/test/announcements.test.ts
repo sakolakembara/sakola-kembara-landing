@@ -42,16 +42,18 @@ describe("announcements: who may do what (role guard matrix)", () => {
     expect(await count("audit_log")).toBe(0);
   });
 
-  // Announcements are the `komunikasi` area. Negative test (scripts/negative-checks.mjs):
-  // make the viewer rule or the area check in src/auth/permissions.ts permissive and the
-  // viewer, stray-grant and wrong-area cases below fail.
+  // Announcements are the `komunikasi` area. An editor reads and writes them only when
+  // granted `komunikasi`: an editor of other areas gets 403 on the read too (SAKEM-082).
+  // Negative test (scripts/negative-checks.mjs): make the viewer rule or the area check
+  // in src/auth/permissions.ts permissive, or give editors the old "read everywhere" rule,
+  // and the viewer, stray-grant and wrong-area cases below fail.
   const cases = [
     { label: "student", role: "student", areas: [], read: 403, write: 403 },
     { label: "viewer", role: "viewer", areas: [], read: 200, write: 403 },
     // A grant row on a viewer is inert: viewer is read-only by role.
     { label: "viewer with a stray komunikasi grant", role: "viewer", areas: ["komunikasi"], read: 200, write: 403 },
-    { label: "editor with no grants", role: "editor", areas: [], read: 200, write: 403 },
-    { label: "editor granted other areas only", role: "editor", areas: ["pendaftaran", "konten"], read: 200, write: 403 },
+    { label: "editor with no grants", role: "editor", areas: [], read: 403, write: 403 },
+    { label: "editor granted other areas only", role: "editor", areas: ["pendaftaran", "konten"], read: 403, write: 403 },
     { label: "editor granted komunikasi", role: "editor", areas: ["komunikasi"], read: 200, write: "ok" },
     { label: "editor granted every area", role: "editor", areas: ["pendaftaran", "komunikasi", "konten"], read: 200, write: "ok" },
     { label: "super_admin", role: "super_admin", areas: [], read: 200, write: "ok" },
@@ -103,10 +105,19 @@ describe("announcements: who may do what (role guard matrix)", () => {
 
     await revokeArea(userId, "komunikasi");
     expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(403);
-    expect((await call("/api/announcements", { cookie })).status).toBe(200); // still reads
+    expect((await call("/api/announcements", { cookie })).status).toBe(403); // the read goes with the grant
 
     await grantArea(userId, "komunikasi");
     expect((await call("/api/announcements", { method: "POST", cookie, json: valid })).status).toBe(201);
+    expect((await call("/api/announcements", { cookie })).status).toBe(200);
+  });
+
+  test("a refused read says nothing about what is there", async () => {
+    await seedAnnouncement();
+    const cookie = await signedInCookie(uniqueEmail("elsewhere"), "editor", ["konten"]);
+    const res = await call("/api/announcements", { cookie });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "forbidden" });
   });
 });
 

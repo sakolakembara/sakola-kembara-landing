@@ -188,17 +188,17 @@ CHECK constraints (names are `<table>_..._check`):
 
 ## Permission model
 
-Decided by Dzul (IA admin, [`admin-ia.md`](admin-ia.md), and the SAKEM-081 comment of 2026-10-12). Roles stay `student`, `viewer`, `editor`, `super_admin`; areas are `pendaftaran`, `komunikasi`, `konten`, `sistem`.
+Decided by Dzul (IA admin, [`admin-ia.md`](admin-ia.md), the SAKEM-081 comment of 2026-10-12, and the SAKEM-082 comment of the same day that changed the editor row). Roles stay `student`, `viewer`, `editor`, `super_admin`; areas are `pendaftaran`, `komunikasi`, `konten`, `sistem`.
 
 | Role | `pendaftaran` | `komunikasi` | `konten` | `sistem` |
 | --- | --- | --- | --- | --- |
 | `student` | none | none | none | none |
 | `viewer` | read | read | read | none |
-| `editor` | read, **write if granted** | read, **write if granted** | read, **write if granted** | none |
+| `editor` | read and write **only if granted, otherwise none** | read and write **only if granted, otherwise none** | read and write **only if granted, otherwise none** | none |
 | `super_admin` | read, write | read, write | read, write | read, write |
 
 - **`viewer` is strictly read-only**, whatever rows exist in `admin_area_grants` (a stray grant on a viewer is inert, and not shown as a right). This fixes the legacy defect that only Pengaturan checked the role.
-- **`editor`** reads every area except Sistem and changes things only in the areas granted to them. Whether an editor should also *see* the menus of areas they cannot change is a UI decision for SAKEM-082; the API lets them read, and `/api/me` says which areas are `visible` and which are `writable`.
+- **`editor`** reads and changes only inside the areas granted to them and has **no access at all** to the others: there is no read-only level for an editor (`levelIn("editor", ...)` is `write` or `none`). The menus of the other areas are hidden in the SPA, their routes show the 403 page, and their API reads answer 403 (an editor with no `komunikasi` gets 403 on `GET /api/announcements`). For an editor `/api/me` reports `areas.visible` equal to `areas.granted` (and to `areas.writable`). An editor with no grants at all can open the dashboard and nothing else; the dashboard has no area, so it is open to every admin role (viewer, editor, super_admin), and what it shows is limited to the areas the caller may see (see "Dashboard" in [`admin-ia.md`](admin-ia.md#33-dashboard-hanya-perlu-perhatian-dan-tindakan-cepat)). Until 2026-10-12 an editor could read every area but Sistem; the one line in `levelIn`, `test/permissions.test.ts`, `test/areas.test.ts`, `test/announcements.test.ts`, `test/seed.test.ts` and `test/spa-contract.test.ts` changed with it, and `pnpm test:negative` has a check that puts the old read rule back and expects those tests to fail.
 - **`sistem`** (Pengaturan: admin users and area grants; Aktivitas: the audit log) is for `super_admin` only and cannot be granted. This **supersedes** `admin-ia.md` sections 3.2 and 3.5, which proposed Aktivitas for every role.
 - `student` uses the portal only. Unknown roles, areas and actions get nothing.
 
@@ -225,14 +225,15 @@ Dashboard has no area: every admin role may open it. Public endpoints (`/api/pub
 
 `src/auth/permissions.ts` is pure (no I/O): `can`, `levelIn`, `visibleAreas`, `writableAreas`, `visibleMenu`. Never compare role strings or area names elsewhere.
 
-Usage: reads `requireArea("komunikasi", "read")`; changes `requireArea("komunikasi", "write")`; Sistem `requireArea("sistem", ...)`. A mutation also writes its audit row in the same `db.batch([...])` (one transaction), with the area-appropriate action name.
+Usage: reads `requireArea("komunikasi", "read")`; changes `requireArea("komunikasi", "write")`; Sistem `requireArea("sistem", ...)`; what has no area and is open to every admin role (the dashboard) `requireAdmin()` (401 without a session, 403 for a student; an editor with no grants passes, and what the route then shows them is limited by `visibleAreas`). A mutation also writes its audit row in the same `db.batch([...])` (one transaction), with the area-appropriate action name.
 
 ### API added
 
 | Route | Guard | Notes |
 | --- | --- | --- |
 | `GET /api/me` | signed in | `{ user, areas: { granted, visible, writable } }`, computed by the same functions as the guards. 401 without a session. |
-| `GET /api/announcements`, `POST`, `PUT /:id`, `DELETE /:id` | `komunikasi` read / write | The SAKEM-078 sample, now under the area guard. |
+| `GET /api/announcements`, `POST`, `PUT /:id`, `DELETE /:id` | `komunikasi` read / write | The SAKEM-078 sample, now under the area guard. An editor needs the `komunikasi` grant for the read too. |
+| `GET /api/dashboard` | any admin role | Added in SAKEM-082, guarded by `requireAdmin()` (401 / 403 for a student). The items of the areas the caller may see (`pendaftaran`: waiting applicants per status and the batch; `komunikasi`: unread messages), counts and links only. At most three statements in one round trip, none for an area the caller cannot see; plans and rows read are tested (`test/dashboard.test.ts`). |
 | `GET /api/admin/users` | `sistem` read | Admin accounts (viewer, editor, super_admin) with their areas. |
 | `PUT /api/admin/users/:id/areas` | `sistem` write | Body `{ "areas": ["konten", ...] }` sets the editor's complete list: adds what is missing, removes what is not listed, keeps `granted_by` of the rest, writes one audit row (`admin.update`, resource `admin_user`, metadata `{ field, before, after }`) only if something changed. 404 for an unknown user, **409 `not_editor`** for any other role, 400 for `sistem` or an unknown area, 415 for a body that is not JSON. |
 
@@ -282,11 +283,11 @@ Rows **written** per day (the tighter budget; a row = the table row plus one per
 
 A typical day (a few dozen sign-ins, 20 admin actions) is under 1,000 writes; an admission-season peak (500 sign-ups in a day) is about 10,000, a tenth of the budget. **The one unbounded writer is the shortlink counter**: one write per click, so a viral link (100,000 clicks a day) would use the whole budget. Mitigate before launch (count in `waitUntil` with sampling, or off D1) when the shortlink API is built.
 
-Rows **read** per day: an authenticated admin request reads about 4 to 10 rows (session, user, an editor's grants). Public list endpoints are the cost: `team`, `reports`, `resources` up to about 50 rows each, a blog page about 100 to 200 (index range plus the page and the count), a blog article similar for the related ones. Uncached, one page view is on the order of 300 rows; at 5,000,000 a day that is about 16,000 uncached page views. The 60 s edge cache in the content contract is what keeps real traffic far below that (a few thousand page views a day cost about 1,000,000 rows uncached, and much less cached). Reading the list columns without `content_html` and `content_markdown` keeps each row small; the article endpoint is the only reader of the two body columns.
+Rows **read** per day: an authenticated admin request reads about 4 to 10 rows (session, user, an editor's grants); the dashboard adds, in one round trip, about two rows per application still waiting for a decision (an index entry and the row, to read its batch), one per unread message and up to nine for the three newest batches (an index entry, the row and the first application's entry for each), so about 140 at the peak of a review season (60 waiting, 12 unread) and a handful the rest of the year, whatever the history (measured with the local D1's `meta.rows_read`; the real D1 is only confirmed on the deployed Worker, SAKEM-084). Public list endpoints are the cost: `team`, `reports`, `resources` up to about 50 rows each, a blog page about 100 to 200 (index range plus the page and the count), a blog article similar for the related ones. Uncached, one page view is on the order of 300 rows; at 5,000,000 a day that is about 16,000 uncached page views. The 60 s edge cache in the content contract is what keeps real traffic far below that (a few thousand page views a day cost about 1,000,000 rows uncached, and much less cached). Reading the list columns without `content_html` and `content_markdown` keeps each row small; the article endpoint is the only reader of the two body columns.
 
 ## Open decisions for Dzul
 
-1. **Do editors see the menus of areas they cannot change?** The API lets them read (an editor is a viewer plus the areas granted to them). If the answer is "no, hide them", change `levelIn` for `editor` in `src/auth/permissions.ts` (one line) and the tests that lock the current rule (`test/permissions.test.ts`). SAKEM-082 owns the menu either way.
+1. ~~Do editors see the menus of areas they cannot change?~~ **Decided 2026-10-12: no.** An editor sees and changes only the areas granted to them (see Permission model).
 2. **Aktivitas for super_admin only.** Applied as decided; the older IA proposal had it for every role. Say so if viewers and editors should see their own activity.
 3. **`lastLoginAt` was dropped.** Derive it from the latest session, or add a column written by a Better Auth session hook in the auth ticket.
 4. **`student_applications.batch_id` and `email` are NOT NULL** and a `file` resource requires `file_size`, because the legacy exceptions existed only for historic rows. Revert one of them if you plan to import such rows.

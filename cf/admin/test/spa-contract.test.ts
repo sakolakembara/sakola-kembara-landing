@@ -10,10 +10,12 @@ import {
   verifyOutcome,
 } from "../spa/src/lib/auth-errors";
 import { parsePublicConfig, TURNSTILE_HEADER as SPA_TURNSTILE_HEADER, TURNSTILE_ROUTES } from "../spa/src/lib/captcha";
+import { expectedDashboardTiles, parseDashboard } from "../spa/src/lib/dashboard";
 import { decideGuard } from "../spa/src/lib/guard";
 import { parseMe } from "../spa/src/lib/me";
-import { visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
+import { navItemFor, visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
 import { findPolicy } from "../src/auth/gate";
+import * as schema from "../src/db/schema";
 import { TURNSTILE_HEADER as WORKER_TURNSTILE_HEADER, TURNSTILE_TEST_SECRETS, TURNSTILE_TEST_SITE_KEYS } from "../src/security/turnstile";
 import {
   call,
@@ -30,6 +32,7 @@ import {
   signUp,
   uniqueEmail,
 } from "./helpers";
+import { DAY, insertMany, orm } from "./public-helpers";
 
 // What the SPA sends and expects back, checked against the real Worker in
 // workerd. The SPA tests (spa/test) stub the API, so these are what keep the
@@ -231,30 +234,38 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
     expect(visibleQuickActions(me)).toEqual([]);
   });
 
-  test("an editor granted Konten: writes there only, reads the rest, no Sistem", async () => {
+  test("an editor granted Konten: sees and changes Konten only, nothing else and no Sistem", async () => {
     const me = await sidebarFor("editor", ["konten"]);
-    expect(me.areas).toEqual({ granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] });
+    expect(me.areas).toEqual({ granted: ["konten"], visible: ["konten"], writable: ["konten"] });
     expect(accessTo(me, "konten")).toBe("write");
-    expect(accessTo(me, "komunikasi")).toBe("read");
+    expect(accessTo(me, "komunikasi")).toBe("none");
+    expect(accessTo(me, "pendaftaran")).toBe("none");
     expect(accessTo(me, "sistem")).toBe("none");
-    expect(labelsOf(me)).not.toContain("Aktivitas");
+    expect(labelsOf(me)).toEqual(["Dashboard", "Blog", "Laporan", "Tim", "Shortlink"]);
     expect(visibleQuickActions(me).map((action) => action.href)).toEqual(["/blog/new", "/reports/new", "/team/new"]);
   });
 
-  test("an editor with no grants reads everything and writes nothing", async () => {
+  test("an editor granted Pendaftaran and Komunikasi: those groups only", async () => {
+    const me = await sidebarFor("editor", ["pendaftaran", "komunikasi"]);
+    expect(labelsOf(me)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman"]);
+    expect(accessTo(me, "konten")).toBe("none");
+  });
+
+  test("an editor with no grants has the dashboard and nothing else", async () => {
     const me = await sidebarFor("editor");
-    expect(me.areas.writable).toEqual([]);
+    expect(me.areas).toEqual({ granted: [], visible: [], writable: [] });
+    expect(labelsOf(me)).toEqual(["Dashboard"]);
     expect(visibleQuickActions(me)).toEqual([]);
   });
 
-  test("a revoked grant is gone on the next request", async () => {
+  test("a revoked grant is gone on the next request, and the area with it", async () => {
     const email = uniqueEmail();
     const id = await createVerifiedUser(email, "editor", ["komunikasi"]);
     const cookie = cookiesOf(await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: PASSWORD } }));
     expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("write");
 
     await revokeArea(id, "komunikasi");
-    expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("read");
+    expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("none");
   });
 
   test("super_admin: everything, Sistem included", async () => {
@@ -269,6 +280,103 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
     expect(me.role).toBe("student");
     expect(visibleNav(me)).toEqual([]);
     expect(decideGuard({ status: "ready", me }, { pathname: "/" }).kind).toBe("no-admin-access");
+  });
+});
+
+// GET /api/dashboard as the SPA reads it (SAKEM-082): the real answer of the
+// Worker, for every role and combination of areas, through the SPA's own parser,
+// and each link in it against the SPA's own menu.
+describe("/api/dashboard as the SPA reads it", () => {
+  async function world() {
+    const batchId = crypto.randomUUID();
+    await orm()
+      .insert(schema.admissionBatches)
+      .values({ id: batchId, year: 2026, name: "Batch contoh", opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY) });
+    await insertMany(schema.studentApplications, [
+      { batchId, fullName: "Contoh Satu", email: "satu@example.test", whatsapp: "0800", schoolName: "SMA Contoh", graduationYear: "2026", status: "pending" as const },
+      { batchId, fullName: "Contoh Dua", email: "dua@example.test", whatsapp: "0800", schoolName: "SMA Contoh", graduationYear: "2026", status: "under_review" as const },
+    ]);
+    await insertMany(schema.contactMessages, [{ fullName: "Contoh Tiga", email: "tiga@example.test", subject: "other" as const, message: "Halo" }]);
+  }
+
+  const personas: [string, "viewer" | "editor" | "super_admin", ("pendaftaran" | "komunikasi" | "konten")[]][] = [
+    ["a viewer", "viewer", []],
+    ["a super_admin", "super_admin", []],
+    ["an editor of every area", "editor", ["pendaftaran", "komunikasi", "konten"]],
+    ["an editor of pendaftaran", "editor", ["pendaftaran"]],
+    ["an editor of komunikasi", "editor", ["komunikasi"]],
+    ["an editor of konten", "editor", ["konten"]],
+    ["an editor of komunikasi and konten", "editor", ["komunikasi", "konten"]],
+    ["an editor with no areas", "editor", []],
+  ];
+
+  test.each(personas)("%s: the answer parses, has as many tiles as the SPA expects, and every link leads to a page they may open", async (_label, role, granted) => {
+    await world();
+    const cookie = await signedInCookie(uniqueEmail(role), role, granted);
+    const me = parseMe(await (await call("/api/me", { cookie })).json())!;
+    const res = await call("/api/dashboard", { cookie });
+    expect(res.status).toBe(200);
+    const dashboard = parseDashboard(await res.json());
+    expect(dashboard).not.toBeNull();
+
+    // The loading placeholders are as many as the tiles that arrive.
+    expect(Object.keys(dashboard!.attention)).toHaveLength(expectedDashboardTiles(me));
+
+    const links = [
+      dashboard!.attention.pendingApplications?.to,
+      dashboard!.attention.underReviewApplications?.to,
+      dashboard!.attention.unreadMessages?.to,
+      dashboard!.attention.batch?.to,
+    ].filter((to): to is string => to !== undefined);
+    for (const to of links) {
+      const item = navItemFor(new URL(to, "http://admin.invalid").pathname);
+      expect(item, to).not.toBeNull(); // a route the SPA has
+      expect(accessTo(me, item!.section), `${role} [${granted}] ${to}`).not.toBe("none"); // and one this user can open
+    }
+  });
+
+  test("the filters in the links are the ones the lists read (status and filter values the placeholders already name)", async () => {
+    await world();
+    const cookie = await signedInCookie(uniqueEmail("viewer"), "viewer");
+    const { attention } = parseDashboard(await (await call("/api/dashboard", { cookie })).json())!;
+    expect(attention.pendingApplications).toEqual({ count: 1, to: "/applications?status=pending" });
+    expect(attention.underReviewApplications).toEqual({ count: 1, to: "/applications?status=under_review" });
+    expect(attention.unreadMessages).toEqual({ count: 1, to: "/messages?filter=unread" });
+    expect(attention.batch).toMatchObject({ year: 2026, phase: "awaiting_decisions", undecided: 2 });
+  });
+
+  test("every phase the Worker can send is one the SPA knows: a closed batch nobody applied to arrives as closed_empty and parses", async () => {
+    const cookie = await signedInCookie(uniqueEmail("viewer"), "viewer");
+    const phaseOf = async () => {
+      const parsed = parseDashboard(await (await call("/api/dashboard", { cookie })).json());
+      expect(parsed).not.toBeNull(); // an unknown phase would make the whole answer malformed
+      return parsed!.attention.batch?.phase;
+    };
+    const closed = { id: crypto.randomUUID(), year: 2026, name: "Batch contoh", opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY) };
+    const open = { id: crypto.randomUUID(), year: 2027, name: "Batch contoh dua", opensAt: new Date(Date.now() - 5 * DAY), closesAt: new Date(Date.now() + 25 * DAY) };
+    const upcoming = { id: crypto.randomUUID(), year: 2028, name: "Batch contoh tiga", opensAt: new Date(Date.now() + 30 * DAY), closesAt: new Date(Date.now() + 90 * DAY) };
+    await orm().insert(schema.admissionBatches).values(closed);
+    expect(await phaseOf()).toBe("closed_empty");
+    await insertMany(schema.studentApplications, [{ batchId: closed.id, fullName: "Contoh", email: "a@example.test", whatsapp: "0800", schoolName: "SMA", graduationYear: "2026", status: "accepted" as const }]);
+    expect(await phaseOf()).toBe("ready_to_publish");
+    await orm().update(schema.studentApplications).set({ status: "pending" });
+    expect(await phaseOf()).toBe("awaiting_decisions");
+    await orm().update(schema.admissionBatches).set({ resultsPublishedAt: new Date() });
+    expect(await phaseOf()).toBe("published");
+    await orm().update(schema.admissionBatches).set({ resultsPublishedAt: null });
+    await orm().delete(schema.studentApplications);
+    expect(await phaseOf()).toBe("closed_empty");
+    await orm().insert(schema.admissionBatches).values(open);
+    expect(await phaseOf()).toBe("open"); // an open window ranks above a closed batch with nothing to do
+    await orm().delete(schema.admissionBatches);
+    await orm().insert(schema.admissionBatches).values(upcoming);
+    expect(await phaseOf()).toBe("upcoming");
+  });
+
+  test("a student is refused, and the SPA reads that as an error it can show (403)", async () => {
+    const res = await call("/api/dashboard", { cookie: await signedInCookie(uniqueEmail("student"), "student") });
+    expect(res.status).toBe(403);
+    expect(parseDashboard(await res.json())).toBeNull();
   });
 });
 

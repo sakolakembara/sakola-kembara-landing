@@ -42,9 +42,16 @@ describe("announcements page", () => {
     expect(form()).not.toBeNull();
   });
 
-  test("an editor of another area does not", async () => {
-    await open("editor", ["konten", "pendaftaran"]);
+  test("an editor of other areas cannot open the page at all: the 403 page, and the list is never asked for", async () => {
+    const api = stubApi({
+      "GET /api/me": respond(meBody("editor", ["konten", "pendaftaran"])),
+      "GET /api/announcements": respond({ announcements: [row] }),
+    });
+    renderApp("/announcements");
+    expect(await screen.findByRole("heading", { level: 1, name: "Akses ditolak" })).toBeTruthy();
+    expect(screen.queryByText("Pendaftaran Dibuka")).toBeNull();
     expect(form()).toBeNull();
+    expect(api.count("GET /api/announcements")).toBe(0);
   });
 
   test("super_admin gets the form", async () => {

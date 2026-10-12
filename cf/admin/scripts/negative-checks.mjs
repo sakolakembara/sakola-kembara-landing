@@ -15,6 +15,9 @@ import { uploadChecks } from "./negative-checks-uploads.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
+// GET /api/dashboard (SAKEM-082): the route, the rules and the SPA's side of the contract.
+const DASHBOARD_TESTS = "test/dashboard.test.ts test/dashboard-rules.test.ts test/spa-contract.test.ts";
+
 // The public API (SAKEM-081, part C): docs/cloudflare/public-api.md.
 const PUBLIC_READ = "test/public-read.test.ts";
 const PUBLIC_BLOG = "test/public-blog.test.ts test/public-blog-parity.test.ts";
@@ -91,9 +94,23 @@ const checks = [
   {
     name: "area check removed: an editor writes outside the areas granted to them",
     file: "src/auth/permissions.ts",
-    from: 'return grantedAreas.includes(area) ? "write" : "read";',
+    from: 'return grantedAreas.includes(area) ? "write" : "none";',
     to: 'return "write";',
     tests: PERMISSION_TESTS,
+  },
+  {
+    name: "an editor reads the areas not granted to them (the rule before SAKEM-082)",
+    file: "src/auth/permissions.ts",
+    from: 'return grantedAreas.includes(area) ? "write" : "none";',
+    to: 'return grantedAreas.includes(area) ? "write" : "read";',
+    tests: `${PERMISSION_TESTS} test/seed.test.ts test/spa-contract.test.ts test/uploads.test.ts`,
+  },
+  {
+    name: "/api/me lists every grantable area as visible (the menu would show areas an editor cannot open)",
+    file: "src/worker.ts",
+    from: "visible: visibleAreas(user.role, grantedAreas),",
+    to: 'visible: ["pendaftaran", "komunikasi", "konten"],',
+    tests: "test/areas.test.ts test/spa-contract.test.ts",
   },
   {
     name: "editor allowed into Sistem",
@@ -180,6 +197,136 @@ const checks = [
     from: 'if (target.role !== "editor") return c.json({ error: "not_editor" }, 409);',
     to: "",
     tests: "test/areas.test.ts",
+  },
+
+  // ------------------------------------------------ the dashboard (SAKEM-082)
+  // GET /api/dashboard: who may call it, what it holds per area, what it costs.
+  // The rules are in src/dashboard/payload.ts, the statements in queries.ts.
+  {
+    name: "dashboard not guarded (a request without a session reaches the handler)",
+    file: "src/api/dashboard.ts",
+    from: 'dashboardRoutes.get("/", requireAdmin(), async (c) => {',
+    to: 'dashboardRoutes.get("/", async (c) => {',
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "dashboard answers a student (the admin role check removed)",
+    file: "src/auth/guard.ts",
+    from: 'if (!isAdminRole(access.user.role)) return c.json({ error: "forbidden" }, 403);',
+    to: "",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "dashboard ignores the caller's areas (everyone is treated as seeing every area)",
+    file: "src/api/dashboard.ts",
+    from: 'visibleAreas(user.role, c.get("grantedAreas"))',
+    to: '["pendaftaran", "komunikasi", "konten", "sistem"]',
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "dashboard reads the applicants and the batches although Pendaftaran is not visible",
+    file: "src/dashboard/queries.ts",
+    from: 'const wantsAdmission = visible.includes("pendaftaran");',
+    to: "const wantsAdmission = true;",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "dashboard reads the unread messages although Komunikasi is not visible",
+    file: "src/dashboard/queries.ts",
+    from: 'const wantsMessages = visible.includes("komunikasi");',
+    to: "const wantsMessages = true;",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "unread messages counts the messages that were read",
+    file: "src/dashboard/queries.ts",
+    from: "db.select({ n: count() }).from(contactMessages).where(isNull(contactMessages.readAt));",
+    to: "db.select({ n: count() }).from(contactMessages);",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "waiting applicants counts the decided ones too",
+    file: "src/dashboard/queries.ts",
+    from: 'inArray(studentApplications.status, ["pending", "under_review"])',
+    to: 'inArray(studentApplications.status, ["pending", "under_review", "accepted", "rejected"])',
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "waiting applicants not filtered by status (a walk over every application)",
+    file: "src/dashboard/queries.ts",
+    from: '    .where(inArray(studentApplications.status, ["pending", "under_review"]))\n    .groupBy(',
+    to: "    .groupBy(",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "batches not limited to the newest few",
+    file: "src/dashboard/queries.ts",
+    from: "    .orderBy(desc(admissionBatches.opensAt))\n    .limit(BATCH_CANDIDATES);",
+    to: "    .orderBy(desc(admissionBatches.opensAt));",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the dashboard's statements run one after the other (a round trip each)",
+    file: "src/dashboard/queries.ts",
+    from: 'const results = await db.batch(statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);',
+    to: "const results: unknown[] = [];\n  for (const statement of statements) results.push(await statement);",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "a closed batch with applications waiting is called ready to publish",
+    file: "src/dashboard/payload.ts",
+    from: 'return undecided > 0 ? "awaiting_decisions" : "ready_to_publish";',
+    to: 'return "ready_to_publish";',
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "a closed batch nobody applied to is called ready to publish (the publish button refuses it)",
+    file: "src/dashboard/payload.ts",
+    from: 'if (!batch.hasApplications) return "closed_empty";',
+    to: "",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the batch query no longer finds the applications of a batch (every closed batch looks empty)",
+    file: "src/dashboard/queries.ts",
+    from: "student_applications.batch_id = admission_batches.id)`",
+    to: "student_applications.id = admission_batches.id)`",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the batch query counts every application of each batch instead of stopping at the first",
+    file: "src/dashboard/queries.ts",
+    from: "sql<boolean>`exists (select 1 from student_applications where student_applications.batch_id = admission_batches.id)`",
+    to: "sql<boolean>`(select count(*) from student_applications where student_applications.batch_id = admission_batches.id) > 0`",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "a batch waiting for decisions no longer outranks an open one",
+    file: "src/dashboard/payload.ts",
+    from: "  awaiting_decisions: 0,",
+    to: "  awaiting_decisions: 5,",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the dashboard carries applicants' names and addresses",
+    file: "src/api/dashboard.ts",
+    from: "return c.json(dashboard);",
+    to: 'return c.json({ ...dashboard, debug: (await c.env.DB.prepare("select full_name, email from student_applications limit 3").all()).results });',
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "the blanket no-store header removed (the dashboard could be cached)",
+    file: "src/worker.ts",
+    from: '  c.header("Cache-Control", "no-store");',
+    to: "",
+    tests: DASHBOARD_TESTS,
+  },
+  {
+    name: "a dashboard link points at a route the SPA does not have",
+    file: "src/dashboard/payload.ts",
+    from: '  unreadMessages: "/messages?filter=unread",',
+    to: '  unreadMessages: "/inbox?filter=unread",',
+    tests: DASHBOARD_TESTS,
   },
 
   // ------------------------------------------- same-origin guard (CSRF)

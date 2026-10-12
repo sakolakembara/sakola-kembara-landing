@@ -1,6 +1,6 @@
 import type { Transport } from "~/lib/api";
 import { accessTo } from "~/lib/access";
-import { parseMe } from "~/lib/me";
+import { isAdminRole, parseMe } from "~/lib/me";
 import { TURNSTILE_HEADER } from "~/lib/captcha";
 import { mockAnnouncements, mockDashboard, mockMeBody } from "./fixtures";
 import type { Persona } from "./persona";
@@ -112,12 +112,17 @@ export function createMockTransport(config: MockConfig): Transport {
         return json({ status: true });
 
       case "GET /api/dashboard":
+        // Like the Worker: any admin role, nobody else.
+        if (!config.session.get()) return json({ error: "unauthenticated" }, 401);
+        if (!isAdminRole(config.persona.role)) return json({ error: "forbidden" }, 403);
         if (config.dashboard === "error") return json({ error: "internal" }, 500);
         if (config.dashboard === "unavailable") return json({ error: "not_found" }, 404);
         if (config.dashboard === "slow") await sleep(4000);
-        return json(mockDashboard(config.dashboard === "empty" ? "empty" : "ready"));
+        return json(mockDashboard(config.persona, config.dashboard === "empty" ? "empty" : "ready"));
 
       case "GET /api/announcements":
+        // Like the Worker: an editor who was not granted Komunikasi may not even read it.
+        if (accessTo(parseMe(mockMeBody(config.persona)), "komunikasi") === "none") return json({ error: "forbidden" }, 403);
         return json({ announcements });
 
       case "POST /api/announcements": {

@@ -464,6 +464,43 @@ describe("listing for pickers", () => {
     expect((await call("/api/admin/uploads?kind=blog-image", { cookie: konten })).status).toBe(200);
     expect((await call("/api/admin/uploads?kind=resource", { cookie: admin })).status).toBe(200);
   });
+
+  // An editor has no read-only level (SAKEM-082, docs/cloudflare/d1-schema.md): a picker lists the
+  // kinds of the areas granted to them and nothing else. Viewers read every area but Sistem, so
+  // every kind. Negative checks (scripts/negative-checks-uploads.mjs and negative-checks.mjs): drop
+  // the read check of the route, or give editors the old "read everywhere" rule back, and this fails.
+  for (const caller of callers) {
+    test(`${caller.label}: lists ${caller.role === "editor" ? "only the kinds of the areas granted" : caller.role === "student" ? "nothing" : "every kind"}`, async () => {
+      const uploader = await editor();
+      for (const kind of uploadKinds) await ok(await upload({ kind, cookie: uploader, ...sample(kind), ip: "203.0.113.70" }));
+
+      const cookie = await signedInCookie(uniqueEmail(caller.role), caller.role, caller.areas);
+      for (const kind of uploadKinds) {
+        const mayList =
+          caller.role === "student" ? false : caller.role === "viewer" || caller.role === "super_admin" ? true : KIND_RULES[kind].area === "konten" ? caller.konten : caller.pendaftaran;
+        const response = await call(`/api/admin/uploads?kind=${kind}`, { cookie });
+        expect(response.status, `${caller.label} ${kind}`).toBe(mayList ? 200 : 403);
+        const body = (await response.json()) as { items?: unknown[]; total?: number; error?: string };
+        if (mayList) expect(body.total, `${caller.label} ${kind}`).toBe(1);
+        // A refusal says nothing about what is there: no items, no count.
+        else expect(body, `${caller.label} ${kind}`).toEqual({ error: "forbidden" });
+      }
+    });
+  }
+
+  test("an editor of konten lists konten kinds only and an editor of pendaftaran lists pendaftaran kinds only (both kinds of a shared purpose included)", async () => {
+    const uploader = await editor();
+    await ok(await upload({ kind: "blog-image", cookie: uploader, ip: "203.0.113.71" }));
+    await ok(await upload({ kind: "resource", cookie: uploader, ip: "203.0.113.72", ...sample("resource") }));
+    const konten = await editor(["konten"]);
+    const pendaftaran = await editor(["pendaftaran"]);
+    expect((await call("/api/admin/uploads?kind=blog-image", { cookie: konten })).status).toBe(200);
+    expect((await call("/api/admin/uploads?kind=resource", { cookie: konten })).status).toBe(403);
+    expect((await call("/api/admin/uploads?kind=registration-document", { cookie: konten })).status).toBe(403);
+    expect((await call("/api/admin/uploads?kind=resource", { cookie: pendaftaran })).status).toBe(200);
+    expect((await call("/api/admin/uploads?kind=blog-image", { cookie: pendaftaran })).status).toBe(403);
+    expect((await call("/api/admin/uploads?kind=report", { cookie: pendaftaran })).status).toBe(403);
+  });
 });
 
 // ─── Delete, and the references that block it ──────────────────────────

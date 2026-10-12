@@ -55,7 +55,8 @@ Why `send-verification-email` has Turnstile although the decision named four for
 | `GET /api/me` | signed in | User, role and the areas (visible, writable, granted). 401 otherwise. |
 | `GET /api/dev/mailbox` | only `ENVIRONMENT=development` | The emails this isolate "sent". 404 everywhere else, including in tests and production. |
 | `GET /api/admin/users`, `POST /api/admin/users`, `PATCH /api/admin/users/:id`, `POST /api/admin/users/:id/deactivate`, `.../reactivate`, `.../resend-invite`, `PUT /api/admin/users/:id/areas` | `sistem` area: super_admin only | [Admin users](#admin-users). |
-| `/api/announcements` | `komunikasi` area | Part A. |
+| `/api/announcements` | `komunikasi` area | Part A. An editor needs the `komunikasi` grant to read it too: an editor has no access outside the areas granted to them. |
+| `GET /api/dashboard` | any admin role (viewer, editor, super_admin); 401 without a session, 403 for a student | The "Perlu perhatian" items for the areas the caller may see (applicant counts and the batch for `pendaftaran`, unread messages for `komunikasi`); counts and links only, never cached. [`admin-ia.md`](admin-ia.md#33-dashboard-hanya-perlu-perhatian-dan-tindakan-cepat). |
 | `POST /api/public/contact` | the Astro Worker, through the `PublicApi` service binding only | Not on the public face at all (404 there). Turnstile and `RL_CONTACT` as above; see [`public-api.md`](public-api.md). |
 
 ### Error shapes

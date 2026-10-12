@@ -1,39 +1,51 @@
-import { useCallback, useEffect, useState } from "react";
-import { api } from "./api";
+import { accessTo } from "./access";
+import { safeFrom } from "./guard";
+import type { Me } from "./me";
 
-// The dashboard's data, from `GET /api/dashboard`. The Worker does not serve it
-// yet: this is the contract the backend work is asked to implement, and the
-// mock (src/mock) serves the same shape in local development.
+// The dashboard's data, from `GET /api/dashboard` (src/api/dashboard.ts, the
+// rules in src/dashboard/). The dashboard has two blocks, decided by Dzul
+// (SAKEM-082): "Perlu perhatian", which this is, and "Tindakan Cepat", which
+// needs no data: the shortcuts come from `areas.writable` of `/api/me` through
+// `accessTo` (lib/nav.ts), so they show while this loads or fails.
 //
-//   GET /api/dashboard   (any admin role; 200 JSON)
+//   GET /api/dashboard   (any admin role; 200 JSON; never cached)
 //   {
 //     "attention": {
-//       "pendingApplications": 7,        // status = pending, all batches
-//       "underReviewApplications": 3,    // status = under_review, all batches
-//       "unreadMessages": 4,             // contact messages with no readAt
-//       "batch": {                       // the batch to act on, or null
+//       // Each item is there only when the caller may see its area; an editor
+//       // of `konten` alone gets `"attention": {}`.
+//       "pendingApplications":     { "count": 7, "to": "/applications?status=pending" },       // pendaftaran
+//       "underReviewApplications": { "count": 3, "to": "/applications?status=under_review" },  // pendaftaran
+//       "unreadMessages":          { "count": 4, "to": "/messages?filter=unread" },            // komunikasi
+//       "batch": {                                                                              // pendaftaran, when a batch exists
 //         "id": "...", "year": 2026,
-//         "phase": "awaiting_decisions", // see BatchPhase
+//         "phase": "awaiting_decisions",   // see BatchPhase
 //         "opensAt": "2026-08-01T00:00:00.000Z",
 //         "closesAt": "2026-09-30T16:59:59.000Z",
-//         "undecided": 10                // pending + under_review in this batch
-//       } | null
-//     },
-//     "recentActivity": [                // newest first, at most 8; OPTIONAL
-//       { "id": "...", "actorEmail": "...", "action": "announcement.create",
-//         "resourceType": "announcement", "resourceId": "...",
-//         "createdAt": "2026-10-12T05:30:00.000Z" }
-//     ]
+//         "undecided": 10,                 // pending + under_review in this batch
+//         "to": "/batches/<id>"
+//       }
+//     }
 //   }
+//
+// `to` is a route of this app (a same-site path, filters in the query: the
+// lists read them from the URL). Counts and links only: no name, address or
+// message text, no recent applicants, messages or activity.
 //
 // `phase` is worked out by the server (the SPA must not use the browser's
 // clock for it): upcoming (opensAt in the future), open, awaiting_decisions
 // (closed, some applicants undecided), ready_to_publish (closed, none
-// undecided, results not published), published. `recentActivity` is left out
-// for roles that may not read the activity log; the SPA then shows no widget.
+// undecided, at least one application, results not published), closed_empty
+// (closed, results not published, and nobody applied: publishing is refused
+// for it, so it is not "ready"), published. Which batch is shown when there
+// are several is also the server's choice (src/dashboard/payload.ts).
 
-export type BatchPhase = "upcoming" | "open" | "awaiting_decisions" | "ready_to_publish" | "published";
-const PHASES: readonly string[] = ["upcoming", "open", "awaiting_decisions", "ready_to_publish", "published"];
+export type BatchPhase = "upcoming" | "open" | "awaiting_decisions" | "ready_to_publish" | "closed_empty" | "published";
+const PHASES: readonly string[] = ["upcoming", "open", "awaiting_decisions", "ready_to_publish", "closed_empty", "published"];
+
+export interface DashboardItem {
+  count: number;
+  to: string;
+}
 
 export interface DashboardBatch {
   id: string;
@@ -42,25 +54,16 @@ export interface DashboardBatch {
   opensAt: string;
   closesAt: string;
   undecided: number;
-}
-
-export interface ActivityItem {
-  id: string;
-  actorEmail: string;
-  action: string;
-  resourceType: string | null;
-  resourceId: string | null;
-  createdAt: string;
+  to: string;
 }
 
 export interface Dashboard {
   attention: {
-    pendingApplications: number;
-    underReviewApplications: number;
-    unreadMessages: number;
-    batch: DashboardBatch | null;
+    pendingApplications?: DashboardItem;
+    underReviewApplications?: DashboardItem;
+    unreadMessages?: DashboardItem;
+    batch?: DashboardBatch;
   };
-  recentActivity?: ActivityItem[];
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -71,11 +74,27 @@ function count(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : null;
 }
 
-function parseBatch(value: unknown): DashboardBatch | null | undefined {
-  if (value === null || value === undefined) return null;
+/** A link target must be a path of this app: anything else (another site, `//host`, an auth page) is not accepted. */
+function target(value: unknown): string | null {
+  return typeof value === "string" ? safeFrom(value) : null;
+}
+
+/** `undefined` for an item that is not there, `null` for one that is there but malformed. */
+function parseItem(value: unknown): DashboardItem | null | undefined {
+  if (value === undefined || value === null) return undefined;
   const raw = record(value);
-  if (!raw) return undefined;
+  if (!raw) return null;
+  const n = count(raw.count);
+  const to = target(raw.to);
+  return n === null || to === null ? null : { count: n, to };
+}
+
+function parseBatch(value: unknown): DashboardBatch | null | undefined {
+  if (value === undefined || value === null) return undefined;
+  const raw = record(value);
+  if (!raw) return null;
   const undecided = count(raw.undecided);
+  const to = target(raw.to);
   if (
     typeof raw.id !== "string" ||
     typeof raw.year !== "number" ||
@@ -83,88 +102,40 @@ function parseBatch(value: unknown): DashboardBatch | null | undefined {
     !PHASES.includes(raw.phase) ||
     typeof raw.opensAt !== "string" ||
     typeof raw.closesAt !== "string" ||
-    undecided === null
+    undecided === null ||
+    to === null
   ) {
-    return undefined;
-  }
-  return {
-    id: raw.id,
-    year: raw.year,
-    phase: raw.phase as BatchPhase,
-    opensAt: raw.opensAt,
-    closesAt: raw.closesAt,
-    undecided,
-  };
-}
-
-function parseActivity(value: unknown): ActivityItem | null {
-  const raw = record(value);
-  if (!raw) return null;
-  if (typeof raw.id !== "string" || typeof raw.actorEmail !== "string" || typeof raw.action !== "string" || typeof raw.createdAt !== "string") {
     return null;
   }
-  return {
-    id: raw.id,
-    actorEmail: raw.actorEmail,
-    action: raw.action,
-    resourceType: typeof raw.resourceType === "string" ? raw.resourceType : null,
-    resourceId: typeof raw.resourceId === "string" ? raw.resourceId : null,
-    createdAt: raw.createdAt,
-  };
+  return { id: raw.id, year: raw.year, phase: raw.phase as BatchPhase, opensAt: raw.opensAt, closesAt: raw.closesAt, undecided, to };
 }
 
 /** Reads the body of `GET /api/dashboard`; null when it does not have the documented shape. */
 export function parseDashboard(body: unknown): Dashboard | null {
-  const root = record(body);
-  const attention = record(root?.attention);
-  if (!root || !attention) return null;
+  const attention = record(record(body)?.attention);
+  if (!attention) return null;
 
-  const pending = count(attention.pendingApplications);
-  const underReview = count(attention.underReviewApplications);
-  const unread = count(attention.unreadMessages);
+  const pending = parseItem(attention.pendingApplications);
+  const underReview = parseItem(attention.underReviewApplications);
+  const unread = parseItem(attention.unreadMessages);
   const batch = parseBatch(attention.batch);
-  if (pending === null || underReview === null || unread === null || batch === undefined) return null;
+  // One malformed item spoils the answer: better an error with "Coba lagi" than a dashboard that quietly misses a tile.
+  if (pending === null || underReview === null || unread === null || batch === null) return null;
 
-  const dashboard: Dashboard = {
-    attention: { pendingApplications: pending, underReviewApplications: underReview, unreadMessages: unread, batch },
-  };
-  if (root.recentActivity !== undefined) {
-    if (!Array.isArray(root.recentActivity)) return null;
-    dashboard.recentActivity = root.recentActivity.map(parseActivity).filter((item): item is ActivityItem => item !== null);
-  }
-  return dashboard;
+  const parsed: Dashboard["attention"] = {};
+  if (pending) parsed.pendingApplications = pending;
+  if (underReview) parsed.underReviewApplications = underReview;
+  if (unread) parsed.unreadMessages = unread;
+  if (batch) parsed.batch = batch;
+  return { attention: parsed };
 }
 
-export type DashboardState =
-  | { status: "loading" }
-  | { status: "ready"; data: Dashboard }
-  /** The server has no dashboard endpoint (404 or 501): not an error to retry. */
-  | { status: "unavailable" }
-  | { status: "error" };
-
-export function useDashboard(): { state: DashboardState; reload: () => void } {
-  const [state, setState] = useState<DashboardState>({ status: "loading" });
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setState({ status: "loading" });
-    api<unknown>("/api/dashboard").then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        const data = parseDashboard(result.data);
-        setState(data ? { status: "ready", data } : { status: "error" });
-      } else if (result.status === 404 || result.status === 501) {
-        setState({ status: "unavailable" });
-      } else {
-        setState({ status: "error" });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [attempt]);
-
-  const reload = useCallback(() => setAttempt((n) => n + 1), []);
-  return { state, reload };
+/**
+ * How many tiles the server will send this user: three for Pendaftaran
+ * (pending, in review, the batch), one for Komunikasi (unread messages), none
+ * for the other areas. Used to size the loading placeholders;
+ * test/spa-contract.test.ts checks it against the real answer of the Worker.
+ */
+export function expectedDashboardTiles(me: Pick<Me, "role" | "areas"> | null | undefined): number {
+  return (accessTo(me, "pendaftaran") !== "none" ? 3 : 0) + (accessTo(me, "komunikasi") !== "none" ? 1 : 0);
 }

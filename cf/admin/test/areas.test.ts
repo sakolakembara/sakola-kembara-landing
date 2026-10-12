@@ -35,14 +35,17 @@ describe("/api/me: role and areas, computed by the same rules as the guards", ()
     { label: "viewer", role: "viewer", grants: [], granted: [], visible: ["pendaftaran", "komunikasi", "konten"], writable: [] },
     // A stray grant row on a viewer is not reported as a right.
     { label: "viewer with a stray grant", role: "viewer", grants: ["konten"], granted: [], visible: ["pendaftaran", "komunikasi", "konten"], writable: [] },
-    { label: "editor with no grants", role: "editor", grants: [], granted: [], visible: ["pendaftaran", "komunikasi", "konten"], writable: [] },
-    { label: "editor granted konten", role: "editor", grants: ["konten"], granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] },
+    // An editor sees only what they were granted: visible equals granted equals writable.
+    { label: "editor with no grants sees no area at all", role: "editor", grants: [], granted: [], visible: [], writable: [] },
+    { label: "editor granted pendaftaran", role: "editor", grants: ["pendaftaran"], granted: ["pendaftaran"], visible: ["pendaftaran"], writable: ["pendaftaran"] },
+    { label: "editor granted komunikasi", role: "editor", grants: ["komunikasi"], granted: ["komunikasi"], visible: ["komunikasi"], writable: ["komunikasi"] },
+    { label: "editor granted konten", role: "editor", grants: ["konten"], granted: ["konten"], visible: ["konten"], writable: ["konten"] },
     {
       label: "editor granted pendaftaran and konten",
       role: "editor",
       grants: ["konten", "pendaftaran"],
       granted: ["konten", "pendaftaran"].sort(),
-      visible: ["pendaftaran", "komunikasi", "konten"],
+      visible: ["pendaftaran", "konten"],
       writable: ["pendaftaran", "konten"],
     },
     { label: "super_admin", role: "super_admin", grants: [], granted: [], visible: ["pendaftaran", "komunikasi", "konten", "sistem"], writable: ["pendaftaran", "komunikasi", "konten", "sistem"] },
@@ -57,6 +60,8 @@ describe("/api/me: role and areas, computed by the same rules as the guards", ()
       expect([...body.areas.granted].sort()).toEqual([...granted].sort());
       expect(body.areas.visible).toEqual(visible);
       expect(body.areas.writable).toEqual(writable);
+      // For an editor the visible areas are exactly the granted ones: nothing is shown that cannot be used.
+      if (role === "editor") expect([...body.areas.visible].sort()).toEqual([...body.areas.granted].sort());
     });
   }
 
@@ -64,15 +69,18 @@ describe("/api/me: role and areas, computed by the same rules as the guards", ()
     const email = uniqueEmail("live");
     const userId = await createVerifiedUser(email, "editor");
     const cookie = cookiesOf(await signIn(email));
-    const areas = async () => ((await (await call("/api/me", { cookie })).json()) as { areas: { writable: string[] } }).areas.writable;
+    const areas = async () => {
+      const { visible, writable } = ((await (await call("/api/me", { cookie })).json()) as { areas: { visible: string[]; writable: string[] } }).areas;
+      return { visible, writable };
+    };
 
-    expect(await areas()).toEqual([]);
+    expect(await areas()).toEqual({ visible: [], writable: [] });
     await grantArea(userId, "komunikasi");
-    expect(await areas()).toEqual(["komunikasi"]);
+    expect(await areas()).toEqual({ visible: ["komunikasi"], writable: ["komunikasi"] });
     await setRole(email, "super_admin");
-    expect(await areas()).toEqual(["pendaftaran", "komunikasi", "konten", "sistem"]);
+    expect(await areas()).toEqual({ visible: ["pendaftaran", "komunikasi", "konten", "sistem"], writable: ["pendaftaran", "komunikasi", "konten", "sistem"] });
     await setRole(email, "viewer");
-    expect(await areas()).toEqual([]);
+    expect(await areas()).toEqual({ visible: ["pendaftaran", "komunikasi", "konten"], writable: [] });
   });
 });
 
@@ -200,11 +208,13 @@ describe("PUT /api/admin/users/:id/areas (grant and revoke)", () => {
     expect((await post()).status).toBe(201);
     expect((await putAreas(editorId, boss, { areas: ["konten"] })).status).toBe(200); // komunikasi replaced by konten
     expect((await post()).status).toBe(403);
-    expect((await call("/api/announcements", { cookie: editor })).status).toBe(200); // still reads everything
+    expect((await call("/api/announcements", { cookie: editor })).status).toBe(403); // and the area's reads go with it
     expect((await putAreas(editorId, boss, { areas: ["komunikasi", "konten"] })).status).toBe(200);
     expect((await post()).status).toBe(201);
+    expect((await call("/api/announcements", { cookie: editor })).status).toBe(200);
     expect((await putAreas(editorId, boss, { areas: [] })).status).toBe(200);
     expect((await post()).status).toBe(403);
+    expect((await call("/api/announcements", { cookie: editor })).status).toBe(403);
   });
 
   test("is idempotent: the same set again changes nothing and writes no audit row; untouched grants keep their history", async () => {

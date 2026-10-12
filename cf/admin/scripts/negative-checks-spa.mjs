@@ -54,6 +54,63 @@ const checks = [
     to: "return [...QUICK_ACTIONS];",
     tests: t("nav.test.ts", "dashboard.test.tsx"),
   },
+  // The dashboard (SAKEM-082): two blocks, drawn from what the server sent
+  {
+    name: "a tile drawn for an item the server did not send (the message tile is not conditional)",
+    file: "spa/src/pages/dashboard/Attention.tsx",
+    from: "{unreadMessages && (",
+    to: "{true && (",
+    tests: t("dashboard.test.tsx"),
+  },
+  {
+    name: "the applicant tile ignores the link the server sent",
+    file: "spa/src/pages/dashboard/Attention.tsx",
+    from: "to={pendingApplications.to}",
+    to: 'to="/applications?status=pending"',
+    tests: t("dashboard.test.tsx"),
+  },
+  {
+    name: "a dashboard link is followed without checking it is a path of this app",
+    file: "spa/src/lib/dashboard.ts",
+    from: 'return typeof value === "string" ? safeFrom(value) : null;',
+    to: 'return typeof value === "string" ? value : null;',
+    tests: t("dashboard-data.test.ts", "dashboard.test.tsx"),
+  },
+  {
+    name: "a malformed dashboard item is skipped instead of failing the answer",
+    file: "spa/src/lib/dashboard.ts",
+    from: "if (pending === null || underReview === null || unread === null || batch === null) return null;",
+    to: "",
+    tests: t("dashboard-data.test.ts", "dashboard.test.tsx"),
+  },
+  {
+    name: "the loading placeholders count a tile too many for Pendaftaran",
+    file: "spa/src/lib/dashboard.ts",
+    from: '(accessTo(me, "pendaftaran") !== "none" ? 3 : 0)',
+    to: '(accessTo(me, "pendaftaran") !== "none" ? 4 : 0)',
+    tests: t("dashboard.test.tsx"),
+  },
+  {
+    name: "the closed_empty phase is not known to the SPA (the whole dashboard turns into an error)",
+    file: "spa/src/lib/dashboard.ts",
+    from: '"ready_to_publish", "closed_empty", "published"];',
+    to: '"ready_to_publish", "published"];',
+    tests: t("dashboard-data.test.ts", "dashboard.test.tsx"),
+  },
+  {
+    name: "a closed batch nobody applied to is drawn as one that needs a person",
+    file: "spa/src/pages/dashboard/Attention.tsx",
+    from: 'return { text: "Ditutup, tanpa pendaftar", attention: false };',
+    to: 'return { text: "Ditutup, tanpa pendaftar", attention: true };',
+    tests: t("dashboard.test.tsx"),
+  },
+  {
+    name: "a dashboard the server does not have is shown as an error with a retry",
+    file: "spa/src/lib/use-dashboard.ts",
+    from: "} else if (result.status === 404 || result.status === 501) {",
+    to: "} else if (false) {",
+    tests: t("dashboard.test.tsx"),
+  },
   // Route guard
   {
     name: "a student let into the admin",

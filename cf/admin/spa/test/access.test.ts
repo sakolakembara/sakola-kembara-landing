@@ -16,7 +16,11 @@ const row = (pendaftaran: Access, komunikasi: Access, konten: Access, sistem: Ac
   umum,
 });
 
-/** Every role against three grant sets, written out cell by cell: the rules as decided for SAKEM-082. */
+/**
+ * Every role against several grant sets, written out cell by cell: the rules as
+ * decided for SAKEM-082. An editor has access (write) in the areas granted to
+ * them and none anywhere else; the dashboard ("umum") is open to every admin.
+ */
 const MATRIX: { role: Role; granted: Area[]; expected: Row }[] = [
   // student: nothing
   { role: "student", granted: [], expected: row("none", "none", "none", "none", "none") },
@@ -26,10 +30,12 @@ const MATRIX: { role: Role; granted: Area[]; expected: Row }[] = [
   { role: "viewer", granted: [], expected: row("read", "read", "read", "none", "read") },
   { role: "viewer", granted: ["konten"], expected: row("read", "read", "read", "none", "read") },
   { role: "viewer", granted: [...AREAS], expected: row("read", "read", "read", "none", "read") },
-  // editor: writes only in granted areas, reads the others, no Sistem
-  { role: "editor", granted: [], expected: row("read", "read", "read", "none", "read") },
-  { role: "editor", granted: ["konten"], expected: row("read", "read", "write", "none", "read") },
-  { role: "editor", granted: ["pendaftaran", "komunikasi"], expected: row("write", "write", "read", "none", "read") },
+  // editor: access only in granted areas, nothing in the others, no Sistem; the dashboard always
+  { role: "editor", granted: [], expected: row("none", "none", "none", "none", "read") },
+  { role: "editor", granted: ["pendaftaran"], expected: row("write", "none", "none", "none", "read") },
+  { role: "editor", granted: ["komunikasi"], expected: row("none", "write", "none", "none", "read") },
+  { role: "editor", granted: ["konten"], expected: row("none", "none", "write", "none", "read") },
+  { role: "editor", granted: ["pendaftaran", "komunikasi"], expected: row("write", "write", "none", "none", "read") },
   { role: "editor", granted: [...AREAS], expected: row("write", "write", "write", "none", "read") },
   // super_admin: everything, including Sistem
   { role: "super_admin", granted: [], expected: row("write", "write", "write", "write", "read") },
@@ -75,12 +81,20 @@ describe("accessTo: invariants", () => {
     }
   });
 
-  test("an editor writes exactly where granted and never sees Sistem", () => {
+  test("an editor has access exactly where granted, sees nothing else and never sees Sistem", () => {
     for (const granted of GRANT_SETS) {
       for (const area of AREAS) {
-        expect(accessTo(meFor("editor", granted), area)).toBe(granted.includes(area) ? "write" : "read");
+        expect(accessTo(meFor("editor", granted), area), `editor [${granted}] ${area}`).toBe(granted.includes(area) ? "write" : "none");
       }
       expect(accessTo(meFor("editor", granted), "sistem")).toBe("none");
+    }
+  });
+
+  test("an editor is never read-only: access is write or none", () => {
+    for (const granted of GRANT_SETS) {
+      for (const area of ADMIN_AREAS) {
+        expect(accessTo(meFor("editor", granted), area), `editor [${granted}] ${area}`).not.toBe("read");
+      }
     }
   });
 

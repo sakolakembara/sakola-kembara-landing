@@ -62,10 +62,14 @@ describe("dev seed", () => {
     for (const u of SEED_USERS.filter((u) => u.emailVerified)) {
       const res = await signIn(u.email, PASSWORD);
       expect(res.status, u.email).toBe(200);
-      const me = (await (await call("/api/me", { cookie: cookiesOf(res) })).json()) as { user: { role: string }; areas: { granted: string[]; writable: string[] } };
+      const me = (await (await call("/api/me", { cookie: cookiesOf(res) })).json()) as { user: { role: string }; areas: { granted: string[]; visible: string[]; writable: string[] } };
       expect(me.user.role).toBe(u.role);
       expect([...me.areas.granted].sort(), u.email).toEqual([...u.areas].sort());
-      if (u.role === "editor") expect([...me.areas.writable].sort(), u.email).toEqual([...u.areas].sort());
+      if (u.role === "editor") {
+        expect([...me.areas.writable].sort(), u.email).toEqual([...u.areas].sort());
+        // An editor sees only the areas they hold.
+        expect([...me.areas.visible].sort(), u.email).toEqual([...u.areas].sort());
+      }
       if (u.role === "viewer" || u.role === "student") expect(me.areas.writable, u.email).toEqual([]);
     }
   });
@@ -85,6 +89,18 @@ describe("dev seed", () => {
     expect(await post("editor-baru@example.test")).toBe(403);
     expect(await post("viewer@example.test")).toBe(403);
     expect(await post("super-admin@example.test")).toBe(201);
+  });
+
+  test("a seeded editor reads only their area: the other areas answer 403 to a read", async () => {
+    await seed(env.DB, { password: PASSWORD, now: NOW });
+    const read = async (email: string) => (await call("/api/announcements", { cookie: cookiesOf(await signIn(email, PASSWORD)) })).status;
+    expect(await read("editor-komunikasi@example.test")).toBe(200);
+    expect(await read("editor-pendaftaran@example.test")).toBe(403);
+    expect(await read("editor-konten@example.test")).toBe(403);
+    expect(await read("editor-multi@example.test")).toBe(403); // pendaftaran and konten, not komunikasi
+    expect(await read("editor-baru@example.test")).toBe(403); // no areas at all
+    expect(await read("viewer@example.test")).toBe(200);
+    expect(await read("super-admin@example.test")).toBe(200);
   });
 
   test("contains no real data: every email address is on the reserved example.test domain", async () => {

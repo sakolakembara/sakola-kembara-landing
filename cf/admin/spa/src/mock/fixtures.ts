@@ -1,8 +1,9 @@
 import type { Announcement } from "~/lib/api";
 import type { Dashboard } from "~/lib/dashboard";
-// The Worker's own rules, so the mock shows the same menus the real API would
-// (this file is only ever bundled in mock mode).
+// The Worker's own rules, so the mock shows the same menus and the same
+// dashboard the real API would (this file is only ever bundled in mock mode).
 import { visibleAreas, writableAreas } from "../../../src/auth/permissions";
+import { buildDashboard, type DashboardRows } from "../../../src/dashboard/payload";
 import type { Persona } from "./persona";
 
 // MOCK, local development only. Invented values with reserved example
@@ -29,35 +30,29 @@ export function mockMeBody(persona: Persona) {
   };
 }
 
-export function mockDashboard(variant: "ready" | "empty"): Dashboard {
-  if (variant === "empty") {
-    return {
-      attention: { pendingApplications: 0, underReviewApplications: 0, unreadMessages: 0, batch: null },
-      recentActivity: [],
-    };
+/**
+ * The body of `GET /api/dashboard` for this persona. Built by the Worker's own
+ * `buildDashboard` from invented rows, so the mock has the real shape, the real
+ * links and the real rule that only the areas a role may see have items: an
+ * editor of Konten alone gets an empty attention, like the Worker.
+ */
+export function mockDashboard(persona: Persona, variant: "ready" | "empty"): Dashboard {
+  const visible = visibleAreas(persona.role, persona.granted);
+  const empty = variant === "empty";
+  const rows: DashboardRows = {};
+  if (visible.includes("pendaftaran")) {
+    rows.undecided = empty
+      ? []
+      : [
+          { batchId: "mock-batch-2026", status: "pending", n: 7 },
+          { batchId: "mock-batch-2026", status: "under_review", n: 3 },
+        ];
+    rows.batches = empty
+      ? []
+      : [{ id: "mock-batch-2026", year: 2026, opensAt: new Date(Date.now() - 60 * DAY), closesAt: new Date(Date.now() - 10 * DAY), resultsPublishedAt: null, hasApplications: true }];
   }
-  return {
-    attention: {
-      pendingApplications: 7,
-      underReviewApplications: 3,
-      unreadMessages: 4,
-      batch: {
-        id: "mock-batch-2026",
-        year: 2026,
-        phase: "awaiting_decisions",
-        opensAt: iso(-60 * DAY),
-        closesAt: iso(-10 * DAY),
-        undecided: 10,
-      },
-    },
-    recentActivity: [
-      { id: "a1", actorEmail: "editor@contoh.test", action: "announcement.create", resourceType: "announcement", resourceId: "x1", createdAt: iso(-20 * 60 * 1000) },
-      { id: "a2", actorEmail: "editor@contoh.test", action: "application.accepted", resourceType: "application", resourceId: "x2", createdAt: iso(-3 * 60 * 60 * 1000) },
-      { id: "a3", actorEmail: "super-admin@contoh.test", action: "batch.update", resourceType: "batch", resourceId: "mock-batch-2026", createdAt: iso(-1 * DAY) },
-      { id: "a4", actorEmail: "editor@contoh.test", action: "report.delete", resourceType: "report", resourceId: "x4", createdAt: iso(-2 * DAY) },
-      { id: "a5", actorEmail: "sistem", action: "contact_message.submit", resourceType: "contact_message", resourceId: "x5", createdAt: iso(-3 * DAY) },
-    ],
-  };
+  if (visible.includes("komunikasi")) rows.unreadMessages = empty ? 0 : 4;
+  return buildDashboard(rows, new Date());
 }
 
 export function mockAnnouncements(): Announcement[] {

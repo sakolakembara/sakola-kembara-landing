@@ -52,12 +52,23 @@ describe("sidebar", () => {
     expect(screen.getAllByText("Hanya baca").length).toBeGreaterThan(0);
   });
 
-  test("an editor sees every group except Sistem", async () => {
+  test("an editor sees the dashboard and the menus of the areas granted to them, not the others", async () => {
     const { nav } = await openAs("editor", ["konten"]);
-    expect(names(nav)).toContain("Pendaftar");
-    expect(names(nav)).toContain("Blog");
-    expect(names(nav)).not.toContain("Aktivitas");
-    expect(names(nav)).not.toContain("Pengaturan");
+    expect(names(nav)).toEqual(["Dashboard", "Blog", "Laporan", "Tim", "Shortlink"]);
+    expect(within(nav).queryByText("Pendaftaran")).toBeNull();
+    expect(within(nav).queryByText("Komunikasi")).toBeNull();
+    expect(within(nav).queryByText("Sistem")).toBeNull();
+  });
+
+  test("an editor of two areas sees those two groups", async () => {
+    const { nav } = await openAs("editor", ["pendaftaran", "komunikasi"]);
+    expect(names(nav)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman"]);
+    expect(within(nav).queryByText("Konten Situs")).toBeNull();
+  });
+
+  test("an editor with no areas has the dashboard alone", async () => {
+    const { nav } = await openAs("editor", []);
+    expect(names(nav)).toEqual(["Dashboard"]);
   });
 
   test("the current page is marked with aria-current, and only it", async () => {

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { adminUserRoutes } from "./api/admin-users";
 import { announcementRoutes } from "./api/announcements";
+import { dashboardRoutes } from "./api/dashboard";
 import { serveDevUpload } from "./api/dev-uploads";
 import { createPublicApp } from "./api/public";
 import { uploadRoutes } from "./api/uploads";
@@ -92,6 +93,7 @@ app.get("/api/dev/mailbox", (c) => {
 app.get("/uploads/*", serveDevUpload);
 
 app.route("/api/announcements", announcementRoutes);
+app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 app.route("/api/admin/uploads", uploadRoutes);
 
