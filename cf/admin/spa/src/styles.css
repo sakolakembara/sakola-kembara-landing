@@ -1,11 +1,15 @@
 /* One source of truth for colors and type: the Next app's globals.css (DESIGN.md).
    It defines the tokens and the base styles; this file only adds what the
-   SPA needs on top. */
+   SPA needs on top. The import line below is replaced by the file's contents,
+   minus its `@source not` lines, by the sharedTokens plugin in vite.config.ts
+   (the line must stay exactly as it is). */
 @import "../../../../app/globals.css";
 @import "@fontsource-variable/plus-jakarta-sans";
 @import "@fontsource-variable/lora";
 
-/* Tailwind only scans this app by default; the shared kit sits outside it. */
+/* Tailwind generates classes only for files it is told about: this app's own
+   source and the shared kit, which sits outside it. */
+@source "./";
 @source "../../../../components/ui";
 
 /* The Next app loads Plus Jakarta Sans (body) and Lora (display) with

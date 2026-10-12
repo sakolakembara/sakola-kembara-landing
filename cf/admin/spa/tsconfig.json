@@ -9,6 +9,7 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
@@ -22,5 +23,5 @@
       "tailwind-merge": ["../node_modules/tailwind-merge"]
     }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
 }
