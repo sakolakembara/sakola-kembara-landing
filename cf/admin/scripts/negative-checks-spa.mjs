@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
 import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
+import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -22,6 +23,9 @@ const checks = [
 
   // The Komunikasi area, Pesan and Pengumuman (SAKEM-082): scripts/negative-checks-spa-komunikasi.mjs.
   ...komunikasiSpaChecks,
+
+  // Laporan, Tim and Shortlink (SAKEM-082): scripts/negative-checks-spa-konten-misc.mjs.
+  ...kontenMiscSpaChecks,
 
   // Who may see and do what
   {

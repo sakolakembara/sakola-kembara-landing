@@ -365,7 +365,28 @@ describe("the form: edit", () => {
     expect(location()).toBe("/team/t1/edit"); // stays, as the legacy admin did
   });
 
-  test("a save that changed nothing but the blank rows still starts the form again from what was saved, and the next save sends the new version", async () => {
+  test("a save that changed nothing but the blank rows (the Worker answers the same version) still starts the form again from what was saved", async () => {
+    const user = userEvent.setup();
+    const { api } = await openForm(["editor", ["konten"]], "/team/t1/edit", {
+      [`GET ${LIST}/t1`]: respond({ item: loaded }),
+      // A save that changes nothing writes nothing: the item and its version come back as they were.
+      [`PUT ${LIST}/t1`]: respond({ item: loaded }),
+    });
+    await waitFor(() => expect((screen.getByLabelText(/Nama Lengkap/) as HTMLInputElement).value).toBe("Ahmad Fadillah"));
+    await user.click(screen.getByRole("button", { name: "Tambah Pekerjaan" }));
+    expect(screen.getAllByLabelText(/^Organisasi pekerjaan/)).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await screen.findByText("Anggota tim berhasil disimpan.");
+    await waitFor(() => expect(screen.getAllByLabelText(/^Organisasi pekerjaan/)).toHaveLength(1)); // the blank row is gone, though the version did not move
+
+    // And the form is clean again: nothing to lose by leaving.
+    await user.click(screen.getByRole("link", { name: "Batal" }));
+    await waitFor(() => expect(location()).toBe("/team"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.count(`PUT ${LIST}/t1`)).toBe(1);
+  });
+
+  test("after a save that changed something the next save sends the NEW version", async () => {
     const user = userEvent.setup();
     let version = "2026-10-02T00:00:00.000Z";
     const { api } = await openForm(["editor", ["konten"]], "/team/t1/edit", {
@@ -377,13 +398,10 @@ describe("the form: edit", () => {
       },
     });
     await waitFor(() => expect((screen.getByLabelText(/Nama Lengkap/) as HTMLInputElement).value).toBe("Ahmad Fadillah"));
-    await user.click(screen.getByRole("button", { name: "Tambah Pekerjaan" }));
-    expect(screen.getAllByLabelText(/^Organisasi pekerjaan/)).toHaveLength(2);
+    await user.type(screen.getByLabelText(/^Bio/), " satu");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     await screen.findByText("Anggota tim berhasil disimpan.");
-    await waitFor(() => expect(screen.getAllByLabelText(/^Organisasi pekerjaan/)).toHaveLength(1)); // the blank row is gone
-
-    await user.type(screen.getByLabelText(/^Bio/), " lagi");
+    await user.type(screen.getByLabelText(/^Bio/), " dua");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     await waitFor(() => expect(api.count(`PUT ${LIST}/t1`)).toBe(2));
     expect(api.last(`PUT ${LIST}/t1`)?.headers["if-match"]).toBe('"2026-10-02T00:00:00.000Z"');
