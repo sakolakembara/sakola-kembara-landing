@@ -246,6 +246,7 @@ Machine of the author, Node 22, the pipeline bundled the way wrangler bundles it
 | Worker bundle (`wrangler deploy --dry-run`), before | 2,940.93 KiB, 511.02 KiB gzip |
 | Worker bundle, after | **3,463.96 KiB, 619.84 KiB gzip** (+523.0 KiB, +108.8 KiB gzip: unified, remark, micromark, the sanitiser, the 22 KB image table). The Free limit is 3 MiB *compressed*, so 620 KiB gzip is a fifth of it |
 | SPA build (`build:spa`), before and after | JS 425.87 kB (133.52 kB gzip) to 450.96 kB (140.99 kB gzip): +25.1 kB, +7.5 kB gzip for the screens, the editor and the preview hook (no markdown library in the browser); CSS 48.33 kB to 49.57 kB. The mock is not in the build (`check:spa`) |
+| After the rebase on `cloudflare` c0af34f (Sistem, Komunikasi and Konten-misc merged, so these are totals of the integrated tree, not of the blog alone) | Worker 3,507.73 KiB, 631.67 KiB gzip; SPA JS 511.31 kB (155.77 kB gzip in the build log) |
 | The renderer alone, bundled | 480 KB unminified (micromark 65 KB, character entities 44 KB, the app 37 KB, property-information 30 KB, ...) |
 | Evaluating the bundled renderer (what a fresh isolate pays once) | about 8 ms |
 | 80 articles, warm, wall time per article | median 1.5 ms, p95 2.7 ms, max 4.3 ms (quiet machine) |
@@ -263,7 +264,7 @@ What this says, plainly:
 
 ## 12. Tests and negative checks
 
-At the end of this work: Worker **1,323 tests** (41 files), SPA **761** (33 files), negative checks Worker **242** (56 of them for the blog and GIF), SPA **108** (24 for the blog); all exit 0, with `typecheck`, `build:spa`, `check:spa` and `db:drift`.
+After the rebase on `cloudflare` c0af34f (all areas merged so far, so the totals are the integrated tree's, not the blog's alone): Worker **1,773 tests** (51 files), SPA **1,041** (43 files), all exit 0, with `typecheck`, `build:spa`, `check:spa` and `db:drift`. The blog's own negative checks are Worker **56** (the blog and GIF) and SPA **24**, run with `node scripts/negative-checks.mjs --only "blog:"` and `node scripts/negative-checks-spa.mjs --only "blog:"`; the full suites run on the integrated head.
 
 Worker (`cf/admin/test/`, workerd, real D1 and R2): `blog.test.ts` (roles and areas for all eight routes and nine callers, create, the legacy validation, list and filters, update and the stale and race rules, publish and unpublish and their public effect, the slug and date rules, featured, the purge hook and upload cleanup, hero and inline images, preview, the D1 budget, query plans), `blog-render-parity.test.ts` (80 articles equal to the plugin; the legacy image table equal to the manifest), `blog-sanitize.test.ts` (the allow-list, the URL rules, 36 attacks), `blog-import.test.ts` (the 80 equal to the fixture API; idempotence), `blog-spa-contract.test.ts` (the SPA's limits, categories, dates, body and field names against the real Worker), and GIF cases in `uploads-sniff.test.ts` and `uploads.test.ts`.
 
