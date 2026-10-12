@@ -9,7 +9,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | Part | Where |
 | --- | --- |
 | Drizzle schema, one file per concern, re-exported from `src/db/schema.ts` | `cf/admin/src/db/schema/` |
-| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), and `0007_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0007)) | `cf/admin/migrations/` |
+| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), `0007_audit_viewer_indexes` (the indexes of the Aktivitas filters; [`admin-sistem.md`](admin-sistem.md)), and `0008_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0008)) | `cf/admin/migrations/` |
 | Permission model (pure) and the `requireArea` guard | `src/auth/permissions.ts`, `src/auth/guard.ts` |
 | Super-admin routes to grant and revoke an editor's areas | `src/api/admin-users.ts` |
 | Dev seed for every table | `scripts/seed-data.ts`, `scripts/seed.ts` |
@@ -108,7 +108,7 @@ Same columns (`fullName`, `email`, `subject`, `message`, `readAt` null until ope
 
 ### `reports`
 
-Same columns (`title`, `description`, `category`, `year`, `filePath`, `fileSize`, `uploadedBy` `SET NULL`, `uploadedAt`), plus **`updated_at`** (migration `0007`, added with the Laporan screen: the legacy admin could edit a report's metadata and the edit needs a version for `If-Match`; existing rows take their upload time). Added CHECKs: `category` enum; `year` is `2025` or `2025/2026` (the text sort order depends on 4-digit padding); `file_size >= 0`. Index `(category, year)` kept.
+Same columns (`title`, `description`, `category`, `year`, `filePath`, `fileSize`, `uploadedBy` `SET NULL`, `uploadedAt`), plus **`updated_at`** (migration `0008`, added with the Laporan screen: the legacy admin could edit a report's metadata and the edit needs a version for `If-Match`; existing rows take their upload time). Added CHECKs: `category` enum; `year` is `2025` or `2025/2026` (the text sort order depends on 4-digit padding); `file_size >= 0`. Index `(category, year)` kept.
 
 ### `team_members`
 

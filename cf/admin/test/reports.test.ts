@@ -373,7 +373,7 @@ describe("reports: the public page is told when they change", () => {
 });
 
 describe("reports: the table the screen stands on", () => {
-  test("migration 0007 left the table as the schema says: updated_at, the checks, the index", async () => {
+  test("migration 0008 left the table as the schema says: updated_at, the checks, the index", async () => {
     const columns = (await env.DB.prepare("PRAGMA table_info(reports)").all<{ name: string; notnull: number }>()).results;
     expect(columns.find((column) => column.name === "updated_at")).toMatchObject({ notnull: 1 });
     const { sql } = (await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'reports'").first<{ sql: string }>())!;
@@ -389,8 +389,8 @@ describe("reports: the table the screen stands on", () => {
     // Replaying the migration on the table as it is now is a faithful test of its copy rule: it creates a new table,
     // copies every row, drops the old one and renames. `updated_at` is deliberately set apart from `uploaded_at` first.
     await env.DB.prepare("INSERT INTO reports (id, title, category, year, file_path, file_size, uploaded_at, updated_at) VALUES ('old-1', 'Lama', 'yearly', '2025', '/reports/a.pdf', 10, 1700000000000, 1800000000000)").run();
-    const migration = env.TEST_MIGRATIONS.find((candidate) => candidate.name.startsWith("0007"));
-    expect(migration, "migration 0007 exists").toBeDefined();
+    const migration = env.TEST_MIGRATIONS.find((candidate) => candidate.name.startsWith("0008"));
+    expect(migration, "migration 0008 exists").toBeDefined();
     for (const query of migration!.queries) await env.DB.prepare(query).run();
     const row = await env.DB.prepare("SELECT uploaded_at, updated_at FROM reports WHERE id = 'old-1'").first<{ uploaded_at: number; updated_at: number }>();
     expect(row).toEqual({ uploaded_at: 1700000000000, updated_at: 1700000000000 });

@@ -13,7 +13,7 @@ Read [`admin-crud.md`](admin-crud.md) first: envelopes, errors, `If-Match`, audi
 5. [Shortlink](#5-shortlink)
 6. [The redirect](#6-the-redirect)
 7. [D1 and request budget](#7-d1-and-request-budget)
-8. [Migration 0007](#8-migration-0007)
+8. [Migration 0008](#8-migration-0008)
 9. [Differences from the legacy admin](#9-differences-from-the-legacy-admin)
 10. [Tests and negative checks](#10-tests-and-negative-checks)
 11. [What was not verified](#11-what-was-not-verified)
@@ -173,16 +173,16 @@ So a click is **at most 3 rows read and exactly 1 row written**, in two round tr
 
 The first row also proved the chain end to end: 65 visits left `click_count` at 68 (the three earlier `curl` probes included), `updated_at` equal to `created_at`, an inactive link at 0. The JavaScript a visit runs is a regular expression over at most 64 characters, one query built by Drizzle, and a small JSON answer on the API side; on the site side a route match, one `fetch` and one `Response`. None of it is a measured CPU figure.
 
-## 8. Migration 0007
+## 8. Migration 0008
 
-`reports` had no `updated_at`, so an edit of a report's metadata (which the legacy admin allowed) could not carry `If-Match`, and the kit says a table without one has no `PUT`. The column is added by `migrations/0007_reports_updated_at.sql`. **`drizzle-kit generate` wrote `ALTER TABLE reports ADD updated_at integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL`, which SQLite refuses** ("Cannot add a column with non-constant default"), so the SQL file is a hand-written rebuild: a new table, every row copied with its upload time as its first version, drop, rename, the index again. The snapshot (`meta/0007_snapshot.json`) is the generated one, so `pnpm db:drift` still compares the schema with what the file leaves behind; `wrangler d1 migrations apply --local` ran all seven migrations; tests prove the checks, the index and the carry-over survive (the migration is replayed on a row whose two dates differ). Nothing refers to `reports`, so the rebuild is safe, and it contains `PRAGMA defer_foreign_keys = true` as D1's documentation advises. **Migration numbering collides with the parallel workers: the PM renumbers on rebase** (the file name, the journal entry and the snapshot).
+`reports` had no `updated_at`, so an edit of a report's metadata (which the legacy admin allowed) could not carry `If-Match`, and the kit says a table without one has no `PUT`. The column is added by `migrations/0008_reports_updated_at.sql`. **`drizzle-kit generate` wrote `ALTER TABLE reports ADD updated_at integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL`, which SQLite refuses** ("Cannot add a column with non-constant default"), so the SQL file is a hand-written rebuild: a new table, every row copied with its upload time as its first version, drop, rename, the index again. The snapshot (`meta/0008_snapshot.json`) is the generated one, so `pnpm db:drift` still compares the schema with what the file leaves behind; `wrangler d1 migrations apply --local` ran all seven migrations; tests prove the checks, the index and the carry-over survive (the migration is replayed on a row whose two dates differ). Nothing refers to `reports`, so the rebuild is safe, and it contains `PRAGMA defer_foreign_keys = true` as D1's documentation advises. **Migration numbering collides with the parallel workers: the PM renumbers on rebase** (the file name, the journal entry and the snapshot).
 
 ## 9. Differences from the legacy admin
 
 | | Legacy | Here | Why |
 | --- | --- | --- | --- |
 | The three lists | all rows on one page | the kit's list: search, a filter, sort, pagination (100 a page) | the convention; 100 holds what the legacy page showed |
-| A report's edit | no concurrency check | `If-Match` on `updated_at`: a second admin gets "Muat ulang" | the convention; needed migration 0007 |
+| A report's edit | no concurrency check | `If-Match` on `updated_at`: a second admin gets "Muat ulang" | the convention; needed migration 0008 |
 | Messages of rules that had none | zod's English defaults ("String must contain at most 200 character(s)") | one Indonesian line each ("Judul maksimal 200 karakter", "Nama maksimal 120 karakter", ...) | the kit: no English in a form |
 | Uploads | written to `public/` on the VPS disk | R2 through the upload API; the form holds only a path | [`uploads.md`](uploads.md) |
 | Team photo types | jpg, jpeg, png, webp, avif by file name | PNG, JPEG, WebP by content (no AVIF) | `uploads.md`, decided with the upload API |
@@ -228,4 +228,4 @@ For Dzul, in order of weight.
 5. **`SITE_URL` is a constant in the SPA** (`lib/site.ts`, `https://sakolakembara.org`): the copy button copies the production address even from a staging admin. If staging needs its own, it belongs in `GET /api/config` next to `uploadsBaseUrl`.
 6. **The team member's name is the label of its audit rows** (a public name, as the legacy row kept it). Say so if Aktivitas should show the id only.
 7. **`fileSize` of a report comes from the form** (the upload's answer), not from the `media` row. Fine for an admin-only field that only the public list prints; the alternative is one more D1 read on create.
-8. **Migration 0007 is a rebuild of `reports`** and will need renumbering when it meets the other workers' migrations.
+8. **Migration 0008 is a rebuild of `reports`** and will need renumbering when it meets the other workers' migrations.
