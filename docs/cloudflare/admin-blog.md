@@ -244,11 +244,13 @@ Machine of the author, Node 22, the pipeline bundled the way wrangler bundles it
 | | Number |
 | --- | --- |
 | Worker bundle (`wrangler deploy --dry-run`), before | 2,940.93 KiB, 511.02 KiB gzip |
-| Worker bundle, after | __BUNDLE_AFTER__ |
+| Worker bundle, after | **3,463.96 KiB, 619.84 KiB gzip** (+523.0 KiB, +108.8 KiB gzip: unified, remark, micromark, the sanitiser, the 22 KB image table). The Free limit is 3 MiB *compressed*, so 620 KiB gzip is a fifth of it |
+| SPA build (`build:spa`), before and after | JS 425.87 kB (133.52 kB gzip) to 450.96 kB (140.99 kB gzip): +25.1 kB, +7.5 kB gzip for the screens, the editor and the preview hook (no markdown library in the browser); CSS 48.33 kB to 49.57 kB. The mock is not in the build (`check:spa`) |
 | The renderer alone, bundled | 480 KB unminified (micromark 65 KB, character entities 44 KB, the app 37 KB, property-information 30 KB, ...) |
 | Evaluating the bundled renderer (what a fresh isolate pays once) | about 8 ms |
-| 80 articles, warm, wall time per article | median 1.5 ms, p95 2.7 ms, max 4.3 ms |
+| 80 articles, warm, wall time per article | median 1.5 ms, p95 2.7 ms, max 4.3 ms (quiet machine) |
 | The longest article (8,340 characters), warm | about 3.9 ms (CPU about 5.5 ms with the JIT threads) |
+| **The same script on a loaded machine** (other workers running, load average 14, run twice) | the 80 articles: median 1.7 to 2.0 ms, p95 3.8 to 4.7 ms; the longest article 5.0 to 5.9 ms; 8,000 characters 4.5 to 5.2 ms; 80,000 characters 33 to 35 ms; the first render 22 to 25 ms. Treat every figure here as "within a factor of 1.5", which the cap leaves room for |
 | Synthetic articles, warm, wall time | 8,000 characters 3.5 ms; 20,000: 7.0 ms; 40,000: 12.8 ms; **80,000 (the legacy limit): 24.4 ms** |
 | The **first** render in a fresh process (a typical 4,200-character article) | 12 to 14 ms; the longest article 20 ms. With a throw-away render at module load: 6 to 7 ms, and 9 to 12 ms for the longest |
 | The sanitiser alone, on the longest article | 0.02 ms (the rest of the pipeline is parsing: the GFM extensions are about half) |

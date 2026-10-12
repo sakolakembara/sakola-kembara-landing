@@ -5,6 +5,8 @@ import { describe, expect, test } from "vitest";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { RequireAuth } from "~/components/RequireAuth";
 import { Shell } from "~/components/Shell";
+import { NAV_ITEMS } from "~/lib/nav";
+import { PlaceholderPage } from "~/pages/Placeholder";
 import { takeConsoleProblems } from "./setup";
 import { meBody, renderApp, respond, stubApi } from "./helpers";
 
@@ -151,20 +153,20 @@ describe("403 inside the shell", () => {
   });
 });
 
+// Every menu entry has its page now, so a placeholder is what remains below an entry for a path no screen registers
+// (pages/screens/types.ts). `below` is such a path under any entry: two segments, so no `:id` or `:id/edit` takes it.
+const below = (path: string) => `${path}/no-such/page`;
+
 describe("placeholder pages", () => {
-  test("every menu entry has a page with its title and an honest message", async () => {
-    const titles: [string, string][] = [
-      ["/blog", "Blog"],
-      // Laporan, Tim and Shortlink are pages now (test/reports.test.tsx, team.test.tsx, shortlinks.test.tsx).
-      // Aktivitas and Pengaturan are pages now (test/audit-page.test.tsx, test/settings.test.tsx).
-    ];
-    for (const [path, title] of titles) {
+  test("a path below any menu entry that no screen registers has the entry's title and an honest message", async () => {
+    for (const item of NAV_ITEMS.filter((entry) => entry.path !== "/")) {
+      const title = item.title ?? item.label;
       stubApi({ "GET /api/me": respond(meBody("super_admin")) });
-      const view = renderApp(path);
-      expect(await screen.findByRole("heading", { level: 1, name: title }), path).toBeTruthy();
-      expect(screen.getByText("Belum tersedia di admin baru"), path).toBeTruthy();
+      const view = renderApp(below(item.path));
+      expect(await screen.findByRole("heading", { level: 1, name: title }), item.path).toBeTruthy();
+      expect(screen.getByText("Belum tersedia di admin baru"), item.path).toBeTruthy();
       // The tab title is set in an effect that can land just after the heading is drawn.
-      await waitFor(() => expect(document.title, path).toBe(`${title} | Admin Sakola Kembara`));
+      await waitFor(() => expect(document.title, item.path).toBe(`${title} | Admin Sakola Kembara`));
       view.unmount();
     }
   });
@@ -172,7 +174,7 @@ describe("placeholder pages", () => {
   test("shows what the user will be able to do there", async () => {
     const check = async (me: Parameters<typeof meBody>, path: string, shown: string, hidden: string) => {
       stubApi({ "GET /api/me": respond(meBody(...me)) });
-      const view = renderApp(path);
+      const view = renderApp(below(path));
       const main = await screen.findByRole("main");
       await within(main).findByText("Belum tersedia di admin baru");
       expect(within(main).getByText(shown)).toBeTruthy();
@@ -180,23 +182,40 @@ describe("placeholder pages", () => {
       view.unmount();
     };
     await check(["editor", ["konten"]], "/blog", "Bisa mengubah", "Hanya baca");
+    await check(["editor", ["pendaftaran"]], "/batches", "Bisa mengubah", "Hanya baca");
     await check(["viewer"], "/blog", "Hanya baca", "Bisa mengubah");
+    await check(["viewer"], "/batches", "Hanya baca", "Bisa mengubah");
     await check(["super_admin"], "/blog", "Bisa mengubah", "Hanya baca");
   });
 
   test("a deep link below an entry works on reload and offers the way back", async () => {
     stubApi({ "GET /api/me": respond(meBody("super_admin")) });
-    renderApp("/blog/abc/edit");
+    renderApp(below("/blog"));
     expect(await screen.findByRole("heading", { level: 1, name: "Blog" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Kembali ke daftar" }).getAttribute("href")).toBe("/blog");
     expect(screen.getByText("Belum tersedia di admin baru")).toBeTruthy();
   });
 
-  test("a list page has no way-back link", async () => {
-    stubApi({ "GET /api/me": respond(meBody("super_admin")) });
-    renderApp("/blog/");
-    await screen.findByRole("heading", { level: 1, name: "Blog" });
-    expect(screen.queryByRole("link", { name: "Kembali ke daftar" })).toBeNull();
+  test("the placeholder of an entry's own list page has no way-back link, with or without a trailing slash", async () => {
+    // No entry is without a page now, so the placeholder is mounted on the list path directly.
+    const blog = NAV_ITEMS.find((item) => item.path === "/blog")!;
+    for (const path of ["/blog", "/blog/"]) {
+      stubApi({ "GET /api/me": respond(meBody("super_admin")) });
+      const view = render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route element={<RequireAuth />}>
+              <Route element={<Shell />}>
+                <Route path="blog/*" element={<PlaceholderPage item={blog} />} />
+              </Route>
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
+      await screen.findByRole("heading", { level: 1, name: "Blog" });
+      expect(screen.queryByRole("link", { name: "Kembali ke daftar" }), path).toBeNull();
+      view.unmount();
+    }
   });
 });
 
