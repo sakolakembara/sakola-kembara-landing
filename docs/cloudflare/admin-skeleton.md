@@ -19,9 +19,9 @@ One Worker (`sakem-admin`, future host `admin.<domain>`):
 | Throttling | Cloudflare rate limit bindings (3 buckets) |
 | Sample content | `announcements`, with `audit_log` rows |
 
-Routes: `GET /api/me`, `GET /api/config`, `/api/auth/*` (Better Auth), `GET|POST /api/announcements`, `PUT|DELETE /api/announcements/:id`. SPA routes: `/login`, `/auth/error`, `/announcements`.
+Routes: `GET /api/me`, `GET /api/config`, `/api/auth/*` (Better Auth), `GET|POST /api/announcements`, `PUT|DELETE /api/announcements/:id`; since SAKEM-081 also `GET /api/admin/users` and `PUT /api/admin/users/:id/areas`. SPA routes: `/login`, `/auth/error`, `/announcements`.
 
-Layout: `src/worker.ts` (app), `src/auth/` (factory, password, email, guard, rate limit, roles), `src/api/announcements.ts`, `src/db/` (schema, audit), `spa/`, `test/`, `scripts/`.
+Layout: `src/worker.ts` (app), `src/auth/` (factory, password, email, guard, permissions, rate limit, roles), `src/api/` (announcements, admin users), `src/db/` (schema in `schema/`, audit, grants), `migrations/`, `spa/`, `test/`, `scripts/`. The full D1 schema is described in [`d1-schema.md`](d1-schema.md).
 
 ## Run it
 
@@ -35,12 +35,14 @@ pnpm dev                      # builds the SPA, then wrangler dev
 
 `pnpm dev:spa` runs Vite on :5173 with `/api` proxied to the worker, for hot reload (not exercised in this ticket). With `ENVIRONMENT=development` and no `RESEND_API_KEY`, verification and reset emails are printed to the wrangler console.
 
-To make a local account an admin (there is no UI for roles yet):
+`pnpm db:seed:local` fills the local database with sample rows and one sign-in per role (see [`d1-schema.md`](d1-schema.md#migrate-and-seed)). To make an account you created yourself an admin (there is no UI for roles yet):
 
 ```bash
 pnpm exec wrangler d1 execute sakem-admin --local \
   --command "UPDATE users SET role = 'editor' WHERE email = 'you@example.test'"
 ```
+
+An editor can only change the areas granted to them; a super admin grants them with `PUT /api/admin/users/:id/areas`.
 
 Gates: `pnpm typecheck` (worker and SPA), `pnpm test`, `pnpm test:negative`, `pnpm measure`.
 
@@ -58,7 +60,7 @@ Gates: `pnpm typecheck` (worker and SPA), `pnpm test`, `pnpm test:negative`, `pn
 
 Difference from the legacy behaviour to settle before migration: the legacy app links Google to an *unverified local student row* and clears its password. Here that case is refused until the address is verified. Legacy students who never verified will hit this at cutover.
 
-**Roles** (`src/auth/roles.ts`, `src/auth/guard.ts`). The matrix of `docs/architecture/authentication.md` ported as one table: `student` no admin access, `viewer` read-only, `editor` and `super_admin` write, `super_admin` also settings. `can(role, access)` is the only place roles are compared; an unknown role gets nothing. The guard answers 401 (no session) or 403 (not enough). Sessions are database-backed with no cookie cache, so the role is read from D1 on every request: a demoted user loses write access on the very next request (tested), like the legacy `requireAdmin` re-reading the row. Cost: one or two D1 reads per authenticated request, far inside the 5M reads/day budget.
+**Roles** (`src/auth/roles.ts`, `src/auth/permissions.ts`, `src/auth/guard.ts`). *Superseded by SAKEM-081: this slice had one flat matrix (`viewer` read, `editor` and `super_admin` write). Permissions are now per area, with an editor's areas in `admin_area_grants`; the rules, the guard and the API are in [`d1-schema.md`](d1-schema.md#permission-model).* What still holds: the guard answers 401 (no session) or 403 (not enough), an unknown role gets nothing, and sessions are database-backed with no cookie cache, so the role (and now an editor's grants) is read from D1 on every request: a demoted user loses write access on the very next request (tested), like the legacy `requireAdmin` re-reading the row. Cost: one to three D1 reads per authenticated request, far inside the 5M reads/day budget.
 
 **Audit** (`src/db/audit.ts`). Every announcement mutation is a single `db.batch([mutation, auditInsert])`, which D1 runs as one transaction: there is never a change without its audit row. The legacy app writes the row afterwards and swallows failures; the batch costs no extra round trip, so that trade is not needed. A test breaks the audit table and checks the mutation rolls back.
 
@@ -97,8 +99,8 @@ Machine: Apple M4, Node 22. Wall time, **not Worker CPU**: workerd freezes timer
 | Bundle composition (source bytes) | zod 807 KiB, kysely 657 KiB (pulled in by Better Auth, unused), better-auth 379 KiB + core 272 KiB, opentelemetry conventions 353 KiB, app code 34 KiB |
 | Startup (`wrangler check startup`) | 38.9 ms active of a 67 ms window, locally. Limit is 1 s |
 | SPA build | JS 303 kB (96 kB gzip), CSS 32 kB (9.5 kB gzip), fonts: browsers fetch only the needed subsets, typically the two latin files (27 kB + 38 kB) |
-| Tests | 70 passing in 6 files (about 8 s) |
-| Negative checks (`pnpm test:negative`) | 8 of 8 safeguards, when broken, make tests fail: verification requirement, viewer write, route guard, rate limit mount, production fail-closed, client-set role, Google `email_verified`, weakened account linking |
+| Tests | 70 passing in 6 files (about 8 s) at SAKEM-078; 269 in 10 files (about 12 s) after SAKEM-081 (schema, permission matrix, seed) |
+| Negative checks (`pnpm test:negative`) | 8 of 8 safeguards at SAKEM-078 (verification requirement, viewer write, route guard, rate limit mount, production fail-closed, client-set role, Google `email_verified`, weakened account linking); 25 of 25 after SAKEM-081, adding the area rules, the guard, who may grant areas, enum CHECKs, cascade, RESTRICT and uniqueness |
 
 Visual and interaction QA of the SPA was **not** done (no browser by instruction). The SPA was verified by typecheck, build, and `curl` against `wrangler dev` (assets layer returns it; the API behind it was exercised end to end: sign-up, 403 before verification, verification link, sign-in, `/api/me`, viewer read-only, editor create, audit row).
 
