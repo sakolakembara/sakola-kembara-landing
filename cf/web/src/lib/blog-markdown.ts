@@ -23,14 +23,13 @@ const summaries: BlogSummary[] = articles.map((meta) => toWireSummary(meta)).sor
 export const markdownBlogSource: BlogSource = {
   kind: 'markdown',
   async list(page, pageSize) {
-    return { status: 'ok', source: 'build', data: buildListPayload(summaries, page, pageSize) };
+    return { data: buildListPayload(summaries, page, pageSize), source: 'build' };
   },
   async article(slug) {
     const meta = articles.find((a) => a.id === slug);
     const summary = summaries.find((a) => a.slug === slug);
-    if (!meta || !summary) return { status: 'not_found', source: 'build' };
+    if (!meta || !summary) return { data: null, source: 'not_found' };
     return {
-      status: 'ok',
       source: 'build',
       data: {
         article: { ...summary, modifiedISO: meta.modifiedISO, contentHtml: bodies[slug] ?? '' },
@@ -39,6 +38,6 @@ export const markdownBlogSource: BlogSource = {
     };
   },
   async all() {
-    return { status: 'ok', source: 'build', data: summaries };
+    return { data: summaries, source: 'build' };
   },
 };

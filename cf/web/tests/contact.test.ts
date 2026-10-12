@@ -349,6 +349,14 @@ describe('submitContact: what never reaches the API', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('a refused post still has its body read (up to the cap), so the connection is left clean', async () => {
+    const { api } = fakeApi();
+    const request = form(VALID, { origin: 'https://evil.example' });
+    expect(request.bodyUsed).toBe(false);
+    expect(await submitContact(request, deps(api))).toEqual({ kind: 'forbidden' });
+    expect(request.bodyUsed).toBe(true);
+  });
+
   it('isSameOrigin: same host passes, a missing Origin passes, a www or LMS host does not', () => {
     const post = (headers: Record<string, string>) => new Request(`${SITE}/kontak`, { method: 'POST', headers });
     expect(isSameOrigin(post({ origin: SITE }))).toBe(true);

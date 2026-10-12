@@ -91,6 +91,27 @@ export function visitorIp(request: Request): string {
   return isIpLiteral(ip) ? ip : UNKNOWN_CLIENT_IP;
 }
 
+/**
+ * Reads and throws away what the client is still sending (at most MAX_BODY_BYTES), so an early answer
+ * (a refused origin) leaves the connection clean: a response that goes out while the request body is
+ * unread can make the next request on a reused connection fail with "Network connection lost".
+ */
+export async function drainBody(request: Request): Promise<void> {
+  const reader = request.body?.getReader();
+  if (!reader) return;
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      size += value.byteLength;
+      if (size > MAX_BODY_BYTES) return void (await reader.cancel());
+    }
+  } catch {
+    // the client went away: nothing left to keep clean
+  }
+}
+
 /** The posted form, or why it cannot be read. The body is cut off at MAX_BODY_BYTES while it streams. */
 async function readForm(request: Request): Promise<Record<string, unknown> | 'too_large' | 'bad_request'> {
   const type = request.headers.get('content-type') ?? '';
@@ -191,7 +212,10 @@ async function sendToApi(data: ContactInput, ip: string, deps: ContactDeps): Pro
 // ---- entry point ------------------------------------------------------------
 
 export async function submitContact(request: Request, deps: ContactDeps): Promise<ContactOutcome> {
-  if (!isSameOrigin(request)) return { kind: 'forbidden' };
+  if (!isSameOrigin(request)) {
+    await drainBody(request);
+    return { kind: 'forbidden' };
+  }
 
   // A form post is small (capped at 32 KiB while it streams), so it is read first: whatever happens
   // next, the visitor's text can go back into the form.

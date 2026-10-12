@@ -1,7 +1,8 @@
 // The blog, as the pages read it.
 //
 //   getBlogSource()   what /blog, /blog/<slug> and the sitemap call: the content API in
-//                     production, the build-time markdown adapter when the build says so
+//                     production (through the shared loader of content-api.ts), the build-time
+//                     markdown adapter when the build says so
 //   cover helpers     <img> attributes for a cover given by path (the API sends the path,
 //                     the width and the height; the srcset comes from the asset manifest)
 //   pageNumbers ...   the pagination control
@@ -33,6 +34,7 @@ import type { BlogMeta } from './blog-types';
 export { cleanExcerpt } from './blog-types';
 export type { BlogMeta } from './blog-types';
 export type { BlogSource, BlogResult } from './blog-source';
+export { headerSource } from './blog-source';
 export type { BlogArticle, BlogArticlePayload, BlogListPayload, BlogSummary } from './blog-api';
 export { BLOG_SLUG, normalizePage } from '../../blog-contract.mjs';
 
@@ -43,11 +45,11 @@ export const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export interface BlogRuntime {
   env: ApiEnv & {
-    /** Seconds a fetched blog page or article is served from the cache before the API is asked again (default 60). */
-    BLOG_CACHE_FRESH_SECONDS?: string;
+    /** Seconds a fetched list, blog page or article is served from the cache before the API is asked again (default 60). */
+    CONTENT_CACHE_FRESH_SECONDS?: string;
   };
   /** caches.default when the runtime has it. */
-  cache?: Pick<Cache, 'match' | 'put' | 'delete'>;
+  cache?: Pick<Cache, 'match' | 'put'> & Partial<Pick<Cache, 'delete'>>;
   /** ctx.waitUntil, so cache writes do not delay the response. */
   waitUntil?: (promise: Promise<unknown>) => void;
 }
@@ -62,30 +64,10 @@ export async function getBlogSource({ env, cache, waitUntil }: BlogRuntime): Pro
     target: contentApiTarget(env),
     cache,
     waitUntil,
-    freshTtlSeconds: Number(env.BLOG_CACHE_FRESH_SECONDS) || undefined,
+    freshTtlSeconds: Number(env.CONTENT_CACHE_FRESH_SECONDS) || undefined,
     // Reasons only, never a payload: this runs on every failed API call.
     onFailure: (reason) => console.warn(`blog api: ${reason}`),
   });
-}
-
-/**
- * Headers of a rendered blog page, by what the data source answered. The `s-maxage`
- * values are the contract's (content-api.md, "Caching"): a shared cache in front of
- * the Worker may keep a fresh page for a minute and serve it stale for five while it
- * refetches; the browser always revalidates. Nothing is told to cache a degraded answer.
- */
-export function blogCacheHeaders(kind: 'fresh' | 'stale' | 'not_found' | 'unavailable'): Record<string, string> {
-  switch (kind) {
-    case 'fresh':
-      return { 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' };
-    case 'stale':
-      // Served from the last good copy while the API is down: do not let a shared cache keep it long.
-      return { 'cache-control': 'public, max-age=0, s-maxage=30' };
-    case 'not_found':
-      return { 'cache-control': 'public, max-age=0, s-maxage=30' };
-    case 'unavailable':
-      return { 'cache-control': 'no-store', 'retry-after': '30' };
-  }
 }
 
 // ---- covers ----------------------------------------------------------------

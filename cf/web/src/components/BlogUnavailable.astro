@@ -6,7 +6,7 @@ import PageHero from './PageHero.astro';
 
 /**
  * What /blog and /blog/<slug> show when the content API cannot be reached and there
- * is no earlier copy to serve (lib/api-cache.ts): the site shell and a plain notice,
+ * is no earlier copy to serve (lib/content-api.ts): the site shell and a plain notice,
  * under a 503 that the page sets (a crawler is told to come back, not that the page
  * is gone). No legacy counterpart: the old pages read a local file and could not
  * be in this state. The sentence is new copy, in the voice of docs/context/tone-of-voice.md.

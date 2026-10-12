@@ -8,7 +8,7 @@ import PageHero from '~/components/PageHero.astro';
 import SocialLinks from '~/components/SocialLinks.astro';
 import Base from '~/layouts/Base.astro';
 import { CONTACT_MESSAGES, FIELD_MESSAGES, contactInfo, type ContactFieldErrors, type ContactValues } from '~/lib/contact';
-import { submitContact } from '~/lib/contact-submit';
+import { drainBody, submitContact } from '~/lib/contact-submit';
 
 // Ported from app/(public)/kontak/page.tsx and layout.tsx. SSR, because the page receives the form:
 // a POST is handled here (lib/contact-submit.ts) and the form works without JavaScript.
@@ -27,6 +27,7 @@ const method = Astro.request.method;
 const noStore = { 'cache-control': 'no-store' };
 
 if (method !== 'GET' && method !== 'HEAD' && method !== 'POST') {
+  await drainBody(Astro.request); // an early answer must not leave an unread body on the connection
   return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD, POST', ...noStore } });
 }
 

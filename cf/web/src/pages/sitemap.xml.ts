@@ -18,7 +18,7 @@ export const GET: APIRoute = async ({ locals }) => {
   const source = await getBlogSource(blogRuntime((p) => locals.cfContext.waitUntil(p)));
   const articles = await source.all();
   // A sitemap without the articles is worse than none for a crawler that trusts it: say "try later".
-  if (articles.status !== 'ok') {
+  if (!articles.data) {
     return new Response('Sitemap sementara tidak tersedia.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '300' },

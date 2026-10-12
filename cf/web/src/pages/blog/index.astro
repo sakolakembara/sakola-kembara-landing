@@ -6,22 +6,23 @@ import Icon from '~/components/Icon.astro';
 import PageHero from '~/components/PageHero.astro';
 import Tag from '~/components/Tag.astro';
 import Base from '~/layouts/Base.astro';
-import { blogCacheHeaders, coverAttrs, getBlogSource, normalizePage, pageHref, pageNumbers } from '~/lib/blog';
+import { coverAttrs, getBlogSource, headerSource, normalizePage, pageHref, pageNumbers } from '~/lib/blog';
 import { blogRuntime } from '~/lib/blog-runtime';
+import { contentPageHeaders } from '~/lib/content-api';
 
 // SSR: the list comes from the content API at request time (a new article shows without a
-// rebuild) through the Cache API, 60 s fresh and stale-if-error (see lib/api-cache.ts), and
+// rebuild) through the Cache API, 60 s fresh and stale-if-error (see lib/content-api.ts), and
 // pagination is `?page=N`, which a prerendered page cannot read.
 // An API outage with no copy to fall back on answers 503 with a plain notice, not a 500.
 export const prerender = false;
 
 const source = await getBlogSource(blogRuntime((p) => Astro.locals.cfContext.waitUntil(p)));
 const result = await source.list(normalizePage(Astro.url.searchParams.get('page')));
-const data = result.status === 'ok' ? result.data : null;
-const headers = blogCacheHeaders(result.status === 'ok' ? (result.source === 'stale' ? 'stale' : 'fresh') : 'unavailable');
-for (const [name, value] of Object.entries(headers)) Astro.response.headers.set(name, value);
-Astro.response.headers.set('x-blog-source', result.status === 'ok' ? result.source : 'none');
-if (!data) Astro.response.status = 503;
+const data = result.data;
+const answer = contentPageHeaders(headerSource(result.source));
+Astro.response.status = answer.status;
+for (const [name, value] of Object.entries(answer.headers)) Astro.response.headers.set(name, value);
+Astro.response.headers.set('x-blog-source', result.source);
 
 // The featured article is shown on page 1 only (the API always returns it).
 const currentPage = data?.page ?? 1;

@@ -9,7 +9,8 @@
 //                scripts/fixture-api.mjs. They win over the binding whenever they are set, so a
 //                developer machine never needs the API Worker. Do not set them in production:
 //                the contact form would then leave the binding and travel over public HTTP.
-//   (`/tim` reads CONTENT_API_URL only; moving it to the binding is a one-line change in tim.astro.)
+//   (`/tim`, `/laporan` and `/gabung-siswa/docs` read CONTENT_API_URL only, through lib/content-api.ts;
+//   moving them to the binding is `target.base` and `target.fetchImpl` in their `contentRuntime`.)
 
 /** The bit of a service binding this site uses. */
 export interface ServiceBinding {
@@ -28,8 +29,8 @@ export interface ApiEnv {
 export interface ApiTarget {
   /** No trailing slash. Only the path of a URL built on it matters to a service binding. */
   base: string;
-  fetchImpl: (url: string, init: RequestInit) => Promise<Response>;
-  /** Where the requests go, for the Worker log and tests: never the URL itself. */
+  fetchImpl: typeof fetch;
+  /** Where the requests go, for tests: never log the URL itself. */
   via: 'url' | 'binding';
 }
 
@@ -37,8 +38,14 @@ export interface ApiTarget {
 export const SERVICE_BINDING_BASE = 'https://api.internal';
 
 function target(url: string | undefined, binding: ServiceBinding | undefined): ApiTarget | null {
-  if (url) return { base: url.replace(/\/+$/, ''), fetchImpl: (u, init) => fetch(u, init), via: 'url' };
-  if (binding) return { base: SERVICE_BINDING_BASE, fetchImpl: (u, init) => binding.fetch(u, init), via: 'binding' };
+  if (url) return { base: url.replace(/\/+$/, ''), fetchImpl: (input, init) => fetch(input, init), via: 'url' };
+  if (binding) {
+    return {
+      base: SERVICE_BINDING_BASE,
+      fetchImpl: (input, init) => binding.fetch(typeof input === 'string' ? input : input instanceof URL ? input.href : input, init),
+      via: 'binding',
+    };
+  }
   return null;
 }
 

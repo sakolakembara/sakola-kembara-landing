@@ -9,7 +9,14 @@
 //   4. nothing at all                                         -> source "empty", data null (the page
 //      shows its degraded state, see contentPageHeaders)
 //
-// Cache keys are synthetic URLs: `${base}${path}` (fresh) and `${base}${path}?copy=stale`.
+// A resource that can be missing (a blog article) opts in with `notFoundTtlSeconds`: the contract's
+// `404 {"error":"not_found"}` is then an answer, not a failure: source "not_found", data null,
+// remembered for that many seconds (so probing cannot hammer the API) and the stale copy is dropped
+// (an outage after an unpublish must not bring the article back). A 404 with any other body (a wrong
+// base URL, a proxy page) stays a failure, so it can never make a page look deleted.
+//
+// Cache keys are synthetic URLs: `${base}${path}` (fresh) and `${base}${path}?copy=stale`
+// (`&copy=stale` when the path has a query).
 // The admin save that purges a list deletes the fresh key (`cache.delete(new Request(url))`);
 // the stale copy is only ever read after a failed fetch, and is overwritten by the next good one.
 //
@@ -17,9 +24,9 @@
 // (tests/team.test.ts, tests/content-api.test.ts). On a real zone the Cache API only works on
 // custom domains/routes, not on *.workers.dev.
 
-export type ContentSource = 'network' | 'cache' | 'stale' | 'empty';
+export type ContentSource = 'network' | 'cache' | 'stale' | 'empty' | 'not_found';
 export interface ContentResult<T> {
-  /** The parsed payload, or null when there is none to show (API down and nothing cached). */
+  /** The parsed payload, or null when there is none to show (API down and nothing cached, or not found). */
   data: T | null;
   source: ContentSource;
 }
@@ -27,8 +34,8 @@ export interface ContentResult<T> {
 export interface ContentRuntime {
   /** CONTENT_API_URL, no trailing slash needed. Unset -> source "empty". */
   baseUrl: string | undefined;
-  /** caches.default when the runtime has it. */
-  cache?: Pick<Cache, 'match' | 'put'>;
+  /** caches.default when the runtime has it. `delete` is only needed with `notFoundTtlSeconds`. */
+  cache?: Pick<Cache, 'match' | 'put'> & Partial<Pick<Cache, 'delete'>>;
   /** ctx.waitUntil, so cache writes do not delay the response. */
   waitUntil?: (promise: Promise<unknown>) => void;
   /** Seconds a fetched list is served from the cache before the API is asked again (default 60). */
@@ -46,6 +53,12 @@ export interface ContentLoaderOptions<T> extends ContentRuntime {
   staleTtlSeconds?: number;
   /** How long a stale copy is re-served as "fresh" after a failed fetch. */
   outageTtlSeconds?: number;
+  /** Set to treat the contract's 404 `{"error":"not_found"}` as "not found" and remember it this long (the blog uses 30). */
+  notFoundTtlSeconds?: number;
+  /** What is stored in the cache for a payload (default: the response text as it came). The blog stores the parsed value, which drops `contentMarkdown`. */
+  serialize?: (data: T) => string;
+  /** Why a fetch failed, in fixed words (`status 500`, `timeout`, `invalid payload`), for the Worker log. Never a body or a URL. */
+  onFailure?: (reason: string) => void;
 }
 
 /** What a list loader (loadTeam, loadReports, loadResources) takes: the options minus its own path and parser. */
@@ -66,21 +79,27 @@ export async function loadContent<T>(opts: ContentLoaderOptions<T>): Promise<Con
     freshTtlSeconds = CONTENT_FRESH_SECONDS,
     staleTtlSeconds = 60 * 60 * 24 * 7,
     outageTtlSeconds = 30,
+    notFoundTtlSeconds,
+    serialize,
+    onFailure,
   } = opts;
 
   if (!baseUrl) return { data: null, source: 'empty' };
   const url = `${baseUrl.replace(/\/+$/, '')}${path}`;
   // Nothing is ever fetched from the "stale" key.
   const freshKey = new Request(url);
-  const staleKey = new Request(`${url}?copy=stale`);
+  const staleKey = new Request(`${url}${url.includes('?') ? '&' : '?'}copy=stale`);
 
-  const read = async (key: Request): Promise<{ data: T; text: string } | null> => {
+  type Hit = { kind: 'ok'; data: T; text: string } | { kind: 'not_found' };
+  const read = async (key: Request): Promise<Hit | null> => {
     try {
       const hit = await cache?.match(key);
       if (!hit) return null;
       const text = await hit.text();
-      const data = parse(JSON.parse(text));
-      return data === null ? null : { data, text };
+      const json: unknown = JSON.parse(text);
+      if (notFoundTtlSeconds && isNotFoundBody(json)) return { kind: 'not_found' };
+      const data = parse(json);
+      return data === null ? null : { kind: 'ok', data, text };
     } catch {
       return null;
     }
@@ -105,25 +124,52 @@ export async function loadContent<T>(opts: ContentLoaderOptions<T>): Promise<Con
   };
 
   const fresh = await read(freshKey);
-  if (fresh) return { data: fresh.data, source: 'cache' };
+  if (fresh?.kind === 'ok') return { data: fresh.data, source: 'cache' };
+  if (fresh?.kind === 'not_found') return { data: null, source: 'not_found' };
 
   try {
     const res = await fetchImpl(url, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(timeoutMs),
     });
+    if (notFoundTtlSeconds && res.status === 404) {
+      if (isNotFoundBody(await res.json().catch(() => null))) {
+        await background([
+          write(freshKey, NOT_FOUND_TEXT, notFoundTtlSeconds),
+          cache?.delete?.(staleKey).catch(() => undefined),
+        ]);
+        return { data: null, source: 'not_found' };
+      }
+      throw new Error('status 404 without the not_found body');
+    }
     if (!res.ok) throw new Error(`content API answered ${res.status}`);
     const text = await res.text();
     const data = parse(JSON.parse(text));
     if (data === null) throw new Error('content API payload has the wrong shape');
-    await background([write(freshKey, text, freshTtlSeconds), write(staleKey, text, staleTtlSeconds)]);
+    const stored = serialize ? serialize(data) : text;
+    await background([write(freshKey, stored, freshTtlSeconds), write(staleKey, stored, staleTtlSeconds)]);
     return { data, source: 'network' };
-  } catch {
+  } catch (error) {
+    onFailure?.(failureReason(error));
     const stale = await read(staleKey);
-    if (!stale) return { data: null, source: 'empty' };
+    if (stale?.kind !== 'ok') return { data: null, source: 'empty' };
     await background([write(freshKey, stale.text, outageTtlSeconds)]);
     return { data: stale.data, source: 'stale' };
   }
+}
+
+const NOT_FOUND_TEXT = '{"error":"not_found"}';
+const isNotFoundBody = (json: unknown): boolean => isRecord(json) && json.error === 'not_found';
+
+/** A fixed word for the log, never the response or the URL: `timeout`, `status 500`, `invalid payload`. */
+function failureReason(error: unknown): string {
+  if (!(error instanceof Error)) return 'failed';
+  if (error.name === 'TimeoutError' || error.name === 'AbortError') return 'timeout';
+  const status = /answered (\d{3})$/.exec(error.message)?.[1];
+  if (status) return `status ${status}`;
+  if (error.message.startsWith('status 404')) return 'status 404 without the not_found body';
+  if (error.message.includes('wrong shape') || error instanceof SyntaxError) return 'invalid payload';
+  return 'failed';
 }
 
 /**
@@ -157,6 +203,9 @@ export function contentPageHeaders(source: ContentSource): { status: number; hea
       return { status: 200, headers: { 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' } };
     case 'stale':
       return { status: 200, headers: { 'cache-control': 'public, max-age=0, s-maxage=30' } };
+    case 'not_found':
+      // An unknown blog slug: a real 404, remembered like the contract's (s-maxage=30).
+      return { status: 404, headers: { 'cache-control': 'public, max-age=0, s-maxage=30' } };
     default:
       return { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '30' } };
   }

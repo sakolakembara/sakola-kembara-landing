@@ -9,10 +9,8 @@ declare namespace Cloudflare {
     CONTENT_API_URL?: string;
     /** Seconds a fetched team list is served from the cache before the API is asked again (default 300). */
     TEAM_CACHE_FRESH_SECONDS?: string;
-    /** Same for the other lists (reports, resources): default 60, the contract's `s-maxage`. */
+    /** Same for the other lists (reports, resources) and for the blog pages and articles: default 60, the contract's `s-maxage`. */
     CONTENT_CACHE_FRESH_SECONDS?: string;
-    /** Seconds a fetched blog page or article is served from the cache before the API is asked again (default 60). */
-    BLOG_CACHE_FRESH_SECONDS?: string;
     /** Local/CI only: where the contact form posts instead of the `API` service binding (scripts/fixture-api.mjs). Unset in production. */
     CONTACT_API_URL?: string;
     /** Service binding to the API Worker (wrangler.jsonc `services`); the contact form and, without CONTENT_API_URL, the read endpoints go through it. */

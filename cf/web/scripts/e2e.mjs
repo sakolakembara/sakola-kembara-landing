@@ -18,7 +18,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { Window } from 'happy-dom';
-import { startStack, webRoot } from './lib/harness.mjs';
+import { PORT_OFFSET, startStack, webRoot } from './lib/harness.mjs';
 import { SAMPLE_REPORTS, SAMPLE_RESOURCES } from './fixture-api.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
 import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
@@ -587,8 +587,9 @@ const mainText = (html) =>
       .replace(/\s+/g, ' '),
   );
 const anchorTags = (html) => [...html.matchAll(/<a\s[^>]*>/g)].map((m) => m[0]);
-const fixtureStats = async (port = 4391) => (await fetch(`http://127.0.0.1:${port}/__hits`)).json();
-const setMode = (port, mode, only) => fetch(`http://127.0.0.1:${port}/__mode?m=${mode}${only ? `&for=${only}` : ''}`, { method: 'POST' });
+// Ports here are base ports, as in startStack: E2E_PORT_OFFSET is added.
+const fixtureStats = async (port = 4391) => (await fetch(`http://127.0.0.1:${port + PORT_OFFSET}/__hits`)).json();
+const setMode = (port, mode, only) => fetch(`http://127.0.0.1:${port + PORT_OFFSET}/__mode?m=${mode}${only ? `&for=${only}` : ''}`, { method: 'POST' });
 const inlineScripts = (html) => [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json')).map((m) => m[2]);
 const notes = [];
 await setMode(4391, 'ok');
@@ -1192,8 +1193,8 @@ await check('home', "the news covers are the blog's own /blog/images files (the 
 // The articles and the list are rendered by the Worker from GET /api/public/blog and /blog/<slug> (the fixture server),
 // through caches.default with stale-if-error. The per-article SEO checks for all 80 are in the "articles" group above.
 const blogRequests = async (f = fixtureBase) => (await (await fetch(`${f}/__requests?for=blog`)).json());
-const blogHits = async (f = fixtureBase) => (await (await fetch(`${f}/__hits?for=blog`)).json()).hits;
-const setMode = (f, group, m) => fetch(`${f}/__mode?for=${group}&m=${m}`, { method: 'POST' });
+const blogHits = async (f = fixtureBase) => (await (await fetch(`${f}/__hits`)).json()).byEndpoint.blog;
+const setFixtureMode = (f, group, m) => fetch(`${f}/__mode?for=${group}&m=${m}`, { method: 'POST' });
 
 await check('blog', '/blog?page=4: the first view asks the API once (network), the second is served from caches.default (no API call)', async () => {
   const before = await blogRequests();
@@ -1244,16 +1245,16 @@ await check('blog', 'an article page lists the three related articles the API se
   const res = await get(attrOf(hero, 'src'));
   assert.equal(res.status, 200);
 });
-await check('blog', 'an unknown slug is a real 404 with the 404 page: asked once (network), the next time remembered (cache), s-maxage 30', async () => {
+await check('blog', 'an unknown slug is a real 404 with the 404 page: the API is asked once, the next view is answered from the remembered "not found" (s-maxage 30)', async () => {
   const before = await blogRequests();
   const first = await get('/blog/no-such-article');
   assert.equal(first.status, 404);
   assert.match(await text(first), /Halaman tidak ditemukan/);
   assert.equal(first.headers.get('cache-control'), 'public, max-age=0, s-maxage=30');
-  assert.equal(first.headers.get('x-blog-source'), 'network');
+  assert.equal(first.headers.get('x-blog-source'), 'not_found');
   const second = await get('/blog/no-such-article');
   assert.equal(second.status, 404);
-  assert.equal(second.headers.get('x-blog-source'), 'cache');
+  assert.equal(second.headers.get('x-blog-source'), 'not_found');
   assert.deepEqual((await blogRequests()).slice(before.length), ['/api/public/blog/no-such-article']);
 });
 await check('blog', 'a slug that cannot exist (upper case, a dot, a space, too long) is a 404 without any API request or cache entry', async () => {
@@ -1288,11 +1289,11 @@ await check('blog', 'the blog pages and the sitemap never reach the legacy origi
 
 // stale-if-error: a short fresh window, then the API goes down
 await check('blog', 'stale-if-error: the API fails after the fresh window, /blog, an article and the sitemap are served from the last good copy (200, stale), then recover', async () => {
-  const s = await startStack({ port: 8801, stubPort: 4411, fixturePort: 4412, inspectorPort: 9341, vars: { BLOG_CACHE_FRESH_SECONDS: '1' } });
+  const s = await startStack({ port: 8801, stubPort: 4411, fixturePort: 4412, inspectorPort: 9341, vars: { CONTENT_CACHE_FRESH_SECONDS: '1' } });
   const f = `http://127.0.0.1:${s.fixture.port}`;
   try {
     for (const p of ['/blog', `/blog/${slugs[2]}`, '/sitemap.xml']) assert.equal((await fetch(s.base + p)).headers.get('x-blog-source'), 'network', p);
-    await setMode(f, 'blog', '500');
+    await setFixtureMode(f, 'blog', '500');
     await new Promise((r) => setTimeout(r, 1500));
     for (const p of ['/blog', `/blog/${slugs[2]}`, '/sitemap.xml']) {
       const res = await fetch(s.base + p);
@@ -1320,13 +1321,13 @@ await check('blog', 'API down on a cold cache: /blog, an article and the sitemap
   const s = await startStack({ port: 8802, stubPort: 4413, fixturePort: 4414, inspectorPort: 9342 });
   const f = `http://127.0.0.1:${s.fixture.port}`;
   try {
-    await setMode(f, 'blog', '500');
+    await setFixtureMode(f, 'blog', '500');
     for (const p of ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/blog/some-valid-looking-slug']) {
       const res = await fetch(s.base + p);
       assert.equal(res.status, 503, p);
       assert.equal(res.headers.get('cache-control'), 'no-store', p);
       assert.equal(res.headers.get('retry-after'), '30', p);
-      assert.equal(res.headers.get('x-blog-source'), 'none', p);
+      assert.equal(res.headers.get('x-blog-source'), 'empty', p);
       assert.match(res.headers.get('content-type'), /text\/html/);
       const html = await res.text();
       assert.match(html, /Artikel belum dapat dimuat saat ini\. Silakan coba lagi beberapa saat lagi\./);
@@ -1345,21 +1346,21 @@ await check('blog', 'API down on a cold cache: /blog, an article and the sitemap
     assert.equal((await fetch(`${s.base}/`)).status, 200);
 
     // a 404 that is not the contract's JSON (a wrong base URL answering HTML) is an outage, not a deleted article
-    await setMode(f, 'blog', 'html404');
+    await setFixtureMode(f, 'blog', 'html404');
     const wrong = await fetch(`${s.base}/blog/${slugs[5]}`);
     assert.equal(wrong.status, 503);
     // an answer that is not a blog payload is an outage too
-    await setMode(f, 'blog', 'badjson');
+    await setFixtureMode(f, 'blog', 'badjson');
     assert.equal((await fetch(`${s.base}/blog?page=3`)).status, 503);
     // a hanging API: the 2 s timeout fires
-    await setMode(f, 'blog', 'slow');
+    await setFixtureMode(f, 'blog', 'slow');
     const started = performance.now();
     const slow = await fetch(`${s.base}/blog/${slugs[6]}`);
     const ms = performance.now() - started;
     assert.equal(slow.status, 503);
     assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
     // and it comes back: the next view after the API recovers is a normal page
-    await setMode(f, 'blog', 'ok');
+    await setFixtureMode(f, 'blog', 'ok');
     assert.equal((await fetch(`${s.base}/blog/${slugs[7]}`)).status, 200);
     assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
   } finally {
@@ -1371,8 +1372,8 @@ await check('blog', 'API down on a cold cache: /blog, an article and the sitemap
 const contactLogStart = stack.output().length;
 const contactApi = {
   log: async () => (await fetch(`${fixtureBase}/__contact-log`)).json(),
-  hits: async () => (await (await fetch(`${fixtureBase}/__hits?for=contact`)).json()).hits,
-  mode: (m) => setMode(fixtureBase, 'contact', m),
+  hits: async () => (await (await fetch(`${fixtureBase}/__hits`)).json()).byEndpoint.contact,
+  mode: (m) => setFixtureMode(fixtureBase, 'contact', m),
 };
 let ipCounter = 10;
 /** A plain HTML form post, as a browser without JavaScript sends it. Each call gets its own visitor address unless one is given. */

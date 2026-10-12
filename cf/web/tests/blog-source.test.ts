@@ -17,8 +17,9 @@ import { startFixtureApi } from '../scripts/fixture-api.mjs';
 import { createApiBlogSource, type BlogSource } from '~/lib/blog-source';
 import { markdownBlogSource } from '~/lib/blog-markdown';
 import { parseBlogArticle, parseBlogList, parseSummary, safeImagePath, type BlogSummary } from '~/lib/blog-api';
-import { blogCacheHeaders, coverAttrs, getAllArticles, getBlogSource, getRelated, getBlogPage } from '~/lib/blog';
+import { coverAttrs, getAllArticles, getBlogSource, getRelated, getBlogPage, headerSource } from '~/lib/blog';
 import { contentApiTarget } from '~/lib/api-client';
+import { contentPageHeaders } from '~/lib/content-api';
 import { blogPosts, readRoot } from './helpers';
 
 const articles = getAllArticles();
@@ -202,12 +203,14 @@ describe('covers: the API sends a path; the srcset comes from the asset manifest
   });
 });
 
-describe('blogCacheHeaders: the contract\'s s-maxage values, and nothing cacheable for a degraded answer', () => {
-  it('fresh 60 s with 5 minutes stale-while-revalidate; stale and 404 30 s; unavailable never', () => {
-    expect(blogCacheHeaders('fresh')).toEqual({ 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' });
-    expect(blogCacheHeaders('stale')['cache-control']).toBe('public, max-age=0, s-maxage=30');
-    expect(blogCacheHeaders('not_found')['cache-control']).toBe('public, max-age=0, s-maxage=30');
-    expect(blogCacheHeaders('unavailable')).toEqual({ 'cache-control': 'no-store', 'retry-after': '30' });
+describe('what a page answers, by what the source returned (contentPageHeaders of the shared loader)', () => {
+  it('fresh 60 s with 5 minutes stale-while-revalidate; stale 30 s; a 404 30 s; an outage 503 and never cacheable', () => {
+    expect(contentPageHeaders(headerSource('network'))).toEqual({ status: 200, headers: { 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' } });
+    expect(contentPageHeaders(headerSource('cache')).status).toBe(200);
+    expect(contentPageHeaders(headerSource('build'))).toEqual(contentPageHeaders('cache')); // the fixture is a fresh answer
+    expect(contentPageHeaders(headerSource('stale'))).toEqual({ status: 200, headers: { 'cache-control': 'public, max-age=0, s-maxage=30' } });
+    expect(contentPageHeaders(headerSource('not_found'))).toEqual({ status: 404, headers: { 'cache-control': 'public, max-age=0, s-maxage=30' } });
+    expect(contentPageHeaders(headerSource('empty'))).toEqual({ status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '30' } });
   });
 });
 
@@ -219,11 +222,11 @@ describe('getBlogSource', () => {
   });
   it('the API source without any configured API is "unavailable", not a crash', async () => {
     const source = createApiBlogSource({ target: contentApiTarget({}) });
-    expect(await source.list(1)).toEqual({ status: 'unavailable' });
-    expect(await source.article('some-slug')).toEqual({ status: 'unavailable' });
-    expect(await source.all()).toEqual({ status: 'unavailable' });
+    expect(await source.list(1)).toEqual({ data: null, source: 'empty' });
+    expect(await source.article('some-slug')).toEqual({ data: null, source: 'empty' });
+    expect(await source.all()).toEqual({ data: null, source: 'empty' });
     // a slug that cannot exist is a 404 without asking anyone
-    expect(await source.article('NOT A SLUG')).toEqual({ status: 'not_found', source: 'build' });
+    expect(await source.article('NOT A SLUG')).toEqual({ data: null, source: 'not_found' });
   });
 });
 
@@ -248,11 +251,11 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
   it('the list: every page of every page size, featured included', async () => {
     for (const pageSize of [15, 50, 7]) {
       const first = await markdownBlogSource.list(1, pageSize);
-      if (first.status !== 'ok') throw new Error('markdown list failed');
+      if (!first.data) throw new Error('markdown list failed');
       for (let page = 1; page <= first.data.totalPages + 1; page++) {
         const [a, m] = await Promise.all([api.list(page, pageSize), markdownBlogSource.list(page, pageSize)]);
-        expect(a.status).toBe('ok');
-        expect(a.status === 'ok' && a.data, `page ${page} of ${pageSize}`).toEqual(m.status === 'ok' && m.data);
+        expect(a.data, `page ${page} of ${pageSize}`).toEqual(m.data);
+        expect(a.data).not.toBeNull();
       }
     }
   });
@@ -262,7 +265,7 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
     expect(articles).toHaveLength(80);
     for (const meta of articles) {
       const [a, m] = await Promise.all([api.article(meta.id), markdownBlogSource.article(meta.id)]);
-      if (a.status !== 'ok' || m.status !== 'ok') throw new Error(`${meta.id}: ${a.status} / ${m.status}`);
+      if (!a.data || !m.data) throw new Error(`${meta.id}: ${a.source} / ${m.source}`);
       expect(a.data, meta.id).toEqual(m.data);
 
       const { article, related } = a.data;
@@ -290,7 +293,7 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
   it('all(): the contract\'s enumeration (pageSize=50 plus the featured article) finds exactly the 80, newest first', async () => {
     await fetch(`${base}/__reset`, { method: 'POST' });
     const all = await api.all();
-    if (all.status !== 'ok') throw new Error('all failed');
+    if (!all.data) throw new Error('all failed');
     expect(all.data.map((a) => a.slug)).toEqual(articles.map((a) => a.id));
     expect(new Set(all.data.map((a) => a.slug)).size).toBe(80);
     const requests: string[] = await (await fetch(`${base}/__requests?for=blog`)).json();
@@ -300,7 +303,7 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
   });
 
   it('an unknown or unpublished slug is "not found"; the API answers {"error":"not_found"} with a 30 s s-maxage', async () => {
-    expect(await api.article('this-article-does-not-exist')).toEqual({ status: 'not_found', source: 'network' });
+    expect(await api.article('this-article-does-not-exist')).toEqual({ data: null, source: 'not_found' });
     const res = await fetch(`${base}/api/public/blog/this-article-does-not-exist`);
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: 'not_found' });
@@ -322,18 +325,18 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
 
   it('an API outage is "unavailable"; with the markdown fixture untouched', async () => {
     await fetch(`${base}/__mode?for=blog&m=500`, { method: 'POST' });
-    expect(await api.list(1)).toEqual({ status: 'unavailable' });
-    expect(await api.all()).toEqual({ status: 'unavailable' });
+    expect(await api.list(1)).toEqual({ data: null, source: 'empty' });
+    expect(await api.all()).toEqual({ data: null, source: 'empty' });
     await fetch(`${base}/__mode?for=blog&m=ok`, { method: 'POST' });
-    expect((await api.list(1)).status).toBe('ok');
+    expect((await api.list(1)).data).not.toBeNull();
   });
 
   it('the articles are in the order of the build-time index, and a related list never holds the article itself, even from a careless API', async () => {
     const careless = createApiBlogSource({
-      target: { base: 'http://api.test', via: 'url', fetchImpl: async () => Response.json({ article: { slug: 'a', title: 'A', dateISO: '2026-01-01', contentHtml: '<p>x</p>' }, related: [{ slug: 'a', title: 'A', dateISO: '2026-01-01' }, { slug: 'b', title: 'B', dateISO: '2026-01-02' }] }) },
+      target: { base: 'http://api.test', via: 'url', fetchImpl: (async () => Response.json({ article: { slug: 'a', title: 'A', dateISO: '2026-01-01', contentHtml: '<p>x</p>' }, related: [{ slug: 'a', title: 'A', dateISO: '2026-01-01' }, { slug: 'b', title: 'B', dateISO: '2026-01-02' }] })) as unknown as typeof fetch },
     });
     const out = await careless.article('a');
-    expect(out.status === 'ok' && out.data.related.map((r) => r.slug)).toEqual(['b']);
+    expect(out.data?.related.map((r) => r.slug)).toEqual(['b']);
   });
 });
 

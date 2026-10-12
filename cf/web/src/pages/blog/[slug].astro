@@ -6,12 +6,13 @@ import Icon from '~/components/Icon.astro';
 import NotFoundPage from '~/components/NotFoundPage.astro';
 import Tag from '~/components/Tag.astro';
 import Base from '~/layouts/Base.astro';
-import { blogCacheHeaders, coverAttrs, getBlogSource } from '~/lib/blog';
+import { coverAttrs, getBlogSource, headerSource } from '~/lib/blog';
 import { blogRuntime } from '~/lib/blog-runtime';
+import { contentPageHeaders } from '~/lib/content-api';
 import { articleJsonLd } from '~/lib/seo';
 
 // SSR: the article comes from the content API at request time (a new or edited article shows
-// without a rebuild) through the Cache API, 60 s fresh and stale-if-error (lib/api-cache.ts).
+// without a rebuild) through the Cache API, 60 s fresh and stale-if-error (lib/content-api.ts).
 //   - an unknown or unpublished slug is a real 404 with the 404 page (the API's 404, or a slug that
 //     cannot exist, which is answered without asking the API);
 //   - an API outage with no earlier copy is a 503 with a plain notice, never a 500.
@@ -23,14 +24,13 @@ const slug = Astro.params.slug ?? '';
 const source = await getBlogSource(blogRuntime((p) => Astro.locals.cfContext.waitUntil(p)));
 const result = await source.article(slug);
 
-const state = result.status === 'ok' ? 'ok' : result.status === 'not_found' ? 'not_found' : 'unavailable';
-const headers = blogCacheHeaders(state === 'ok' ? (result.status === 'ok' && result.source === 'stale' ? 'stale' : 'fresh') : state);
-for (const [name, value] of Object.entries(headers)) Astro.response.headers.set(name, value);
-Astro.response.headers.set('x-blog-source', result.status === 'ok' ? result.source : result.status === 'not_found' ? result.source : 'none');
-if (state === 'not_found') Astro.response.status = 404;
-if (state === 'unavailable') Astro.response.status = 503;
+// 200 with the article, 404 for a slug the API does not have, 503 when it cannot be reached and there is no copy.
+const answer = contentPageHeaders(headerSource(result.source));
+Astro.response.status = answer.status;
+for (const [name, value] of Object.entries(answer.headers)) Astro.response.headers.set(name, value);
+Astro.response.headers.set('x-blog-source', result.source);
 
-const page = result.status === 'ok' ? result.data : null;
+const page = result.data;
 const article = page?.article;
 const cover = article ? coverAttrs(article.image, article.imageWidth, article.imageHeight) : null;
 const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttrs(item.image, item.imageWidth, item.imageHeight) }));
@@ -40,7 +40,7 @@ const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttr
 
 {
   !article ? (
-    state === 'not_found' ? (
+    result.source === 'not_found' ? (
       <NotFoundPage />
     ) : (
       <BlogUnavailable path={`/blog/${slug}`} />
