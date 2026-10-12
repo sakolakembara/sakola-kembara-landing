@@ -118,6 +118,8 @@ export function createMockTransport(config: MockConfig): Transport {
         return json(mockDashboard(config.dashboard === "empty" ? "empty" : "ready"));
 
       case "GET /api/announcements":
+        // Like the Worker: an editor who was not granted Komunikasi may not even read it.
+        if (accessTo(parseMe(mockMeBody(config.persona)), "komunikasi") === "none") return json({ error: "forbidden" }, 403);
         return json({ announcements });
 
       case "POST /api/announcements": {

@@ -91,9 +91,23 @@ const checks = [
   {
     name: "area check removed: an editor writes outside the areas granted to them",
     file: "src/auth/permissions.ts",
-    from: 'return grantedAreas.includes(area) ? "write" : "read";',
+    from: 'return grantedAreas.includes(area) ? "write" : "none";',
     to: 'return "write";',
     tests: PERMISSION_TESTS,
+  },
+  {
+    name: "an editor reads the areas not granted to them (the rule before SAKEM-082)",
+    file: "src/auth/permissions.ts",
+    from: 'return grantedAreas.includes(area) ? "write" : "none";',
+    to: 'return grantedAreas.includes(area) ? "write" : "read";',
+    tests: `${PERMISSION_TESTS} test/seed.test.ts test/spa-contract.test.ts`,
+  },
+  {
+    name: "/api/me lists every grantable area as visible (the menu would show areas an editor cannot open)",
+    file: "src/worker.ts",
+    from: "visible: visibleAreas(user.role, grantedAreas),",
+    to: 'visible: ["pendaftaran", "komunikasi", "konten"],',
+    tests: "test/areas.test.ts test/spa-contract.test.ts",
   },
   {
     name: "editor allowed into Sistem",

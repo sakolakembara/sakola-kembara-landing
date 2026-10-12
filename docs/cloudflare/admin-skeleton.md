@@ -121,13 +121,13 @@ spa/test/                  vitest + jsdom
 | Role | Pendaftaran, Komunikasi, Konten Situs | Sistem (Aktivitas, Pengaturan) |
 | --- | --- | --- |
 | `super_admin` | write | write |
-| `editor` | write in the areas granted to them, read in the rest | none |
+| `editor` | write in the areas granted to them, **nothing** in the others (their menus are hidden and their routes show the 403 page) | none |
 | `viewer` | read | none |
 | `student`, unknown | none (the guard shows a refusal with Keluar) | none |
 
-"Read" means the page opens and shows no create, edit or delete control and no quick action. The dashboard is open to every admin role. Whatever the lists say, an account that is not an admin gets nothing. The server stays the authority: the UI hides, the API enforces.
+"Read" means the page opens and shows no create, edit or delete control and no quick action. The dashboard is open to every admin role (an editor with no areas has the dashboard and nothing else). Whatever the lists say, an account that is not an admin gets nothing. The server stays the authority: the UI hides, the API enforces (a hidden area's reads answer 403).
 
-Sistem is hidden from every role but `super_admin`, Aktivitas included; this supersedes `admin-ia.md` sections 3.2 and 3.5, which proposed Aktivitas for every role. To change it, change `levelIn` in `src/auth/permissions.ts`: the SPA follows the lists, and the dashboard's activity summary follows the Aktivitas entry.
+An editor sees and changes only what was granted to them: until 2026-10-12 they could also read the other areas (read-only), and the other areas' menus were shown; Dzul decided they should not, and the change was one line in `levelIn` in `src/auth/permissions.ts`, which the SPA follows through `areas.visible` and `areas.writable` (for an editor both equal `areas.granted`). Sistem is hidden from every role but `super_admin`, Aktivitas included; this supersedes `admin-ia.md` sections 3.2 and 3.5 as first proposed.
 
 **The `/api/me` contract the SPA reads:** `{ user: { id, email, name, role, emailVerified }, areas: { granted, visible, writable } }`. `granted` is an editor's own grants (empty for other roles), `visible` the areas whose pages the user may open, `writable` the areas where they may change things (area names: `pendaftaran`, `komunikasi`, `konten`, `sistem`). A payload without `areas`, with a list that is not an array, or with names the SPA does not know, is read as empty lists (nothing shown for them), and an unknown role is read as `student`, like the Worker does. `spa/test/access.test.ts` and `spa/test/nav.test.ts` build `Me` from the Worker's own `visibleAreas`, `writableAreas`, `levelIn`, `menuItems` and `visibleMenu`, for every role and every set of grants, so a change to the permission model that the SPA does not follow fails them. `cf/admin/test/spa-contract.test.ts` reads the real `/api/me` of each role, including an editor whose grant is revoked.
 

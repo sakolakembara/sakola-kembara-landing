@@ -63,7 +63,7 @@ describe("mock transport", () => {
     const me = await api<unknown>("/api/me");
     expect(me.ok && parseMe(me.data)).toMatchObject({
       role: "editor",
-      areas: { granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] },
+      areas: { granted: ["konten"], visible: ["konten"], writable: ["konten"] },
     });
     await api("/api/auth/sign-out", { method: "POST", json: {} });
     expect(await api("/api/me")).toMatchObject({ ok: false, status: 401 });
@@ -107,6 +107,15 @@ describe("mock transport", () => {
       ok: false,
       status: 403,
     });
+  });
+
+  test("an editor of another area cannot even read the announcements, like the Worker; a viewer can", async () => {
+    setup({ persona: { role: "editor", granted: ["konten"] } });
+    expect(await api("/api/announcements")).toMatchObject({ ok: false, status: 403 });
+    setup({ persona: { role: "editor", granted: ["komunikasi"] } });
+    expect((await api("/api/announcements")).ok).toBe(true);
+    setup({ persona: { role: "viewer", granted: [] } });
+    expect((await api("/api/announcements")).ok).toBe(true);
   });
 
   test("an unknown route is a 404", async () => {

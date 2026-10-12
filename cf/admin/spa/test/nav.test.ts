@@ -68,27 +68,30 @@ describe("visibleNav", () => {
     expect(groups.flatMap((group) => group.items).every((item) => item.access === "read")).toBe(true);
   });
 
-  test("editor sees every group except Sistem, and writes only in granted areas", () => {
+  test("an editor sees the dashboard and the groups of the areas granted to them, nothing else", () => {
     const groups = visibleNav(meFor("editor", ["konten"]));
-    expect(groups.map((group) => group.label)).toEqual([null, "Pendaftaran", "Komunikasi", "Konten Situs"]);
+    expect(groups.map((group) => group.label)).toEqual([null, "Konten Situs"]);
     const access = Object.fromEntries(groups.flatMap((group) => group.items).map((item) => [item.label, item.access]));
     expect(access).toEqual({
       Dashboard: "read",
-      Batch: "read",
-      Pendaftar: "read",
-      "Pusat Dokumen": "read",
-      Pesan: "read",
-      Pengumuman: "read",
       Blog: "write",
       Laporan: "write",
       Tim: "write",
       Shortlink: "write",
     });
+    expect(visibleNav(meFor("editor", ["pendaftaran", "komunikasi"])).map((group) => group.label)).toEqual([null, "Pendaftaran", "Komunikasi"]);
+    expect(labels(visibleNav(meFor("editor", ["komunikasi"])))).toEqual(["Dashboard", "Pesan", "Pengumuman"]);
   });
 
-  test("an editor with no grants is a read-only editor", () => {
-    const items = visibleNav(meFor("editor")).flatMap((group) => group.items);
-    expect(items.every((item) => item.access === "read")).toBe(true);
+  test("an editor with no grants has only the dashboard, and no Sistem group in any case", () => {
+    expect(labels(visibleNav(meFor("editor")))).toEqual(["Dashboard"]);
+    for (const granted of GRANT_SETS) {
+      expect(visibleNav(meFor("editor", granted)).map((group) => group.id)).not.toContain("sistem");
+      // Whatever an editor is shown beyond the dashboard they can also change.
+      for (const item of visibleNav(meFor("editor", granted)).flatMap((group) => group.items)) {
+        if (item.section !== "umum") expect(item.access, `${item.label} [${granted}]`).toBe("write");
+      }
+    }
   });
 
   test("a student, or nobody, sees no menu", () => {
@@ -125,7 +128,8 @@ describe("navItemFor", () => {
 describe("accessToPath", () => {
   test("follows the entry the path belongs to", () => {
     expect(accessToPath(meFor("editor", ["konten"]), "/blog/new")).toBe("write");
-    expect(accessToPath(meFor("editor", ["konten"]), "/messages")).toBe("read");
+    expect(accessToPath(meFor("editor", ["konten"]), "/messages")).toBe("none");
+    expect(accessToPath(meFor("viewer"), "/messages")).toBe("read");
     expect(accessToPath(meFor("viewer"), "/audit")).toBe("none");
     expect(accessToPath(meFor("super_admin"), "/audit")).toBe("write");
   });

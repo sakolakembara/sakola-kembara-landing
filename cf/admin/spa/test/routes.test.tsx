@@ -101,6 +101,38 @@ describe("403 inside the shell", () => {
     expect(screen.queryByText("Belum tersedia di admin baru")).toBeNull();
   });
 
+  test("an editor opening an area that was not granted to them: the 403 page, for the list and every page below it", async () => {
+    // [path, areas granted] of an editor who must be refused there.
+    const refused: [string, ("pendaftaran" | "komunikasi" | "konten")[]][] = [
+      ["/messages", ["konten"]],
+      ["/announcements", ["pendaftaran", "konten"]],
+      ["/applications/abc", ["komunikasi"]],
+      ["/batches/new", ["komunikasi", "konten"]],
+      ["/resources", []],
+      ["/blog", ["pendaftaran"]],
+      ["/blog/abc/edit", ["komunikasi"]],
+      ["/shortlinks", []],
+    ];
+    for (const [path, granted] of refused) {
+      const api = stubApi({ "GET /api/me": respond(meBody("editor", granted)), ...dashboard404 });
+      const view = renderApp(path);
+      expect(await screen.findByRole("heading", { level: 1, name: "Akses ditolak" }), path).toBeTruthy();
+      expect(screen.queryByText("Belum tersedia di admin baru"), path).toBeNull();
+      expect(api.calls.map((call) => call.path), path).toEqual(["/api/me"]);
+      view.unmount();
+    }
+  });
+
+  test("the same editor opens the areas that were granted, and the dashboard", async () => {
+    stubApi({ "GET /api/me": respond(meBody("editor", ["konten"])), ...dashboard404 });
+    const blog = renderApp("/blog");
+    expect(await screen.findByRole("heading", { level: 1, name: "Blog" })).toBeTruthy();
+    blog.unmount();
+    stubApi({ "GET /api/me": respond(meBody("editor", [])), ...dashboard404 });
+    renderApp("/");
+    expect(await screen.findByRole("heading", { level: 1, name: /^Halo, / })).toBeTruthy();
+  });
+
   test("an editor opening Pengaturan, and a page below it", async () => {
     for (const path of ["/settings", "/settings/new", "/settings/abc/edit"]) {
       stubApi({ "GET /api/me": respond(meBody("editor", ["pendaftaran", "komunikasi", "konten"])) });
@@ -154,8 +186,9 @@ describe("placeholder pages", () => {
       view.unmount();
     };
     await check(["editor", ["konten"]], "/blog", "Bisa mengubah", "Hanya baca");
-    await check(["editor", ["konten"]], "/messages", "Hanya baca", "Bisa mengubah");
+    await check(["editor", ["konten", "komunikasi"]], "/messages", "Bisa mengubah", "Hanya baca");
     await check(["viewer"], "/blog", "Hanya baca", "Bisa mengubah");
+    await check(["viewer"], "/messages", "Hanya baca", "Bisa mengubah");
     await check(["super_admin"], "/audit", "Bisa mengubah", "Hanya baca");
   });
 

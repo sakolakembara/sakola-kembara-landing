@@ -4,14 +4,19 @@
 >
 > Hanya analisis dan usulan. Tidak mengubah kode, nada bahasa (`docs/context/tone-of-voice.md`), atau gaya visual (`DESIGN.md`). Dasarnya pembacaan kode `app/(admin)/admin/*`, `lib/` dan `docs/` di branch `development`; **tidak ada yang dijalankan atau diuji**. Tanda **(A)** = asumsi, bukan data pemakaian.
 
+> **Keputusan Dzul, 2026-10-12 (SAKEM-081 dan SAKEM-082), menggantikan bagian usulan di bawah yang bertentangan:**
+>
+> 1. **Peran dan area.** `viewer` hanya baca dan membaca semua area kecuali Sistem. `editor` mengubah **dan melihat hanya** area yang diberikan kepadanya (`pendaftaran`, `komunikasi`, `konten`): menu area lain disembunyikan, rutenya menampilkan halaman 403, dan pembacaan API-nya ditolak (403). `super_admin` semuanya. **Sistem** (Aktivitas dan Pengaturan) hanya `super_admin`. Dashboard terbuka untuk semua peran admin; isinya dibatasi ke area yang boleh dilihat peran itu. Aturan lengkapnya ada di [`d1-schema.md`](d1-schema.md#permission-model).
+> 2. **Dashboard hanya dua blok:** "Perlu perhatian" dan "Tindakan Cepat" (bagian 3.3). Pendaftar terbaru, Pesan terbaru, ringkasan konten, dan Aktivitas terakhir **dibuang** (aktivitas hanya ada di menu Sistem › Aktivitas).
+
 ## Ringkasan usulan
 
 1. Dua belas menu tetap ada. Sidebar berubah dari daftar datar menjadi **Dashboard + 4 grup**: Pendaftaran, Komunikasi, Konten Situs, Sistem.
 2. **Berkas Pendaftaran** diganti nama menjadi **Pusat Dokumen** (nama yang sudah dipakai halaman publik dan wizard) dan pindah ke grup Pendaftaran, karena memang bagian dari alur pendaftaran.
 3. **Batch** dan **Pendaftar** tetap dua menu, tetapi diikat dengan tautan silang yang sudah dijanjikan dokumen tapi belum ada di kode.
-4. **Dashboard** membuka dengan blok "Perlu perhatian" (pendaftar belum diputuskan, pesan belum dibaca, keadaan batch berjalan).
-5. **Pengaturan** hanya tampil untuk `super_admin`; **Aktivitas** tetap untuk semua peran.
-6. Temuan di luar menu: peran `viewer` di kode **tidak read-only** (bagian 1). Ini harus diputuskan sebelum API baru ditulis.
+4. **Dashboard** membuka dengan blok "Perlu perhatian" (pendaftar belum diputuskan, pesan belum dibaca, keadaan batch berjalan), disusul "Tindakan Cepat". Hanya dua blok itu (keputusan 2026-10-12).
+5. **Sistem** (Aktivitas dan Pengaturan) hanya tampil untuk `super_admin` (keputusan 2026-10-12; usulan awal: Aktivitas untuk semua peran).
+6. Temuan di luar menu: peran `viewer` di kode **tidak read-only** (bagian 1). Diputuskan: `viewer` baca saja, ditegakkan di API.
 
 ## 1. Inventaris
 
@@ -70,9 +75,9 @@ KONTEN SITUS
   Tim
   Shortlink
 
-SISTEM
+SISTEM                 (hanya super_admin)
   Aktivitas
-  Pengaturan           (hanya super_admin)
+  Pengaturan
 ```
 
 - **Urutan grup mengikuti urutan kerja:** pendaftaran (paling sensitif waktu), komunikasi (masuk harian), konten, sistem. Dalam grup: menyiapkan dulu baru mengerjakan antrean (Batch, Pendaftar), dokumen pendukung terakhir; sisanya menurut frekuensi dugaan (A).
@@ -84,13 +89,15 @@ SISTEM
 
 ### 3.2 Peran: grup yang tampak dan halaman awal
 
+*Diputuskan 2026-10-12 (menggantikan usulan awal, yang memberi `viewer` dan `editor` grup yang sama):*
+
 | Peran | Grup yang tampak | Halaman awal | Beda isi |
 | --- | --- | --- | --- |
-| `viewer` | Dashboard, Pendaftaran, Komunikasi, Konten Situs, Sistem › Aktivitas | Dashboard | Tanpa tombol buat/ubah/hapus dan tanpa Tindakan Cepat, **jika** model dokumen dipakai (pertanyaan 1) |
-| `editor` | Sama dengan `viewer` | Dashboard | Semua tombol ubah |
-| `super_admin` | Semua, termasuk Sistem › Pengaturan | Dashboard | Sama dengan `editor`, plus kelola admin |
+| `viewer` | Dashboard, Pendaftaran, Komunikasi, Konten Situs (tanpa Sistem) | Dashboard | Hanya baca: tanpa tombol buat/ubah/hapus dan tanpa Tindakan Cepat |
+| `editor` | Dashboard, ditambah **hanya** grup yang areanya diberikan kepadanya (`pendaftaran` = Pendaftaran, `komunikasi` = Komunikasi, `konten` = Konten Situs) | Dashboard | Semua tombol ubah di grup miliknya; grup lain tidak tampak, rutenya 403, API-nya menolak membaca. Editor tanpa area hanya punya Dashboard |
+| `super_admin` | Semua, termasuk Sistem (Aktivitas, Pengaturan) | Dashboard | Sama dengan `editor` di semua area, plus kelola admin dan log aktivitas |
 
-Halaman awal sama untuk ketiganya karena peran dibedakan oleh tingkat izin, bukan oleh pekerjaan: tidak ada peran "khusus pendaftaran" atau "khusus konten". Kalau pembagian itu ternyata ada, grup adalah satuan izin yang wajar (pertanyaan 2), tapi itu perubahan model peran dan di luar tiket ini.
+Halaman awal sama untuk ketiganya (Dashboard) karena Dashboard tidak punya area: isinya yang dibatasi ke area yang boleh dilihat peran itu (bagian 3.3). Area adalah satuan izin editor; peran tidak bertambah (jawaban atas pertanyaan 2: grup menjadi satuan izin lewat `admin_area_grants`, tanpa peran baru).
 
 ### 3.3 Dashboard: menonjolkan yang perlu ditangani
 
@@ -122,7 +129,7 @@ Memakai data yang sudah tampil hari ini; urutan blok dari atas:
 
 Keduanya di **Sistem**, di bawah semua pekerjaan harian, karena menjawab "siapa dan apa yang terjadi" tentang admin itu sendiri.
 
-- **Aktivitas:** hanya baca, tampak untuk semua peran seperti hari ini (pertanyaan 5). Satu nama dipakai di mana-mana, deskripsinya dikoreksi menjadi catatan aksi admin **dan** kejadian sistem (pendaftaran siswa, pesan masuk, verifikasi email, reset kata sandi). Rujukan `audit_log` di teks panel tinjau diganti kata biasa.
+- **Aktivitas:** hanya baca. **Diputuskan 2026-10-12: hanya `super_admin`** (usulan awal: semua peran, pertanyaan 5; log memuat catatan tinjau dan nama serta email pengirim pesan). Satu nama dipakai di mana-mana, deskripsinya dikoreksi menjadi catatan aksi admin **dan** kejadian sistem (pendaftaran siswa, pesan masuk, verifikasi email, reset kata sandi). Rujukan `audit_log` di teks panel tinjau diganti kata biasa. Ringkasan aktivitas tidak tampil di Dashboard.
 - **Pengaturan:** hanya `super_admin`; disembunyikan dari peran lain (hari ini mereka melihat daftar read-only; pertanyaan 4). Nama menu tetap, subjudul tetap "Kelola admin yang dapat mengakses dashboard".
 
 ### 3.6 Alternatif (B): contoh di tiket, apa adanya
@@ -202,11 +209,11 @@ Tidak ada yang hilang. Dua hal berpindah tempat, bukan hilang: data tabel pendaf
 
 Keputusan yang tidak bisa diambil dari kode. Rekomendasi ada di tiap butir.
 
-1. **Peran.** Apakah `viewer` memang harus baca saja, seperti dokumen? Rekomendasi: ya, ditegakkan di API baru. Efeknya ke struktur: tombol ubah dan Tindakan Cepat disembunyikan untuk `viewer`.
-2. **Pembagian pekerjaan.** Apakah ada orang yang hanya mengurus pendaftaran atau hanya konten? Kalau ya, grup bisa jadi satuan izin (butuh peran baru, di luar tiket ini). Rekomendasi: belum.
+1. **Peran.** Apakah `viewer` memang harus baca saja, seperti dokumen? Rekomendasi: ya, ditegakkan di API baru. Efeknya ke struktur: tombol ubah dan Tindakan Cepat disembunyikan untuk `viewer`. *Diputuskan: ya.*
+2. **Pembagian pekerjaan.** Apakah ada orang yang hanya mengurus pendaftaran atau hanya konten? Kalau ya, grup bisa jadi satuan izin (butuh peran baru, di luar tiket ini). Rekomendasi: belum. *Diputuskan (SAKEM-081/082): editor diberi area (`pendaftaran`, `komunikasi`, `konten`) dan hanya melihat serta mengubah area itu; tidak ada peran baru.*
 3. **Nama dan tempat Pusat Dokumen.** Setuju "Berkas Pendaftaran" diganti "Pusat Dokumen" dan pindah ke Pendaftaran? Kalau tidak, pakai alternatif B.
-4. **Pengaturan.** Nama tetap, atau diganti (mis. "Admin")? Dan boleh disembunyikan dari `editor` dan `viewer`, yang hari ini bisa melihat daftar admin beserta waktu login terakhir? Rekomendasi: nama tetap, disembunyikan.
-5. **Aktivitas untuk `viewer` dan `editor`.** Log memuat catatan tinjau dan, pada penghapusan pesan, nama dan email pengirim. Tetap terlihat semua peran seperti sekarang, atau dibatasi?
+4. **Pengaturan.** Nama tetap, atau diganti (mis. "Admin")? Dan boleh disembunyikan dari `editor` dan `viewer`, yang hari ini bisa melihat daftar admin beserta waktu login terakhir? Rekomendasi: nama tetap, disembunyikan. *Diputuskan: disembunyikan dari selain `super_admin`.*
+5. **Aktivitas untuk `viewer` dan `editor`.** Log memuat catatan tinjau dan, pada penghapusan pesan, nama dan email pengirim. Tetap terlihat semua peran seperti sekarang, atau dibatasi? *Diputuskan: dibatasi, hanya `super_admin` (Sistem).*
 6. **Pengumuman.** Di Komunikasi atau Konten Situs? Rekomendasi: Komunikasi. Kalau ternyata hampir selalu dipakai untuk kabar pendaftaran, bisa pindah ke Pendaftaran.
 7. **Detail batch.** Tabel 100 pendaftar diganti 5 terbaru + tautan terfilter? Rekomendasi: ya, agar daftar pendaftar hanya punya satu tempat.
 8. **Pendaftar.** Daftar default ke batch terbaru (bukan "Semua batch"), dan hitungan perhatian = `pending` + `under_review`? Rekomendasi: ya untuk keduanya.

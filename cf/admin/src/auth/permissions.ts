@@ -1,9 +1,9 @@
-// Permission model for the admin API (SAKEM-081). Pure: no I/O, no Hono, no
-// database. The guard in src/auth/guard.ts loads the user's role and area
-// grants from D1 on every request and asks this module.
+// Permission model for the admin API (SAKEM-081, editor rule changed in SAKEM-082).
+// Pure: no I/O, no Hono, no database. The guard in src/auth/guard.ts loads the
+// user's role and area grants from D1 on every request and asks this module.
 //
 // Decided by Dzul (IA admin, docs/cloudflare/admin-ia.md, SAKEM-081 comment of
-// 2026-10-12):
+// 2026-10-12; the editor row follows the SAKEM-082 decision of the same day):
 //
 //   role          pendaftaran    komunikasi     konten         sistem
 //   student       -              -              -              -
@@ -11,13 +11,14 @@
 //   editor        read, write*   read, write*   read, write*   -
 //   super_admin   read, write    read, write    read, write    read, write
 //
-//   * only in the areas granted to that editor (admin_area_grants).
+//   * only in the areas granted to that editor (admin_area_grants), and
+//     nothing at all (not even a read) in the other areas.
 //
 // - `viewer` is strictly read-only, whatever rows exist in admin_area_grants.
-// - `editor` reads every area except `sistem` and writes only where granted.
-//   (Whether an editor should also *see* the menus of areas they cannot write
-//   is a UI decision, SAKEM-082; the API lets them read, so the SPA may hide
-//   or show them read-only.)
+// - `editor` reads and writes inside the areas granted to them and has no
+//   access outside them: those menus are hidden in the SPA and their API reads
+//   are refused with 403. An editor with no grants can open the dashboard and
+//   nothing else (the dashboard has no area: every admin role may open it).
 // - `sistem` (Pengaturan: admin users and area grants, Aktivitas: audit log)
 //   is `super_admin` only, and cannot be granted.
 // - `student` uses the portal only and never reaches this API's admin areas.
@@ -63,7 +64,7 @@ export function levelIn(role: unknown, grantedAreas: readonly unknown[], area: u
       return area === "sistem" ? "none" : "read";
     case "editor":
       if (area === "sistem") return "none";
-      return grantedAreas.includes(area) ? "write" : "read";
+      return grantedAreas.includes(area) ? "write" : "none";
     case "student":
       return "none";
   }

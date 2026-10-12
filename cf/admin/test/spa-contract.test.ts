@@ -231,30 +231,38 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
     expect(visibleQuickActions(me)).toEqual([]);
   });
 
-  test("an editor granted Konten: writes there only, reads the rest, no Sistem", async () => {
+  test("an editor granted Konten: sees and changes Konten only, nothing else and no Sistem", async () => {
     const me = await sidebarFor("editor", ["konten"]);
-    expect(me.areas).toEqual({ granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] });
+    expect(me.areas).toEqual({ granted: ["konten"], visible: ["konten"], writable: ["konten"] });
     expect(accessTo(me, "konten")).toBe("write");
-    expect(accessTo(me, "komunikasi")).toBe("read");
+    expect(accessTo(me, "komunikasi")).toBe("none");
+    expect(accessTo(me, "pendaftaran")).toBe("none");
     expect(accessTo(me, "sistem")).toBe("none");
-    expect(labelsOf(me)).not.toContain("Aktivitas");
+    expect(labelsOf(me)).toEqual(["Dashboard", "Blog", "Laporan", "Tim", "Shortlink"]);
     expect(visibleQuickActions(me).map((action) => action.href)).toEqual(["/blog/new", "/reports/new", "/team/new"]);
   });
 
-  test("an editor with no grants reads everything and writes nothing", async () => {
+  test("an editor granted Pendaftaran and Komunikasi: those groups only", async () => {
+    const me = await sidebarFor("editor", ["pendaftaran", "komunikasi"]);
+    expect(labelsOf(me)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman"]);
+    expect(accessTo(me, "konten")).toBe("none");
+  });
+
+  test("an editor with no grants has the dashboard and nothing else", async () => {
     const me = await sidebarFor("editor");
-    expect(me.areas.writable).toEqual([]);
+    expect(me.areas).toEqual({ granted: [], visible: [], writable: [] });
+    expect(labelsOf(me)).toEqual(["Dashboard"]);
     expect(visibleQuickActions(me)).toEqual([]);
   });
 
-  test("a revoked grant is gone on the next request", async () => {
+  test("a revoked grant is gone on the next request, and the area with it", async () => {
     const email = uniqueEmail();
     const id = await createVerifiedUser(email, "editor", ["komunikasi"]);
     const cookie = cookiesOf(await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: PASSWORD } }));
     expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("write");
 
     await revokeArea(id, "komunikasi");
-    expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("read");
+    expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("none");
   });
 
   test("super_admin: everything, Sistem included", async () => {

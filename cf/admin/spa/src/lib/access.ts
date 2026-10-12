@@ -5,9 +5,9 @@ import { type AdminArea, isAdminRole, type Me } from "./me";
 // the server would refuse, so nobody is offered a button that cannot work.
 //
 // The rules themselves are not written here. The Worker works them out
-// (src/auth/permissions.ts: super_admin writes everywhere, an editor writes in
-// the areas granted to them and reads the rest except Sistem, a viewer reads
-// everything except Sistem, a student nothing) and says the result in
+// (src/auth/permissions.ts: super_admin writes everywhere, an editor reads and
+// writes in the areas granted to them and has nothing in the others, a viewer
+// reads everything except Sistem, a student nothing) and says the result in
 // `GET /api/me` as `areas.visible` and `areas.writable`; this function reads
 // those lists. spa/test/access.test.ts checks it against the Worker's own
 // functions for every role and every set of grants.

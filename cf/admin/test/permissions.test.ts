@@ -33,15 +33,18 @@ const matrix: Row[] = [
   // viewer: strictly read-only everywhere except Sistem, even with stray grant rows.
   ["viewer", [], "r", "r", "r", "-"],
   ["viewer", all, "r", "r", "r", "-"],
-  // editor: reads every area but Sistem, changes only the granted ones.
-  ["editor", [], "r", "r", "r", "-"],
-  ["editor", ["pendaftaran"], "rw", "r", "r", "-"],
-  ["editor", ["komunikasi"], "r", "rw", "r", "-"],
-  ["editor", ["konten"], "r", "r", "rw", "-"],
-  ["editor", ["pendaftaran", "konten"], "rw", "r", "rw", "-"],
+  // editor: reads and changes the granted areas and has nothing in the others
+  // (SAKEM-082: the menus of other areas are hidden and their reads refused).
+  ["editor", [], "-", "-", "-", "-"],
+  ["editor", ["pendaftaran"], "rw", "-", "-", "-"],
+  ["editor", ["komunikasi"], "-", "rw", "-", "-"],
+  ["editor", ["konten"], "-", "-", "rw", "-"],
+  ["editor", ["pendaftaran", "konten"], "rw", "-", "rw", "-"],
+  ["editor", ["pendaftaran", "komunikasi"], "rw", "rw", "-", "-"],
+  ["editor", ["komunikasi", "konten"], "-", "rw", "rw", "-"],
   ["editor", all, "rw", "rw", "rw", "-"],
   // Sistem cannot be granted: a "sistem" row, if one ever existed, is ignored.
-  ["editor", ["sistem"], "r", "r", "r", "-"],
+  ["editor", ["sistem"], "-", "-", "-", "-"],
   ["editor", [...all, "sistem"], "rw", "rw", "rw", "-"],
   // super_admin: everything, with or without grants.
   ["super_admin", [], "rw", "rw", "rw", "rw"],
@@ -89,14 +92,29 @@ describe("permission properties, for every combination of grants", () => {
     for (const grants of subsets) for (const area of adminAreas) for (const action of areaActions) expect(can("student", grants, area, action)).toBe(false);
   });
 
-  test("an editor writes exactly where granted, reads every area but Sistem", () => {
+  test("an editor reads and writes exactly where granted, and has nothing anywhere else", () => {
     for (const grants of subsets) {
       for (const area of grantableAreas) {
         expect(can("editor", grants, area, "write"), `editor [${grants}] write ${area}`).toBe(grants.includes(area));
-        expect(can("editor", grants, area, "read")).toBe(true);
+        expect(can("editor", grants, area, "read"), `editor [${grants}] read ${area}`).toBe(grants.includes(area));
       }
       expect(can("editor", grants, "sistem", "read")).toBe(false);
       expect(can("editor", grants, "sistem", "write")).toBe(false);
+    }
+  });
+
+  test("an editor is never read-only: the level in an area is write (granted) or none", () => {
+    for (const grants of subsets) {
+      for (const area of adminAreas) expect(levelIn("editor", grants, area), `editor [${grants}] ${area}`).not.toBe("read");
+    }
+  });
+
+  test("no area is granted by being granted another one", () => {
+    for (const grants of subsets) {
+      for (const area of grantableAreas) {
+        if (grants.includes(area)) continue;
+        expect(levelIn("editor", grants, area), `editor [${grants}] ${area}`).toBe("none");
+      }
     }
   });
 
@@ -146,7 +164,10 @@ describe("unknown input gets nothing", () => {
   });
 
   test("garbage in the grant list grants nothing", () => {
-    expect(can("editor", ["KONTEN", "", null, 1, {}, "konten "], "konten", "write")).toBe(false);
+    const garbage = ["KONTEN", "", null, 1, {}, "konten "];
+    expect(can("editor", garbage, "konten", "write")).toBe(false);
+    expect(can("editor", garbage, "konten", "read")).toBe(false); // an editor with no real grant sees nothing
+    expect(visibleAreas("editor", garbage)).toEqual([]);
   });
 });
 
@@ -155,11 +176,23 @@ describe("visibleAreas and writableAreas", () => {
     expect(visibleAreas("student", [])).toEqual([]);
     expect(visibleAreas("viewer", [])).toEqual(["pendaftaran", "komunikasi", "konten"]);
     expect(writableAreas("viewer", all)).toEqual([]);
-    expect(visibleAreas("editor", ["konten"])).toEqual(["pendaftaran", "komunikasi", "konten"]);
+    expect(visibleAreas("editor", [])).toEqual([]);
+    expect(writableAreas("editor", [])).toEqual([]);
+    expect(visibleAreas("editor", ["konten"])).toEqual(["konten"]);
     expect(writableAreas("editor", ["konten"])).toEqual(["konten"]);
-    expect(writableAreas("editor", ["konten", "pendaftaran"])).toEqual(["pendaftaran", "konten"]); // sidebar order
+    expect(visibleAreas("editor", ["konten", "pendaftaran"])).toEqual(["pendaftaran", "konten"]); // sidebar order
+    expect(writableAreas("editor", ["konten", "pendaftaran"])).toEqual(["pendaftaran", "konten"]);
     expect(visibleAreas("super_admin", [])).toEqual(["pendaftaran", "komunikasi", "konten", "sistem"]);
     expect(writableAreas("super_admin", [])).toEqual(["pendaftaran", "komunikasi", "konten", "sistem"]);
+  });
+
+  test("for an editor, what they see is exactly what they were granted (and the same as what they can change)", () => {
+    for (const grants of subsets) {
+      expect(visibleAreas("editor", grants), `editor [${grants}]`).toEqual(grants);
+      expect(writableAreas("editor", grants), `editor [${grants}]`).toEqual(grants);
+    }
+    // A stray "sistem" row changes nothing.
+    expect(visibleAreas("editor", ["sistem", "konten"])).toEqual(["konten"]);
   });
 
   test("writable is always inside visible", () => {
@@ -211,11 +244,24 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
   test("the menu each role gets: Sistem (Aktivitas and Pengaturan) only for super_admin", () => {
     const keys = (role: string, grants: string[] = []) => visibleMenu(role, grants).map((item) => item.key);
     expect(keys("student")).toEqual([]);
-    for (const role of ["viewer", "editor"]) {
-      expect(keys(role)).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "reports", "team", "shortlinks"]);
-      expect(keys(role)).not.toContain("audit");
-      expect(keys(role)).not.toContain("settings");
-    }
+    expect(keys("viewer")).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "reports", "team", "shortlinks"]);
+    expect(keys("viewer", all)).toEqual(keys("viewer"));
     expect(keys("super_admin")).toHaveLength(menuItems.length);
+    for (const grants of subsets) {
+      expect(keys("editor", grants)).not.toContain("audit");
+      expect(keys("editor", grants)).not.toContain("settings");
+    }
+  });
+
+  test("an editor gets the menus of the areas granted to them and no others", () => {
+    const keys = (grants: string[]) => visibleMenu("editor", grants).map((item) => item.key);
+    expect(keys([])).toEqual([]);
+    expect(keys(["pendaftaran"])).toEqual(["batches", "applications", "resources"]);
+    expect(keys(["komunikasi"])).toEqual(["messages", "announcements"]);
+    expect(keys(["konten"])).toEqual(["blog", "reports", "team", "shortlinks"]);
+    expect(keys(["konten", "pendaftaran"])).toEqual(["batches", "applications", "resources", "blog", "reports", "team", "shortlinks"]);
+    expect(keys(all)).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "reports", "team", "shortlinks"]);
+    // Every item of the menu an editor gets belongs to an area they hold.
+    for (const grants of subsets) for (const item of visibleMenu("editor", grants)) expect(grants).toContain(item.area);
   });
 });
