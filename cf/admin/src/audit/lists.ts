@@ -24,6 +24,9 @@ export const DECLARED_ACTIONS = [
   "contact_message.submit",
   "contact_message.read",
   "contact_message.unread",
+  // The blog's states (new in D1: the legacy blog had no draft).
+  "blog.publish",
+  "blog.unpublish",
   // Pengaturan.
   "admin.create",
   "admin.update",
