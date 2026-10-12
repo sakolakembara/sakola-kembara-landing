@@ -30,7 +30,7 @@ export function DashboardPage() {
 
       {state.status === "loading" && <LoadingBlocks tiles={expectedTiles} />}
 
-      {state.status === "ready" && <Attention attention={state.data.attention} />}
+      {state.status === "ready" && <Attention attention={state.data.attention} noArea={me.role === "editor" && me.areas.visible.length === 0} />}
 
       {(state.status === "unavailable" || state.status === "error") && (
         <section aria-label="Perlu perhatian" className="mb-8 space-y-3">
