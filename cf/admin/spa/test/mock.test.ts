@@ -10,19 +10,19 @@ import { createMockTransport, type MockConfig } from "~/mock/transport";
 
 describe("parsePersona", () => {
   test("roles", () => {
-    expect(parsePersona("viewer")).toEqual({ role: "viewer", areas: [] });
-    expect(parsePersona("super_admin")).toEqual({ role: "super_admin", areas: [] });
-    expect(parsePersona("student")).toEqual({ role: "student", areas: [] });
+    expect(parsePersona("viewer")).toEqual({ role: "viewer", granted: [] });
+    expect(parsePersona("super_admin")).toEqual({ role: "super_admin", granted: [] });
+    expect(parsePersona("student")).toEqual({ role: "student", granted: [] });
   });
   test("an editor alone has every area, or the ones listed", () => {
-    expect(parsePersona("editor")).toEqual({ role: "editor", areas: ["pendaftaran", "komunikasi", "konten"] });
-    expect(parsePersona("editor:konten,komunikasi")).toEqual({ role: "editor", areas: ["konten", "komunikasi"] });
-    expect(parsePersona("editor:-")).toEqual({ role: "editor", areas: [] });
-    expect(parsePersona("editor:konten,bogus")).toEqual({ role: "editor", areas: ["konten"] });
+    expect(parsePersona("editor")).toEqual({ role: "editor", granted: ["pendaftaran", "komunikasi", "konten"] });
+    expect(parsePersona("editor:konten,komunikasi")).toEqual({ role: "editor", granted: ["konten", "komunikasi"] });
+    expect(parsePersona("editor:-")).toEqual({ role: "editor", granted: [] });
+    expect(parsePersona("editor:konten,bogus")).toEqual({ role: "editor", granted: ["konten"] });
   });
   test("anything else is super_admin", () => {
-    expect(parsePersona(null)).toEqual({ role: "super_admin", areas: [] });
-    expect(parsePersona("nobody")).toEqual({ role: "super_admin", areas: [] });
+    expect(parsePersona(null)).toEqual({ role: "super_admin", granted: [] });
+    expect(parsePersona("nobody")).toEqual({ role: "super_admin", granted: [] });
   });
 });
 
@@ -30,7 +30,7 @@ function setup(overrides: Partial<MockConfig> = {}) {
   let signedIn = false;
   setTransport(
     createMockTransport({
-      persona: { role: "editor", areas: ["konten"] },
+      persona: { role: "editor", granted: ["konten"] },
       dashboard: "ready",
       delayMs: 0,
       session: { get: () => signedIn, set: (value) => (signedIn = value) },
@@ -45,7 +45,10 @@ describe("mock transport", () => {
     expect(await api("/api/me")).toMatchObject({ ok: false, status: 401 });
     expect((await api("/api/auth/sign-in/email", { method: "POST", json: { email: "ani@contoh.test", password: "x" } })).ok).toBe(true);
     const me = await api<unknown>("/api/me");
-    expect(me.ok && parseMe(me.data)).toMatchObject({ role: "editor", areas: ["konten"] });
+    expect(me.ok && parseMe(me.data)).toMatchObject({
+      role: "editor",
+      areas: { granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] },
+    });
     await api("/api/auth/sign-out", { method: "POST", json: {} });
     expect(await api("/api/me")).toMatchObject({ ok: false, status: 401 });
   });
@@ -82,7 +85,7 @@ describe("mock transport", () => {
   });
 
   test("a viewer cannot create an announcement, like the Worker", async () => {
-    setup({ persona: { role: "viewer", areas: [] } });
+    setup({ persona: { role: "viewer", granted: [] } });
     expect(await api("/api/announcements", { method: "POST", json: { title: "Halo dunia", body: "Isi pengumuman" } })).toMatchObject({
       ok: false,
       status: 403,

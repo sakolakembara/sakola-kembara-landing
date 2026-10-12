@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import { App } from "~/App";
 import { setTransport } from "~/lib/api";
 import type { Area, Role } from "~/lib/me";
+import { areasFor } from "./me-fixtures";
 
 export function respond(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(status === 204 ? null : JSON.stringify(body), {
@@ -12,9 +13,11 @@ export function respond(body: unknown, status = 200, headers: Record<string, str
   });
 }
 
-export function meBody(role: Role, areas: Area[] = [], extra: Record<string, unknown> = {}) {
+/** The body of GET /api/me for `role` (and, for an editor, `granted`), as the Worker builds it. */
+export function meBody(role: Role, granted: Area[] = [], extra: Record<string, unknown> = {}) {
   return {
-    user: { id: "user-1", email: "tester@contoh.test", name: "Tester", role, emailVerified: true, areas, ...extra },
+    user: { id: "user-1", email: "tester@contoh.test", name: "Tester", role, emailVerified: true, ...extra },
+    areas: areasFor(role, granted),
   };
 }
 

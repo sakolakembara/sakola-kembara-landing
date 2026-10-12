@@ -1,15 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { decideGuard, loginPath, type SessionState, safeFrom } from "~/lib/guard";
-import type { Me } from "~/lib/me";
-
-const me = (role: Me["role"], areas: Me["areas"] = []): Me => ({
-  id: "u1",
-  email: "a@contoh.test",
-  name: "Ani",
-  role,
-  emailVerified: true,
-  areas,
-});
+import { meFor as me } from "./me-fixtures";
 const at = { pathname: "/applications", search: "?status=pending" };
 
 describe("decideGuard", () => {

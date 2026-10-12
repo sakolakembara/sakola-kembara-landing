@@ -1,6 +1,8 @@
 import type { Announcement } from "~/lib/api";
 import type { Dashboard } from "~/lib/dashboard";
-import type { Me } from "~/lib/me";
+// The Worker's own rules, so the mock shows the same menus the real API would
+// (this file is only ever bundled in mock mode).
+import { visibleAreas, writableAreas } from "../../../src/auth/permissions";
 import type { Persona } from "./persona";
 
 // MOCK, local development only. Invented values with reserved example
@@ -9,14 +11,21 @@ import type { Persona } from "./persona";
 const DAY = 24 * 60 * 60 * 1000;
 const iso = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
 
-export function mockMe(persona: Persona): Me {
+/** The body of `GET /api/me` for this persona, in the Worker's shape. */
+export function mockMeBody(persona: Persona) {
   return {
-    id: "mock-user",
-    email: `${persona.role.replace("_", "-")}@contoh.test`,
-    name: "Pengguna Contoh",
-    role: persona.role,
-    emailVerified: true,
-    areas: persona.areas,
+    user: {
+      id: "mock-user",
+      email: `${persona.role.replace("_", "-")}@contoh.test`,
+      name: "Pengguna Contoh",
+      role: persona.role,
+      emailVerified: true,
+    },
+    areas: {
+      granted: persona.granted,
+      visible: visibleAreas(persona.role, persona.granted),
+      writable: writableAreas(persona.role, persona.granted),
+    },
   };
 }
 

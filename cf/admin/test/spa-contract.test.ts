@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { accessTo } from "../spa/src/lib/access";
 import { resetFailure, resetRequestFailureMessage, signInFailureMessage, verifyOutcome } from "../spa/src/lib/auth-errors";
+import { decideGuard } from "../spa/src/lib/guard";
 import { parseMe } from "../spa/src/lib/me";
+import { visibleNav, visibleQuickActions } from "../spa/src/lib/nav";
 import {
   call,
   captureEmails,
@@ -8,6 +11,7 @@ import {
   createVerifiedUser,
   linkIn,
   PASSWORD,
+  revokeArea,
   signedInCookie,
   signUp,
   uniqueEmail,
@@ -41,7 +45,7 @@ async function failureOf(res: Response) {
 describe("sign-in as the SPA sends it", () => {
   test("a verified account gets a session, and /api/me reads as a Me", async () => {
     const email = uniqueEmail();
-    await createVerifiedUser(email, "editor");
+    await createVerifiedUser(email, "editor", ["konten"]);
     const res = await call("/api/auth/sign-in/email", {
       method: "POST",
       json: { email, password: PASSWORD, callbackURL: VERIFY_CALLBACK },
@@ -203,6 +207,65 @@ describe("password reset as the SPA drives it", () => {
     const failure = await failureOf(last!);
     expect(failure.retryAfter).toBe(60);
     expect(resetRequestFailureMessage(failure)).toBe("Terlalu banyak permintaan. Silakan tunggu 1 menit lalu coba lagi.");
+  });
+});
+
+describe("/api/me as the SPA reads it: the menu and the write controls follow the real answer", () => {
+  async function sidebarFor(role: "student" | "viewer" | "editor" | "super_admin", granted: ("pendaftaran" | "komunikasi" | "konten")[] = []) {
+    const cookie = await signedInCookie(uniqueEmail(), role, granted);
+    const res = await call("/api/me", { cookie });
+    expect(res.status).toBe(200);
+    const me = parseMe(await res.json());
+    expect(me).not.toBeNull();
+    return me!;
+  }
+  const labelsOf = (me: Parameters<typeof visibleNav>[0]) => visibleNav(me).flatMap((group) => group.items.map((item) => item.label));
+
+  test("a viewer: every group but Sistem, nothing writable", async () => {
+    const me = await sidebarFor("viewer");
+    expect(labelsOf(me)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman", "Blog", "Laporan", "Tim", "Shortlink"]);
+    expect(me.areas.writable).toEqual([]);
+    expect(visibleQuickActions(me)).toEqual([]);
+  });
+
+  test("an editor granted Konten: writes there only, reads the rest, no Sistem", async () => {
+    const me = await sidebarFor("editor", ["konten"]);
+    expect(me.areas).toEqual({ granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] });
+    expect(accessTo(me, "konten")).toBe("write");
+    expect(accessTo(me, "komunikasi")).toBe("read");
+    expect(accessTo(me, "sistem")).toBe("none");
+    expect(labelsOf(me)).not.toContain("Aktivitas");
+    expect(visibleQuickActions(me).map((action) => action.href)).toEqual(["/blog/new", "/reports/new", "/team/new"]);
+  });
+
+  test("an editor with no grants reads everything and writes nothing", async () => {
+    const me = await sidebarFor("editor");
+    expect(me.areas.writable).toEqual([]);
+    expect(visibleQuickActions(me)).toEqual([]);
+  });
+
+  test("a revoked grant is gone on the next request", async () => {
+    const email = uniqueEmail();
+    const id = await createVerifiedUser(email, "editor", ["komunikasi"]);
+    const cookie = cookiesOf(await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: PASSWORD } }));
+    expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("write");
+
+    await revokeArea(id, "komunikasi");
+    expect(accessTo(parseMe(await (await call("/api/me", { cookie })).json())!, "komunikasi")).toBe("read");
+  });
+
+  test("super_admin: everything, Sistem included", async () => {
+    const me = await sidebarFor("super_admin");
+    expect(labelsOf(me)).toHaveLength(12);
+    expect(labelsOf(me)).toContain("Pengaturan");
+    expect(visibleQuickActions(me)).toHaveLength(4);
+  });
+
+  test("a student has an account but no admin access: the SPA shows its refusal screen", async () => {
+    const me = await sidebarFor("student");
+    expect(me.role).toBe("student");
+    expect(visibleNav(me)).toEqual([]);
+    expect(decideGuard({ status: "ready", me }, { pathname: "/" }).kind).toBe("no-admin-access");
   });
 });
 

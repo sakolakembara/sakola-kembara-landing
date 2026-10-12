@@ -1,6 +1,7 @@
 import type { Transport } from "~/lib/api";
 import { accessTo } from "~/lib/access";
-import { mockAnnouncements, mockDashboard, mockMe } from "./fixtures";
+import { parseMe } from "~/lib/me";
+import { mockAnnouncements, mockDashboard, mockMeBody } from "./fixtures";
 import type { Persona } from "./persona";
 
 // MOCK, local development only. Answers the calls the SPA makes, in the shape
@@ -58,7 +59,7 @@ export function createMockTransport(config: MockConfig): Transport {
         return json({ google: false });
 
       case "GET /api/me":
-        return config.session.get() ? json({ user: mockMe(config.persona) }) : json({ error: "unauthenticated" }, 401);
+        return config.session.get() ? json(mockMeBody(config.persona)) : json({ error: "unauthenticated" }, 401);
 
       case "POST /api/auth/sign-in/email":
         if (localPart === "offline") throw new TypeError("mock: network down");
@@ -66,7 +67,7 @@ export function createMockTransport(config: MockConfig): Transport {
         if (localPart === "salah") return json({ code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" }, 401);
         if (localPart === "belum-verifikasi") return json({ code: "EMAIL_NOT_VERIFIED", message: "Email not verified" }, 403);
         config.session.set(true);
-        return json({ redirect: true, token: "mock", user: mockMe(config.persona) });
+        return json({ redirect: true, token: "mock", user: mockMeBody(config.persona).user });
 
       case "POST /api/auth/sign-out":
         config.session.set(false);
@@ -90,7 +91,7 @@ export function createMockTransport(config: MockConfig): Transport {
         return json({ announcements });
 
       case "POST /api/announcements": {
-        if (accessTo(config.persona, "komunikasi") !== "write") return json({ error: "forbidden" }, 403);
+        if (accessTo(parseMe(mockMeBody(config.persona)), "komunikasi") !== "write") return json({ error: "forbidden" }, 403);
         const title = String(body.title ?? "").trim();
         if (title.length < 3) return json({ error: "invalid", fieldErrors: { title: ["Judul minimal 3 karakter"] } }, 400);
         const created = {
