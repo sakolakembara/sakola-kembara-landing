@@ -51,7 +51,7 @@ Focused explainers for the load-bearing subsystems. Read the matching file befor
 Decisions and the first local slice of the new public site (`cf/web/`, Astro on Workers in front of this app). Nothing here is deployed yet.
 
 - [`cloudflare/README.md`](cloudflare/README.md) — Why ($0, Workers Free limits, SEO parity), the target (Astro public site; Hono + React SPA + D1 for admin later), the phases, and the pass-through idea.
-- [`cloudflare/web-skeleton.md`](cloudflare/web-skeleton.md) — How to run `cf/web`, what was built, the legacy path list and conflicts, measurements, the SEO parity checklist, known gaps, what needs a real zone, and the port checklist for the remaining public pages.
+- [`cloudflare/web-skeleton.md`](cloudflare/web-skeleton.md) — How to run `cf/web`, what was built, the asset pipeline (images, PDFs, headers, budgets, how to add an image), the legacy path list and conflicts, measurements, the SEO parity checklist, known gaps, what needs a real zone, and the port checklist for the remaining public pages.
 
 ## How to use this folder
 
