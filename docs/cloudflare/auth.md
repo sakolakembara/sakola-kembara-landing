@@ -257,15 +257,15 @@ Machine: Apple M4, Node 22, 2026-10-12. Every timing here is **wall time on a la
 
 | Measurement | Result |
 | --- | --- |
-| `pnpm test` in `cf/admin` (workerd, real local D1 and rate limit bindings) | 515 passed in 18 files (269 after part A, 70 at SAKEM-078). The SPA's own suite, `pnpm test:spa`: 402 passed, unchanged. |
-| `pnpm test:negative` | 66 of 66 safeguards make the tests fail (25 from before, 41 new: verification, the Origin guard in three ways, the route table, JSON only and the body cap, Turnstile in four ways, fail-closed email, `X-Forwarded-For` as the address, the per-mailbox cap, no-enumeration, the honeypot, session revocation, the `__Host-` cookie, the last super_admin trigger and its 409, self-deactivation, invite lifetime and revocation, cron retention). |
+| `pnpm test` in `cf/admin` (workerd, real local D1 and rate limit bindings) | 712 passed in 26 files, public API and contact tests included (269 after part A, 70 at SAKEM-078). The SPA's own suite, `pnpm test:spa`: 402 passed, unchanged. |
+| `pnpm test:negative` | 99 of 99 safeguards make the tests fail (25 from part A, 28 from the public API, 41 for auth, 5 for the contact seam; the auth ones: verification, the Origin guard in three ways, the route table, JSON only and the body cap, Turnstile in four ways, fail-closed email, `X-Forwarded-For` as the address, the per-mailbox cap, no-enumeration, the honeypot, session revocation, the `__Host-` cookie, the last super_admin trigger and its 409, self-deactivation, invite lifetime and revocation, cron retention). |
 | `pnpm db:drift` | exit 0, schema and the seven migrations agree. `wrangler d1 migrations apply --local` on a clean state applies all seven, trigger included. |
 | Root `pnpm exec tsc --noEmit`, `pnpm test` | exit 0, 229 passed (unchanged). |
 | PBKDF2-SHA256 100k, Node (`pnpm measure`) | verify median 8.10 ms, p95 8.34 (n=51); wrong password 8.04; hash 8.13 (n=31) |
 | `createAuth()` per request, warm | median 0.19 ms, p95 0.66 (0.10 at SAKEM-078: the new hooks and settings cost 0.1 ms) |
 | `emailKey()` (the gate's SHA-256) | median 0.02 ms |
 | Local `wrangler dev`, HTTP wall time, medians (includes the dev proxy) | `/api/config` 1.2 ms (n=40) · `/api/me` 3.1 ms (n=40) · sign-in right password 13.1 ms (n=12) · sign-in wrong password 11.9 ms (n=12) · `register` 12.1 ms (n=8) · `request-password-reset`, known address 5.7 ms (n=4) |
-| Worker bundle (`wrangler deploy --dry-run`, config valid with eight rate limit bindings, the cron trigger and the vars) | 2869.99 KiB, gzip 491.20 KiB (475 KiB at SAKEM-078; the new code is about 16 KiB gzip) |
+| Worker bundle (`wrangler deploy --dry-run`, config valid with eight rate limit bindings, the cron trigger and the vars) | 2893.81 KiB, gzip 497.16 KiB, with the public API (475 KiB gzip at SAKEM-078; the auth code is about 16 KiB of that) |
 
 Reading the numbers: a sign-in is the session baseline (`/api/me` 3.1 ms) plus about 10 ms, of which the hash is 8.1 ms. At SAKEM-078 the same measure was 10.9 ms for sign-in on a 3.6 ms baseline (7 ms above), so the gate, the body read, the SHA-256, the extra `session.create` query and the audit-aware hooks add roughly 2 to 3 ms of wall time, mostly I/O that is not CPU. Registration costs one hash too, and reset costs one (at redemption, not at request). **Sign-in remains the route to watch against the 10 ms CPU limit**; SAKEM-084 on a real Free account decides. If it does not fit: fewer iterations (weaker), or the hash in a second Worker behind a service binding, or the paid plan.
 
