@@ -13,6 +13,7 @@ import {
   getBlogArticlesSorted,
   cleanExcerpt,
 } from "@/lib/blog";
+import { pickRelatedArticles } from "@/lib/blog-types";
 import { articleJsonLd, buildPageMetadata, jsonLdScript, pageTitle } from "@/lib/seo";
 
 interface BlogDetailPageProps {
@@ -48,21 +49,10 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
 
   if (!article) notFound();
 
-  const sorted = await getBlogArticlesSorted();
-  const related = sorted
-    .filter((a) => a.id !== article.id)
-    .filter(
-      (a) =>
-        a.category === article.category ||
-        Math.abs(
-          new Date(a.dateISO).getTime() - new Date(article.dateISO).getTime()
-        ) <
-          1000 * 60 * 60 * 24 * 180
-    )
-    .slice(0, 3);
-
-  const fallbackRelated = sorted.filter((a) => a.id !== article.id).slice(0, 3);
-  const relatedArticles = related.length > 0 ? related : fallbackRelated;
+  const relatedArticles = pickRelatedArticles(
+    article,
+    await getBlogArticlesSorted(),
+  );
 
   return (
     <>
