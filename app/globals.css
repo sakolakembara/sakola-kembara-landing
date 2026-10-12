@@ -7,6 +7,8 @@
 @source not "../CLAUDE.md";
 @source not "../docs";
 @source not "../.storybook/*.mdx";
+/* cf/ holds independent apps (Astro Worker, ...) that are not part of this build. */
+@source not "../cf";
 
 :root {
   /* Primary Colors */

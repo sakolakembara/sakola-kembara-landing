@@ -47,6 +47,12 @@ Focused explainers for the load-bearing subsystems. Read the matching file befor
 - [`architecture/lms-integration.md`](architecture/lms-integration.md) — The SSO contract between landing and the (upcoming) LMS at `lms.sakolakembara.org`. JWT + shared cookie handshake, Django auth backend + Nuxt integration guide, event-registration flow, four locked design decisions (LMS role independence, revocation policy, alumni access, email verification), and a three-milestone landing-side checklist. Hand this to the LMS team when they start.
 - [`architecture/shortlinks.md`](architecture/shortlinks.md) — Admin-managed vanity redirects at `sakolakembara.org/<slug>`. Covers the root-level dynamic-route precedence that makes the feature safe, the reserved-slug list you must extend when adding a top-level route, and the redirect/validation rules.
 
+### 6. `cloudflare/` — The move to Cloudflare Workers (in progress)
+Decisions and the first local slice of the new public site (`cf/web/`, Astro on Workers in front of this app). Nothing here is deployed yet.
+
+- [`cloudflare/README.md`](cloudflare/README.md) — Why ($0, Workers Free limits, SEO parity), the target (Astro public site; Hono + React SPA + D1 for admin later), the phases, and the pass-through idea.
+- [`cloudflare/web-skeleton.md`](cloudflare/web-skeleton.md) — How to run `cf/web`, what was built, the legacy path list and conflicts, measurements, the SEO parity checklist, known gaps, what needs a real zone, and the port checklist for the remaining public pages.
+
 ## How to use this folder
 
 - **Before writing code that affects public pages**, scan `context/` and [`DESIGN.md`](../DESIGN.md). If your change would shift tone, or visuals beyond what `DESIGN.md` describes, it needs a ticket and product sign-off first.

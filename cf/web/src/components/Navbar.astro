@@ -1,0 +1,217 @@
+---
+import logoUrl from '@root/public/images/logo-sakola-kembara.png?url';
+import { navLinks } from '~/lib/site';
+import { buttonClasses } from '~/lib/ui';
+import Container from './Container.astro';
+import Icon from './Icon.astro';
+
+/**
+ * Fixed site header: logo, menu, auth button. Server-rendered HTML; one small
+ * script (below) handles what cannot be static: the mobile menu toggle, the
+ * auth-aware button ("Masuk" / "Portal" / "Dashboard") and the announcement
+ * strip, which are read from the legacy /api/* the same way the Next navbar does.
+ */
+---
+
+<nav
+  id="site-nav"
+  class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100"
+>
+  {/* The announcement strip is inserted here by the script, when there is one. */}
+  <div id="announcement-slot"></div>
+  <Container class="py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]">
+    <a href="/" aria-label="Sakola Kembara" class="flex items-center justify-self-start">
+      <img src={logoUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" />
+    </a>
+
+    <ul class="hidden md:flex items-center gap-6 lg:gap-7">
+      {
+        navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class="text-gray-600 text-[15px] font-medium hover:text-primary-blue transition-colors"
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="hidden md:flex items-center justify-self-end">
+      <a href="/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'sm' })}>Masuk</a>
+    </div>
+
+    <button
+      id="nav-toggle"
+      type="button"
+      class="md:hidden p-2 text-gray-700"
+      aria-label="Buka menu"
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+    >
+      <Icon name="menu" data-icon-open />
+      <Icon name="x" class="hidden" data-icon-close />
+    </button>
+  </Container>
+
+  <div id="mobile-menu" hidden class="md:hidden bg-white border-t border-gray-100 py-4 px-6">
+    <ul class="flex flex-col gap-4">
+      {
+        navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class="block text-gray-600 text-[15px] font-medium hover:text-primary-blue transition-colors"
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <div class="flex flex-col mt-6">
+      <a href="/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'md' })}>Masuk</a>
+    </div>
+  </div>
+</nav>
+
+<script>
+  // Client JS of the whole site, in one place (about 1.7 KB minified):
+  //  1. mobile menu toggle,
+  //  2. auth-aware nav button (GET /api/auth/session),
+  //  3. announcement strip (GET /api/announcements/current),
+  //  4. copyright year in the footer ("computed live", DESIGN.md section 9).
+  // Both API answers are kept in sessionStorage for a few minutes so a visit
+  // costs the Worker (and the origin) two requests once, not on every page.
+
+  const toggle = document.getElementById('nav-toggle');
+  const menu = document.getElementById('mobile-menu');
+  if (toggle && menu) {
+    toggle.addEventListener('click', () => {
+      const open = menu.hasAttribute('hidden');
+      menu.toggleAttribute('hidden', !open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Tutup menu' : 'Buka menu');
+      toggle.querySelector('[data-icon-open]')?.classList.toggle('hidden', open);
+      toggle.querySelector('[data-icon-close]')?.classList.toggle('hidden', !open);
+    });
+  }
+
+  const year = document.getElementById('copyright-year');
+  if (year) year.textContent = String(new Date().getFullYear());
+
+  /** JSON from `url`, reused from sessionStorage while younger than `ttl(value)` ms. */
+  async function cachedJson<T>(key: string, url: string, ttl: (v: T | null) => number): Promise<T | null> {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (raw) {
+        const { at, v } = JSON.parse(raw) as { at: number; v: T | null };
+        if (Date.now() - at < ttl(v)) return v;
+      }
+    } catch {
+      // storage blocked or corrupt: fetch
+    }
+    let value: T | null = null;
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      value = res.ok ? ((await res.json()) as T) : null;
+    } catch {
+      return null; // offline or endpoint unreachable: keep the default
+    }
+    try {
+      sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), v: value }));
+    } catch {
+      // ignore
+    }
+    return value;
+  }
+
+  // --- auth button --------------------------------------------------------
+  type Session = { user?: { role?: string } } | null;
+  const ADMIN_ROLES = ['viewer', 'editor', 'super_admin'];
+  // A signed-in answer is kept 5 minutes; a signed-out one only 30 seconds, so
+  // the button catches up soon after someone signs in on the legacy pages.
+  void cachedJson<Session>('sk:session', '/api/auth/session', (s) => (s?.user ? 300_000 : 30_000)).then(
+    (session) => {
+      if (!session?.user) return;
+      const admin = ADMIN_ROLES.includes(session.user.role ?? '');
+      document.querySelectorAll<HTMLAnchorElement>('[data-auth-link]').forEach((a) => {
+        a.href = admin ? '/admin' : '/portal';
+        a.textContent = admin ? 'Dashboard' : 'Portal';
+      });
+    },
+  );
+
+  // --- announcement strip -------------------------------------------------
+  type Announcement = {
+    title: string;
+    body: string;
+    severity: 'info' | 'warning' | 'urgent';
+    ctaLabel?: string | null;
+    ctaUrl?: string | null;
+  };
+  // Class strings are written out in full so Tailwind generates them.
+  const STRIP = {
+    info: {
+      box: 'border-b bg-blue-50 border-blue-200 text-blue-900',
+      cta: 'shrink-0 px-3 py-1 text-xs font-semibold rounded-full transition-colors bg-blue-900 text-white hover:bg-blue-800',
+      icon: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    },
+    warning: {
+      box: 'border-b bg-amber-50 border-amber-200 text-amber-900',
+      cta: 'shrink-0 px-3 py-1 text-xs font-semibold rounded-full transition-colors bg-amber-900 text-white hover:bg-amber-800',
+      icon: '<path d="M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14"/><path d="M8 6v8"/>',
+    },
+    urgent: {
+      box: 'border-b bg-red-50 border-red-200 text-red-900',
+      cta: 'shrink-0 px-3 py-1 text-xs font-semibold rounded-full transition-colors bg-red-900 text-white hover:bg-red-800',
+      icon: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    },
+  } as const;
+
+  const slot = document.getElementById('announcement-slot');
+  if (slot) {
+    void cachedJson<{ announcement: Announcement | null }>(
+      'sk:announcement',
+      '/api/announcements/current',
+      () => 300_000,
+    ).then((data) => {
+      const a = data?.announcement;
+      if (!a) return;
+      const style = STRIP[a.severity] ?? STRIP.info;
+      const wrap = document.createElement('div');
+      wrap.setAttribute('role', 'status');
+      wrap.className = style.box;
+      const inner = document.createElement('div');
+      inner.className = 'mx-auto w-full px-6 max-w-[1200px] py-2.5 flex items-center gap-3 text-sm';
+      inner.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0">${style.icon}</svg>`;
+      const text = document.createElement('div');
+      text.className = 'flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5';
+      const title = document.createElement('strong');
+      title.className = 'font-semibold';
+      title.textContent = a.title;
+      const body = document.createElement('span');
+      body.className = 'opacity-90 truncate';
+      body.textContent = a.body;
+      text.append(title, body);
+      inner.append(text);
+      if (a.ctaLabel && a.ctaUrl) {
+        const cta = document.createElement('a');
+        cta.href = a.ctaUrl;
+        cta.className = style.cta;
+        cta.textContent = a.ctaLabel;
+        if (a.ctaUrl.startsWith('http')) {
+          cta.target = '_blank';
+          cta.rel = 'noopener noreferrer';
+        }
+        inner.append(cta);
+      }
+      wrap.append(inner);
+      slot.replaceChildren(wrap);
+      // Lifts the hero padding to clear the strip (values in global.css).
+      document.documentElement.dataset.announced = '';
+    });
+  }
+</script>

@@ -1,0 +1,56 @@
+---
+import { cx } from '~/lib/ui';
+import Eyebrow from './Eyebrow.astro';
+import Heading from './Heading.astro';
+
+/**
+ * Eyebrow + section heading + optional lead paragraph: the opening of almost
+ * every section. `tone="dark"` is for navy backgrounds.
+ */
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+  tone?: 'light' | 'dark';
+  align?: 'center' | 'left';
+  as?: 'h1' | 'h2' | 'h3' | 'p';
+  class?: string;
+}
+const { eyebrow, title, lead, tone = 'light', align = 'center', as = 'h2', class: className } = Astro.props;
+const center = align === 'center';
+---
+
+<div class={cx(center && 'text-center', className)}>
+  {
+    eyebrow && (
+      <Eyebrow tone={tone} class="mb-4">
+        {eyebrow}
+      </Eyebrow>
+    )
+  }
+  <Heading
+    level="section"
+    as={as}
+    class={cx(
+      'max-w-[760px] text-balance',
+      center && 'mx-auto',
+      tone === 'dark' ? 'text-white' : 'text-gray-900',
+      lead && 'mb-5 md:mb-6',
+    )}
+  >
+    {title}
+  </Heading>
+  {
+    lead && (
+      <p
+        class={cx(
+          'max-w-[600px] text-base md:text-lg',
+          center && 'mx-auto',
+          tone === 'dark' ? 'text-white/80' : 'text-gray-600',
+        )}
+      >
+        {lead}
+      </p>
+    )
+  }
+</div>

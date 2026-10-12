@@ -1,0 +1,83 @@
+---
+import '~/styles/global.css';
+import lora700 from '@fontsource/lora/files/lora-latin-700-normal.woff2?url';
+import jakarta400 from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-400-normal.woff2?url';
+import Footer from '~/components/Footer.astro';
+import Navbar from '~/components/Navbar.astro';
+import { KEYWORDS, LEGAL_NAME, SITE_NAME, THEME_COLOR, buildSeo, jsonLdScript, type SeoInput } from '~/lib/seo';
+
+/**
+ * The page shell: SEO <head>, skip link, navbar, content slot, footer.
+ *
+ * `seo` picks the head data (see buildSeo in lib/seo.ts); `jsonLd` is a list of
+ * schema.org objects, each emitted as its own application/ld+json script.
+ * The LCP image of a page is marked on the <img> itself (fetchpriority="high").
+ */
+interface Props {
+  seo: SeoInput;
+  jsonLd?: unknown[];
+}
+const { seo, jsonLd = [] } = Astro.props;
+const s = buildSeo(seo);
+---
+
+<!doctype html>
+<html lang="id" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content={THEME_COLOR} />
+
+    <title>{s.title}</title>
+    <meta name="description" content={s.description} />
+    <meta name="author" content={LEGAL_NAME} />
+    <meta name="keywords" content={KEYWORDS.join(',')} />
+    <meta name="creator" content={SITE_NAME} />
+    <meta name="publisher" content={SITE_NAME} />
+    <meta name="robots" content={s.robots} />
+    {s.googlebot && <meta name="googlebot" content={s.googlebot} />}
+    {s.canonical && <link rel="canonical" href={s.canonical} />}
+
+    {s.og.url && <meta property="og:url" content={s.og.url} />}
+    <meta property="og:site_name" content={s.og.siteName} />
+    <meta property="og:locale" content={s.og.locale} />
+    <meta property="og:title" content={s.og.title} />
+    <meta property="og:description" content={s.og.description} />
+    <meta property="og:image" content={s.og.image.url} />
+    {s.og.image.width && <meta property="og:image:width" content={String(s.og.image.width)} />}
+    {s.og.image.height && <meta property="og:image:height" content={String(s.og.image.height)} />}
+    {s.og.image.alt && <meta property="og:image:alt" content={s.og.image.alt} />}
+    <meta property="og:type" content={s.og.type} />
+
+    <meta name="twitter:card" content={s.twitter.card} />
+    <meta name="twitter:title" content={s.twitter.title} />
+    <meta name="twitter:description" content={s.twitter.description} />
+    <meta name="twitter:image" content={s.twitter.image} />
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/icon.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
+
+    {/* Self-hosted fonts: preload the two that paint first (hero heading, body text). */}
+    <link rel="preload" href={lora700} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={jakarta400} as="font" type="font/woff2" crossorigin />
+
+    {jsonLd.map((data) => <script type="application/ld+json" set:html={jsonLdScript(data)} />)}
+  </head>
+  <body class="antialiased">
+    {/* Hero sections read --hero-top (global.css) to clear the fixed navbar. */}
+    <div class="nav-clearance">
+      <a
+        href="#konten-utama"
+        class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-blue focus:text-white focus:rounded-lg focus:font-semibold focus:shadow-lg"
+      >
+        Lewat ke konten utama
+      </a>
+      <Navbar />
+      <div id="konten-utama">
+        <slot />
+      </div>
+      <Footer />
+    </div>
+  </body>
+</html>

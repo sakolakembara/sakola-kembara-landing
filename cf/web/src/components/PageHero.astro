@@ -1,0 +1,26 @@
+---
+import Container from './Container.astro';
+import Heading from './Heading.astro';
+
+/**
+ * The navy hero that opens a sub-page: the page's H1 and an optional lead. The
+ * top padding reads --hero-top so it clears the fixed navbar (and the
+ * announcement strip when it shows).
+ */
+interface Props {
+  title: string;
+  lead?: string;
+}
+const { title, lead } = Astro.props;
+---
+
+<section
+  class="bg-gradient-to-br from-primary-blue to-accent-navy pt-[calc(var(--hero-top,8rem)_+_1.25rem)] pb-14 text-white md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] md:pb-24"
+>
+  <Container>
+    <div class="anim-fade-up">
+      <Heading level="page" class={lead ? 'mb-4' : undefined}>{title}</Heading>
+      {lead && <p class="max-w-[600px] text-base text-white/90 md:text-lg">{lead}</p>}
+    </div>
+  </Container>
+</section>

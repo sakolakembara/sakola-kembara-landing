@@ -1,0 +1,18 @@
+---
+import { headingClasses, headingDefaultTag, type HeadingLevel } from '~/lib/ui';
+
+/**
+ * A heading on the site's type scale. `level` sets the look; `as` overrides
+ * the element when the outline needs another one. Color is up to the caller.
+ */
+interface Props {
+  level?: HeadingLevel;
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'p';
+  class?: string;
+  [attr: string]: unknown;
+}
+const { level = 'section', as, class: className, ...rest } = Astro.props;
+const Tag = as ?? headingDefaultTag[level];
+---
+
+<Tag class={headingClasses(level, className)} {...rest}><slot /></Tag>

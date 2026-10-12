@@ -1,0 +1,37 @@
+---
+import { env } from 'cloudflare:workers';
+import NotFoundPage from '~/components/NotFoundPage.astro';
+import { isShortlinkCandidate } from '~/lib/legacy-paths';
+import { forwardToLegacy } from '~/lib/legacy-proxy';
+
+// Catch-all: every path no page, endpoint or static file claims ends up here.
+// Two reasons it exists:
+//
+//  1. Middleware only runs for a request that matches a route. Without this
+//     route Astro answers unknown multi-segment paths with its built-in 404
+//     before any middleware, and the legacy pass-through (src/middleware.ts)
+//     would never see e.g. /portal/status or /api/auth/session.
+//  2. Admin-managed shortlinks (sakolakembara.org/<slug>) live in Postgres and
+//     are resolved by the legacy app (docs/architecture/shortlinks.md). Static
+//     pages win over this route, exactly like Next's app/(public)/[slug]. A
+//     single segment that fits the slug grammar goes to the legacy app (a 307
+//     to the target, or its own 404); anything else is a plain 404 here,
+//     without a database round trip.
+export const prerender = false;
+
+const path = Astro.params.path ?? '';
+let slug = '';
+try {
+  slug = decodeURIComponent(path).toLowerCase();
+} catch {
+  // malformed percent-encoding: not a slug
+}
+
+if (!slug.includes('/') && isShortlinkCandidate(slug)) {
+  return forwardToLegacy(Astro.request, env.LEGACY_ORIGIN_URL);
+}
+
+Astro.response.status = 404;
+---
+
+<NotFoundPage />

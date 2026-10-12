@@ -1,0 +1,176 @@
+---
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon from '~/components/Icon.astro';
+import PageHero from '~/components/PageHero.astro';
+import Tag from '~/components/Tag.astro';
+import Base from '~/layouts/Base.astro';
+import { cleanExcerpt, getBlogPage, pageHref, pageNumbers } from '~/lib/blog';
+
+// SSR on purpose: pagination is `?page=N`, which a prerendered page cannot read.
+// The list reads only the small metadata index bundled into the Worker.
+export const prerender = false;
+
+const { featured, items, currentPage, totalPages } = getBlogPage(Astro.url.searchParams.get('page'));
+const pages = pageNumbers(currentPage, totalPages);
+const prevHref = currentPage > 1 ? pageHref(currentPage - 1) : null;
+const nextHref = currentPage < totalPages ? pageHref(currentPage + 1) : null;
+const pageLink =
+  'min-w-[36px] px-2 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue text-center transition-colors';
+const stepLink =
+  'px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-blue rounded-lg border border-gray-200 hover:border-primary-blue transition-colors';
+const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border border-gray-100';
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: 'Blog & Cerita',
+    description:
+      'Cerita dan inspirasi dari Sakola Kembara — kisah alumni, kegiatan, dan update tentang gerakan pemerataan akses pendidikan tinggi di Indonesia.',
+    path: '/blog',
+  }}
+>
+  <main class="min-h-screen bg-gray-50">
+    <PageHero
+      title="Blog & Cerita"
+      lead="Ikuti perjalanan kami dalam membuka akses pendidikan. Cerita inspiratif, kegiatan terbaru, dan update dari Sakola Kembara."
+    />
+
+    {
+      featured && (
+        <section class="py-12">
+          <Container>
+            <h2 class="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">Artikel Terbaru</h2>
+            <a
+              href={`/blog/${featured.id}`}
+              class="group block bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
+            >
+              <div class="grid md:grid-cols-2 gap-0">
+                <div class="h-[300px] md:h-[400px] relative overflow-hidden">
+                  {featured.image && (
+                    <img
+                      src={featured.image}
+                      alt={featured.title}
+                      width={featured.imageWidth ?? undefined}
+                      height={featured.imageHeight ?? undefined}
+                      fetchpriority="high"
+                      decoding="async"
+                      class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  )}
+                  <Tag class="absolute top-4 left-4">{featured.category}</Tag>
+                </div>
+                <div class="p-8 md:p-10 flex flex-col justify-center">
+                  <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                    <Icon name="calendar" size={14} />
+                    {featured.date}
+                  </div>
+                  <Heading
+                    level="panel"
+                    class="text-gray-900 mb-4 group-hover:text-primary-blue transition-colors"
+                  >
+                    {featured.title}
+                  </Heading>
+                  <p class="text-gray-600 leading-relaxed mb-6">{cleanExcerpt(featured.excerpt)}</p>
+                  <span class="text-primary-blue font-semibold group-hover:underline">Baca Selengkapnya</span>
+                </div>
+              </div>
+            </a>
+          </Container>
+        </section>
+      )
+    }
+
+    <section class="py-12 pb-24 bg-white">
+      <Container>
+        <div class="flex items-baseline justify-between mb-6 gap-4 flex-wrap">
+          <h2 class="text-sm font-semibold text-primary-blue uppercase tracking-wider">Semua Artikel</h2>
+          {
+            totalPages > 1 && (
+              <span class="text-xs text-gray-500">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+            )
+          }
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {
+            items.map((article) => (
+              <article class="group bg-gray-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+                <div class="h-[200px] relative overflow-hidden">
+                  {article.image && (
+                    <img
+                      src={article.image}
+                      alt={article.title}
+                      width={article.imageWidth ?? undefined}
+                      height={article.imageHeight ?? undefined}
+                      loading="lazy"
+                      decoding="async"
+                      class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
+                  <Tag size="sm" class="absolute top-3 left-3">
+                    {article.category}
+                  </Tag>
+                </div>
+                <div class="p-6">
+                  <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                    <Icon name="calendar" size={12} />
+                    {article.date}
+                  </div>
+                  <h3 class="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-primary-blue transition-colors">
+                    {article.title}
+                  </h3>
+                  <p class="text-sm text-gray-600 line-clamp-2 mb-4">{cleanExcerpt(article.excerpt)}</p>
+                  <a href={`/blog/${article.id}`} class="text-sm text-primary-blue font-semibold hover:underline">
+                    Baca Selengkapnya
+                  </a>
+                </div>
+              </article>
+            ))
+          }
+        </div>
+
+        {
+          totalPages > 1 && (
+            <nav aria-label="Pagination" class="flex items-center justify-center gap-2 mt-12 flex-wrap">
+              {prevHref ? (
+                <a href={prevHref} class={stepLink}>
+                  Sebelumnya
+                </a>
+              ) : (
+                <span class={stepOff}>Sebelumnya</span>
+              )}
+              <div class="flex items-center gap-1">
+                {pages.map((p) =>
+                  p === '…' ? (
+                    <span class="px-2 text-sm text-gray-400 select-none">…</span>
+                  ) : p === currentPage ? (
+                    <span
+                      aria-current="page"
+                      class="min-w-[36px] px-2 py-2 text-sm font-semibold text-white bg-primary-blue rounded-lg text-center"
+                    >
+                      {p}
+                    </span>
+                  ) : (
+                    <a href={pageHref(p)} class={pageLink}>
+                      {p}
+                    </a>
+                  ),
+                )}
+              </div>
+              {nextHref ? (
+                <a href={nextHref} class={stepLink}>
+                  Berikutnya
+                </a>
+              ) : (
+                <span class={stepOff}>Berikutnya</span>
+              )}
+            </nav>
+          )
+        }
+      </Container>
+    </section>
+  </main>
+</Base>

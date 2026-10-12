@@ -1,0 +1,14 @@
+---
+import { containerClasses, type ContainerSize } from '~/lib/ui';
+
+/** Horizontal page container: 1200 default, 1000 focused, 800 reading (DESIGN.md D4). */
+interface Props {
+  size?: ContainerSize;
+  as?: 'div' | 'section' | 'header' | 'footer' | 'main' | 'nav';
+  class?: string;
+  [attr: string]: unknown;
+}
+const { size, as: Tag = 'div', class: className, ...rest } = Astro.props;
+---
+
+<Tag class={containerClasses(size, className)} {...rest}><slot /></Tag>

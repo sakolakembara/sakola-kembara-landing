@@ -2,6 +2,8 @@
 
 A snapshot of what powers the site today. Keep this in sync with `package.json` and the root configs.
 
+> **In progress (SAKEM-075):** the public site is being rebuilt as an Astro app on Cloudflare Workers under `cf/web/`, kept out of this app's TypeScript, ESLint, Tailwind and Docker build (`cf/` is excluded in `tsconfig.json`, `eslint.config.mjs`, `app/globals.css` and `.dockerignore`). Nothing is deployed; see [`../cloudflare/`](../cloudflare/README.md).
+
 ## Runtime & framework
 
 - **Next.js 16.1.4** with the **App Router** (`app/` directory).

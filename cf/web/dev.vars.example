@@ -1,0 +1,5 @@
+# Copy to .dev.vars (untracked) for local runs. Fake local values only.
+# Stand-in for the legacy Next origin (scripts/stub-origin.mjs, default port 4390).
+LEGACY_ORIGIN_URL=http://127.0.0.1:4390
+# Base URL of the content API that serves /api/public/team (scripts/fixture-api.mjs, default port 4391).
+CONTENT_API_URL=http://127.0.0.1:4391

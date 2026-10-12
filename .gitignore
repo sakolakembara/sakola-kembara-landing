@@ -50,3 +50,10 @@ next-env.d.ts
 
 # claude code local settings
 .claude/settings.local.json
+
+# cf/* — independent Cloudflare apps (each has its own package.json)
+cf/**/node_modules
+cf/**/dist
+cf/**/.wrangler
+cf/**/.astro
+cf/**/.dev.vars*

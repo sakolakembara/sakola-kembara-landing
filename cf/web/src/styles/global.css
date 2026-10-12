@@ -1,0 +1,334 @@
+@import "tailwindcss";
+
+/* Self-hosted fonts (no Google Fonts request). Weights and subset match the
+   root lib/fonts.ts: Lora 400-700 and Plus Jakarta Sans 400-700, latin only. */
+@import "@fontsource/lora/latin-400.css";
+@import "@fontsource/lora/latin-500.css";
+@import "@fontsource/lora/latin-600.css";
+@import "@fontsource/lora/latin-700.css";
+@import "@fontsource/plus-jakarta-sans/latin-400.css";
+@import "@fontsource/plus-jakarta-sans/latin-500.css";
+@import "@fontsource/plus-jakarta-sans/latin-600.css";
+@import "@fontsource/plus-jakarta-sans/latin-700.css";
+
+/* Design tokens: a COPY of the token parts of the root app/globals.css (the
+   :root vars, the @theme block, base typography, focus ring, .blog-content).
+   They are copied, not imported, because the root file carries the Next-only
+   Tailwind @source exclusions (one of them would hide this app's own sources)
+   and the Leaflet map styles. tests/tokens.test.ts fails when a value here
+   drifts from the root file, so DESIGN.md stays true for both. */
+
+:root {
+  /* Primary Colors */
+  --catalina-blue: #122E76;
+  --may-green: #4BA442;
+  --sunglow: #FAD02B;
+
+  /* Secondary Colors */
+  --space-cadet: #233656;
+  --blue-yonder: #51799A;
+  --celtic-blue: #306FCC;
+  --light-blue: #B4D9DB;
+
+  /* Neutrals */
+  --white: #FFFFFF;
+  --light-gray: #F5F5F5;
+  --medium-gray: #6B7280;
+  --dark-gray: #374151;
+  --black: #1F2937;
+
+  /* Legacy color mappings for backward compatibility */
+  --primary-blue: #122E76;
+  --primary-blue-dark: #0D1F52;
+  --secondary-yellow: #FAD02B;
+  --secondary-green: #4BA442;
+  --accent-navy: #233656;
+
+  /* Radii used by the blog CSS below */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+@theme inline {
+  --color-primary-blue: var(--catalina-blue);
+  --color-primary-blue-dark: var(--primary-blue-dark);
+  --color-accent-navy: var(--space-cadet);
+  --color-secondary-yellow: var(--sunglow);
+  --color-secondary-green: var(--may-green);
+  --color-blue-yonder: var(--blue-yonder);
+
+  --color-white: var(--white);
+  --color-black: var(--black);
+
+  --color-success-fg: var(--color-green-700);
+  --color-success-bg: var(--color-green-50);
+  --color-success-border: var(--color-green-200);
+  --color-warning-fg: var(--color-amber-800);
+  --color-warning-bg: var(--color-amber-50);
+  --color-warning-border: var(--color-amber-200);
+  --color-danger-fg: var(--color-red-700);
+  --color-danger-bg: var(--color-red-50);
+  --color-danger-border: var(--color-red-200);
+  --color-info-fg: var(--color-blue-900);
+  --color-info-bg: var(--color-blue-50);
+  --color-info-border: var(--color-blue-200);
+
+  /* Typography */
+  --font-display: "Lora", serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* The navbar is fixed, so every hero reserves room for it (see the root
+   globals.css). The navbar script sets data-announced on <html> once the
+   announcement strip has loaded. */
+.nav-clearance {
+  --hero-top: 6.5rem;
+}
+
+[data-announced] .nav-clearance {
+  --hero-top: 11.5rem;
+}
+
+@media (min-width: 768px) {
+  .nav-clearance {
+    --hero-top: 8rem;
+  }
+
+  [data-announced] .nav-clearance {
+    --hero-top: 11rem;
+  }
+}
+
+/* Site-wide motion opt-out for CSS transitions and animations. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--dark-gray);
+  line-height: 1.6;
+  background: var(--white);
+}
+
+/* Typography scale. In @layer base on purpose (DESIGN.md section 3): unlayered
+   rules beat every Tailwind utility regardless of specificity. */
+@layer base {
+  .text-display {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 8vw, 64px);
+    font-weight: 700;
+    line-height: 114%;
+    letter-spacing: -0.01em;
+  }
+
+  h1, .text-h1 {
+    font-family: var(--font-body);
+    font-size: clamp(30px, 6vw, 48px);
+    font-weight: 700;
+    line-height: 130%;
+    letter-spacing: 0.003em;
+  }
+
+  h2, .text-h2 {
+    font-family: var(--font-body);
+    font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600;
+    line-height: 135%;
+    letter-spacing: 0.003em;
+  }
+
+  h3, .text-h3 {
+    font-family: var(--font-body);
+    font-size: clamp(20px, 4vw, 28px);
+    font-weight: 600;
+    line-height: 140%;
+    letter-spacing: 0.003em;
+  }
+
+  h4, .text-h4 {
+    font-family: var(--font-body);
+    font-size: clamp(18px, 3vw, 24px);
+    font-weight: 500;
+    line-height: 145%;
+    letter-spacing: 0.003em;
+  }
+
+  h5, .text-h5 {
+    font-family: var(--font-body);
+    font-size: clamp(17px, 2.5vw, 20px);
+    font-weight: 500;
+    line-height: 150%;
+    letter-spacing: 0.003em;
+  }
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 3px solid var(--light-blue);
+  outline-offset: 2px;
+}
+
+/* ---- Entrance animation (replaces framer-motion's opacity/y reveal) -------
+   Pure CSS, so the page ships no animation library. The global
+   prefers-reduced-motion rule above collapses it. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.anim-fade-up {
+  animation: fade-up 0.6s ease-out both;
+}
+
+/* WordPress blog content (scraped, now markdown) */
+.blog-content {
+  color: var(--dark-gray);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  /* Migrated posts contain bare URLs. Unbroken, one of them is wider than a
+     phone screen and stretches the whole layout viewport. */
+  overflow-wrap: break-word;
+}
+
+.blog-content a {
+  overflow-wrap: anywhere;
+}
+
+/* Wide markdown tables scroll inside themselves rather than the page. */
+.blog-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.blog-content h2,
+.blog-content h3,
+.blog-content h4 {
+  color: var(--black);
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.blog-content h2 {
+  font-size: 1.5rem;
+}
+
+.blog-content h3 {
+  font-size: 1.25rem;
+}
+
+.blog-content p {
+  margin-bottom: 1.25rem;
+}
+
+.blog-content ul,
+.blog-content ol {
+  margin: 0 0 1.25rem 1.5rem;
+}
+
+.blog-content li {
+  margin-bottom: 0.5rem;
+}
+
+.blog-content a {
+  color: var(--primary-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.blog-content a:hover {
+  color: var(--celtic-blue);
+}
+
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  margin: 1.5rem 0;
+}
+
+.blog-content figure {
+  margin: 1.5rem 0;
+}
+
+.blog-content blockquote {
+  border-left: 4px solid var(--secondary-yellow);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--medium-gray);
+}
+
+.blog-content strong {
+  font-weight: 700;
+  color: var(--black);
+}
+
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+}
+
+.blog-content th,
+.blog-content td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.blog-content th {
+  background: var(--light-gray);
+  font-weight: 600;
+}
+
+.blog-content pre {
+  background: var(--light-gray);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 1.25rem 0;
+}
+
+.blog-content code {
+  font-size: 0.9em;
+  background: var(--light-gray);
+  padding: 0.15em 0.35em;
+  border-radius: var(--radius-sm);
+}

@@ -1,0 +1,19 @@
+---
+import ActivitiesSection from '~/components/sections/ActivitiesSection.astro';
+import HeroSection from '~/components/sections/HeroSection.astro';
+import Base from '~/layouts/Base.astro';
+import { organizationJsonLd } from '~/lib/seo';
+
+// Static at build time: served by the Workers assets layer, no Worker invocation.
+export const prerender = true;
+
+// Thin slice: hero + "Program Kami". The other homepage sections of the Next
+// app (Problem, Impact, Partners, CTA, News) are in the port checklist.
+---
+
+<Base seo={{ kind: 'home' }} jsonLd={[organizationJsonLd()]}>
+  <main>
+    <HeroSection />
+    <ActivitiesSection />
+  </main>
+</Base>

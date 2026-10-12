@@ -1,0 +1,132 @@
+---
+import { bodies } from 'virtual:blog-bodies';
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon from '~/components/Icon.astro';
+import Tag from '~/components/Tag.astro';
+import Base from '~/layouts/Base.astro';
+import { cleanExcerpt, getAllArticles, getArticleBySlug, getRelated } from '~/lib/blog';
+import { articleJsonLd } from '~/lib/seo';
+
+// One static HTML file per article, generated at build and served by the assets
+// layer. A slug that is not in getStaticPaths() is not an asset and matches no
+// route: the Worker answers it with the 404 page and a real 404 status (the
+// Next app answered such URLs with 200 and an empty shell).
+export const prerender = true;
+
+export function getStaticPaths() {
+  return getAllArticles().map((article) => ({ params: { slug: article.id } }));
+}
+
+const { slug } = Astro.params;
+const article = getArticleBySlug(slug ?? '');
+if (!article) throw new Error(`No article for slug "${slug}"`); // unreachable: paths come from getStaticPaths
+const html = bodies[article.id] ?? '';
+const related = getRelated(article);
+const excerpt = cleanExcerpt(article.excerpt);
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: article.title,
+    description: excerpt,
+    path: `/blog/${article.id}`,
+    ogImage: article.image || undefined,
+  }}
+  jsonLd={[articleJsonLd({ ...article, excerpt })]}
+>
+  <main class="min-h-screen bg-gray-50">
+    <section class="relative overflow-hidden">
+      {
+        article.image ? (
+          <img
+            src={article.image}
+            alt={article.title}
+            width={article.imageWidth ?? undefined}
+            height={article.imageHeight ?? undefined}
+            fetchpriority="high"
+            decoding="async"
+            class="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div class="absolute inset-0 bg-gradient-to-br from-primary-blue to-accent-navy" />
+        )
+      }
+      <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/20"></div>
+      {/* pt-[var(--hero-top)] reserves room for the fixed navbar so a tall stack (back link,
+          category, multi-line title, meta) cannot bleed into it. */}
+      <Container
+        size="reading"
+        class="relative pb-10 min-h-[420px] md:min-h-[500px] flex flex-col justify-end pt-[var(--hero-top,8rem)]"
+      >
+        <a href="/blog" class="text-white/90 text-sm font-medium mb-4 hover:text-white transition-colors w-fit">
+          Kembali ke Blog
+        </a>
+        <Tag class="w-fit mb-3">{article.category}</Tag>
+        <Heading level="article" class="text-white">{article.title}</Heading>
+        <div class="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/85">
+          <span class="inline-flex items-center gap-1.5">
+            <Icon name="calendar" size={14} />
+            {article.date}
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <Icon name="user" size={14} />
+            {article.author}
+          </span>
+        </div>
+      </Container>
+    </section>
+
+    <article class="py-12 pb-16">
+      <Container size="reading">
+        <div class="bg-white rounded-2xl shadow-sm p-6 md:p-10 -mt-8 relative z-10">
+          <div class="blog-content" set:html={html} />
+        </div>
+      </Container>
+    </article>
+
+    {
+      related.length > 0 && (
+        <section class="py-12 pb-24 bg-white border-t border-gray-100">
+          <Container>
+            <h2 class="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">Artikel Lainnya</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+              {related.map((item) => (
+                <a
+                  href={`/blog/${item.id}`}
+                  class="group bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-all"
+                >
+                  <div class="h-[160px] relative overflow-hidden">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        width={item.imageWidth ?? undefined}
+                        height={item.imageHeight ?? undefined}
+                        loading="lazy"
+                        decoding="async"
+                        class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div class="absolute inset-0 bg-primary-blue/10" />
+                    )}
+                    <Tag size="sm" class="absolute top-3 left-3">
+                      {item.category}
+                    </Tag>
+                  </div>
+                  <div class="p-4">
+                    <p class="text-xs text-gray-400 mb-2">{item.date}</p>
+                    <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-primary-blue transition-colors">
+                      {item.title}
+                    </h3>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )
+    }
+  </main>
+</Base>

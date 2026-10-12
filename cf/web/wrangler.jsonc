@@ -1,0 +1,20 @@
+{
+  // Source metadata for the build. The Astro adapter (@astrojs/cloudflare via
+  // @cloudflare/vite-plugin) injects `main` and `assets` and writes the deploy
+  // config to dist/server/wrangler.json. Do not set `main` or `assets` here.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sakola-kembara-web",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true }
+
+  // Intentionally NOT set here (no resource ids, hostnames or secrets in git):
+  //
+  // - "routes": the production Worker is attached to the zone with a ROUTE
+  //   (pattern covering the whole site), not a custom domain, so that
+  //   fetch(request) inside the Worker reaches the legacy origin behind the
+  //   same hostname. Add it at deploy time. See docs/cloudflare/web-skeleton.md.
+  // - "vars": LEGACY_ORIGIN_URL (unset in production: plain fetch) and
+  //   CONTENT_API_URL (base URL for /api/public/team). Locally these come from
+  //   an untracked .dev.vars; copy dev.vars.example.
+}
