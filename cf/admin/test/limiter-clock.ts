@@ -36,8 +36,9 @@ export const limiterClock = {
 /**
  * What Miniflare's rate limit binding does (workers/ratelimit/ratelimit-object.worker.js): a counter per key, valid
  * for the window `floor(now / period)`; the call that would pass the limit is refused and not counted; a new window
- * starts every key from zero. The method takes `{ key }` and nothing else, as Cloudflare's does (Miniflare throws
- * on any other option; so does this).
+ * starts every key from zero. The method takes `{ key }` and nothing else, as Cloudflare documents it (Miniflare also
+ * lets a call carry `limit` and `period`; the double refuses them, so a call the real service would not honour
+ * cannot pass here).
  */
 export function fakeRateLimit(config: Pick<LimitConfig, "limit" | "period">, clock: () => number = limiterClock.read): RateLimit {
   const buckets = new Map<string, { epoch: number; count: number }>();
