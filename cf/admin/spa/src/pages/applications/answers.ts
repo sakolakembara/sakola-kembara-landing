@@ -166,7 +166,7 @@ export function profileSections(application: ApplicationDetail): ProfileSection[
     sections.push({
       id: "berkas",
       // The legacy title was "Berkas Pendaftaran", the name of a menu now called Pusat Dokumen (docs/cloudflare/admin-ia.md, 3.4).
-      title: "Berkas yang diunggah",
+      title: "Tautan berkas",
       rows: [
         doc("Surat Penghasilan Ayah", documents.fatherIncomeUrl),
         doc("Surat Penghasilan Ibu", documents.motherIncomeUrl),

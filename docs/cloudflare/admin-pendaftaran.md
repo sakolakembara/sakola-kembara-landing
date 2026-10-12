@@ -28,7 +28,7 @@ The rules are the legacy ones; where something differs, [What differs from the l
 | Pusat Dokumen routes | `src/api/resources.ts` |
 | The review rules (pure) | `src/admission/review.ts` |
 | Every query of the area as an unexecuted Drizzle query (so the plan tests explain exactly what runs), and the prefix search | `src/admission/queries.ts` |
-| Migration `0007_applications_name_search` (one index, see [D1](#d1-plans-round-trips-rows-read)) | `migrations/`, `src/db/schema/admission.ts` |
+| Migration `0009_applications_name_search` (one index, see [D1](#d1-plans-round-trips-rows-read)) | `migrations/`, `src/db/schema/admission.ts` |
 | Mount (three lines) | `src/worker.ts` |
 | Screens and their models | `spa/src/pages/{batches,applications,resources}/`, registered in `spa/src/pages/screens/pendaftaran.ts` |
 | The detail page's sections as data | `spa/src/pages/applications/answers.ts` |
@@ -82,7 +82,7 @@ There is no create, edit or delete of an application (a record with a lifecycle:
 
 **Search is a prefix match on an indexed column, never `LIKE '%q%'`** ([`admin-crud.md`](admin-crud.md#3-lists-page-pagesize-q-filters-sort): this is the table that grows). Name: `full_name LIKE 'abc%' ESCAPE '!'` over the new `COLLATE NOCASE` index (SQLite uses an index for a LIKE prefix only then; it also makes the match case-insensitive for ASCII). Email: a range, `email >= 'abc' AND email < 'abc￿'`, over the existing index, on the lower-cased text (accounts are lower-cased when they are created). The two are `OR`ed (`MULTI-INDEX OR` in the plan). `%`, `_` and `!` in the text match only themselves; the pattern is cut to fit D1's 50 bytes, never an error. `q=aminah` finds nobody named "Siti Aminah": that is the point.
 
-**The detail** has everything the legacy page showed, as sections built by `answers.ts` (which row exists when, how a value is shown), with the legacy titles except two: "Berkas Pendaftaran" and "Berkas Marketing" (the names of two menu items and categories of Pusat Dokumen) became "Berkas yang diunggah" and "Bukti Marketing" ([`admin-ia.md`](admin-ia.md), 3.4). An old application has no `formData` and shows its legacy story; any part of `formData` that is missing or of another shape is read as empty, never as a crash.
+**The detail** has everything the legacy page showed, as sections built by `answers.ts` (which row exists when, how a value is shown), with the legacy titles except two: "Berkas Pendaftaran" and "Berkas Marketing" (the names of two menu items and categories of Pusat Dokumen) became "Tautan berkas" and "Bukti Marketing" ([`admin-ia.md`](admin-ia.md), 3.4; the IA proposed "Berkas yang diunggah", but the files are links the applicant pasted, so the exact word wins). An old application has no `formData` and shows its legacy story; any part of `formData` that is missing or of another shape is read as empty, never as a crash.
 
 **Applicant documents.** In the legacy wizard the applicant **pastes links** to files in their own Google Drive; the app stores no file of theirs. The detail page therefore links those addresses, as the legacy page did, and that is all it can do. They are shown as text and are clickable only when they are `http` or `https` (a `javascript:` address typed into a document field is shown as text; tested). **If the portal milestone replaces the links with uploads, they must go to a private bucket with signed access, not to the public one of [`uploads.md`](uploads.md); nothing of that exists, and nothing here pretends to.**
 
@@ -117,7 +117,7 @@ Categories, in the public page's order: `panduan`, `berkas-pendaftaran`, `berkas
 
 `EXPLAIN QUERY PLAN` of every list, filter and search is asserted in `test/pendaftaran-plans.test.ts`; the statements and round trips of each request are counted on the real local D1; the rows read are `meta.rows_read` of the local D1 (the real D1 is only confirmed on a deployed Worker, SAKEM-084).
 
-**The migration.** `0007_applications_name_search`: `CREATE INDEX student_applications_full_name_idx ON student_applications (full_name COLLATE NOCASE)`. It is the only change to the schema. Without it a name prefix has no index to walk. Cost: one more written row per application submitted (about 300 a year). **If another migration is numbered 0007 on a parallel branch, the PM renumbers on rebase.**
+**The migration.** `0009_applications_name_search`: `CREATE INDEX student_applications_full_name_idx ON student_applications (full_name COLLATE NOCASE)`. It is the only change to the schema. Without it a name prefix has no index to walk. Cost: one more written row per application submitted (about 300 a year). It follows `0007_audit_viewer_indexes` (Sistem) and `0008_reports_updated_at` (Konten); applying all ten migrations to a clean local D1 and `pnpm db:drift` were checked after the rebase.
 
 | Request | Round trips | Statements | Plan |
 | --- | --- | --- | --- |
@@ -169,14 +169,18 @@ CPU: no markdown, HTML or image work, no per-row query, bodies of at most 16 KiB
 
 ## Measured
 
-On `origin/cloudflare` plus this branch, the same machine, `WRANGLER_SEND_METRICS=false CI=1`. CPU cannot be measured locally.
+The same machine, `WRANGLER_SEND_METRICS=false CI=1`. CPU cannot be measured locally.
 
-| | Before (PR #61) | After | Change |
+The size of the Pendaftaran screens, measured on top of #61 before the other areas were merged:
+
+| | Before (PR #61) | With Pendaftaran | Change |
 | --- | --- | --- | --- |
 | SPA JS | 425.87 kB, 133.52 kB gzip | 479.09 kB, 147.77 kB gzip | +53.2 kB, +14.3 kB gzip (seven pages and the sections of the applicant page) |
 | SPA CSS | 48.33 kB, 12.15 kB gzip | 50.39 kB, 12.46 kB gzip | +2.1 kB |
 
-Tests, at the end of this work: Worker 1,311 (42 files; 1,133 before: +178 in `batches`, `applications`, `resources`, `admission-rules`, `pendaftaran-plans` and `pendaftaran-spa-contract`), SPA 827 (35 files; 707 before: +120 in `spa/test/pendaftaran/*`). Negative checks: 54 new ones for the Worker (`negative-checks-pendaftaran.mjs`: the area check of each write and read, the stale check and the version in the UPDATE, the revocation and note rules, the in-use guard, the publish preconditions in the check and in the write, the prefix-only search, no applicant data in the audit row, the plans and round trips, the purge and the file cleanup, the SPA and the Worker agreeing) and 24 for the SPA (`negative-checks-spa-pendaftaran.mjs`: the write affordances of each screen, the default batch, "Semua batch", the search box's promise, the revocation form, the version sent with a review, clickable links); each breaks one safeguard, the tests fail, the file is restored.
+Rebased on `origin/cloudflare` with the Sistem, Komunikasi and Konten areas merged, the whole SPA is 539.03 kB of JS (162.70 kB gzip) and 52.23 kB of CSS (12.76 kB gzip), in one chunk.
+
+Tests, after the rebase: Worker 1,761 (52 files) and SPA 1,105 (45 files), of which this area is 178 Worker tests (`batches`, `applications`, `resources`, `admission-rules`, `pendaftaran-plans`, `pendaftaran-spa-contract`) and 120 SPA tests (`spa/test/pendaftaran/*`). Negative checks: 54 for the Worker (`negative-checks-pendaftaran.mjs`: the area check of each write and read, the stale check and the version in the UPDATE, the revocation and note rules, the in-use guard, the publish preconditions in the check and in the write, the prefix-only search, no applicant data in the audit row, the plans and round trips, the purge and the file cleanup, the SPA and the Worker agreeing) and 24 for the SPA (`negative-checks-spa-pendaftaran.mjs`: the write affordances of each screen, the default batch, "Semua batch", the search box's promise, the revocation form, the version sent with a review, clickable links); each breaks one safeguard, the tests fail, the file is restored.
 
 ## What is not verified
 
@@ -189,10 +193,15 @@ Tests, at the end of this work: Worker 1,311 (42 files; 1,133 before: +178 in `b
 
 ## Open decisions for Dzul
 
-1. **The revocation reason is no longer permanent.** The legacy form promised that the reason is kept in the audit log for good; the rule for this migration is that audit rows hold field names only, so the reason is only in the application's note, which a later decision replaces. Options: allow the note in the audit row for `application.revoke` alone (the reason is then permanent again, and the audit log holds free text about a person), or keep a history of review notes. Today: names only.
-2. **New texts** (the legacy copy had no equivalent): the notice after a review ("Status pendaftar berhasil diubah."), "Detail" / "Lihat Data" for a read-only role, "Belum diputuskan" (the list's column), "Tidak ada deskripsi.", the delete refusal of a batch ("Batch ini masih punya pendaftar, jadi tidak bisa dihapus."), the sentence about where a revocation reason is kept, the hint "PDF, PNG, JPEG, atau WebP. Maksimal 25 MB.", and the two renamed sections of the applicant page ("Berkas yang diunggah", "Bukti Marketing"; "diunggah" is loose, the files are links the applicant pasted: "Tautan berkas" would be exact).
-3. **Delete a batch.** The legacy admin had none; the brief asked for it. A batch with no applicants can be deleted by an editor of Pendaftaran. Keep, or leave it to `super_admin`?
-4. **The default of the applicants list** (the newest batch) and the rule that a status link without a batch means every batch: a tile of the dashboard that counts 12 pending in every batch opens a list of 12, not of the newest batch's share. Right?
-5. **`GET applications?batch=all` counts the table.** About 900 index entries after three years, fine; a composite index would make the newest-batch list cheaper (a page of rows instead of the whole batch, an estimate) but replaces an index the dashboard's plan tests name. Worth it?
-6. **Aktivitas** (the Sistem worker) needs labels for `batch.delete` and, from the uploads PR, `upload.create` and `upload.delete`: `lib/audit-labels.ts` has none, so the raw action would show. Not edited here (it is a root app file).
-7. **Applicant documents in the portal milestone** need a private bucket with signed access if applicants upload instead of pasting links.
+Answered by the PM on 2026-10-12 (the rest stands as built):
+
+1. **The revocation reason stays out of the audit row** (names only, the strict default; Dzul decides privacy rules). The reason is only in the application's `review_notes`, which a later decision replaces. If Dzul wants it permanent, the options are the note in the `application.revoke` row alone (the audit log then holds free text about a person, and it must stay out of what Aktivitas shows), or a history of review notes.
+2. **New texts approved in principle**: the notice after a review ("Status pendaftar berhasil diubah."), "Detail" / "Lihat Data" for a read-only role, "Belum diputuskan" (the list's column), "Tidak ada deskripsi.", the delete refusal of a batch ("Batch ini masih punya pendaftar, jadi tidak bisa dihapus."), the sentence about where a revocation reason is kept, the hint "PDF, PNG, JPEG, atau WebP. Maksimal 25 MB.", and "Bukti Marketing". The section for the documents an applicant linked is **"Tautan berkas"** (exact: they are pasted links).
+3. **Delete a batch**: kept. An editor of Pendaftaran may delete a batch with no applicants.
+4. **The default of the applicants list** (the newest batch), and a status link without a batch meaning every batch: kept as built.
+5. **`GET applications?batch=all` counts the table** (about 900 index entries after three years): kept; no composite index (it would replace an index the dashboard's plan tests name).
+6. **Aktivitas labels**: `batch.delete` has its label in `spa/src/lib/audit.ts` (`NEW_ACTION_LABEL`) and `application.revoke` has the legacy one ("Penerimaan dicabut"); both are declared (`src/audit/lists.ts`, through the CRUD names and the verbs of `src/db/audit.ts`), which the Aktivitas suites check.
+
+Still open:
+
+7. **Applicant documents in the portal milestone** need a private bucket with signed access if applicants upload instead of pasting links. Nothing of that exists.

@@ -96,7 +96,7 @@ Indexes: unique on `year` kept; legacy `admission_batches_year_idx` dropped (a s
 | `status` enum, default `pending` | same + CHECK | |
 | `reviewedBy` FK `SET NULL` | same | |
 
-Indexes: `status`, `submitted_at`, `email`, `batch_id` kept; unique `(user_id, batch_id)` kept (several rows with a NULL user are allowed, as in Postgres); legacy `student_applications_user_id_idx` dropped (the unique index starts with `user_id`); `student_applications_full_name_idx` on `full_name COLLATE NOCASE` added (migration `0007`) so the admin's name search, a prefix match (`LIKE 'abc%'`, which SQLite serves from an index only when it is NOCASE), never scans the table.
+Indexes: `status`, `submitted_at`, `email`, `batch_id` kept; unique `(user_id, batch_id)` kept (several rows with a NULL user are allowed, as in Postgres); legacy `student_applications_user_id_idx` dropped (the unique index starts with `user_id`); `student_applications_full_name_idx` on `full_name COLLATE NOCASE` added (migration `0009`) so the admin's name search, a prefix match (`LIKE 'abc%'`, which SQLite serves from an index only when it is NOCASE), never scans the table.
 
 ### `announcements`
 

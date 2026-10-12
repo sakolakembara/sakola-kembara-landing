@@ -64,6 +64,13 @@
       "when": 1791817826024,
       "tag": "0008_reports_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791819937580,
+      "tag": "0009_applications_name_search",
+      "breakpoints": true
     }
   ]
 }

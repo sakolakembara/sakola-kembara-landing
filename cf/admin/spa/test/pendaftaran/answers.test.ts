@@ -72,7 +72,7 @@ describe("the sections of a full application, in the legacy order", () => {
       "Keluarga & Ekonomi",
       "Tempat Tinggal",
       "Organisasi",
-      "Berkas yang diunggah",
+      "Tautan berkas",
       "Bukti Marketing",
       "Interview Tertulis",
       "Pengajuan",

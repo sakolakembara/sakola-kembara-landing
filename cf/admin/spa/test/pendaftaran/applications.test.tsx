@@ -279,7 +279,7 @@ describe("the page of one applicant", () => {
 
   test("the sections, each a heading, with the answers; what the applicant pasted is a link only when it is a web address", async () => {
     await openDetail(["viewer", []], detail());
-    for (const name of ["Identitas", "Pendidikan", "Berkas yang diunggah", "Bukti Marketing", "Interview Tertulis", "Pengajuan"]) {
+    for (const name of ["Identitas", "Pendidikan", "Tautan berkas", "Bukti Marketing", "Interview Tertulis", "Pengajuan"]) {
       expect(screen.getByRole("heading", { level: 2, name }), name).toBeTruthy();
     }
     expect(screen.getByRole("link", { name: /0812-3456-7890/ }).getAttribute("href")).toBe("https://wa.me/081234567890");

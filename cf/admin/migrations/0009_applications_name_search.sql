@@ -1,0 +1,1 @@
+CREATE INDEX `student_applications_full_name_idx` ON `student_applications` ("full_name" collate nocase);
