@@ -251,7 +251,7 @@ describe("opening a message does not mark it read (a GET changes nothing)", () =
     expect(await count("audit_log")).toBe(0);
   });
 
-  test("a HEAD or an OPTIONS-style probe of the detail does not either", async () => {
+  test("a HEAD request for the detail does not either", async () => {
     const cookie = await editor();
     const row = await seed();
     await call(`${BASE}/${row.id}`, { method: "HEAD", cookie });

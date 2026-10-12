@@ -177,16 +177,17 @@ const checks = [
   },
   {
     name: "announcement writes only need read access",
-    file: "src/api/crud/resource.ts",
-    from: 'app.post("/", requireArea(config.area, "write"), handlers.create);',
-    to: 'app.post("/", requireArea(config.area, "read"), handlers.create);',
+    // The announcements are wired by hand from the kit's handlers since the list carries a status (SAKEM-082, Komunikasi).
+    file: "src/api/announcements.ts",
+    from: 'app.post("/", requireArea(AREA, "write"), handlers.create);',
+    to: 'app.post("/", requireArea(AREA, "read"), handlers.create);',
     tests: "test/announcements.test.ts",
   },
   {
     name: "announcements guarded by the wrong area",
     file: "src/api/announcements.ts",
-    from: 'area: "komunikasi",',
-    to: 'area: "konten",',
+    from: 'const AREA = "komunikasi" as const;',
+    to: 'const AREA = "konten" as const;',
     tests: "test/announcements.test.ts",
   },
   {
@@ -252,7 +253,7 @@ const checks = [
   {
     name: "unread messages counts the messages that were read",
     file: "src/dashboard/queries.ts",
-    from: "db.select({ n: count() }).from(contactMessages).where(isNull(contactMessages.readAt));",
+    from: "db.select({ n: count() }).from(contactMessages).where(isUnreadMessage);",
     to: "db.select({ n: count() }).from(contactMessages);",
     tests: DASHBOARD_TESTS,
   },
@@ -699,8 +700,8 @@ const checks = [
   {
     name: "announcement shown although it is switched off",
     file: "src/public/queries.ts",
-    from: "and(eq(announcements.active, true), or(isNull(announcements.startsAt)",
-    to: "and(sql`1 = 1`, or(isNull(announcements.startsAt)",
+    from: "and(eq(announcements.active, true), announcementInWindow(now))",
+    to: "and(sql`1 = 1`, announcementInWindow(now))",
     tests: PUBLIC_READ,
   },
   {
