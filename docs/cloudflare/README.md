@@ -28,6 +28,10 @@ Why the site is moving to Cloudflare Workers, what the target looks like, and in
 
 In production the Worker is attached to the zone with a **route** (not a custom domain), so `fetch(request)` inside the Worker reaches the origin behind the same hostname. Paths the Worker does not own are forwarded untouched (method, headers, body, cookies; redirects are not followed). Locally, `LEGACY_ORIGIN_URL` points at a stand-in origin. Details, the legacy path list and known conflicts: [`web-skeleton.md`](web-skeleton.md).
 
+## Account setup
+
+Which account is used, what the owner does in the terminal and dashboard, and when each step is needed: [`account-setup.md`](account-setup.md).
+
 ## Rules for this folder tree
 
 - No Cloudflare account use from this repo's tooling during the spike: no login, no deploy, no remote resource commands. `wrangler deploy --dry-run` only.
