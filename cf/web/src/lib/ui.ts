@@ -114,12 +114,19 @@ const tagSize: Record<TagSize, string> = {
   md: 'px-3 py-1.5',
   lg: 'px-3 py-1.5 text-sm',
 };
-export type TagTone = 'brand' | 'soft';
+export type TagTone = 'brand' | 'soft' | 'blue' | 'amber' | 'green' | 'red' | 'purple' | 'gray';
 const tagTone: Record<TagTone, string> = {
   /** Category and phase tags. */
   brand: 'bg-primary-blue text-white',
   /** Quiet chips, e.g. "290+ jam belajar setahun". */
   soft: 'bg-primary-blue/10 text-primary-blue',
+  // Hues for categories and statuses in lists (the report category on /laporan).
+  blue: 'border border-blue-200 bg-blue-50 text-blue-700',
+  amber: 'border border-amber-200 bg-amber-50 text-amber-700',
+  green: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+  red: 'border border-red-200 bg-red-50 text-red-700',
+  purple: 'border border-purple-200 bg-purple-50 text-purple-700',
+  gray: 'border border-gray-200 bg-gray-50 text-gray-700',
 };
 export const tagClasses = (size: TagSize = 'md', className?: string, tone: TagTone = 'brand') =>
   cx('inline-flex items-center gap-1.5 rounded-full text-xs font-semibold', tagTone[tone], tagSize[size], className);

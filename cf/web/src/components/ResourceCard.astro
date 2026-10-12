@@ -1,0 +1,103 @@
+---
+import { formatBytes } from '~/lib/reports';
+import type { Resource } from '~/lib/resources';
+import { buttonClasses } from '~/lib/ui';
+import Icon from './Icon.astro';
+
+/**
+ * One document of /gabung-siswa/docs, ported from ResourceCard in the root
+ * app/(public)/gabung-siswa/docs/page.tsx and its _copy-button.tsx. A file or an
+ * external link is a button-styled link that opens in a new tab; a text snippet is a
+ * <pre> with a copy button (the script is src/scripts/copy-button.ts, loaded by the page).
+ * The links use the API's paths and URLs as they are.
+ */
+interface Props {
+  item: Resource;
+}
+const { item } = Astro.props;
+const textId = `resource-text-${item.id}`;
+---
+
+<article class="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-shadow">
+  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-2 text-xs text-gray-500 mb-2 font-medium">
+        {
+          item.contentType === 'file' ? (
+            <>
+              <Icon name="file-text" size={12} />
+              <span>File{item.fileSize ? ` · ${formatBytes(item.fileSize)}` : ''}</span>
+            </>
+          ) : item.contentType === 'url' ? (
+            <>
+              <Icon name="link" size={12} />
+              <span>Link eksternal</span>
+            </>
+          ) : (
+            <>
+              <Icon name="type" size={12} />
+              <span>Teks · siap disalin</span>
+            </>
+          )
+        }
+      </div>
+      <h3 class="text-lg font-bold text-gray-900 leading-snug">{item.title}</h3>
+      {item.description && <p class="text-sm text-gray-600 mt-1.5 leading-relaxed">{item.description}</p>}
+    </div>
+    {
+      item.contentType === 'file' && item.filePath && (
+        <a
+          href={item.filePath}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          class={buttonClasses({ className: 'shrink-0' })}
+        >
+          <Icon name="download" size={16} /> Unduh
+        </a>
+      )
+    }
+    {
+      item.contentType === 'url' && item.externalUrl && (
+        <a
+          href={item.externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class={buttonClasses({ className: 'shrink-0' })}
+        >
+          <Icon name="external-link" size={16} /> Buka
+        </a>
+      )
+    }
+  </div>
+  {
+    item.contentType === 'text' && item.bodyText && (
+      <div class="mt-4">
+        {/* The row keeps its height (the button is 30 px) while the button is still `hidden`, so
+            un-hiding it does not push the text down. */}
+        <div class="flex items-center justify-end mb-2 min-h-[1.875rem]">
+          <button
+            type="button"
+            hidden
+            data-copy-text={textId}
+            aria-label={`Salin teks ${item.title}`}
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 data-[copied]:bg-success-bg data-[copied]:border-success-border data-[copied]:text-success-fg data-[copied]:hover:bg-success-bg data-[copied]:hover:border-success-border"
+          >
+            <span data-copy-idle class="inline-flex items-center gap-1.5">
+              <Icon name="copy" size={12} />
+              Salin
+            </span>
+            <span data-copy-done hidden class="inline-flex items-center gap-1.5">
+              <Icon name="check" size={12} />
+              Tersalin
+            </span>
+          </button>
+          <span class="sr-only" role="status" data-copy-status />
+        </div>
+        <pre
+          id={textId}
+          class="whitespace-pre-wrap break-words text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 leading-relaxed font-mono">{item.bodyText}</pre>
+      </div>
+    )
+  }
+</article>

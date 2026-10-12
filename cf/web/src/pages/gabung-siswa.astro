@@ -1,0 +1,184 @@
+---
+import Button from '~/components/Button.astro';
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon, { type IconName } from '~/components/Icon.astro';
+import SectionHeader from '~/components/SectionHeader.astro';
+import Base from '~/layouts/Base.astro';
+
+export const prerender = true;
+
+// Static at build time: served by the Workers assets layer, no Worker invocation. Ported from
+// app/(public)/gabung-siswa/page.tsx and layout.tsx; the copy is verbatim. The pages it links to
+// are plain links: "Daftar Sekarang" goes to /portal/daftar (the student portal, which lives at
+// the path /portal on this domain) and "Pusat Dokumen" to /gabung-siswa/docs.
+
+const benefits: { icon: IconName; title: string; description: string }[] = [
+  {
+    icon: 'book-open',
+    title: 'Kurikulum Khusus',
+    description:
+      'Belajar dengan kurikulum yang dirancang khusus, menggabungkan materi SD–SMA agar bisa dikuasai dalam satu tahun pembelajaran intensif.',
+  },
+  {
+    icon: 'users',
+    title: 'Mentoring Intensif',
+    description:
+      'Dapatkan pendampingan langsung dari mentor berpengalaman yang berasal dari berbagai universitas terbaik di Indonesia.',
+  },
+  {
+    icon: 'sparkles',
+    title: 'Talents Mapping',
+    description:
+      'Bekerja sama dengan talentsmapping.id untuk membantu kamu memetakan bakat dan memilih jurusan yang paling sesuai.',
+  },
+  {
+    icon: 'graduation-cap',
+    title: 'Pendampingan Beasiswa',
+    description:
+      'Setelah diterima di perguruan tinggi, kami dampingi proses pencarian beasiswa hingga kamu bisa memulai kuliah dengan tenang.',
+  },
+];
+
+const flow = [
+  {
+    step: '01',
+    title: 'Isi Formulir Pendaftaran',
+    body: 'Lengkapi seluruh bagian formulir dengan jujur dan sesuai kenyataan.',
+  },
+  {
+    step: '02',
+    title: 'Verifikasi Berkas',
+    body: 'Tim kesiswaan akan memverifikasi data dan berkas yang kamu kirim.',
+  },
+  {
+    step: '03',
+    title: 'Wawancara Lanjutan',
+    body: 'Kandidat terpilih akan diundang untuk sesi wawancara singkat via daring.',
+  },
+  {
+    step: '04',
+    title: 'Pengumuman & Onboarding',
+    body: 'Hasil seleksi diumumkan dan siswa terpilih memulai program bersama Gen 6.',
+  },
+];
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: 'Daftar Siswa',
+    description:
+      'Daftarkan diri sebagai siswa Sakola Kembara. Program bimbingan belajar gratis untuk persiapan UTBK dan masuk perguruan tinggi negeri bagi siswa dari keluarga kurang mampu di daerah terpencil.',
+    path: '/gabung-siswa',
+  }}
+>
+  <main class="min-h-screen bg-white">
+    {/* Hero Section */}
+    <section
+      class="relative bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-16 md:pb-24 pt-[var(--hero-top,8rem)] overflow-hidden"
+    >
+      <Container>
+        <div class="anim-fade-up max-w-[760px]">
+          {/* Hard-coded, as in the legacy page. SAKEM-059 decides which intake this names and where
+              the text is edited; until then it is ported as it is. */}
+          <span
+            class="inline-block px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider bg-white/15 rounded-full border border-white/25"
+          >
+            Open Recruitment Gen 6
+          </span>
+          <Heading level="page" class="mb-5">Wujudkan Mimpimu Bersama Sakola Kembara</Heading>
+          <p class="text-base md:text-lg text-white/90 max-w-[600px] mb-8 leading-relaxed">
+            Bergabunglah dengan ratusan siswa lain yang berhasil menembus perguruan tinggi terbaik di Indonesia
+            melalui program pembinaan intensif gratis dari Sakola Kembara.
+          </p>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <Button href="/portal/daftar" variant="white-on-navy" size="lg">
+              <Icon name="clipboard-list" size={18} />
+              Daftar Sekarang
+            </Button>
+            <Button href="#manfaat" variant="outline-on-navy" size="lg">Pelajari Program</Button>
+            <a
+              href="/gabung-siswa/docs"
+              class="inline-flex items-center gap-2 px-6 py-3.5 text-white/90 hover:text-white font-semibold underline underline-offset-4 decoration-white/40 hover:decoration-white transition-colors"
+            >
+              <Icon name="folder-open" size={16} />
+              Pusat Dokumen
+            </a>
+          </div>
+        </div>
+      </Container>
+    </section>
+
+    {/* Benefits */}
+    <section id="manfaat" class="py-20 bg-gray-50">
+      <Container>
+        <div class="anim-reveal mb-14">
+          <SectionHeader
+            title="Manfaat Bergabung dengan Sakola Kembara"
+            lead="Bukan hanya bimbingan belajar. Kami menyiapkan kamu untuk sukses di perguruan tinggi dan kehidupan setelahnya."
+          />
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          {
+            benefits.map((benefit, index) => (
+              <div
+                class="anim-reveal bg-white rounded-2xl p-8 border border-gray-100 hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
+                style={`--i:${index}`}
+              >
+                <div class="w-14 h-14 bg-primary-blue/10 rounded-2xl flex items-center justify-center mb-5">
+                  <Icon name={benefit.icon} size={28} class="text-primary-blue" />
+                </div>
+                <Heading level="card" class="text-gray-900 mb-3">{benefit.title}</Heading>
+                <p class="text-gray-600 leading-relaxed">{benefit.description}</p>
+              </div>
+            ))
+          }
+        </div>
+      </Container>
+    </section>
+
+    {/* Flow */}
+    <section class="py-20 bg-white">
+      <Container>
+        <div class="anim-reveal mb-12">
+          <SectionHeader
+            title="Alur Pendaftaran"
+            lead="Empat langkah singkat dari pendaftaran sampai kamu resmi menjadi bagian dari Sakola Kembara Gen 6."
+          />
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {
+            flow.map((f, i) => (
+              <div class="anim-reveal rounded-2xl border border-gray-200 p-6 bg-gray-50/60" style={`--i:${i}`}>
+                <div class="text-primary-blue font-[family-name:var(--font-display)] text-3xl mb-3">{f.step}</div>
+                <h3 class="font-bold text-gray-900 mb-2">{f.title}</h3>
+                <p class="text-sm text-gray-600 leading-relaxed">{f.body}</p>
+              </div>
+            ))
+          }
+        </div>
+      </Container>
+    </section>
+
+    {/* Bottom CTA */}
+    <section class="py-16 bg-gradient-to-br from-primary-blue to-accent-navy text-white">
+      <Container size="reading" class="text-center">
+        <div class="anim-reveal">
+          <SectionHeader
+            tone="dark"
+            title="Siap Bergabung dengan Sakola Kembara?"
+            lead="Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini."
+            class="mb-8"
+          />
+          <Button href="/portal/daftar" variant="white-on-navy" size="lg">
+            <Icon name="clipboard-list" size={18} />
+            Daftar Sekarang
+          </Button>
+        </div>
+      </Container>
+    </section>
+  </main>
+</Base>
