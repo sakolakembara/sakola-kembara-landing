@@ -102,7 +102,7 @@ The object is stored first, then the `media` row and the `upload.create` audit r
 
 ### `GET /api/admin/uploads?kind=&page=&pageSize=`
 
-What a picker lists: one kind, newest first, `pageSize` 1 to 50 (default 20), `page` from 1. Needs **read** access to the kind's area. `{ items: [{ id, path, contentType, size, width, height, createdAt }], page, pageSize, total, totalPages }`; the uploader and the key are not part of it. One D1 round trip (the page and the total).
+What a picker lists: one kind, newest first, `pageSize` 1 to 50 (default 20), `page` from 1. Needs **read** access to the kind's area: a viewer or a super_admin lists every kind, an editor only the kinds of the areas granted to them (an editor has no read-only level, see the permission model in [`d1-schema.md`](d1-schema.md#permission-model)), so an editor of `konten` listing `resource` or `registration-document` gets `403 forbidden` with no items and no count. `{ items: [{ id, path, contentType, size, width, height, createdAt }], page, pageSize, total, totalPages }`; the uploader and the key are not part of it. One D1 round trip (the page and the total).
 
 ### `DELETE /api/admin/uploads/:id`
 
@@ -175,7 +175,7 @@ None of this exists yet and none is done by the code. Account and token: [`accou
 
 ## Tests
 
-`cf/admin`: `test/uploads-sniff.test.ts` (every type and flavour, truncated at every length, huge and zero sizes, file names, the key shape), `test/uploads.test.ts` (the area matrix for every kind and role, accepted types with their stored metadata, disguised files, limits to the byte, `?kind=`, 411, the rate limit, list and delete with every reference, failures, logs, the local-only route and its production 404), `test/uploads-references.test.ts` (the registry against the schema, the SQL). `scripts/negative-checks-uploads.mjs` breaks one safeguard at a time (19 of them: the magic-byte check, the area check, the size limit, the traversal-safe key, the production route guard, the reference check, and more) and expects the tests to fail. `cf/web`: `tests/uploads.test.ts` and `pnpm test:e2e:uploads`.
+`cf/admin`: `test/uploads-sniff.test.ts` (every type and flavour, truncated at every length, huge and zero sizes, file names, the key shape), `test/uploads.test.ts` (the area matrix for every kind and role, for writing and for listing, accepted types with their stored metadata, disguised files, limits to the byte, `?kind=`, 411, the rate limit, list and delete with every reference, failures, logs, the local-only route and its production 404), `test/uploads-references.test.ts` (the registry against the schema, the SQL). `scripts/negative-checks-uploads.mjs` breaks one safeguard at a time (20 of them: the magic-byte check, the area check, the read check of the list, the size limit, the traversal-safe key, the production route guard, the reference check, and more) and expects the tests to fail. `cf/web`: `tests/uploads.test.ts` and `pnpm test:e2e:uploads`.
 
 ## Open decisions
 

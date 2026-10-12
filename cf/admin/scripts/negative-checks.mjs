@@ -103,7 +103,7 @@ const checks = [
     file: "src/auth/permissions.ts",
     from: 'return grantedAreas.includes(area) ? "write" : "none";',
     to: 'return grantedAreas.includes(area) ? "write" : "read";',
-    tests: `${PERMISSION_TESTS} test/seed.test.ts test/spa-contract.test.ts`,
+    tests: `${PERMISSION_TESTS} test/seed.test.ts test/spa-contract.test.ts test/uploads.test.ts`,
   },
   {
     name: "/api/me lists every grantable area as visible (the menu would show areas an editor cannot open)",

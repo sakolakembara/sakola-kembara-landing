@@ -51,6 +51,13 @@ export const uploadChecks = [
     tests: UPLOADS,
   },
   {
+    name: "upload: listing no longer checks read access to the kind's area (an editor of another area lists it)",
+    file: "src/api/uploads.ts",
+    from: 'if (!can(access.user.role, access.grantedAreas, KIND_RULES[kind].area, "read")) return c.json({ error: "forbidden" }, 403);',
+    to: "",
+    tests: UPLOADS,
+  },
+  {
     name: "upload: deleting a file no longer checks the area it was uploaded for",
     file: "src/api/uploads.ts",
     from: 'if (!can(access.user.role, access.grantedAreas, areaOfPurpose(media.purpose), "write")) return c.json({ error: "forbidden" }, 403);',
