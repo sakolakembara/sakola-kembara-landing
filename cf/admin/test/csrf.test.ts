@@ -77,27 +77,27 @@ describe("the guard in the worker", () => {
   test("a signed-in editor's cookie sent from another site changes nothing", async () => {
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
 
-    const fromEvil = await call("/api/announcements", { method: "POST", cookie, json: announcement, origin: "https://evil.example" });
+    const fromEvil = await call("/api/admin/announcements", { method: "POST", cookie, json: announcement, origin: "https://evil.example" });
     expect(fromEvil.status).toBe(403);
     expect(await fromEvil.json()).toEqual({ error: "forbidden", reason: "origin_mismatch" });
     expect(await announcementCount()).toBe(0);
 
-    const crossSite = await call("/api/announcements", { method: "POST", cookie, json: announcement, origin: null, headers: { "sec-fetch-site": "cross-site" } });
+    const crossSite = await call("/api/admin/announcements", { method: "POST", cookie, json: announcement, origin: null, headers: { "sec-fetch-site": "cross-site" } });
     expect(crossSite.status).toBe(403);
     expect(await announcementCount()).toBe(0);
 
     // Same request from the site itself works.
-    expect((await call("/api/announcements", { method: "POST", cookie, json: announcement })).status).toBe(201);
+    expect((await call("/api/admin/announcements", { method: "POST", cookie, json: announcement })).status).toBe(201);
   });
 
   test("every unsafe method is checked: POST, PUT, PATCH, DELETE", async () => {
     const cookie = await signedInCookie(uniqueEmail("admin"), "super_admin");
-    const created = await call("/api/announcements", { method: "POST", cookie, json: announcement });
-    const id = ((await created.json()) as { announcement: { id: string } }).announcement.id;
+    const created = await call("/api/admin/announcements", { method: "POST", cookie, json: announcement });
+    const id = ((await created.json()) as { item: { id: string } }).item.id;
 
     for (const [method, path] of [
-      ["PUT", `/api/announcements/${id}`],
-      ["DELETE", `/api/announcements/${id}`],
+      ["PUT", `/api/admin/announcements/${id}`],
+      ["DELETE", `/api/admin/announcements/${id}`],
       ["PATCH", `/api/admin/users/${id}`],
       ["POST", `/api/admin/users/${id}/deactivate`],
       ["PUT", `/api/admin/users/${id}/areas`],
@@ -138,26 +138,26 @@ describe("the guard in the worker", () => {
   test("a trusted origin may post (a dev server in front of the worker)", async () => {
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
     const trusted = { TRUSTED_ORIGINS: "http://localhost:5173" };
-    const ok = await call("/api/announcements", { method: "POST", cookie, json: announcement, origin: "http://localhost:5173", env: trusted });
+    const ok = await call("/api/admin/announcements", { method: "POST", cookie, json: announcement, origin: "http://localhost:5173", env: trusted });
     expect(ok.status).toBe(201);
-    const other = await call("/api/announcements", { method: "POST", cookie, json: announcement, origin: "http://localhost:5199", env: trusted });
+    const other = await call("/api/admin/announcements", { method: "POST", cookie, json: announcement, origin: "http://localhost:5199", env: trusted });
     expect(other.status).toBe(403);
   });
 
   test("a client with no browser headers and no cookie is not refused by the guard (the route still demands a session)", async () => {
-    const res = await call("/api/announcements", { method: "POST", json: announcement, origin: null });
+    const res = await call("/api/admin/announcements", { method: "POST", json: announcement, origin: null });
     expect(res.status).toBe(401);
   });
 
   test("with a cookie and no signal at all, it is refused", async () => {
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["komunikasi"]);
-    const res = await call("/api/announcements", { method: "POST", cookie, json: announcement, origin: null });
+    const res = await call("/api/admin/announcements", { method: "POST", cookie, json: announcement, origin: null });
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "forbidden", reason: "no_origin_signal" });
   });
 
   test("the answer is not cacheable", async () => {
-    const res = await call("/api/announcements", { method: "POST", json: announcement, origin: "https://evil.example" });
+    const res = await call("/api/admin/announcements", { method: "POST", json: announcement, origin: "https://evil.example" });
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(ORIGIN).toBe("https://admin.test");
   });

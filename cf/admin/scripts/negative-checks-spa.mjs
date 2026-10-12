@@ -7,10 +7,14 @@
 // Run it on a clean tree: it rewrites files under spa/src/ for a few seconds.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
 const checks = [
+  // The admin CRUD kit (SAKEM-082): scripts/negative-checks-spa-crud.mjs.
+  ...crudSpaChecks,
+
   // Who may see and do what
   {
     name: "read-only areas shown as writable",

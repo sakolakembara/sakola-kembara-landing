@@ -41,3 +41,9 @@ TURNSTILE_SITE_KEY=
 
 # Days to keep audit_log rows (the daily cleanup). Empty or 0 = keep everything.
 AUDIT_RETENTION_DAYS=365
+
+# Public origin the uploaded files are served from (GET /api/config answers it to the SPA).
+# Leave empty locally: /uploads/... is then same-origin, served by the local-only dev route
+# and proxied by the Vite dev server. In production set it to the files domain, with no
+# trailing slash (docs/cloudflare/uploads.md, owner steps).
+UPLOADS_BASE_URL=

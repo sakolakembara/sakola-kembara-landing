@@ -13,9 +13,20 @@ export type AuditAction =
   // Uploads to R2 (src/uploads/store.ts). New names: the legacy app wrote one per kind (blog.upload_image, team.upload_photo).
   | "upload.create"
   | "upload.delete"
-  | "announcement.create"
-  | "announcement.update"
-  | "announcement.delete"
+  // The CRUD kit's `<name>.create|update|delete` for every resource the legacy admin had (src/api/crud, docs/cloudflare/admin-crud.md).
+  | CrudAction
+  // The legacy verb actions (lib/audit-labels.ts), so the area that ports each one does not have to edit this union.
+  | "application.submit"
+  | "application.pending"
+  | "application.under_review"
+  | "application.accepted"
+  | "application.rejected"
+  | "application.revoke"
+  | "batch.publish_results"
+  | "batch.unpublish_results"
+  | "contact_message.submit"
+  | "contact_message.read"
+  | "contact_message.unread"
   // Pengaturan. Legacy labels: "Admin ditambahkan", "Admin diubah". `admin.update` is
   // used for area grants and for a role change; metadata.field says which.
   | "admin.create"
@@ -29,8 +40,27 @@ export type AuditAction =
   | "user.email_verified"
   | "user.password_reset";
 
-/** Resource types written so far (legacy names, see RESOURCE_TYPES in lib/audit-labels.ts). */
-export type AuditResourceType = "media" | "announcement" | "admin_user" | "user";
+/**
+ * Resource types (legacy names, see RESOURCE_TYPES in lib/audit-labels.ts), all of them declared up
+ * front so no area has to edit this file. `media` is the uploads table.
+ */
+export type AuditResourceType =
+  | "media"
+  | "announcement"
+  | "admin_user"
+  | "user"
+  | "application"
+  | "batch"
+  | "report"
+  | "blog"
+  | "team_member"
+  | "contact_message"
+  | "site_resource"
+  | "shortlink";
+
+/** The legacy short names of the resources that have `<name>.create|update|delete` (the first part of the action). */
+export type CrudName = "announcement" | "report" | "blog" | "team" | "resource" | "shortlink" | "batch" | "contact_message";
+export type CrudAction = `${CrudName}.${"create" | "update" | "delete"}`;
 
 export interface AuditEntry {
   action: AuditAction;

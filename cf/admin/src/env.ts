@@ -45,6 +45,12 @@ export interface Bindings {
   TURNSTILE_SITE_KEY?: string;
   /** Days to keep audit_log rows. Empty, 0 or not a number = keep everything. */
   AUDIT_RETENTION_DAYS?: string;
+  /**
+   * Public origin the uploaded files are served from (public variable, like the public site's variable of the
+   * same name). Empty or unset = same origin: local development, where GET /uploads/* serves the emulated bucket.
+   * Answered to the SPA by GET /api/config as `uploadsBaseUrl`. docs/cloudflare/uploads.md, owner steps.
+   */
+  UPLOADS_BASE_URL?: string;
 }
 
 /** Only an explicit "development" or "test" opts out of production behaviour. */

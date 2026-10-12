@@ -16,6 +16,7 @@ import { scheduledCleanup } from "./cron/cleanup";
 import { mailbox } from "./email/send";
 import type { Bindings } from "./env";
 import { sameOriginGuard } from "./security/csrf";
+import { uploadsBase } from "./uploads/base-url";
 
 // Only /api/* reaches this Worker (`run_worker_first` in wrangler.jsonc). The
 // SPA and its assets are served by the assets layer without running any code.
@@ -58,6 +59,8 @@ app.get("/api/config", (c) =>
     google: Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET),
     // The widget's site key is public by design; the secret never leaves the Worker.
     turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
+    // Where uploaded files are served from, so the SPA can show them (docs/cloudflare/admin-crud.md). "" = same origin.
+    uploadsBaseUrl: uploadsBase(c.env.UPLOADS_BASE_URL),
   }),
 );
 
@@ -92,7 +95,7 @@ app.get("/api/dev/mailbox", (c) => {
 // public domain serves them and no Worker runs per download). Not under /api.
 app.get("/uploads/*", serveDevUpload);
 
-app.route("/api/announcements", announcementRoutes);
+app.route("/api/admin/announcements", announcementRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 app.route("/api/admin/uploads", uploadRoutes);

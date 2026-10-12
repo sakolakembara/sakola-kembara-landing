@@ -1,17 +1,19 @@
-import { desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
-import { Hono } from "hono";
 import { z } from "zod";
-import { requireArea } from "../auth/guard";
-import type { AppEnv } from "../context";
-import { auditStatement } from "../db/audit";
 import * as schema from "../db/schema";
 import { announcementSeverity } from "../db/schema";
-import { readJson } from "./json";
+import { booleanFilter, crudRoutes, enumFilter, type CrudDeps } from "./crud";
 
-// Port of app/(admin)/admin/announcements/actions.ts. Same fields and the same
-// validation messages; the legacy form posts "on" for the checkbox and strings
-// for dates, this JSON API takes a boolean and ISO or datetime-local strings.
+// Pengumuman (area `komunikasi`), the reference implementation of the admin CRUD
+// convention (docs/cloudflare/admin-crud.md): five routes under
+// /api/admin/announcements built by `crudRoutes`, with the form's rules below.
+//
+// Port of app/(admin)/admin/announcements/actions.ts: same fields and the same
+// messages; the legacy form posts "on" for the checkbox and strings for dates,
+// this JSON API takes a boolean and ISO or datetime-local strings.
+//
+// OWNERSHIP: this file converts what existed. It belongs to the Komunikasi
+// worker, who finishes it (the "one current announcement" rule, publish
+// windows against now, the CTA URL rules): see section 19 of the doc.
 
 const optionalDate = z
   .string()
@@ -21,21 +23,21 @@ const optionalDate = z
     message: "Format tanggal tidak valid",
   });
 
-const optionalText = (max: number) =>
+const optionalText = (max: number, tooLong: string) =>
   z
     .string()
     .trim()
-    .max(max)
+    .max(max, tooLong)
     .nullish()
     .transform((value) => value || null);
 
 const announcementInput = z
   .object({
-    title: z.string().trim().min(3, "Judul minimal 3 karakter").max(200),
-    body: z.string().trim().min(5, "Isi minimal 5 karakter").max(500),
-    severity: z.enum(announcementSeverity),
-    ctaLabel: optionalText(60),
-    ctaUrl: optionalText(500),
+    title: z.string().trim().min(3, "Judul minimal 3 karakter").max(200, "Judul maksimal 200 karakter"),
+    body: z.string().trim().min(5, "Isi minimal 5 karakter").max(500, "Isi maksimal 500 karakter"),
+    severity: z.enum(announcementSeverity, { error: "Tingkat tidak dikenal" }),
+    ctaLabel: optionalText(60, "Label CTA maksimal 60 karakter"),
+    ctaUrl: optionalText(500, "URL CTA maksimal 500 karakter"),
     active: z.boolean().default(false),
     startsAt: optionalDate,
     endsAt: optionalDate,
@@ -49,94 +51,65 @@ const announcementInput = z
     path: ["endsAt"],
   });
 
-export const announcementRoutes = new Hono<AppEnv>();
+type AnnouncementRow = typeof schema.announcements.$inferSelect;
 
-// Announcements belong to the `komunikasi` area (docs/cloudflare/admin-ia.md).
-// Reading needs any admin role except students; writing needs super_admin or
-// an editor who was granted `komunikasi`. Viewers never write.
-announcementRoutes.get("/", requireArea("komunikasi", "read"), async (c) => {
-  const db = drizzle(c.env.DB, { schema });
-  const rows = await db.select().from(schema.announcements).orderBy(desc(schema.announcements.createdAt));
-  return c.json({ announcements: rows });
-});
+/** What the API returns: an explicit field list (no `createdBy`), dates as ISO strings. */
+function present(row: AnnouncementRow) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    severity: row.severity,
+    ctaLabel: row.ctaLabel,
+    ctaUrl: row.ctaUrl,
+    active: row.active,
+    startsAt: row.startsAt?.toISOString() ?? null,
+    endsAt: row.endsAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
-announcementRoutes.post("/", requireArea("komunikasi", "write"), async (c) => {
-  const raw = await readJson(c);
-  if (raw === undefined) return c.json({ error: "json_required" }, 415);
-  const parsed = announcementInput.safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: "invalid", fieldErrors: z.flattenError(parsed.error).fieldErrors }, 400);
-  }
-  const user = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
-  const id = crypto.randomUUID();
-  const data = parsed.data;
+/** `deps` is for tests only (a spy for the purge hook); production uses `announcementRoutes` below. */
+export function createAnnouncementRoutes(deps?: CrudDeps) {
+  return crudRoutes(
+    {
+      area: "komunikasi",
+      table: schema.announcements,
+      version: schema.announcements.updatedAt,
+      audit: { name: "announcement", type: "announcement", label: (row) => row.title },
+      schema: announcementInput,
+      toRow: (input, { user, mode }) => ({
+        title: input.title,
+        body: input.body,
+        severity: input.severity,
+        ctaLabel: input.ctaLabel,
+        ctaUrl: input.ctaUrl,
+        active: input.active,
+        startsAt: input.startsAt,
+        endsAt: input.endsAt,
+        ...(mode === "create" ? { createdBy: user.id } : {}),
+      }),
+      present,
+      list: {
+        search: [schema.announcements.title, schema.announcements.body],
+        filters: {
+          severity: enumFilter(schema.announcements.severity, announcementSeverity),
+          active: booleanFilter(schema.announcements.active),
+        },
+        sorts: {
+          createdAt: schema.announcements.createdAt,
+          updatedAt: schema.announcements.updatedAt,
+          title: schema.announcements.title,
+          startsAt: schema.announcements.startsAt,
+        },
+        defaultSort: "-createdAt",
+      },
+      // The strip on every public page.
+      purge: { area: "announcement" },
+    },
+    deps,
+  );
+}
 
-  const [inserted] = await db.batch([
-    db.insert(schema.announcements).values({ id, ...data, createdBy: user.id }).returning(),
-    auditStatement(db, user, {
-      action: "announcement.create",
-      resourceType: "announcement",
-      resourceId: id,
-      metadata: { title: data.title, severity: data.severity, active: data.active },
-    }),
-  ]);
-  return c.json({ announcement: inserted[0] }, 201);
-});
-
-announcementRoutes.put("/:id", requireArea("komunikasi", "write"), async (c) => {
-  const raw = await readJson(c);
-  if (raw === undefined) return c.json({ error: "json_required" }, 415);
-  const parsed = announcementInput.safeParse(raw);
-  if (!parsed.success) {
-    return c.json({ error: "invalid", fieldErrors: z.flattenError(parsed.error).fieldErrors }, 400);
-  }
-  const user = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
-  const id = c.req.param("id");
-  const data = parsed.data;
-
-  const existing = await db.query.announcements.findFirst({
-    where: eq(schema.announcements.id, id),
-    columns: { id: true },
-  });
-  if (!existing) return c.json({ error: "not_found" }, 404);
-
-  const [updated] = await db.batch([
-    db
-      .update(schema.announcements)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(schema.announcements.id, id))
-      .returning(),
-    auditStatement(db, user, {
-      action: "announcement.update",
-      resourceType: "announcement",
-      resourceId: id,
-      metadata: { title: data.title, severity: data.severity, active: data.active },
-    }),
-  ]);
-  return c.json({ announcement: updated[0] });
-});
-
-announcementRoutes.delete("/:id", requireArea("komunikasi", "write"), async (c) => {
-  const user = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
-  const id = c.req.param("id");
-
-  const existing = await db.query.announcements.findFirst({
-    where: eq(schema.announcements.id, id),
-    columns: { id: true, title: true },
-  });
-  if (!existing) return c.json({ error: "not_found" }, 404);
-
-  await db.batch([
-    db.delete(schema.announcements).where(eq(schema.announcements.id, id)),
-    auditStatement(db, user, {
-      action: "announcement.delete",
-      resourceType: "announcement",
-      resourceId: id,
-      metadata: { title: existing.title },
-    }),
-  ]);
-  return c.body(null, 204);
-});
+export const announcementRoutes = createAnnouncementRoutes();

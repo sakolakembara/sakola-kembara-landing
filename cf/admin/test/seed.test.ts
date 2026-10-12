@@ -83,7 +83,7 @@ describe("dev seed", () => {
   test("a seeded editor can write in their area and only there", async () => {
     await seed(env.DB, { password: PASSWORD, now: NOW });
     const body = { title: "Pengumuman Uji", body: "Isi pengumuman uji.", severity: "info", active: false };
-    const post = async (email: string) => (await call("/api/announcements", { method: "POST", cookie: cookiesOf(await signIn(email, PASSWORD)), json: body })).status;
+    const post = async (email: string) => (await call("/api/admin/announcements", { method: "POST", cookie: cookiesOf(await signIn(email, PASSWORD)), json: body })).status;
     expect(await post("editor-komunikasi@example.test")).toBe(201);
     expect(await post("editor-multi@example.test")).toBe(403); // pendaftaran and konten, not komunikasi
     expect(await post("editor-baru@example.test")).toBe(403);
@@ -93,7 +93,7 @@ describe("dev seed", () => {
 
   test("a seeded editor reads only their area: the other areas answer 403 to a read", async () => {
     await seed(env.DB, { password: PASSWORD, now: NOW });
-    const read = async (email: string) => (await call("/api/announcements", { cookie: cookiesOf(await signIn(email, PASSWORD)) })).status;
+    const read = async (email: string) => (await call("/api/admin/announcements", { cookie: cookiesOf(await signIn(email, PASSWORD)) })).status;
     expect(await read("editor-komunikasi@example.test")).toBe(200);
     expect(await read("editor-pendaftaran@example.test")).toBe(403);
     expect(await read("editor-konten@example.test")).toBe(403);

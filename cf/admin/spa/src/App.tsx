@@ -1,9 +1,7 @@
-import type { ComponentType } from "react";
 import { Route, Routes } from "react-router";
 import { RequireAuth, RequireSection } from "./components/RequireAuth";
 import { Shell } from "./components/Shell";
 import { NAV_ITEMS, type NavItem } from "./lib/nav";
-import { AnnouncementsPage } from "./pages/Announcements";
 import { AuthErrorPage } from "./pages/auth/AuthError";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPassword";
 import { LoginPage } from "./pages/auth/Login";
@@ -12,13 +10,11 @@ import { VerifyEmailPage } from "./pages/auth/VerifyEmail";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { NotFoundPage } from "./pages/NotFound";
 import { PlaceholderPage } from "./pages/Placeholder";
+import { SCREENS } from "./pages/screens";
 
-// Pages that exist, by menu path (lib/nav.ts). A menu entry not listed here
-// gets the placeholder. Everything below a menu entry ("/blog/new",
-// "/blog/<id>/edit") also gets the placeholder until its page is built.
-const PAGES: Partial<Record<string, ComponentType>> = {
-  "/announcements": AnnouncementsPage,
-};
+// Pages that exist, by menu path (lib/nav.ts), registered per area in pages/screens/. A menu entry not
+// registered there gets the placeholder. Everything below a menu entry ("/blog/new", "/blog/<id>/edit") that is
+// not registered either also gets the placeholder until its page is built.
 
 /** The menu entries that share one area, as they appear in lib/nav.ts. */
 function itemsBySection(): [NavItem["section"], NavItem[]][] {
@@ -48,10 +44,14 @@ export function App() {
             // Not allowed to open the area: the 403 page, same shell.
             <Route key={section} element={<RequireSection section={section} />}>
               {items.flatMap((item) => {
-                const Page = PAGES[item.path];
+                const screen = SCREENS[item.path];
+                const Page = screen?.index;
                 const path = item.path.slice(1);
                 return [
                   <Route key={item.path} path={path} element={Page ? <Page /> : <PlaceholderPage item={item} />} />,
+                  ...(screen?.routes ?? []).map(({ path: below, Page: Below }) => (
+                    <Route key={`${item.path}/${below}`} path={`${path}/${below}`} element={<Below />} />
+                  )),
                   <Route key={`${item.path}/*`} path={`${path}/*`} element={<PlaceholderPage item={item} />} />,
                 ];
               })}

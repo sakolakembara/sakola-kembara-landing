@@ -398,7 +398,7 @@ describe("changing a role", () => {
     const email = uniqueEmail("promoted");
     const cookie = await signedInCookie(email, "editor", ["komunikasi"]);
     const id = (await userRow(email))!.id;
-    const announce = () => call("/api/announcements", { method: "POST", cookie, json: { title: "Pengumuman uji", body: "Isi pengumuman uji.", severity: "info", active: false } });
+    const announce = () => call("/api/admin/announcements", { method: "POST", cookie, json: { title: "Pengumuman uji", body: "Isi pengumuman uji.", severity: "info", active: false } });
 
     expect((await announce()).status).toBe(201);
     expect((await patch(boss.cookie, id, { role: "viewer" })).status).toBe(200);
@@ -566,7 +566,7 @@ describe("deactivating and reactivating", () => {
     // Set the flag without going through the API, which would have deleted the session.
     await env.DB.prepare("UPDATE users SET deactivated_at = ? WHERE email = ?").bind(Date.now(), email).run();
     expect((await call("/api/me", { cookie })).status).toBe(401);
-    expect((await call("/api/announcements", { cookie })).status).toBe(401);
+    expect((await call("/api/admin/announcements", { cookie })).status).toBe(401);
   });
 
   test("outstanding reset and invite links die with the account, and no reset email is sent to it", async () => {

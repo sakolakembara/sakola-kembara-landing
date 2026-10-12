@@ -39,6 +39,7 @@ export default defineConfig(async () => ({
           TURNSTILE_SECRET_KEY: "",
           TURNSTILE_SITE_KEY: "",
           AUDIT_RETENTION_DAYS: "365",
+          UPLOADS_BASE_URL: "",
           TEST_MIGRATIONS: await readD1Migrations(path.join(here, "migrations")),
         },
       },

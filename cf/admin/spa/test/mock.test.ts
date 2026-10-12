@@ -131,7 +131,7 @@ describe("mock transport", () => {
 
   test("a viewer cannot create an announcement, like the Worker", async () => {
     setup({ persona: { role: "viewer", granted: [] } });
-    expect(await api("/api/announcements", { method: "POST", json: { title: "Halo dunia", body: "Isi pengumuman" } })).toMatchObject({
+    expect(await api("/api/admin/announcements", { method: "POST", json: { title: "Halo dunia", body: "Isi pengumuman" } })).toMatchObject({
       ok: false,
       status: 403,
     });
@@ -139,11 +139,11 @@ describe("mock transport", () => {
 
   test("an editor of another area cannot even read the announcements, like the Worker; a viewer can", async () => {
     setup({ persona: { role: "editor", granted: ["konten"] } });
-    expect(await api("/api/announcements")).toMatchObject({ ok: false, status: 403 });
+    expect(await api("/api/admin/announcements")).toMatchObject({ ok: false, status: 403 });
     setup({ persona: { role: "editor", granted: ["komunikasi"] } });
-    expect((await api("/api/announcements")).ok).toBe(true);
+    expect((await api("/api/admin/announcements")).ok).toBe(true);
     setup({ persona: { role: "viewer", granted: [] } });
-    expect((await api("/api/announcements")).ok).toBe(true);
+    expect((await api("/api/admin/announcements")).ok).toBe(true);
   });
 
   test("an unknown route is a 404", async () => {
@@ -155,7 +155,7 @@ describe("mock transport", () => {
 describe("the mock's security check", () => {
   test("/api/config offers a site key, so the pages draw the (mock) widget", async () => {
     setup();
-    expect(await api("/api/config")).toEqual({ ok: true, data: { google: true, turnstileSiteKey: MOCK_SITE_KEY } });
+    expect(await api("/api/config")).toEqual({ ok: true, data: { google: true, turnstileSiteKey: MOCK_SITE_KEY, uploadsBaseUrl: "" } });
   });
 
   test("sign-in and forgot-password refuse a request without a made-up token, like the Worker", async () => {

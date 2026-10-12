@@ -1,6 +1,10 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { setTransport } from "~/lib/api";
+import { installDialogShim } from "./dialog-shim";
+
+// jsdom has no <dialog> modal methods (test/dialog-shim.ts).
+installDialogShim();
 
 // A test fails when the page logs an error or a warning (a React "not wrapped
 // in act" or key warning, a failed prop type...) unless the test says it
