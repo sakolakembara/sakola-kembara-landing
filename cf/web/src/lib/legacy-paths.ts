@@ -12,9 +12,9 @@
 //                  in the same PR that adds its Astro page.
 //
 // Paths no list names are the Worker's own (the ported pages, /sitemap.xml,
-// /robots.txt, the 404). One more case lives in src/pages/[slug].astro: an
-// unknown single-segment path may be an admin-managed shortlink, which only
-// the legacy app (Postgres) can resolve.
+// /robots.txt, the 404). One more case lives in src/pages/[...path].astro: an
+// unknown single-segment path may be an admin-managed shortlink, which the API
+// Worker resolves (src/lib/shortlink.ts); the legacy app no longer does.
 
 export interface LegacyPath {
   /** Path prefix, no trailing slash. */
@@ -75,10 +75,11 @@ export function legacyKind(pathname: string): LegacyKind | null {
 export const isLegacyPath = (pathname: string): boolean => legacyKind(pathname) !== null;
 
 /**
- * Same grammar as validateSlug() in the root lib/shortlinks.ts: lowercase
- * letters, digits, single inner hyphens, at most 64 characters. A single
- * segment that fits is handed to the legacy app, which looks it up in
- * Postgres and redirects (307) or answers its own 404.
+ * Same grammar as validateSlug() in the root lib/shortlinks.ts and in the
+ * admin Worker (cf/admin/src/shortlinks/rules.ts): lowercase letters, digits,
+ * single inner hyphens, at most 64 characters. A single segment that fits is
+ * looked up through the API (src/lib/shortlink.ts): a 307 to the target or the
+ * site's 404; anything else is a 404 without a call.
  */
 export const SHORTLINK_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SHORTLINK_MAX_LENGTH = 64;

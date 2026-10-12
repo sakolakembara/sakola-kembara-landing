@@ -130,7 +130,7 @@ Two admins can open the same form. Without a check the second save silently eras
 - The comparison is made twice: first on the row that was just read (a cheap early answer), and again **inside the `UPDATE`** (`... WHERE id = ? AND updated_at = ?`), so two saves that read the same version cannot both win. The save that matches zero rows answers `409 stale`, and its audit row is not written (`withAudit` writes it only if the statement before it changed a row).
 - `updatedAt` is set by the server on every successful update (`max(now, previous + 1 ms)`, so two saves in the same millisecond still get different ETags).
 - `DELETE` accepts `If-Match` but does not require it. The SPA sends the `updatedAt` of the row it shows, so deleting something that was edited a moment ago is refused as `stale` instead of throwing away an edit nobody saw.
-- A table with no `updated_at` (`reports`, `audit_log`, `media`) has no `PUT`: it is created and deleted, or has verb routes. If you add `updated_at` to a table, that needs a migration like any other column.
+- A table with no `updated_at` (`audit_log`, `media`) has no `PUT` (`reports` had none either, until the Laporan screen needed to edit a report's metadata: migration `0008`, [`admin-konten.md`](admin-konten.md#8-migration-0008)): it is created and deleted, or has verb routes. If you add `updated_at` to a table, that needs a migration like any other column.
 
 **What the SPA does on `409 stale`.** `useMutation` sets `stale`, and `FormShell` shows a persistent alert that cannot be missed: *"Data ini sudah diubah orang lain sejak kamu membukanya. Muat ulang untuk melihat versi terbaru. Perubahan yang belum disimpan akan hilang."* with a **"Muat ulang"** button that refetches the item and resets the form. Nothing is merged automatically and nothing is saved until the person presses "Simpan" again on the fresh version. In a list, a stale delete shows the same sentence with "Muat ulang" inside the confirmation dialog.
 
@@ -400,7 +400,7 @@ A new resource "Shortlink" (`konten`), from the table to the screen. Every step 
 6. **Tests**: a Worker test for what is specific (the slug grammar, the reserved slugs), and the SPA tests of the two pages (a read-only role sees no buttons; the form maps a 409 onto the slug field). The contract suite already proves the generic behaviour; do not copy it.
 7. **Docs**: if the change is structural (a route, a dependency, a deploy step, the data model) update `docs/current-state/`; the PR template asks.
 
-Look at `src/api/announcements.ts`, `spa/src/pages/announcements/` and `spa/src/mock/resources/announcements.ts`: they are this, for announcements.
+Look at `src/api/announcements.ts`, `spa/src/pages/announcements/` and `spa/src/mock/resources/announcements.ts`: they are this, for announcements. For a resource that does not fit `crudRoutes` (Laporan: the file is required to create and cannot be replaced, so two schemas) and for lists that must come out in the public page's order, which is more than one column, see [`admin-konten.md`](admin-konten.md): `src/api/reports.ts` builds `crudHandlers` twice and assembles the five routes by hand, and `src/api/sort-expression.ts` is the one place a sort key that is a SQL expression is typed as a column.
 
 ## 19. Who owns the announcements reference
 

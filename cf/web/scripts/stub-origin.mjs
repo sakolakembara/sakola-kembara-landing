@@ -89,8 +89,8 @@ export function startStubOrigin({ port = Number(process.env.STUB_ORIGIN_PORT ?? 
       return reply(200, 'application/octet-stream', `legacy file ${p}`, { 'cache-control': 'public, max-age=0, must-revalidate' });
     }
 
-    // Shortlinks: one active link, everything else is the legacy 404.
-    if (p === '/daftar-2026') return reply(307, 'text/plain', '', { location: 'https://example.org/form' });
+    // No shortlinks here any more: they are resolved through the API (scripts/fixture-api.mjs). A slug that reached
+    // this origin would be a regression, and it gets the legacy 404 (with `x-stub-origin`), which the e2e checks notice.
     return html(404, `404 for ${p}`);
   });
 

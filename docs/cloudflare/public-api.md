@@ -7,6 +7,7 @@ The implementation of the contract in [`content-api.md`](content-api.md) inside 
 | Part | Where |
 | --- | --- |
 | Read endpoints (`team`, `reports`, `resources`, `announcements/current`, `blog`, `blog/{slug}`) | `src/api/public/read.ts` |
+| The shortlink lookup (an addition, SAKEM-082: [`admin-konten.md`](admin-konten.md#6-the-redirect)) | `src/api/public/shortlink.ts`, `src/public/shortlink.ts` (its query and its click write) |
 | The contact form route | `src/api/public/contact.ts` |
 | The public face, the internal face, and how they differ | `src/api/public/index.ts`, `src/api/public/internal.ts`, `src/api/public/entrypoint.ts` |
 | Every D1 read, as unexecuted Drizzle queries (the plan test runs exactly these) | `src/public/queries.ts` |
@@ -65,6 +66,7 @@ Exactly the contract's shapes, orders and headers. Each response is built by a s
 | `announcements/current` | 1 (1) | window evaluated against the clock of this request |
 | `blog` | 3 (1) in a batch; a page out of range costs a 4th (2) | featured, count, page |
 | `blog/{slug}` | 2 (2); 3 (3) when nothing is related | article, related, fallback |
+| `shortlinks/{slug}` (addition) | 1 (1), then 1 write in `waitUntil` after the answer; 0 for a path that cannot be a slug | the redirect's lookup. **The one read with a side effect**: it counts the click, without a limit, after the answer is decided; `no-store`, never cached. Contract: [`content-api.md`](content-api.md#get-apipublicshortlinksslug) |
 
 - **Order ties.** Every `ORDER BY` ends with the row order (`rowid`), so articles saved in the same instant keep one stable order across pages.
 - **Parameters are never an error** (contract): they are read like `parseInt`, as the legacy page and `cf/web/blog-contract.mjs` do (`2.9` is 2, `3abc` is 3, `abc` and an empty value are the default), and an out-of-range one is clamped. So there is no `400` on the read endpoints; a slug that cannot exist (not `[a-z0-9]` words joined by single hyphens, or over 160 characters) is a `404` without touching D1, and an unpublished article is the same `404` as an unknown one.
@@ -153,6 +155,7 @@ None in a payload, header value, status or order that the contract defines. Addi
 | Header `X-Sakem-Turnstile-Token` and error `400 turnstile_failed` | the Turnstile check, now wired to the shared helper |
 | `RL_CONTACT` rate-limit binding (was `PUBLIC_CONTACT_LIMIT`) | the contact limiter (contract open question 4), shared with the auth routes' limiter module |
 | Index `blog_posts_status_featured_published_idx` | the query budget |
+| `GET /api/public/shortlinks/{slug}` on the internal face, with its `Cache-Control: no-store` and a click counted in `waitUntil` | the short-link redirect of the site (SAKEM-082, [`admin-konten.md`](admin-konten.md#6-the-redirect)); the contract has it as an addition |
 
 Not done, on purpose: the HMAC option C (`401`, `503`), `ETag`/`Last-Modified`, CORS, upload endpoints (milestone M3), the rendering of `contentHtml` (the blog save path renders it; the read path only returns it).
 

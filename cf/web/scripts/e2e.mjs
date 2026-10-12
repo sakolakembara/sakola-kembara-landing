@@ -10,7 +10,8 @@
 // buttons run in a DOM, degraded and empty states), the blog read from the content API (cache,
 // stale-if-error, outage pages, 404, sitemap), the /kontak form without JavaScript (every status
 // code of the contract, IP forwarding, no personal data in the log), SEO tags in the served HTML,
-// security headers, images and PDFs served as static assets (never through the origin).
+// security headers, images and PDFs served as static assets (never through the origin), and the shortlink
+// redirect (`/<slug>` looked up through the API: 307, 404, 503, one call per visit, no cache).
 // Prints a summary and exits non-zero on any failure.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -324,49 +325,135 @@ await check('pass-through', 'announcement and session endpoints used by the navb
   assert.deepEqual(await (await get('/api/announcements/current')).json(), { announcement: null });
 });
 
-// shortlinks
-await check('shortlinks', '/daftar-2026 (an unknown single segment) is resolved by the origin: its 307 reaches the browser', async () => {
+// shortlinks (SAKEM-082): `/<slug>` is looked up through the API Worker, one call per visit, and the legacy origin
+// is not asked any more. The fixture API stands in for the real one and counts a click for every link it finds.
+const shortlinkAsked = async () => (await fetch(`${fixtureBase}/__requests?for=shortlink`)).json();
+const shortlinkClicks = async () => (await fetch(`${fixtureBase}/__clicks`)).json();
+const shortlinkMode = (m) => fetch(`${fixtureBase}/__mode?for=shortlink&m=${m}`, { method: 'POST' });
+/** What a visit changed at the fixture API: the paths it was asked for, and the clicks it counted. */
+async function visiting(fn) {
+  const asked = (await shortlinkAsked()).length;
+  const clicks = await shortlinkClicks();
+  const result = await fn();
+  const after = await shortlinkClicks();
+  const counted = {};
+  for (const [slug, n] of Object.entries(after)) if (n !== (clicks[slug] ?? 0)) counted[slug] = n - (clicks[slug] ?? 0);
+  return { result, asked: (await shortlinkAsked()).slice(asked), counted };
+}
+
+await check('shortlinks', '/daftar-2026 is a 307 to its target: Location, not cacheable, the site security headers; one call to the API, one click, the legacy origin not asked', async () => {
   clearStub();
-  const res = await get('/daftar-2026');
+  const { result: res, asked, counted } = await visiting(() => get('/daftar-2026'));
   assert.equal(res.status, 307);
   assert.equal(res.headers.get('location'), 'https://example.org/form');
-  assert.equal(stubHits().length, 1);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  assert.match(res.headers.get('strict-transport-security') ?? '', /max-age=31536000/);
+  assert.equal(await res.text(), '');
+  assert.deepEqual(asked, ['/api/public/shortlinks/daftar-2026']);
+  assert.deepEqual(counted, { 'daftar-2026': 1 });
+  assert.equal(stubHits().length, 0, 'the legacy origin must not be asked');
 });
-await check('shortlinks', '/daftar-2026/ : the trailing slash is folded with a 308 first (like Next), then the origin is asked', async () => {
-  clearStub();
-  const first = await get('/daftar-2026/');
-  assert.equal(first.status, 308);
-  assert.equal(first.headers.get('location'), '/daftar-2026');
-  assert.equal(stubHits().length, 0);
-  const second = await get('/daftar-2026');
-  assert.equal(second.status, 307);
-  assert.equal(stubHits().length, 1);
-  assert.equal(stubHits()[0].path, '/daftar-2026');
+await check('shortlinks', 'a path of this site is a target too: Location is that path, the query kept as stored', async () => {
+  const { result: res } = await visiting(() => get('/gabung'));
+  assert.equal(res.status, 307);
+  assert.equal(res.headers.get('location'), '/gabung-siswa?utm_source=ig');
 });
-await check('shortlinks', 'upper case is offered to the origin too (its resolver lower-cases the slug)', async () => {
-  clearStub();
-  await get('/Daftar-2026');
-  assert.equal(stubHits().length, 1);
+await check('shortlinks', '/daftar-2026/ : the trailing slash is folded with a 308 first (like Next), without a call to the API; then the link opens', async () => {
+  const folded = await visiting(() => get('/daftar-2026/'));
+  assert.equal(folded.result.status, 308);
+  assert.equal(folded.result.headers.get('location'), '/daftar-2026');
+  assert.deepEqual(folded.asked, []);
+  const opened = await visiting(() => get('/daftar-2026'));
+  assert.equal(opened.result.status, 307);
+  assert.deepEqual(opened.counted, { 'daftar-2026': 1 });
 });
-await check('shortlinks', "an unknown valid slug: the origin's 404 is passed on", async () => {
-  const res = await get('/no-such-link');
+await check('shortlinks', 'upper case is looked up as lower case (the legacy resolver lower-cased the slug)', async () => {
+  const { result: res, asked } = await visiting(() => get('/Daftar-2026'));
+  assert.equal(res.status, 307);
+  assert.deepEqual(asked, ['/api/public/shortlinks/daftar-2026']);
+});
+await check('shortlinks', 'nothing is cached: 12 visits are 12 calls to the API and 12 clicks, every one a 307', async () => {
+  const { result: statuses, asked, counted } = await visiting(async () => {
+    const out = [];
+    for (let n = 0; n < 12; n++) out.push((await get('/unduh-panduan')).status);
+    return out;
+  });
+  assert.deepEqual(statuses, Array(12).fill(307));
+  assert.equal(asked.length, 12);
+  assert.deepEqual(counted, { 'unduh-panduan': 12 });
+});
+await check('shortlinks', 'HEAD is a visit too (a link checker or a preview bot): 307 and a click', async () => {
+  const { result: res, counted } = await visiting(() => get('/daftar-2026', { method: 'HEAD' }));
+  assert.equal(res.status, 307);
+  assert.equal(res.headers.get('location'), 'https://example.org/form');
+  assert.deepEqual(counted, { 'daftar-2026': 1 });
+});
+await check('shortlinks', 'other methods are not visits: a POST to a slug is the 404, without a call to the API', async () => {
+  const { result: res, asked } = await visiting(() => get('/daftar-2026', { method: 'POST', headers: { origin: base }, body: 'x' }));
   assert.equal(res.status, 404);
-  assert.equal(res.headers.get('x-stub-origin'), '1');
+  assert.deepEqual(asked, []);
 });
-for (const p of ['/no_such_link', '/a--b', '/-a', `/${'a'.repeat(65)}`, '/has.dot', '/a%20b']) {
-  await check('shortlinks', `${p.slice(0, 20)} cannot be a slug: 404 from the Worker, origin not asked`, async () => {
+await check('shortlinks', "an unknown valid slug (or one switched off: the API says the same for both) is the site's own 404, one call, no click", async () => {
+  clearStub();
+  const { result: res, asked, counted } = await visiting(() => get('/no-such-link'));
+  assert.equal(res.status, 404);
+  const html = await res.text();
+  assert.match(html, /Halaman tidak ditemukan/);
+  assert.match(html, /<meta name="robots" content="noindex">/);
+  assert.equal(res.headers.get('x-stub-origin'), null, 'the legacy origin must not answer');
+  assert.deepEqual(asked, ['/api/public/shortlinks/no-such-link']);
+  assert.deepEqual(counted, {});
+  assert.equal(stubHits().length, 0);
+});
+for (const p of ['/no_such_link', '/a--b', '/-a', `/${'a'.repeat(65)}`, '/has.dot', '/a%20b', '/%E0%A4%A']) {
+  await check('shortlinks', `${p.slice(0, 20)} cannot be a slug: 404 from the Worker, the API not asked`, async () => {
     clearStub();
-    const res = await get(p);
+    const { result: res, asked } = await visiting(() => get(p));
     assert.equal(res.status, 404);
     assert.equal(res.headers.get('x-stub-origin'), null);
+    assert.deepEqual(asked, []);
     assert.equal(stubHits().length, 0);
   });
 }
-await check('shortlinks', 'static pages win over the catch-all: /blog and / never reach the origin', async () => {
+await check('shortlinks', 'static pages and the pages of the Worker win over the catch-all: they never ask the API for a shortlink', async () => {
   clearStub();
-  await get('/blog');
-  await get('/');
+  const { asked } = await visiting(async () => {
+    for (const p of ['/', '/blog', '/tim', '/laporan', '/kontak', '/donasi', '/gabung-siswa', '/robots.txt', '/program/pembinaan', '/daftar']) await get(p);
+  });
+  assert.deepEqual(asked, []);
   assert.equal(stubHits().length, 0);
+});
+await check('shortlinks', 'when the API cannot answer the visitor gets a 503 (never a 404, never a redirect), told to retry, and nothing is cached', async () => {
+  try {
+    for (const mode of ['500', '429', 'badjson', 'html404', 'unsafe']) {
+      await shortlinkMode(mode);
+      const { result: res, counted } = await visiting(() => get('/daftar-2026'));
+      assert.equal(res.status, 503, `mode ${mode}`);
+      assert.equal(res.headers.get('location'), null, `mode ${mode}: nothing to follow`);
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.equal(res.headers.get('retry-after'), '30');
+      assert.match(await res.text(), /Tautan ini belum dapat dibuka saat ini\./);
+      assert.deepEqual(counted, {}, `mode ${mode}`);
+    }
+  } finally {
+    await shortlinkMode('ok');
+  }
+});
+await check('shortlinks', 'an API that is too slow is cut off after about 2 s: 503, then the link works again', async () => {
+  try {
+    await shortlinkMode('slow');
+    const started = performance.now();
+    const res = await get('/daftar-2026');
+    assert.equal(res.status, 503);
+    assert.ok(performance.now() - started < 4500, 'the visitor is not kept waiting for the 5 s answer');
+  } finally {
+    await shortlinkMode('ok');
+  }
+  assert.equal((await get('/daftar-2026')).status, 307);
+});
+await check('shortlinks', 'the log of a failed lookup holds a fixed reason and never the slug', async () => {
+  assert.match(stack.output(), /shortlink api: status 500/);
+  assert.doesNotMatch(stack.output(), /shortlink api:[^\n]*(daftar-2026|no-such-link|unduh-panduan)/);
 });
 
 // ---------------------------------------------------------------- /program/<id> and /donasi
@@ -2016,6 +2103,39 @@ await check('binding', 'the contact form through the binding: the visitor addres
     const page = await fetch(`${s.base}/kontak`);
     assert.equal(page.status, 200, 'the page itself needs no API');
     assert.doesNotMatch(s.output(), /Marker\d|marker\d|@example\.com|DUMMY\.TOKEN|\[ERROR\]|Uncaught|TypeError/);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('binding', 'a shortlink is resolved through the binding (no API URL set): the visitor gets the 307, one lookup per visit reaches the API, which counts the click', async () => {
+  const s = await startStack({ port: 8809, stubPort: 4427, fixturePort: 4428, inspectorPort: 9349, binding: true });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  try {
+    const first = await fetch(`${s.base}/daftar-2026`, { redirect: 'manual' });
+    assert.equal(first.status, 307);
+    assert.equal(first.headers.get('location'), 'https://example.org/form');
+    assert.equal(first.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await (await fetch(`${f}/__clicks`)).json(), { 'daftar-2026': 1 });
+    const unknown = await fetch(`${s.base}/no-such-link`, { redirect: 'manual' });
+    assert.equal(unknown.status, 404);
+    assert.match(await unknown.text(), /Halaman tidak ditemukan/);
+    assert.deepEqual(await (await fetch(`${f}/__requests?for=shortlink`)).json(), ['/api/public/shortlinks/daftar-2026', '/api/public/shortlinks/no-such-link']);
+
+    // Wall time of a visit, from this machine through wrangler dev, the binding and the fixture: a proxy for the cost
+    // (docs/cloudflare/admin-konten.md), not Worker CPU, which workerd cannot report locally.
+    const times = [];
+    for (let n = 0; n < 40; n++) {
+      const started = performance.now();
+      const res = await fetch(`${s.base}/unduh-panduan`, { redirect: 'manual' });
+      await res.arrayBuffer();
+      if (n >= 5) times.push(performance.now() - started);
+      assert.equal(res.status, 307);
+    }
+    times.sort((a, b) => a - b);
+    notes.push(`shortlink visit through the binding (n=35 after 5 warm-up, wall ms, local): median ${times[17].toFixed(1)}, p95 ${times[33].toFixed(1)}, max ${times[34].toFixed(1)}`);
+    assert.deepEqual((await (await fetch(`${f}/__clicks`)).json())['unduh-panduan'], 40, 'every visit was counted');
+    assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
   } finally {
     await s.stop();
   }

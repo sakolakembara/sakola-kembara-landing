@@ -158,9 +158,7 @@ describe("placeholder pages", () => {
       ["/applications", "Pendaftar"],
       ["/resources", "Pusat Dokumen"],
       ["/blog", "Blog"],
-      ["/reports", "Laporan"],
-      ["/team", "Tim"],
-      ["/shortlinks", "Shortlink"],
+      // Laporan, Tim and Shortlink are pages now (test/reports.test.tsx, team.test.tsx, shortlinks.test.tsx).
       // Aktivitas and Pengaturan are pages now (test/audit-page.test.tsx, test/settings.test.tsx).
     ];
     for (const [path, title] of titles) {

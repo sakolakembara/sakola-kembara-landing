@@ -15,6 +15,7 @@ import { uploadChecks } from "./negative-checks-uploads.mjs";
 import { crudChecks } from "./negative-checks-crud.mjs";
 import { sistemChecks } from "./negative-checks-sistem.mjs";
 import { komunikasiChecks } from "./negative-checks-komunikasi.mjs";
+import { kontenMiscChecks } from "./negative-checks-konten-misc.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -42,6 +43,9 @@ const checks = [
 
   // The Komunikasi area, Pesan and Pengumuman (SAKEM-082): scripts/negative-checks-komunikasi.mjs.
   ...komunikasiChecks,
+
+  // Laporan, Tim, Shortlink and the redirect's lookup (SAKEM-082): scripts/negative-checks-konten-misc.mjs.
+  ...kontenMiscChecks,
 
   // ---------------------------------------------------------------- auth
   {

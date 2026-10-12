@@ -9,6 +9,9 @@
 //   GET  /api/public/blog              ?page=&pageSize=  featured + articles + paging (the contract's rules)
 //   GET  /api/public/blog/<slug>       { article, related }, or 404 { "error": "not_found" }
 //   POST /api/public/contact           the contact form: 201, 400, 429 (rate_limited, duplicate_recent)
+//   GET  /api/public/shortlinks/<slug> { shortlink: { targetUrl } }, or 404 { "error": "not_found" } for an unknown or
+//                                      switched-off link (an ADDITION to the contract: docs/cloudflare/content-api.md).
+//                                      Like the real API it counts the click as it answers (see /__clicks).
 //
 // The blog is generated from the root content/blog/*.md with the SAME pipeline the build uses
 // (plugins/blog-content.mjs, createBlogReader), so all 80 articles exist, with the rendered HTML
@@ -26,9 +29,11 @@
 //        X-Sakem-Turnstile-Token, like the real API with a secret configured; the contract's position:
 //        after the field checks, before the duplicate check).
 //        Without `for` it applies to every endpoint and resets the per-endpoint overrides; `for` is
-//        team | reports | resources | blog | contact.
+//        team | reports | resources | blog | contact | shortlink (shortlink modes: ok | 500 | slow | badjson | html404 |
+//        empty (every link unknown) | unsafe (every link answers a javascript: target) | 429).
 //   GET  /__hits                { hits (team, kept for older checks), mode, overrides, byEndpoint }
-//   GET  /__requests?for=blog   the blog request targets (path + query), oldest first
+//   GET  /__requests?for=blog   the blog request targets (path + query), oldest first (`for=shortlink` too)
+//   GET  /__clicks              { "<slug>": n }: the clicks the fixture counted, one per lookup that found a link
 //   GET  /__contact-log         every contact request the fixture looked at: { clientIp, turnstileToken, headers, body }
 //                               (a TEST fixture: the real API stores messages in D1, and the site never logs them;
 //                               `turnstileToken` is the X-Sakem-Turnstile-Token header, or undefined when none came)
@@ -194,6 +199,19 @@ function validateContact(input) {
   return Object.keys(errors).length > 0 ? { errors } : { ok: { fullName, email, message } };
 }
 
+/**
+ * The shortlinks the fixture knows. An inactive link is simply absent: the contract answers 404 for it, the same as for
+ * an unknown slug. (Targets are made up; example.org is reserved.)
+ */
+export const SAMPLE_SHORTLINKS = {
+  'daftar-2026': 'https://example.org/form',
+  gabung: '/gabung-siswa?utm_source=ig',
+  'unduh-panduan': 'https://example.org/panduan.pdf',
+};
+
+/** The slug grammar the real API checks before it reads anything (cf/admin/src/shortlinks/rules.ts). */
+const SLUG_GRAMMAR = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 const ENDPOINTS = {
   '/api/public/team': { name: 'team', key: 'members', data: SAMPLE_MEMBERS },
   '/api/public/reports': { name: 'reports', key: 'reports', data: SAMPLE_REPORTS },
@@ -203,8 +221,10 @@ const ENDPOINTS = {
 export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 4391), host = '127.0.0.1' } = {}) {
   let mode = 'ok';
   const overrides = {};
-  const byEndpoint = { team: 0, reports: 0, resources: 0, blog: 0, contact: 0 };
-  const requests = { blog: [] };
+  const byEndpoint = { team: 0, reports: 0, resources: 0, blog: 0, contact: 0, shortlink: 0 };
+  const requests = { blog: [], shortlink: [] };
+  /** slug -> clicks counted, as the real API does after it has answered. */
+  const clicks = new Map();
   const contact = { log: [], windows: new Map(), recent: new Map() };
   /** The mode an endpoint answers in: its own override, else the global one. */
   const modeOf = (name) => overrides[name] ?? mode;
@@ -213,6 +233,8 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
     for (const k of Object.keys(overrides)) delete overrides[k];
     for (const k of Object.keys(byEndpoint)) byEndpoint[k] = 0;
     requests.blog.length = 0;
+    requests.shortlink.length = 0;
+    clicks.clear();
     contact.log.length = 0;
     contact.windows.clear();
     contact.recent.clear();
@@ -264,6 +286,7 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
     if (p === '/__hits') return send(res, 200, { hits: byEndpoint.team, mode, overrides, byEndpoint });
     if (p === '/__requests') return send(res, 200, requests[url.searchParams.get('for') ?? 'blog'] ?? []);
     if (p === '/__contact-log') return send(res, 200, contact.log);
+    if (p === '/__clicks') return send(res, 200, Object.fromEntries(clicks));
     if (p === '/__reset') {
       reset();
       res.writeHead(204);
@@ -303,6 +326,38 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
           },
           { 'cache-control': READ_CACHE },
         );
+      });
+    }
+
+    // ---- shortlinks: the lookup of the redirect. never cacheable; counts a click for a link it finds
+    if (p.startsWith('/api/public/shortlinks/')) {
+      const noStore = { 'cache-control': 'no-store' };
+      if (req.method !== 'GET') return send(res, 405, { error: 'method_not_allowed' }, noStore);
+      byEndpoint.shortlink++;
+      requests.shortlink.push(p + url.search);
+      const current = modeOf('shortlink');
+      if (current === '500') {
+        res.writeHead(500);
+        return res.end('boom');
+      }
+      if (current === '429') return send(res, 429, { error: 'rate_limited' }, { ...noStore, 'retry-after': '5' });
+      if (current === 'badjson') return send(res, 200, '{"shortlink": "not an object"}', noStore);
+      if (current === 'html404') {
+        res.writeHead(404, { 'content-type': 'text/html' });
+        return res.end('<h1>Not Found</h1>');
+      }
+      let slug = '';
+      try {
+        slug = decodeURIComponent(p.slice('/api/public/shortlinks/'.length));
+      } catch {
+        // not a slug
+      }
+      const target = current === 'unsafe' ? 'javascript:alert(1)' : SLUG_GRAMMAR.test(slug) && slug.length <= 64 && current !== 'empty' ? SAMPLE_SHORTLINKS[slug] : undefined;
+      return delayed(current, () => {
+        if (!target) return send(res, 404, { error: 'not_found' }, noStore);
+        // `unsafe` models an API that hands out a target it should not (the real one never does): no click to count.
+        if (current !== 'unsafe') clicks.set(slug, (clicks.get(slug) ?? 0) + 1);
+        return send(res, 200, { shortlink: { targetUrl: target } }, noStore);
       });
     }
 
@@ -409,5 +464,5 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { port } = await startFixtureApi();
-  console.log(`fixture content API on http://127.0.0.1:${port}/api/public/{team,reports,resources,blog,blog/<slug>,contact}`);
+  console.log(`fixture content API on http://127.0.0.1:${port}/api/public/{team,reports,resources,blog,blog/<slug>,contact,shortlinks/<slug>}`);
 }

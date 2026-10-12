@@ -31,6 +31,11 @@ export const reports = sqliteTable(
     fileSize: integer("file_size").notNull(), // bytes
     uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }),
     uploadedAt: createdAt("uploaded_at"),
+    /**
+     * The version `If-Match` compares (docs/cloudflare/admin-crud.md). The legacy table had none; the legacy admin
+     * could still edit a report's metadata, so the column was added with the Laporan screen (migration 0008).
+     */
+    updatedAt: updatedAt(),
   },
   (t) => [
     index("reports_category_year_idx").on(t.category, t.year),
