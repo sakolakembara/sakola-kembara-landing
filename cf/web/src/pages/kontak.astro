@@ -1,0 +1,157 @@
+---
+import { env } from 'cloudflare:workers';
+import ContactForm from '~/components/contact/ContactForm.astro';
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon from '~/components/Icon.astro';
+import PageHero from '~/components/PageHero.astro';
+import SocialLinks from '~/components/SocialLinks.astro';
+import Base from '~/layouts/Base.astro';
+import { CONTACT_MESSAGES, FIELD_MESSAGES, contactInfo, type ContactFieldErrors, type ContactValues } from '~/lib/contact';
+import { submitContact } from '~/lib/contact-submit';
+
+// Ported from app/(public)/kontak/page.tsx and layout.tsx. SSR, because the page receives the form:
+// a POST is handled here (lib/contact-submit.ts) and the form works without JavaScript.
+//
+//   GET                      the page (`?terkirim=1`: the confirmation instead of the form)
+//   POST, valid              303 to /kontak?terkirim=1 (a refresh does not post again)
+//   POST, anything else      this page again with the legacy message, the typed text kept and a
+//                            status that says what happened: 400 invalid, 413 too large, 429 too many
+//                            or the same email again, 503 the message could not be handed over.
+//                            Never cached.
+// The visitor's address is read from CF-Connecting-IP, and the message goes to the API Worker through
+// a service binding (see lib/api-client.ts). No message text or address is ever logged.
+export const prerender = false;
+
+const method = Astro.request.method;
+const noStore = { 'cache-control': 'no-store' };
+
+if (method !== 'GET' && method !== 'HEAD' && method !== 'POST') {
+  return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD, POST', ...noStore } });
+}
+
+let message: string | undefined;
+let fieldErrors: ContactFieldErrors = {};
+let values: Partial<ContactValues> = {};
+
+if (method === 'POST') {
+  const outcome = await submitContact(Astro.request, { env });
+  Astro.response.headers.set('cache-control', 'no-store');
+  switch (outcome.kind) {
+    case 'sent':
+      return new Response(null, { status: 303, headers: { location: '/kontak?terkirim=1', ...noStore } });
+    case 'forbidden':
+      return new Response('Forbidden', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8', ...noStore } });
+    case 'invalid':
+      Astro.response.status = 400;
+      ({ message, fieldErrors, values } = outcome);
+      break;
+    case 'bad_request':
+      Astro.response.status = 400;
+      message = CONTACT_MESSAGES.invalid;
+      break;
+    case 'too_large':
+      Astro.response.status = 413;
+      message = CONTACT_MESSAGES.invalid;
+      fieldErrors = { message: [FIELD_MESSAGES.messageMax] };
+      break;
+    case 'rate_limited':
+    case 'duplicate':
+      Astro.response.status = 429;
+      Astro.response.headers.set('retry-after', String(outcome.retryAfter));
+      ({ message, values } = outcome);
+      break;
+    case 'unavailable':
+      Astro.response.status = 503;
+      Astro.response.headers.set('retry-after', '30');
+      ({ message, values } = outcome);
+      break;
+  }
+}
+
+const sent = method !== 'POST' && Astro.url.searchParams.get('terkirim') === '1';
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: 'Kontak',
+    description:
+      'Hubungi tim Sakola Kembara untuk pertanyaan, kerjasama, atau peluang relawan. Berbasis di Bandung, melayani siswa di seluruh Indonesia.',
+    path: '/kontak',
+  }}
+>
+  <main class="min-h-screen bg-white">
+    <PageHero
+      title="Mari Bergerak Bersama"
+      lead="Punya pertanyaan, ingin berkolaborasi, atau tertarik menjadi relawan? Kami senang mendengar dari Anda."
+    />
+
+    {/* Main Content */}
+    <section class="py-16">
+      <Container>
+        <div class="grid lg:grid-cols-2 gap-16">
+          {/* Contact Form */}
+          <div class="anim-fade-up" style="animation-delay: 0.2s">
+            <Heading level="panel" as="h2" class="text-gray-900 mb-6">Kirim Pesan</Heading>
+
+            <ContactForm
+              sent={sent}
+              successMessage={CONTACT_MESSAGES.success}
+              message={message}
+              fieldErrors={fieldErrors}
+              values={values}
+            />
+          </div>
+
+          {/* Contact Info */}
+          <div class="anim-fade-up" style="animation-delay: 0.3s">
+            <Heading level="panel" as="h2" class="text-gray-900 mb-6">Informasi Kontak</Heading>
+
+            {/* Contact Methods: the legacy page's three cards, icon by position (Mail, MessageCircle, MapPin). */}
+            <div class="space-y-5 mb-10">
+              {
+                contactInfo.map((contact, index) => (
+                  <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div class="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                      {index === 0 && <Icon name="mail" size={24} class="w-6 h-6 text-gray-600" />}
+                      {index === 1 && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="w-6 h-6 text-gray-600"
+                        >
+                          {/* Lucide "message-circle", kept local so parallel pages do not collide in Icon.astro. */}
+                          <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />
+                        </svg>
+                      )}
+                      {index === 2 && <Icon name="map-pin" size={24} class="w-6 h-6 text-gray-600" />}
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-900">{contact.title}</h4>
+                      <p class="text-gray-600">{contact.value}</p>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Social Links */}
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 mb-4">Ikuti Kami</h3>
+              <SocialLinks theme="light" />
+            </div>
+          </div>
+        </div>
+      </Container>
+    </section>
+  </main>
+</Base>

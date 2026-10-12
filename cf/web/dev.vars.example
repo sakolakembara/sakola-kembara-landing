@@ -1,5 +1,11 @@
 # Copy to .dev.vars (untracked) for local runs. Fake local values only.
 # Stand-in for the legacy Next origin (scripts/stub-origin.mjs, default port 4390).
 LEGACY_ORIGIN_URL=http://127.0.0.1:4390
-# Base URL of the content API that serves /api/public/team, /reports and /resources (scripts/fixture-api.mjs, default port 4391).
+# Base URL of the content API that serves /api/public/team, /reports, /resources, /blog and /blog/<slug>
+# (scripts/fixture-api.mjs, default port 4391).
 CONTENT_API_URL=http://127.0.0.1:4391
+# Where the contact form posts locally instead of the `API` service binding (the same fixture server).
+# Never set this in production: it would move the form off the binding onto public HTTP.
+CONTACT_API_URL=http://127.0.0.1:4391
+# Optional: seconds a fetched list, blog page or article is cached before the API is asked again (default 60).
+# CONTENT_CACHE_FRESH_SECONDS=60
