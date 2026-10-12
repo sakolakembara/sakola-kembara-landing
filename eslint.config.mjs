@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "storybook-static/**",
+    // cf/* are independent apps (Astro, Hono, ...) with their own tooling.
+    "cf/**",
   ]),
 ]);
 
