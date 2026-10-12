@@ -21,6 +21,7 @@
     "db:drift": "node scripts/check-migrations.mjs",
     "measure": "tsx scripts/measure.ts",
     "measure:public": "node scripts/measure-public.mjs",
+    "measure:upload": "tsx scripts/measure-upload.ts",
     "test:negative": "node scripts/negative-checks.mjs",
     "test:negative:spa": "node scripts/negative-checks-spa.mjs"
   },

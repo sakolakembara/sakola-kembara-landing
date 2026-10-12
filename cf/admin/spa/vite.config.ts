@@ -60,6 +60,7 @@ export default defineConfig({
   },
   server: {
     // `pnpm dev:spa` next to `wrangler dev` (8787): same origin from the browser's view.
-    proxy: { "/api": "http://localhost:8787" },
+    // /uploads is the local R2 emulation (src/api/dev-uploads.ts), so uploaded images show in the SPA without a public domain.
+    proxy: { "/api": "http://localhost:8787", "/uploads": "http://localhost:8787" },
   },
 });

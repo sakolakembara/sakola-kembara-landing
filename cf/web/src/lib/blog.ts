@@ -27,6 +27,7 @@ import {
 } from '../../blog-contract.mjs';
 import { contentApiTarget, type ApiEnv } from './api-client';
 import { findImage } from './images';
+import { uploadUrl } from './uploads';
 import { assetUrl, srcsetFor } from '../../assets.config.mjs';
 import { createApiBlogSource, type BlogSource } from './blog-source';
 import type { BlogMeta } from './blog-types';
@@ -83,16 +84,17 @@ export interface CoverAttrs {
 /**
  * <img> attributes for a cover or a card image given by its path as the API stores it.
  * A file the asset pipeline made (the 235 migrated images) gets its WebP `srcset` and its
- * `@` written as `%40`; any other path (an upload in R2, an external URL) is used as given.
+ * `@` written as `%40`; any other path (an external URL) is used as given, and an admin upload
+ * (`/uploads/...`, in R2) gets `uploadsBaseUrl` (UPLOADS_BASE_URL) in front when there is one.
  * The size comes from the API (recorded at upload); the manifest's is the fallback.
  */
-export function coverAttrs(image: string | null, width: number | null, height: number | null): CoverAttrs | null {
+export function coverAttrs(image: string | null, width: number | null, height: number | null, uploadsBaseUrl?: string): CoverAttrs | null {
   if (!image) return null;
   const entry = findImage(image);
   const w = width ?? entry?.width;
   const h = height ?? entry?.height;
   return {
-    src: entry ? assetUrl(image) : image,
+    src: entry ? assetUrl(image) : uploadUrl(image, uploadsBaseUrl),
     ...(entry ? { srcset: srcsetFor(entry) } : {}),
     ...(w && h ? { width: w, height: h } : {}),
   };

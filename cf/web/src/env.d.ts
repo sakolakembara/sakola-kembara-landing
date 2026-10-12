@@ -24,6 +24,13 @@ declare namespace Cloudflare {
     /** Local/CI only: where the contact form posts instead of the `API` service binding (scripts/fixture-api.mjs). Unset in production. */
     CONTACT_API_URL?: string;
     /**
+     * Public origin that serves the files the admin uploads (R2 behind its own domain), no trailing slash, e.g.
+     * `https://files.example.org`. Prefixed to the `/uploads/...` paths of the content API (team photos, report and
+     * document files, blog covers, and the images and links inside an article). Empty or unset (local, CI): paths
+     * stay same-origin and nothing changes. See docs/cloudflare/uploads.md and src/lib/uploads.ts.
+     */
+    UPLOADS_BASE_URL?: string;
+    /**
      * Service binding to the API Worker's `PublicApi` entrypoint (wrangler.jsonc `services`). In production the
      * contact form and every read of /api/public/* go through it; CONTACT_API_URL and CONTENT_API_URL win over it
      * when set (local runs and CI only).

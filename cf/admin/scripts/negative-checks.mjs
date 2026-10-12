@@ -11,6 +11,7 @@
 // `edits` for safeguards that live in two places.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { uploadChecks } from "./negative-checks-uploads.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -24,6 +25,9 @@ const PUBLIC_PURGE = "test/public-purge.test.ts";
 const PUBLIC_FACE = "test/public-face.test.ts";
 
 const checks = [
+  // The upload API (SAKEM-082): scripts/negative-checks-uploads.mjs.
+  ...uploadChecks,
+
   // ---------------------------------------------------------------- auth
   {
     name: "verification requirement removed",

@@ -25,7 +25,8 @@ export type RateLimitBinding =
   | "RL_VERIFY_RESEND"
   | "RL_MAIL_TARGET"
   | "RL_TOKEN"
-  | "RL_CONTACT";
+  | "RL_CONTACT"
+  | "RL_UPLOAD";
 
 export interface LimitConfig {
   binding: RateLimitBinding;
@@ -93,6 +94,13 @@ export const RATE_LIMITS = {
     limit: 5,
     period: 60,
     message: "Terlalu banyak percobaan pengiriman. Silakan tunggu satu menit lalu coba lagi.",
+  },
+  /** Admin uploads and their deletes, 20 per minute per signed-in user. Key: user id (not the address: an office shares one). */
+  upload: {
+    binding: "RL_UPLOAD",
+    limit: 20,
+    period: 60,
+    message: "Terlalu banyak unggahan. Silakan tunggu satu menit lalu coba lagi.",
   },
 } as const satisfies Record<string, LimitConfig>;
 

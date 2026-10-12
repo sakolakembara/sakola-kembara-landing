@@ -2,6 +2,8 @@
 export interface Bindings {
   DB: D1Database;
   ASSETS: Fetcher;
+  /** R2 bucket of admin uploads (wrangler.jsonc `r2_buckets`; src/uploads, docs/cloudflare/uploads.md). Served to visitors from a separate public domain, never by this Worker (except the local-only GET /uploads/*). */
+  UPLOADS: R2Bucket;
 
   // Cloudflare rate limit bindings, one per concern (wrangler.jsonc "ratelimits",
   // limits and keys in src/security/rate-limit.ts). Declared here as present;
@@ -16,6 +18,8 @@ export interface Bindings {
   RL_TOKEN: RateLimit;
   /** Contact form, used by src/public/contact-deps.ts (the one limiter for POST /api/public/contact). */
   RL_CONTACT: RateLimit;
+  /** Admin uploads, per user (src/api/uploads.ts). */
+  RL_UPLOAD: RateLimit;
 
   /** "production" unless set otherwise. Anything else is a local or test run. */
   ENVIRONMENT?: string;

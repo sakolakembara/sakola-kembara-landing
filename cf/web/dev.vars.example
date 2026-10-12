@@ -14,3 +14,8 @@ CONTACT_API_URL=http://127.0.0.1:4391
 TURNSTILE_SITE_KEY=1x00000000000000000000AA
 # Optional: seconds a fetched list, blog page or article is cached before the API is asked again (default 60).
 # CONTENT_CACHE_FRESH_SECONDS=60
+# Optional: where files uploaded in the admin are served from (R2 behind its own domain in production), no
+# trailing slash. Locally the admin Worker serves its local R2 emulation at /uploads/* (`wrangler dev` in
+# cf/admin, port 8787), so this shows uploaded photos and files without a public domain. Empty or unset:
+# /uploads/... stays a same-origin path and nothing changes. See docs/cloudflare/uploads.md.
+# UPLOADS_BASE_URL=http://localhost:8787

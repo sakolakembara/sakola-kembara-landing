@@ -12,6 +12,7 @@ import {
   groupResourcesByCategory,
   loadResources,
 } from '~/lib/resources';
+import { uploadUrl } from '~/lib/uploads';
 
 // SSR: the catalog comes from the content API at request time (see lib/content-api.ts for the
 // timeout, the 60 s cache and stale-if-error). Ported from app/(public)/gabung-siswa/docs/.
@@ -23,7 +24,10 @@ Astro.response.status = page.status;
 for (const [name, value] of Object.entries(page.headers)) Astro.response.headers.set(name, value);
 Astro.response.headers.set('x-resources-source', source);
 
-const groups = groupResourcesByCategory(resources ?? []);
+// Files uploaded in the admin live in R2 on their own domain (docs/cloudflare/uploads.md); empty = same-origin paths.
+const groups = groupResourcesByCategory(
+  (resources ?? []).map((item) => ({ ...item, filePath: uploadUrl(item.filePath, env.UPLOADS_BASE_URL) })),
+);
 const hasAnything = groups.length > 0;
 ---
 
