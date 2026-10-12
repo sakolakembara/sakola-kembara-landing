@@ -18,6 +18,15 @@ export const users = sqliteTable(
     image: text("image"),
     /** Additional field. Clients can never set it (`input: false` in the auth factory). */
     role: text("role", { enum: userRoles }).notNull().default("student"),
+    /**
+     * Set when a super_admin deactivates the account (SAKEM-081, auth). A
+     * deactivated user cannot sign in by any method and every session was
+     * revoked at that moment; the row, its audit trail and its role stay.
+     * Additional field for Better Auth (`input: false`), so no client can set it.
+     * The migration also adds a trigger that refuses to remove the last active
+     * super_admin (see migrations/0005_keep_one_super_admin.sql).
+     */
+    deactivatedAt: timestampMs("deactivated_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
