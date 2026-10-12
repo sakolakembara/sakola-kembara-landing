@@ -1,0 +1,234 @@
+---
+import { env } from 'cloudflare:workers';
+import Button from '~/components/Button.astro';
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import Icon from '~/components/Icon.astro';
+import PageHero from '~/components/PageHero.astro';
+import SectionHeader from '~/components/SectionHeader.astro';
+import Base from '~/layouts/Base.astro';
+import { loadTeam } from '~/lib/team';
+import { CATEGORY_DESCRIPTION, TEAM_CATEGORY_LABEL, groupTeam } from '~/lib/team-types';
+
+// SSR: the team comes from the content API at request time (see lib/team.ts for
+// the timeout, cache and stale-if-error behaviour).
+export const prerender = false;
+
+const { members, source } = await loadTeam({
+  baseUrl: env.CONTENT_API_URL,
+  cache: typeof caches !== 'undefined' ? caches.default : undefined,
+  waitUntil: (p) => Astro.locals.cfContext.waitUntil(p),
+  freshTtlSeconds: Number(env.TEAM_CACHE_FRESH_SECONDS) || undefined,
+});
+const groups = groupTeam(members);
+Astro.response.headers.set('x-team-source', source);
+---
+
+<Base
+  seo={{
+    kind: 'page',
+    title: 'Tim Kami',
+    description:
+      'Pahlawan di balik Sakola Kembara — pengurus dan relawan dari berbagai universitas terbaik Indonesia yang berkomitmen membuka akses pendidikan tinggi bagi siswa kurang mampu.',
+    path: '/tim',
+  }}
+>
+  <main class="min-h-screen bg-gray-50">
+    <PageHero
+      title="Pahlawan di Balik Sakola Kembara"
+      lead="Didukung oleh pengurus dan relawan dari berbagai universitas terbaik di Indonesia yang berkomitmen untuk pendidikan yang setara."
+    />
+
+    <section class="py-16 md:py-20">
+      <Container class="space-y-16">
+        {
+          members.length === 0 && (
+            <p class="text-center text-gray-500 py-12">Profil tim akan segera tampil di sini.</p>
+          )
+        }
+        {
+          groups.map(({ category, members: list }) => (
+            <section>
+              <header class="mb-6">
+                <Heading level="subsection" class="text-gray-900 mb-2">
+                  {TEAM_CATEGORY_LABEL[category]}
+                </Heading>
+                <p class="text-gray-600 max-w-[760px]">{CATEGORY_DESCRIPTION[category]}</p>
+              </header>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {list.map((member) => (
+                  <button
+                    type="button"
+                    data-member-dialog={`member-${member.id}`}
+                    class="group text-center bg-white rounded-2xl p-6 border border-gray-100 hover:-translate-y-1 hover:shadow-lg focus-visible:-translate-y-1 focus-visible:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue transition-all duration-300 cursor-pointer"
+                    aria-label={`Lihat profil ${member.name}`}
+                  >
+                    <div class="w-28 h-28 mx-auto mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                      {member.image ? (
+                        <img
+                          src={member.image}
+                          alt={member.name}
+                          width="112"
+                          height="112"
+                          loading="lazy"
+                          decoding="async"
+                          class="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Icon name="user" size={36} class="text-gray-300" />
+                      )}
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 mb-1">{member.name}</h3>
+                    <p class="text-sm font-medium text-primary-blue">{member.role}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))
+        }
+      </Container>
+    </section>
+
+    <section class="py-16 bg-white">
+      <Container size="reading">
+        <SectionHeader
+          class="mb-8"
+          title="Ingin Bergabung dengan Tim?"
+          lead="Kami selalu mencari relawan yang bersemangat untuk berkontribusi dalam membuka akses pendidikan bagi siswa Indonesia. Terbuka juga untuk kerja sama lembaga dan bentuk dukungan lainnya."
+        />
+        {/* Secondary route for anyone who wants to collaborate rather than sign up as a volunteer. */}
+        <div class="flex flex-col sm:flex-row justify-center gap-3">
+          <Button href="https://linktr.ee/JoinSakolaKembara" size="lg">Bergabung Menjadi Relawan</Button>
+          <Button href="/kontak" variant="outline" size="lg">Hubungi Kami</Button>
+        </div>
+      </Container>
+    </section>
+
+    {/* One native <dialog> per member, opened by the card button (script below). The profile text
+        is in the HTML, so it is readable by crawlers and screen readers; the Next version only
+        rendered it after a click. */}
+    {
+      members.map((member) => (
+        <dialog
+          id={`member-${member.id}`}
+          aria-labelledby={`member-${member.id}-name`}
+          class="m-0 ml-auto h-dvh max-h-none w-full max-w-[540px] overflow-y-auto bg-white p-0 shadow-2xl backdrop:bg-black/50"
+        >
+          <div class="min-h-full">
+            <div class="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/95 backdrop-blur border-b border-gray-100">
+              <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {TEAM_CATEGORY_LABEL[member.category]}
+              </span>
+              <form method="dialog">
+                <button
+                  type="submit"
+                  class="p-2 -mr-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Tutup"
+                >
+                  <Icon name="x" size={20} />
+                </button>
+              </form>
+            </div>
+
+            <div class="px-6 py-6">
+              <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-36 h-36 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center mb-4 border-4 border-white shadow-md">
+                  {member.image ? (
+                    <img
+                      src={member.image}
+                      alt={member.name}
+                      width="144"
+                      height="144"
+                      loading="lazy"
+                      decoding="async"
+                      class="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Icon name="user" size={48} class="text-gray-300" />
+                  )}
+                </div>
+                <Heading level="subsection" id={`member-${member.id}-name`} class="text-gray-900">
+                  {member.name}
+                </Heading>
+                <p class="text-sm font-semibold text-primary-blue mt-1">{member.role}</p>
+              </div>
+
+              {member.bio && (
+                <section class="mb-6 last:mb-0">
+                  <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                    Tentang
+                  </h3>
+                  <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{member.bio}</p>
+                </section>
+              )}
+
+              {member.educationHistory.length > 0 && (
+                <section class="mb-6 last:mb-0">
+                  <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                    Riwayat Pendidikan
+                  </h3>
+                  <ul class="space-y-3">
+                    {member.educationHistory.map((e) => (
+                      <li class="text-sm">
+                        <div class="font-medium text-gray-900">{e.institution}</div>
+                        {(e.degree || e.year) && (
+                          <div class="text-gray-500 text-[13px] mt-0.5">
+                            {[e.degree, e.year].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {member.workHistory.length > 0 && (
+                <section class="mb-6 last:mb-0">
+                  <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                    Riwayat Pekerjaan
+                  </h3>
+                  <ul class="space-y-3">
+                    {member.workHistory.map((w) => (
+                      <li class="text-sm">
+                        <div class="font-medium text-gray-900">{w.role}</div>
+                        <div class="text-gray-600 text-[13px] mt-0.5">
+                          {w.organization}
+                          {w.period ? ` · ${w.period}` : ''}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {!member.bio && member.educationHistory.length === 0 && member.workHistory.length === 0 && (
+                <p class="text-sm text-gray-500 text-center py-6">Detail profil akan segera tersedia.</p>
+              )}
+            </div>
+          </div>
+        </dialog>
+      ))
+    }
+  </main>
+</Base>
+
+<script>
+  // The only client JS of this page (about 0.3 KB): open a member's <dialog> from its card, and
+  // close it on a click on the backdrop. Escape and focus handling come from the browser.
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const opener = target.closest<HTMLElement>('[data-member-dialog]');
+    if (opener?.dataset.memberDialog) {
+      (document.getElementById(opener.dataset.memberDialog) as HTMLDialogElement | null)?.showModal();
+    } else if (target instanceof HTMLDialogElement) {
+      target.close();
+    }
+  });
+</script>
+
+<style is:global>
+  /* Keep the page behind a modal dialog from scrolling. */
+  body:has(dialog[open]) {
+    overflow: hidden;
+  }
+</style>

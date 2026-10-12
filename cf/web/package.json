@@ -1,0 +1,45 @@
+{
+  "name": "sakola-kembara-web",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public site of Sakola Kembara: Astro 6 SSR on Cloudflare Workers (SAKEM-075 thin slice).",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "sync-assets": "node scripts/sync-assets.mjs",
+    "dev": "node scripts/sync-assets.mjs && astro dev",
+    "build": "node scripts/sync-assets.mjs && astro build",
+    "preview": "astro preview",
+    "check": "node scripts/sync-assets.mjs && astro check",
+    "test": "node scripts/sync-assets.mjs && vitest run",
+    "test:e2e": "node scripts/e2e.mjs",
+    "measure": "node scripts/measure.mjs",
+    "fixture-api": "node scripts/fixture-api.mjs",
+    "stub-origin": "node scripts/stub-origin.mjs"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^13.7.0",
+    "astro": "^6.4.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@fontsource/lora": "^5.3.0",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.0.0",
+    "gray-matter": "^4.0.3",
+    "image-size": "^2.0.2",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.149.0"
+  }
+}

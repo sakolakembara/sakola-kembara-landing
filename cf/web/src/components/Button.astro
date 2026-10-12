@@ -1,0 +1,37 @@
+---
+import { buttonClasses, linkKind, type ButtonSize, type ButtonVariant } from '~/lib/ui';
+
+/**
+ * A <button>, or a link when `href` is set. External URLs open in a new tab,
+ * files and mail/tel links are plain anchors, everything else is a route.
+ * (In the Next app a route is a next/link; here every link is a plain <a>.)
+ */
+interface Props {
+  href?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  class?: string;
+  [attr: string]: unknown;
+}
+const { href, variant, size, fullWidth, type = 'button', class: className, ...rest } = Astro.props;
+const classes = buttonClasses({ variant, size, fullWidth, className });
+const external = href !== undefined && linkKind(href) === 'external';
+---
+
+{
+  href === undefined ? (
+    <button type={type} class={classes} {...rest}>
+      <slot />
+    </button>
+  ) : external ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" class={classes} {...rest}>
+      <slot />
+    </a>
+  ) : (
+    <a href={href} class={classes} {...rest}>
+      <slot />
+    </a>
+  )
+}

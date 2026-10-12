@@ -1,0 +1,8 @@
+# Copied from the legacy app by scripts/sync-assets.mjs (single source stays there)
+/public/favicon.ico
+/public/icon.png
+/public/apple-icon.png
+/public/og-default.jpg
+/public/images/
+# Local measurement output
+/.measure/

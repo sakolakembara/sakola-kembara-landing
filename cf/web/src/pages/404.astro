@@ -1,0 +1,11 @@
+---
+import NotFoundPage from '~/components/NotFoundPage.astro';
+
+// The site's 404 page. Rendered per request (not prerendered) so that it always
+// answers with HTTP 404: a prerendered copy is a static file, and the assets
+// layer serves static files with 200. Costs one tiny render per unknown URL.
+export const prerender = false;
+Astro.response.status = 404;
+---
+
+<NotFoundPage />

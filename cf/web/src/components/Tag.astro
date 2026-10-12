@@ -1,0 +1,12 @@
+---
+import { tagClasses, type TagSize } from '~/lib/ui';
+
+/** Pill-shaped category label. Tags are always rounded-full; buttons never are. */
+interface Props {
+  size?: TagSize;
+  class?: string;
+}
+const { size, class: className } = Astro.props;
+---
+
+<span class={tagClasses(size, className)}><slot /></span>
