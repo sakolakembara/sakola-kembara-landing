@@ -164,9 +164,10 @@ describe("dashboard: empty, loading, error", () => {
     expect(screen.getByRole("region", { name: "Tindakan Cepat" })).toBeTruthy();
   });
 
-  test("an editor with no area at all: the dashboard says so too, and there is no shortcut block", async () => {
+  test("an editor with no area at all is told to ask a super admin, and there is no shortcut block", async () => {
     await open("editor", [], respond(nothingToSee));
-    await screen.findByText("Tidak ada yang perlu ditindaklanjuti saat ini.");
+    expect((await screen.findByText("Akunmu belum punya akses ke area mana pun. Hubungi super admin untuk meminta akses.")).closest("section")).toBe(attention());
+    expect(screen.queryByText("Tidak ada yang perlu ditindaklanjuti saat ini.")).toBeNull();
     expect(screen.queryByRole("region", { name: "Tindakan Cepat" })).toBeNull();
   });
 

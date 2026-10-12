@@ -31,9 +31,11 @@ export function batchSummary(batch: DashboardBatch): { text: string; attention: 
  * of areas the caller may see) and where each leads (`to`); this draws what it
  * is given, in a fixed order. Tiles with something to do take the amber look of
  * the legacy stat cards. When there is nothing to show, or every count is zero
- * and no batch needs a look, it says so.
+ * and no batch needs a look, it says so; for an editor who has not been given
+ * any area yet (`noArea`) it says to ask a super admin instead of suggesting
+ * that everything is done.
  */
-export function Attention({ attention }: { attention: Dashboard["attention"] }) {
+export function Attention({ attention, noArea = false }: { attention: Dashboard["attention"]; noArea?: boolean }) {
   const { pendingApplications, underReviewApplications, unreadMessages, batch } = attention;
   const batchInfo = batch ? batchSummary(batch) : null;
   const nothing = (pendingApplications?.count ?? 0) === 0 && (underReviewApplications?.count ?? 0) === 0 && (unreadMessages?.count ?? 0) === 0 && !batch;
@@ -45,7 +47,9 @@ export function Attention({ attention }: { attention: Dashboard["attention"] }) 
       </h2>
       {nothing ? (
         <p className="rounded-xl border border-gray-100 bg-white px-6 py-8 text-center text-sm text-gray-500">
-          Tidak ada yang perlu ditindaklanjuti saat ini.
+          {noArea
+            ? "Akunmu belum punya akses ke area mana pun. Hubungi super admin untuk meminta akses."
+            : "Tidak ada yang perlu ditindaklanjuti saat ini."}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
