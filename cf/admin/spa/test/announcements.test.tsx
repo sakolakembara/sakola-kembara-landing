@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { formatWindow, fromLocalDatetime, isCurrentlyShown, toBody, toLocalDatetime, toValues } from "~/pages/announcements/model";
@@ -164,6 +164,15 @@ describe("the list: filter, search, sort and pages live in the address bar", () 
     await user.click(screen.getByRole("link", { name: "Berikutnya" }));
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/announcements?page=2"));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toContain("page=2"));
+  });
+});
+
+describe("the list: the first page has the plain address", () => {
+  test("'Sebelumnya' from page 2 goes back to /announcements, without a query", async () => {
+    const user = userEvent.setup();
+    await openList(["viewer", []], { [`GET ${LIST}`]: respond(envelope([item()], { page: 2, total: 45 })) }, "/announcements?page=2");
+    await user.click(screen.getByRole("link", { name: "Sebelumnya" }));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/announcements"));
   });
 });
 

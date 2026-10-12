@@ -195,6 +195,7 @@ describe("the registry and the transport", () => {
     expect(await call("viewer", "GET", "/api/admin/announcements")).toBe(200);
     expect(await call("viewer", "POST", "/api/admin/announcements", { title: "Halo dunia", body: "Isi pengumuman", severity: "info" })).toBe(403);
     expect(await call("editor:konten", "POST", "/api/admin/announcements", { title: "Halo dunia", body: "Isi pengumuman", severity: "info" })).toBe(403); // not the Komunikasi editor
+    expect(await call("editor:konten", "GET", "/api/admin/announcements")).toBe(403); // an editor has no access outside the areas granted (the Worker's rule since PR #59)
     expect(await call("editor:komunikasi", "POST", "/api/admin/announcements", { title: "Halo dunia", body: "Isi pengumuman", severity: "info" })).toBe(201);
     expect(await call("super_admin", "GET", "/api/admin/nowhere")).toBe(404);
     expect(await call("super_admin", "GET", "/api/announcements")).toBe(404); // the old sample path is gone

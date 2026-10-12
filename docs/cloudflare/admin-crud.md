@@ -187,8 +187,8 @@ The numbers (esbuild bundle of one small object schema, the Worker's resolution 
 | | Size |
 | --- | --- |
 | zod 4 alone (one schema, unminified, as `wrangler deploy --dry-run` bundles) | ~741 KiB, ~115 KiB gzip |
-| the Worker before this PR | 2,913.66 KiB, 503.16 KiB gzip |
-| the Worker after this PR | 2,935.37 KiB, 509.54 KiB gzip (see [Measured](#20-measured)) |
+| the Worker before this PR | 2,919.22 KiB, 504.66 KiB gzip |
+| the Worker after this PR | 2,940.93 KiB, 511.02 KiB gzip (see [Measured](#20-measured)) |
 | Workers Free limit | 3 MiB compressed |
 
 zod is imported by `src/api/announcements.ts` and `src/api/admin-users.ts` already, so using it for every new resource adds **its schemas, not the library**: the kit adds about `src/api/crud` plus a few kilobytes. The alternative (hand-written validators) would save nothing the Worker does not already carry, and would repeat what zod gives for free: type inference from the schema (the `Input` type of a resource is `z.infer`), `refine` for cross-field rules (`endsAt >= startsAt`), `pipe`/`transform` for trimming and dates. It would also give four workers four dialects of the 400 body. If a later budget review wants the library out, `zod/mini` has the same schemas as functions and tree-shakes, and only the schema files change.
@@ -406,19 +406,21 @@ This PR **converts** what existed (list, create, edit, delete of announcements) 
 
 ## 20. Measured
 
-Taken on the base of this branch (`origin/cloudflare` at PR #58), the same machine, `WRANGLER_SEND_METRICS=false CI=1`. CPU cannot be measured locally (workerd freezes its timers during synchronous code); these are sizes and counts.
+Taken on `origin/cloudflare` as it was when this branch was rebased (after PR #59), the same machine, `WRANGLER_SEND_METRICS=false CI=1`; the "before" is that commit built by itself. CPU cannot be measured locally (workerd freezes its timers during synchronous code); these are sizes and counts.
 
 | | Before | After | Change |
 | --- | --- | --- | --- |
-| Worker (`wrangler deploy --dry-run`) | 2,913.66 KiB, 503.16 KiB gzip | 2,935.37 KiB, 509.54 KiB gzip | +21.7 KiB, +6.4 KiB gzip (the kit, the converted announcements, `base-url.ts`; zod was already in: 19 `ZodObject` matches before and after) |
-| SPA JS | 348.73 kB, 109.99 kB gzip | 430.61 kB, 134.90 kB gzip | +81.9 kB, +24.9 kB gzip |
-| SPA CSS | 42.15 kB, 11.27 kB gzip | 48.36 kB, 12.15 kB gzip | +6.2 kB, +0.9 kB gzip |
+| Worker (`wrangler deploy --dry-run`) | 2,919.22 KiB, 504.66 KiB gzip | 2,940.93 KiB, 511.02 KiB gzip | +21.7 KiB, +6.4 KiB gzip (the kit, the converted announcements, `base-url.ts`; zod was already in: 19 `ZodObject` matches before and after) |
+| SPA JS | 344.02 kB, 108.66 kB gzip | 425.87 kB, 133.52 kB gzip | +81.9 kB, +24.9 kB gzip |
+| SPA CSS | 42.04 kB, 11.25 kB gzip | 48.33 kB, 12.15 kB gzip | +6.3 kB, +0.9 kB gzip |
 
-Of the SPA JS growth, **+55.8 kB (+17.1 kB gzip) is the data router** (`createBrowserRouter` and `RouterProvider` instead of `BrowserRouter`, measured by building the kit with `BrowserRouter` again: 374.77 kB, 117.81 kB gzip), and the kit and the rebuilt announcements are +26.0 kB (+7.8 kB gzip). The router is the price of an unsaved-changes guard that also catches the back button; if that is not worth 17 kB gzip, the alternative is a click-and-`beforeunload` guard on the declarative router, which cannot stop the back button. The SPA is static assets (no Worker CPU).
+Of the SPA JS growth, **+55.8 kB (+17.1 kB gzip) is the data router** (`createBrowserRouter` and `RouterProvider` instead of `BrowserRouter`; measured by building the kit with `BrowserRouter` again: 370.03 kB, 116.40 kB gzip), and the kit and the rebuilt announcements are +26.0 kB (+7.7 kB gzip). The router is the price of an unsaved-changes guard that also catches the back button; if that is not worth 17 kB gzip, the alternative is a click-and-`beforeunload` guard on the declarative router, which cannot stop the back button. The SPA is static assets (no Worker CPU).
 
-Worker tests: 891 before, 1,082 after (`pnpm test:worker`); SPA tests: 463 before, 657 after; negative checks: Worker 125 before, 165 after; SPA 37 before, 76 after.
+Tests, at the end of this PR: Worker 1,133 (36 files; this PR adds `crud-helpers`, `crud-audit`, `crud-contract`, `crud-spa-contract` and rewrites `announcements`: 141 tests in those five), SPA 707 (30 files; `spa/test/crud/` and `announcements.test.tsx`: 204 tests in 12 files). Negative checks: Worker 186 in all (40 of them for the kit), SPA 84 in all (39 for the kit).
 
 D1 per request (counted on the real D1 by a spy on the binding, `test/crud-contract.test.ts`): list 1 round trip of 2 statements; one item 1 statement; create 1 round trip of 2; update and delete a read and then 1 round trip of 2.
+
+**A finding while testing:** D1 refuses a `LIKE` pattern longer than 50 bytes ("LIKE or GLOB pattern too complex"), so a search of 100 characters (the first limit written in this doc) answered 500 in the contract test. The limit is now 48 characters with a trim for escapes and multi-byte text (section 3), and three tests and two negative checks hold it.
 
 ## 21. Open decisions
 

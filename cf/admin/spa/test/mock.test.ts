@@ -139,11 +139,11 @@ describe("mock transport", () => {
 
   test("an editor of another area cannot even read the announcements, like the Worker; a viewer can", async () => {
     setup({ persona: { role: "editor", granted: ["konten"] } });
-    expect(await api("/api/announcements")).toMatchObject({ ok: false, status: 403 });
+    expect(await api("/api/admin/announcements")).toMatchObject({ ok: false, status: 403 });
     setup({ persona: { role: "editor", granted: ["komunikasi"] } });
-    expect((await api("/api/announcements")).ok).toBe(true);
+    expect((await api("/api/admin/announcements")).ok).toBe(true);
     setup({ persona: { role: "viewer", granted: [] } });
-    expect((await api("/api/announcements")).ok).toBe(true);
+    expect((await api("/api/admin/announcements")).ok).toBe(true);
   });
 
   test("an unknown route is a 404", async () => {

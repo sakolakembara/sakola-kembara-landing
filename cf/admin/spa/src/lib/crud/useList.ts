@@ -49,12 +49,16 @@ export function useList<T>(basePath: string, spec: ListSpec = {}): ListState<T> 
 
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState<Loaded<T>>({ status: "loading", data: null, failure: null });
+  // A request is in flight (the first, a new query, or a refetch).
+  const [pending, setPending] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
+    setPending(true);
     setLoaded((previous) => ({ ...previous, status: previous.data ? "ready" : "loading", failure: null }));
     void api<ListPayload<T>>(`${basePath}${apiQuery}`, { signal: controller.signal }).then((result) => {
       if (controller.signal.aborted) return;
+      setPending(false);
       setLoaded(result.ok ? { status: "ready", data: result.data, failure: null } : { status: "error", data: null, failure: result });
     });
     return () => controller.abort();
@@ -63,9 +67,8 @@ export function useList<T>(basePath: string, spec: ListSpec = {}): ListState<T> 
   const pageSize = loaded.data?.pageSize ?? spec.pageSize ?? DEFAULT_PAGE_SIZE;
   const total = loaded.data?.total ?? 0;
   const pages = totalPages(total, pageSize);
-  // A request is in flight when the address bar names a query the rows on screen were not loaded for.
-  const loadedQuery = loaded.data ? `${loaded.data.page}` : null;
-  const refreshing = loaded.data !== null && (loaded.status === "loading" || loadedQuery !== String(query.page));
+  // Rows from the answer before are on screen while the next one loads (a new page, a new filter, a refetch).
+  const refreshing = loaded.data !== null && pending;
 
   const go = useCallback(
     (next: ListQuery, replace: boolean) => setParams(toSearchParams(next, spec), { replace }),

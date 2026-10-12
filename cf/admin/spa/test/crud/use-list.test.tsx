@@ -147,6 +147,22 @@ describe("useList", () => {
     expect(state()).toContain("idle");
   });
 
+  test("the rows stay and the list is refreshing also when only a filter changes (same page), and when it is asked again", async () => {
+    const gate = deferred<Response>();
+    let calls = 0;
+    stubApi({ "GET /api/things": () => (++calls === 1 ? Promise.resolve(respond(payload(["Semua"], { total: 1 }))) : gate.promise) });
+    renderAt(<Probe />, "/things");
+    await screen.findByText("Semua");
+    expect(state()).toBe("ready|idle|page 1/1|total 1");
+
+    fireEvent.click(screen.getByText("apply")); // page 1 stays page 1
+    await waitFor(() => expect(state()).toContain("refreshing"));
+    expect(screen.getByText("Semua")).toBeTruthy();
+    gate.resolve(respond(payload(["Terfilter"], { total: 1 })));
+    await screen.findByText("Terfilter");
+    expect(state()).toBe("ready|idle|page 1/1|total 1");
+  });
+
   test("a failure is an error state with its status, and refetch asks again", async () => {
     let fail = true;
     const api = stubApi({ "GET /api/things": () => Promise.resolve(fail ? respond({ error: "internal" }, 500) : respond(payload(["Pulih"]))) });
