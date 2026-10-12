@@ -1,19 +1,32 @@
 ---
 import ActivitiesSection from '~/components/sections/ActivitiesSection.astro';
+import CTASection from '~/components/sections/CTASection.astro';
 import HeroSection from '~/components/sections/HeroSection.astro';
+import ImpactSection from '~/components/sections/ImpactSection.astro';
+import NewsSection from '~/components/sections/NewsSection.astro';
+import PartnersSection from '~/components/sections/PartnersSection.astro';
+import ProblemSection from '~/components/sections/ProblemSection.astro';
 import Base from '~/layouts/Base.astro';
+import { getAllArticles } from '~/lib/blog';
 import { organizationJsonLd } from '~/lib/seo';
+import '~/styles/reveal.css';
 
 // Static at build time: served by the Workers assets layer, no Worker invocation.
+// The "Cerita & Inspirasi" strip reads the blog index at build time, so a new
+// article needs a rebuild (the same as the article pages themselves).
 export const prerender = true;
 
-// Thin slice: hero + "Program Kami". The other homepage sections of the Next
-// app (Problem, Impact, Partners, CTA, News) are in the port checklist.
+const latestArticles = getAllArticles().slice(0, 3);
 ---
 
 <Base seo={{ kind: 'home' }} jsonLd={[organizationJsonLd()]}>
   <main>
     <HeroSection />
+    <ProblemSection />
     <ActivitiesSection />
+    <ImpactSection />
+    <PartnersSection />
+    <CTASection />
+    <NewsSection articles={latestArticles} />
   </main>
 </Base>

@@ -623,12 +623,88 @@ await check('headers', 'hashed assets are immutable', async () => {
 });
 
 // ---------------------------------------------------------------- announcement markup contract
-await check('navbar', 'the navbar script is inlined, small, and the only script on the home page besides JSON-LD', async () => {
-  const html = await text(await get('/'));
+await check('navbar', 'on an article page the navbar script is the only script besides JSON-LD: inline, small, no script file', async () => {
+  const html = await text(await get(`/blog/${slugs[0]}`));
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
   assert.equal(scripts.length, 1);
   assert.ok(scripts[0][2].length < 6000, `script is ${scripts[0][2].length} bytes`);
   assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0, 'no external script files');
+});
+
+// ---------------------------------------------------------------- home page (SAKEM-080, part A)
+const homeHtml = async () => text(await get('/'));
+await check('home', '/ has the seven sections in order, answered without touching the origin', async () => {
+  clearStub();
+  const html = await homeHtml();
+  const marks = ['Membuka Pintu', 'Mengapa Kami Ada?', 'id="activities"', 'id="impact"', 'id="partners"', 'Jadilah Bagian dari Perubahan', 'id="blog"'];
+  const at = marks.map((m) => html.indexOf(m));
+  assert.ok(at.every((i) => i > 0), `a section is missing: ${at}`);
+  assert.deepEqual([...at].sort((a, b) => a - b), at, 'sections out of order');
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  assert.equal(stubHits().length, 0);
+});
+await check('home', '/ content counts: 3 figures, 4 metrics, 8 branches, 7 testimonials, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
+  const html = await homeHtml();
+  assert.equal((html.match(/<article class="flex flex-col gap-4/g) ?? []).length, 3);
+  assert.equal((html.match(/<div class="bg-gradient-to-br /g) ?? []).length, 4);
+  assert.equal((html.match(/<li class="bg-white rounded-xl shadow-sm"/g) ?? []).length, 8);
+  assert.equal((html.match(/<li class="snap-start/g) ?? []).length, 7);
+  assert.equal((html.match(/<li class="w-\[136px\]/g) ?? []).length, 6);
+  assert.equal((html.match(/<a href="\/(?:gabung-siswa|donasi|kontak)" class="mt-auto/g) ?? []).length, 4);
+  const news = html.slice(html.indexOf('id="blog"'));
+  assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group block/g) ?? []).length, 3);
+});
+await check('home', 'every /_astro asset the home page references is served by the assets layer: 200, right type, immutable, origin not asked', async () => {
+  const html = await homeHtml();
+  const urls = [...new Set(html.match(/\/_astro\/[\w.-]+\.(?:webp|png|css|js|woff2)/g) ?? [])];
+  assert.ok(urls.length >= 25, `only ${urls.length} assets`);
+  const types = { webp: /image\/webp/, png: /image\/png/, css: /text\/css/, js: /javascript/, woff2: /font\/woff2|octet-stream/ };
+  clearStub();
+  for (const url of urls) {
+    const res = await get(url);
+    assert.equal(res.status, 200, url);
+    assert.match(res.headers.get('content-type') ?? '', types[url.split('.').pop()], url);
+    assert.match(res.headers.get('cache-control') ?? '', /immutable/, url);
+    await res.arrayBuffer();
+  }
+  assert.equal(stubHits().length, 0, 'an asset went to the origin');
+});
+await check('home', 'the map loads lazily: the HTML never names Leaflet, and its chunks are plain static files', async () => {
+  const html = await homeHtml();
+  assert.doesNotMatch(html, /leaflet/i);
+  const loader = tag(html, /<script type="module" src="(\/_astro\/ImpactMap[^"]+\.js)"/);
+  assert.ok(loader, 'map loader script');
+  const code = await text(await get(loader));
+  const chunks = [...code.matchAll(/import\("\.\/([\w.-]+\.js)"\)/g)].map((m) => m[1]);
+  assert.equal(chunks.length, 3);
+  clearStub();
+  let bytes = 0;
+  for (const chunk of chunks) {
+    const res = await get(`/_astro/${chunk}`);
+    assert.equal(res.status, 200, chunk);
+    assert.match(res.headers.get('content-type'), /javascript/);
+    assert.match(res.headers.get('cache-control'), /immutable/);
+    bytes += (await res.arrayBuffer()).byteLength;
+  }
+  assert.ok(bytes > 100_000 && bytes < 190_000, `lazy map chunks are ${bytes} bytes`); // Leaflet itself is about 150 KB
+  assert.equal(stubHits().length, 0);
+});
+await check('home', 'eager JS of the home page (inline scripts + the map loader), as served, stays inside the budget', async () => {
+  const html = await homeHtml();
+  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
+  assert.equal(scripts.length, 4); // navbar, stat dialog, carousel, map loader
+  let bytes = 0;
+  for (const m of scripts) {
+    const src = m[1].match(/\ssrc="([^"]+)"/)?.[1];
+    bytes += src ? (await (await get(src)).arrayBuffer()).byteLength : Buffer.byteLength(m[2]);
+  }
+  assert.ok(bytes <= 9000, `eager JS is ${bytes} bytes`); // keep equal to BUDGET.eagerJs.raw in tests/home-built.test.ts
+});
+await check('home', "the news covers are the blog's own /blog/images files (the same URLs as on /blog), never page-local copies", async () => {
+  const html = await homeHtml();
+  const covers = [...html.slice(html.indexOf('id="blog"')).matchAll(/<img src="(\/blog\/images\/[^"]+)"/g)].map((m) => m[1]);
+  assert.equal(covers.length, 3);
+  for (const cover of covers) assert.doesNotMatch(cover, /^\/_astro\//);
 });
 
 // ---------------------------------------------------------------- report

@@ -1,0 +1,65 @@
+---
+import Container from '~/components/Container.astro';
+import Heading from '~/components/Heading.astro';
+import { problemStats } from '~/lib/home-data';
+import StatChart from './problem/StatChart.astro';
+import StatDetail from './problem/StatDetail.astro';
+
+/**
+ * Homepage "Mengapa Kami Ada?". Copy and figures are verbatim from the root
+ * ProblemSection.tsx + lib/data.ts. Entrance motion is CSS (.anim-reveal,
+ * styles/reveal.css); the only script (below) opens the stat detail <dialog>.
+ */
+---
+
+<section class="py-16 md:py-24 bg-gradient-to-b from-primary-blue to-accent-navy text-white relative overflow-hidden">
+  {/* Pattern overlay */}
+  <div
+    class="absolute inset-0 opacity-30"
+    aria-hidden="true"
+    style={`background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`}
+  >
+  </div>
+
+  <Container class="relative z-10">
+    <Heading level="section" class="text-center mb-10 md:mb-12 anim-reveal">Mengapa Kami Ada?</Heading>
+
+    <div class="grid md:grid-cols-3 gap-5 md:gap-6 mb-10 md:mb-12">
+      {
+        problemStats.map((stat, index) => (
+          <article
+            class="flex flex-col gap-4 p-6 md:p-7 bg-white/[0.07] rounded-2xl border border-white/15 anim-reveal"
+            style={`--i:${index}`}
+          >
+            <StatChart chart={stat.chart} />
+            <div class="text-5xl md:text-[56px] font-extrabold text-secondary-yellow leading-none">
+              {stat.number}
+            </div>
+            <p class="text-[15px] md:text-base text-white/85 leading-relaxed">{stat.text}</p>
+            {stat.detail && <StatDetail id={`problem-detail-${index + 1}`} stat={stat} />}
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="text-xl md:text-2xl font-semibold text-center anim-reveal">
+      Kami hadir untuk{' '}
+      <span class="text-secondary-yellow">mengubah realitas ini.</span>
+    </p>
+  </Container>
+</section>
+
+<script>
+  // The only client JS of this section (about 0.3 KB): open a stat's <dialog> from its button, and
+  // close it on a click on the backdrop (the dialog element itself). "Tutup" is a
+  // <form method="dialog">; Escape and focus return come from the browser.
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const opener = target.closest<HTMLElement>('[data-dialog-open]');
+    if (opener?.dataset.dialogOpen) {
+      (document.getElementById(opener.dataset.dialogOpen) as HTMLDialogElement | null)?.showModal();
+    } else if (target instanceof HTMLDialogElement) {
+      target.close();
+    }
+  });
+</script>

@@ -24,12 +24,22 @@ function pageWeight(htmlFile) {
   const text = html.toString('utf8');
   const inline = [...text.matchAll(/<script(?![^>]*ld\+json)([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !/\ssrc=/.test(m[1]));
   const inlineJs = Buffer.from(inline.map((m) => m[2]).join('\n'));
-  const css = [...text.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => readFileSync(path.join(dist, 'client', m[1])));
+  // Script files (the home page's map loader) count too; Leaflet itself is lazy and not in the HTML.
+  const jsFiles = [...text.matchAll(/<script(?![^>]*ld\+json)[^>]*\ssrc="([^"]+)"/g)].map((m) => readFileSync(path.join(dist, 'client', m[1])));
+  const css = [
+    ...[...text.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => readFileSync(path.join(dist, 'client', m[1]))),
+    ...[...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => Buffer.from(m[1])), // small sheets Astro inlines
+  ];
   const fonts = [...text.matchAll(/<link rel="preload" href="([^"]+)" as="font"/g)].map((m) => readFileSync(path.join(dist, 'client', m[1])));
   const cssAll = Buffer.concat(css);
   return {
     html: { raw: html.length, gzip: gz(html) },
-    js: { raw: inlineJs.length, gzip: gz(inlineJs), files: 0, inlineScripts: inline.length },
+    js: {
+      raw: inlineJs.length + jsFiles.reduce((n, f) => n + f.length, 0),
+      gzip: gz(inlineJs) + jsFiles.reduce((n, f) => n + gz(f), 0),
+      files: jsFiles.length,
+      inlineScripts: inline.length,
+    },
     css: { raw: cssAll.length, gzip: gz(cssAll) },
     preloadedFonts: { raw: fonts.reduce((n, f) => n + f.length, 0), files: fonts.length },
   };

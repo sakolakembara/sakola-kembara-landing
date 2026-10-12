@@ -1,0 +1,88 @@
+---
+import Container from '~/components/Container.astro';
+import SectionHeader from '~/components/SectionHeader.astro';
+import { impactMetrics, mapStats, type ImpactMetricColor } from '~/lib/home-data';
+import ImpactMap from './ImpactMap.astro';
+import TestimonialCarousel from './TestimonialCarousel.astro';
+
+/**
+ * Homepage "Dampak Kami": metrics, the map of branch locations and the alumni
+ * testimonial carousel. Copy is verbatim from the root ImpactSection.tsx +
+ * lib/data.ts. The two interactive parts are their own components, each with
+ * the smallest script that does the job (see docs/cloudflare/web-skeleton.md,
+ * "JS and CSS budget").
+ */
+const metricColors: Record<ImpactMetricColor, string> = {
+  blue: 'from-primary-blue to-accent-navy',
+  yellow: 'from-secondary-yellow to-orange-500',
+  green: 'from-secondary-green to-green-700',
+  dark: 'from-blue-yonder to-accent-navy',
+};
+---
+
+<section class="py-16 md:py-24 bg-white" id="impact">
+  <Container>
+    <SectionHeader
+      class="mb-12 md:mb-16 anim-reveal"
+      eyebrow="Dampak Kami"
+      title="Pencapaian Sakola Kembara"
+      lead="Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan."
+    />
+
+    {/* Metrics */}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 md:mb-16">
+      {
+        impactMetrics.map((metric, index) => (
+          <div
+            class={`bg-gradient-to-br ${metricColors[metric.color]} rounded-2xl p-5 sm:p-8 text-white text-center relative overflow-hidden anim-reveal`}
+            style={`--i:${index}`}
+          >
+            <div
+              aria-hidden="true"
+              class="absolute -top-1/2 -right-1/2 w-full h-full bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)]"
+            >
+            </div>
+            <div class="text-[26px] sm:text-4xl md:text-5xl font-extrabold leading-none mb-2 relative z-10 break-words">
+              {metric.number}
+            </div>
+            <div class="text-[13px] sm:text-sm opacity-90 relative z-10 leading-snug">{metric.label}</div>
+          </div>
+        ))
+      }
+    </div>
+
+    {/* Map */}
+    <div class="mb-12 md:mb-16 anim-reveal">
+      <div class="text-center mb-8">
+        <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Peta Penyebaran Sakola Kembara</h3>
+        <p class="text-sm sm:text-base text-gray-600">Jangkauan program kami di berbagai wilayah Pulau Jawa</p>
+      </div>
+
+      <div class="bg-gray-100 rounded-3xl overflow-hidden shadow-lg">
+        <ImpactMap />
+
+        {/* Map stats bar */}
+        <div class="flex flex-wrap justify-center gap-y-5 gap-x-10 sm:gap-x-16 px-4 py-6 bg-white border-t border-gray-100">
+          {
+            mapStats.map((stat) => (
+              <div class="text-center min-w-[110px]">
+                <div class="text-2xl md:text-3xl font-extrabold text-primary-blue leading-none">{stat.number}</div>
+                <div class="text-[13px] text-gray-600 mt-1">{stat.label}</div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    {/* Testimonials */}
+    <div class="anim-reveal">
+      <div class="mb-8">
+        <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Cerita Sukses Alumni</h3>
+        <p class="text-sm sm:text-base text-gray-600">Perjalanan inspiratif dari siswa-siswa kami</p>
+      </div>
+
+      <TestimonialCarousel />
+    </div>
+  </Container>
+</section>

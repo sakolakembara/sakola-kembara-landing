@@ -58,7 +58,7 @@ describe.skipIf(!built)('build output', () => {
     for (const img of imgs) {
       expect(img, img).toMatch(/width="\d+"/);
       expect(img, img).toMatch(/height="\d+"/);
-      expect(img, img).toMatch(/alt="/);
+      expect(img, img).toMatch(/\salt(=|\s|>)/); // decorative logos have an empty alt, which Astro prints as a bare `alt`
     }
     const hero = imgs.find((i) => i.includes('Siswa Sakola Kembara belajar bersama'));
     expect(hero).toContain('fetchpriority="high"');
@@ -69,15 +69,17 @@ describe.skipIf(!built)('build output', () => {
     }
   });
 
-  it('the pages ship no external JS file and no framework runtime: one inline module script', () => {
-    for (const file of ['client/index.html', 'client/blog/sejarah-sakola-kembara.html']) {
-      const html = read(file);
-      expect([...html.matchAll(/<script[^>]*\ssrc=/g)]).toHaveLength(0);
-      const scripts = [...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json'));
-      expect(scripts).toHaveLength(1);
-    }
+  it('article pages ship one inline module script and no JS file; the only JS files are the home page map chunks', () => {
+    const html = read('client/blog/sejarah-sakola-kembara.html');
+    expect([...html.matchAll(/<script[^>]*\ssrc=/g)]).toHaveLength(0);
+    const scripts = [...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json'));
+    expect(scripts).toHaveLength(1);
+    // The home page's scripts and budget are checked in home-built.test.ts.
     const jsFiles = walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js'));
-    expect(jsFiles).toHaveLength(0);
+    for (const f of jsFiles) {
+      expect(path.basename(f), f).toMatch(/^(ImpactMap\.astro_astro_type_script_index_0_lang|leaflet-src|leaflet|map)\.[\w-]+\.js$/);
+      expect(readFileSync(f, 'utf8'), f).not.toMatch(/framer-motion|gsap/);
+    }
   });
 
   it('fonts are self-hosted: no request to a font CDN, woff2 emitted, two preloaded', () => {
