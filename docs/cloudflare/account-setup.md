@@ -4,9 +4,9 @@ What the account owner does in the terminal and dashboard, and **when** each ste
 
 ## Decisions this guide relies on
 
-- Sakola Kembara runs in the **existing** Cloudflare account of designbydzul@gmail.com. dzul@sakolakembara.org is a member of it. There is no separate organisation account.
-- That account is on **Workers Paid**, so the Free 10 ms CPU limit is not enforced there. CPU is judged from per-route CPU-time metrics instead (SAKEM-084).
-- The account already holds unrelated Workers, D1 databases and R2 buckets. Everything for Sakola Kembara is created with the prefix **`sakem-`** and nothing existing is touched.
+- Sakola Kembara runs in the **organisation account** (named after dzul@sakolakembara.org, plan **Free**, no card). The owner's personal account and any other account the login can see are **not** used.
+- A single wrangler login can see several accounts (personal, organisation, client accounts). **Always pin the account explicitly** (`CLOUDFLARE_ACCOUNT_ID` or `--account-id`) and never run a command without it.
+- Because the plan is Free, the 10 ms CPU limit is enforced there and error 1102 is a valid signal. Real per-route CPU is measured in this account (SAKEM-084).
 - This repo is public: no account id, token, resource id or infrastructure hostname goes into a tracked file, ticket, PR or chat message. Say "done" or "failed", never the value.
 
 ## What is needed when
@@ -19,7 +19,7 @@ What the account owner does in the terminal and dashboard, and **when** each ste
 
 ## Part 1: quick checks (5 minutes, now)
 
-1. Sign in to the Cloudflare dashboard as dzul@sakolakembara.org and confirm the account is listed. Note the role you have: you need **Administrator** (or equivalent) to create tokens and resources.
+1. Sign in to the Cloudflare dashboard, switch to the organisation account and confirm: the plan is **Free** (Billing or Subscriptions) with no card attached, and your role is **Administrator** (or equivalent), which you need to create tokens and resources.
 2. Check your GitHub permission on the repo (needed for environment secrets):
 
    ```bash
@@ -38,10 +38,10 @@ pnpm exec wrangler whoami         # lists the accounts you can reach
 
 - `wrangler login` stores the session in your user profile in plain text. `wrangler login --use-keyring` keeps it in the macOS keychain instead.
 - The login belongs to the Mac user, **not to one terminal**: any `wrangler` command run on this Mac afterwards, including by Claude, uses it. That is why every deploy or resource command needs your explicit OK per step.
-- Because the account holds other projects, pin the account for the shell instead of writing it in `wrangler.jsonc`:
+- `wrangler whoami` lists every account the login can reach. Pin the **organisation** account for the shell instead of writing it in `wrangler.jsonc`:
 
   ```bash
-  export CLOUDFLARE_ACCOUNT_ID=<id shown by wrangler whoami>   # this shell only, never committed
+  export CLOUDFLARE_ACCOUNT_ID=<id of the organisation account from wrangler whoami>   # this shell only, never committed
   ```
 
 - When the staging work is finished: `pnpm exec wrangler logout`.
@@ -52,7 +52,7 @@ pnpm exec wrangler whoami         # lists the accounts you can reach
 
 1. Dashboard, **Manage Account**, **API Tokens**, **Create Token**, then **Custom token** (the "Edit Cloudflare Workers" template is a good starting point).
 2. Name it `sakem-ci-staging`. Permissions to start with, all **Account** level: Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit, Account Settings Read. Check the summary screen before creating.
-3. Resources: **this account only**. Set a TTL (for example 90 days) and note the renewal date.
+3. Resources: **the organisation account only**. Set a TTL (for example 90 days) and note the renewal date.
 4. Create it and copy the secret once (it is shown only once). Check that it works without putting it in your shell history:
 
    ```bash
