@@ -15,14 +15,14 @@ describe("route guard: not signed in", () => {
   test("a deep link goes to /login with the page in `from`", async () => {
     stubApi({ "GET /api/me": respond({ error: "unauthenticated" }, 401) });
     renderApp("/applications?status=pending");
-    await screen.findByRole("heading", { name: "Selamat datang kembali" });
+    await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(location()).toBe("/login?from=%2Fapplications%3Fstatus%3Dpending");
   });
 
   test("the dashboard goes to a bare /login", async () => {
     stubApi({ "GET /api/me": respond({ error: "unauthenticated" }, 401) });
     renderApp("/");
-    await screen.findByRole("heading", { name: "Selamat datang kembali" });
+    await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(location()).toBe("/login");
   });
 
@@ -30,7 +30,7 @@ describe("route guard: not signed in", () => {
     for (const path of ["/batches", "/blog/new", "/audit", "/settings", "/nowhere"]) {
       stubApi({ "GET /api/me": respond({ error: "unauthenticated" }, 401) });
       const view = renderApp(path);
-      await screen.findByRole("heading", { name: "Selamat datang kembali" });
+      await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
       expect(location()).toBe(`/login?from=${encodeURIComponent(path)}`);
       view.unmount();
     }
@@ -39,7 +39,7 @@ describe("route guard: not signed in", () => {
   test("the sign-in pages themselves ask nothing of the server about the session", async () => {
     const api = stubApi({ "GET /api/config": respond({ google: false }) });
     renderApp("/login");
-    await screen.findByRole("heading", { name: "Selamat datang kembali" });
+    await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(api.count("GET /api/me")).toBe(0);
   });
 });
@@ -86,7 +86,7 @@ describe("route guard: accounts that are not admins", () => {
     expect(screen.queryByRole("navigation")).toBeNull();
     expect(screen.getByText("tester@contoh.test")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Keluar" }));
-    await screen.findByRole("heading", { name: "Selamat datang kembali" });
+    await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(api.count("POST /api/auth/sign-out")).toBe(1);
   });
 });

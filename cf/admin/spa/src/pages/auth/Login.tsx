@@ -88,8 +88,7 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      title="Selamat datang kembali"
-      description="Gunakan akun Google atau email + password kamu untuk melanjutkan."
+      title="Masuk ke Admin Sakola Kembara"
     >
       {params.get("reset") === "1" && !errorParam && (
         <Alert tone="success">Password berhasil diganti. Silakan masuk dengan password baru.</Alert>
