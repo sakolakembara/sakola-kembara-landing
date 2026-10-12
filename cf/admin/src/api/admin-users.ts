@@ -30,7 +30,7 @@ import { readJson } from "./json";
 //     sign in by any method) so the audit trail keeps pointing at a real row,
 //     and it can be reactivated
 //   - the last active super_admin can be neither demoted nor deactivated, and a
-//     database trigger (migration 0005) holds that line even if two of them
+//     database trigger (migration 0006) holds that line even if two of them
 //     try it at once
 //   - nobody can deactivate themselves
 //   - students are not touched here: an address that already has an account of

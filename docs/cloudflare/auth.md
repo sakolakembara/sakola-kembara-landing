@@ -56,6 +56,7 @@ Why `send-verification-email` has Turnstile although the decision named four for
 | `GET /api/dev/mailbox` | only `ENVIRONMENT=development` | The emails this isolate "sent". 404 everywhere else, including in tests and production. |
 | `GET /api/admin/users`, `POST /api/admin/users`, `PATCH /api/admin/users/:id`, `POST /api/admin/users/:id/deactivate`, `.../reactivate`, `.../resend-invite`, `PUT /api/admin/users/:id/areas` | `sistem` area: super_admin only | [Admin users](#admin-users). |
 | `/api/announcements` | `komunikasi` area | Part A. |
+| `POST /api/public/contact` | the Astro Worker, through the `PublicApi` service binding only | Not on the public face at all (404 there). Turnstile and `RL_CONTACT` as above; see [`public-api.md`](public-api.md). |
 
 ### Error shapes
 
@@ -99,7 +100,7 @@ Server-side Siteverify through `fetch` (`src/security/turnstile.ts`), 5 second t
 * Outside production (`ENVIRONMENT` is exactly `development` or `test`) **with no secret set**, the check is skipped, so the forms work without a Cloudflare account. With a secret set it is used for real.
 * Local keys: Cloudflare's published test secrets work anywhere and need no account: `1x0000000000000000000000000000000AA` always passes (token `XXXX.DUMMY.TOKEN.XXXX`), `2x...AA` always fails, `3x...AA` reports the token as spent. Exported as `TURNSTILE_TEST_SECRETS` and used by the tests (which fake Siteverify; nothing in the test run goes to the network).
 * Rate limits are counted before Turnstile, so a bot that fails the challenge still fills its own bucket and cannot hammer Siteverify.
-* Reuse by the contact endpoint (another worker): `import { guardTurnstile } from ".../security/turnstile"` and `const refused = await guardTurnstile(env, request, "contact", body.turnstileToken); if (refused) return refused;`. The file imports only `./client`. It reads `TURNSTILE_SECRET_KEY` and `ENVIRONMENT` from `env`. Pair it with `checkLimits(env, [{ name: "contact", key: ip }])` and `limitedResponse` from `src/security/rate-limit.ts`, and declare `RL_CONTACT` in that worker's wrangler config (it is already declared here as the template).
+* **The contact endpoint uses it** (`src/public/contact-deps.ts`, the seam of [`public-api.md`](public-api.md#the-seam-for-the-limiter-and-turnstile)): action `contact`, the token from the `X-Sakem-Turnstile-Token` header the Astro Worker forwards, the trusted address from `X-Sakem-Client-Ip` as `remoteip`. A failed, missing or reused token answers `400 turnstile_failed`; no secret in production, or Siteverify unreachable, is a `500` that stores nothing. Any other worker can do the same: `guardTurnstile(env, request, "contact", token)` (the file imports only `./client`) with `checkLimits` and `limitedResponse` from `src/security/rate-limit.ts`.
 
 ## Rate limits
 
@@ -114,7 +115,7 @@ Cloudflare rate limit bindings, one per concern, declared in `wrangler.jsonc` (`
 | `RL_VERIFY_RESEND` | resends to one mailbox | email hash | 2 / 60 s | resend verification |
 | `RL_MAIL_TARGET` | any email to one mailbox | email hash | 3 / 60 s | register, forgot, resend, admin invite |
 | `RL_TOKEN` | token redemptions, Google start | IP | 20 / 60 s | reset-password, verify-email, social sign-in |
-| `RL_CONTACT` | contact form posts | IP | 5 / 60 s | the contact endpoint |
+| `RL_CONTACT` | contact form posts | `contact:<address>`, the address from `X-Sakem-Client-Ip` only | 5 / 60 s | `POST /api/public/contact` (`src/public/contact-deps.ts`). The one limiter of that route: it replaced the `PUBLIC_CONTACT_LIMIT` binding of the first public API PR |
 
 * **A 429** carries `Retry-After: 60` and `{ error: "rate_limited", message, retryAfterSeconds }` with the legacy Indonesian copy: "Terlalu banyak percobaan masuk. Silakan tunggu beberapa menit lalu coba lagi." (sign-in), "...pendaftaran..." (register), "Terlalu banyak percobaan. Coba lagi dalam beberapa menit." (tokens), "Terlalu banyak percobaan pengiriman. Silakan tunggu satu menit lalu coba lagi." (contact). The legacy "sekitar satu jam" for forgot-password is now "satu menit", and "Coba lagi sekitar satu menit lagi" for resend, because the windows are a minute.
 * **The visitor's address is `CF-Connecting-IP` and nothing else** (legacy bug SAKEM-008: the old limiter keyed on `X-Forwarded-For`, which the client writes). Missing or malformed: one shared `unknown` bucket (over-throttles, never under). Tested by rotating `X-Forwarded-For`.
@@ -190,7 +191,7 @@ All routes need the `sistem` area (super_admin). Every mutation and its audit ro
 | `POST /api/admin/users/:id/resend-invite` | Only while `status` is `invited`: a new link, the old one stops working. 409 `not_pending_invite` otherwise. |
 | `PUT /api/admin/users/:id/areas` | Part A. |
 
-**The last super_admin.** The API answers 409 first; underneath, migration `0005_keep_one_super_admin.sql` is a trigger that aborts any `UPDATE` of `role` or `deactivated_at` that would leave no active super_admin. It runs inside the same transaction, so two super_admins demoting or deactivating each other at the same moment cannot both succeed (tested with concurrent requests: one 200, one 409) and neither can a script.
+**The last super_admin.** The API answers 409 first; underneath, migration `0006_keep_one_super_admin.sql` is a trigger that aborts any `UPDATE` of `role` or `deactivated_at` that would leave no active super_admin. It runs inside the same transaction, so two super_admins demoting or deactivating each other at the same moment cannot both succeed (tested with concurrent requests: one 200, one 409) and neither can a script.
 
 **Invite links** are Better Auth reset tokens (same table, same hashing, same `/reset-password` endpoint), created by us with a 7-day life instead of 30 minutes. Redeeming one sets the password, marks the address verified, ends any session and is single use. The SPA route that receives it is `/reset-password?invite=1&token=...`.
 
@@ -244,7 +245,7 @@ pnpm dev                        # builds the SPA, then wrangler dev
 
 Register and read the link: `curl -s localhost:8787/api/dev/mailbox` (nothing is printed to the console). To exercise Turnstile for real, put one of the test secrets from `dev.vars.example` in `.dev.vars` and send the dummy token. Without `TURNSTILE_SECRET_KEY` the check is skipped. A local `wrangler dev` has the rate limit bindings; without them the in-memory fallback applies.
 
-If you ran the part A migrations before: `pnpm db:migrate:local` applies `0004` and `0005` on top; nothing needs wiping.
+If you ran the part A migrations before: `pnpm db:migrate:local` applies `0005` (deactivation) and `0006` (the trigger) on top; nothing needs wiping.
 
 ## Tests
 
@@ -258,7 +259,7 @@ Machine: Apple M4, Node 22, 2026-10-12. Every timing here is **wall time on a la
 | --- | --- |
 | `pnpm test` in `cf/admin` (workerd, real local D1 and rate limit bindings) | 515 passed in 18 files (269 after part A, 70 at SAKEM-078). The SPA's own suite, `pnpm test:spa`: 402 passed, unchanged. |
 | `pnpm test:negative` | 66 of 66 safeguards make the tests fail (25 from before, 41 new: verification, the Origin guard in three ways, the route table, JSON only and the body cap, Turnstile in four ways, fail-closed email, `X-Forwarded-For` as the address, the per-mailbox cap, no-enumeration, the honeypot, session revocation, the `__Host-` cookie, the last super_admin trigger and its 409, self-deactivation, invite lifetime and revocation, cron retention). |
-| `pnpm db:drift` | exit 0, schema and the six migrations agree. `wrangler d1 migrations apply --local` on a clean state applies all six, trigger included. |
+| `pnpm db:drift` | exit 0, schema and the seven migrations agree. `wrangler d1 migrations apply --local` on a clean state applies all seven, trigger included. |
 | Root `pnpm exec tsc --noEmit`, `pnpm test` | exit 0, 229 passed (unchanged). |
 | PBKDF2-SHA256 100k, Node (`pnpm measure`) | verify median 8.10 ms, p95 8.34 (n=51); wrong password 8.04; hash 8.13 (n=31) |
 | `createAuth()` per request, warm | median 0.19 ms, p95 0.66 (0.10 at SAKEM-078: the new hooks and settings cost 0.1 ms) |
@@ -275,6 +276,7 @@ Visual and interaction QA of the SPA was **not** done (no browser by instruction
 ## Not built
 
 * **The SPA does not speak Turnstile yet, and this is the one thing that stops a deploy.** The merged sign-in, forgot-password, reset-password and verify pages (SAKEM-082) work against this Worker (`test/spa-contract.test.ts` passes), but `api()` never sends `X-Turnstile-Token`, the pages render no widget, and `lib/auth-errors.ts` does not know `captcha_failed`, `captcha_unavailable` or `email_unavailable`. With `TURNSTILE_SECRET_KEY` set (always, in production) sign-in and forgot-password answer 403 until the SPA adds the widget (site key from `GET /api/config`, `data-action` per the [table](#public-auth-routes)). Locally without a secret the check is skipped, so nothing looks broken. The student registration page is part of the portal milestone; its API is final. The invite link lands on `/reset-password?invite=1&token=...`, which the existing reset page handles (it does not show invite wording).
+* **The Astro contact form forwards no Turnstile token yet either** (`cf/web/src/lib/contact-submit.ts`): with `TURNSTILE_SECRET_KEY` set, `POST /api/public/contact` refuses every post until the form renders the widget (`data-action="contact"`), sends the token in `X-Sakem-Turnstile-Token` and shows `400 turnstile_failed`.
 * Password change for a signed-in user, session list and "sign out everywhere": Better Auth has them; they are not in the route table, so they answer 404 until they are added on purpose.
 * Resend webhooks (bounces and complaints), a daily send counter, per-account lockout over minutes (Durable Object).
 * Promoting an existing student to admin (the invite refuses an address that already has an account).

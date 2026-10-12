@@ -210,7 +210,7 @@ export async function revokeArea(userId: string, area: GrantableArea) {
 
 /**
  * Changes a role straight in the table. The database refuses to leave the
- * system without an active super_admin (migration 0005), so demoting the only
+ * system without an active super_admin (migration 0006), so demoting the only
  * one first creates a stand-in, as a real deployment would have a second one.
  */
 export async function setRole(email: string, role: UserRole) {

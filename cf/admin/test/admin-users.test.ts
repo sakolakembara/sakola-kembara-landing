@@ -496,7 +496,7 @@ describe("changing a role", () => {
       expect((await userRow(boss.email))?.role).toBe("viewer");
     });
 
-    // Negative check: remove the `mentions(error, "last_super_admin")` mapping, or the trigger in migration 0005.
+    // Negative check: remove the `mentions(error, "last_super_admin")` mapping, or the trigger in migration 0006.
     test("two super_admins stepping down at the same moment: one wins, the other gets a 409 from the trigger, one stays", async () => {
       const first = await superAdmin();
       const secondEmail = uniqueEmail("boss2");

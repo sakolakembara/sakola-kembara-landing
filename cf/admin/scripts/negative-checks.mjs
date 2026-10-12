@@ -393,7 +393,7 @@ const checks = [
   // ------------------------------------------------------- admin users API
   {
     name: "the last super_admin trigger does nothing",
-    file: "migrations/0005_keep_one_super_admin.sql",
+    file: "migrations/0006_keep_one_super_admin.sql",
     from: "SELECT RAISE(ABORT, 'last_super_admin');",
     to: "SELECT 1;",
     tests: "test/admin-users.test.ts",
@@ -705,6 +705,43 @@ const checks = [
     tests: PUBLIC_CONTACT,
   },
 
+  // ----------------------- the contact seam: the shared limiter and Turnstile
+  {
+    name: "contact seam: Turnstile bypassed (a check that passes everything)",
+    file: "src/public/contact-deps.ts",
+    from: "verifyTurnstile: sharedTurnstile(env),",
+    to: "verifyTurnstile: turnstileDisabled,",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: a Turnstile check that cannot run is counted as passed (fails open)",
+    file: "src/public/contact-deps.ts",
+    from: 'throw new ContactInfrastructureError("TurnstileUnavailable");',
+    to: "return true;",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: a missing rate limit binding no longer refuses in production",
+    file: "src/public/contact-deps.ts",
+    from: 'if (result.reason === "unavailable") throw new ContactInfrastructureError("RateLimitUnavailable");',
+    to: 'if (result.reason === "unavailable") return { allowed: true, retryAfterSeconds: 0 };',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: the limiter is asked about a different key than the route built",
+    file: "src/public/contact-deps.ts",
+    from: 'const result = await checkLimits(env, [{ name: "contact", key }]);',
+    to: 'const result = await checkLimits(env, [{ name: "contact", key: "contact:shared" }]);',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact seam: the token is checked for the wrong form (action not contact)",
+    file: "src/public/contact-deps.ts",
+    from: 'token, ip, "contact");',
+    to: 'token, ip, "login");',
+    tests: PUBLIC_CONTACT,
+  },
+
   // ------------------------------------------------ the public API: purge plan
   {
     name: "purge plan of a team save names no cache tag",
@@ -719,8 +756,10 @@ const checks = [
 const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : undefined;
 
 let bad = 0;
+let ran = 0;
 for (const check of checks) {
   if (only && !check.name.includes(only)) continue;
+  ran++;
   const edits = check.edits ?? [{ file: check.file, from: check.from, to: check.to }];
   const originals = new Map(edits.map((edit) => [edit.file, readFileSync(edit.file, "utf8")]));
   const missing = edits.find((edit) => originals.get(edit.file).split(edit.from).length - 1 !== 1);
@@ -743,5 +782,5 @@ for (const check of checks) {
     for (const [file, original] of originals) writeFileSync(file, original);
   }
 }
-console.log(bad === 0 ? `\nAll ${checks.length} safeguards are covered by tests.` : `\n${bad} of ${checks.length} checks did not behave.`);
+console.log(bad === 0 ? `\nAll ${ran} safeguards are covered by tests.` : `\n${bad} of ${ran} checks did not behave.`);
 process.exit(bad === 0 ? 0 : 1);
