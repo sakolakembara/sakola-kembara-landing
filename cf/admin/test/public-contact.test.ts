@@ -9,6 +9,7 @@ import { InMemoryRateLimiter, turnstileDisabled, type ContactDeps, type RateLimi
 import { RATE_LIMITS } from "../src/security/rate-limit";
 import { SITEVERIFY_URL, TURNSTILE_TEST_SECRETS } from "../src/security/turnstile";
 import { call, fakeNetwork, uniqueEmail } from "./helpers";
+import { inOneRealWindow, limiterClock, withFrozenDate } from "./limiter-clock";
 import { CONTACT_CREATED, FIELD_ERRORS_EXAMPLE } from "./contract-examples";
 import { internalFetch, internalFetchWith, internalFetchWithBindings, json, uniqueIp } from "./public-helpers";
 
@@ -25,7 +26,8 @@ const count = async (table: string) => (await env.DB.prepare(`SELECT count(*) AS
 function deps(over: Partial<ContactDeps> = {}): ContactDeps & { keys: string[]; checks: { token: string | null; ip: string }[] } {
   const keys: string[] = [];
   const checks: { token: string | null; ip: string }[] = [];
-  const inner = new InMemoryRateLimiter(5, 60);
+  // Its windows line up with the clock it is given, so it gets the test's frozen one: a slow run cannot see the minute turn (SAKEM-088).
+  const inner = new InMemoryRateLimiter(5, 60, limiterClock.read);
   const rateLimiter: RateLimiter = {
     async hit(key) {
       keys.push(key);
@@ -433,22 +435,26 @@ describe("one message per email per 5 minutes", () => {
 });
 
 describe("the rate limit", () => {
-  test("with the configured binding: 5 a minute per address, the 6th is rate_limited with Retry-After", async () => {
-    const ip = uniqueIp();
-    const statuses: number[] = [];
-    let last: Response | undefined;
-    for (let i = 0; i < 6; i++) {
-      last = await post(valid({ email: uniqueEmail() }), ip);
-      statuses.push(last.status);
-    }
-    expect(statuses).toEqual([201, 201, 201, 201, 201, 429]);
-    expect(last!.headers.get("retry-after")).toBe("60");
-    expect(await json(last!)).toEqual({ error: "rate_limited", message: CONTACT_MESSAGES.rateLimited, retryAfterSeconds: 60 });
-    // The refused one stored nothing.
-    expect(await count("contact_messages")).toBe(5);
-    // Another visitor is not affected.
-    expect((await post(valid(), uniqueIp())).status).toBe(201);
-  });
+  // Through the entrypoint, so with the real binding of the runtime, whose window follows the wall clock and cannot
+  // be moved from here: `inOneRealWindow` runs it again (clean, new address) if the failure came with the window turning.
+  test("with the configured binding: 5 a minute per address, the 6th is rate_limited with Retry-After", () =>
+    inOneRealWindow(RATE_LIMITS.contact.period, async () => {
+      await env.DB.batch([env.DB.prepare("DELETE FROM audit_log"), env.DB.prepare("DELETE FROM contact_messages")]);
+      const ip = uniqueIp();
+      const statuses: number[] = [];
+      let last: Response | undefined;
+      for (let i = 0; i < 6; i++) {
+        last = await post(valid({ email: uniqueEmail() }), ip);
+        statuses.push(last.status);
+      }
+      expect(statuses).toEqual([201, 201, 201, 201, 201, 429]);
+      expect(last!.headers.get("retry-after")).toBe("60");
+      expect(await json(last!)).toEqual({ error: "rate_limited", message: CONTACT_MESSAGES.rateLimited, retryAfterSeconds: 60 });
+      // The refused one stored nothing.
+      expect(await count("contact_messages")).toBe(5);
+      // Another visitor is not affected.
+      expect((await post(valid(), uniqueIp())).status).toBe(201);
+    }));
 
   test("a refusal is checked before the body is parsed, so an over-limit client cannot probe validation", async () => {
     const d = deps({ rateLimiter: { hit: async () => ({ allowed: false, retryAfterSeconds: 17 }) } });
@@ -490,9 +496,12 @@ describe("the rate limit", () => {
     const bindings = { ...env, ENVIRONMENT: "test", RL_CONTACT: undefined } as never;
     const ip = uniqueIp();
     const run = () => internalFetchWithBindings(bindings, "/api/public/contact", { method: "POST", json: valid({ email: uniqueEmail() }), clientIp: ip });
-    const statuses: number[] = [];
-    for (let i = 0; i < 6; i++) statuses.push((await run()).status);
-    expect(statuses).toEqual([201, 201, 201, 201, 201, 429]);
+    // The fallback's window lasts a minute by the wall clock from the first post: frozen, a slow run cannot outlast it.
+    await withFrozenDate(async () => {
+      const statuses: number[] = [];
+      for (let i = 0; i < 6; i++) statuses.push((await run()).status);
+      expect(statuses).toEqual([201, 201, 201, 201, 201, 429]);
+    });
   });
 
   test("one limiter only: the limit, the period and the words are the contract's, and the first version's binding is gone", async () => {

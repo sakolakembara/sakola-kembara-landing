@@ -5,8 +5,11 @@ import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
 // Tests run inside workerd (the real Workers runtime) through Miniflare, with a
-// real local D1 and the real rate limit bindings from wrangler.jsonc. The
-// worker is called directly, so console and fetch can be spied on.
+// real local D1 and the rate limit bindings from wrangler.jsonc. The route tests
+// count against a double of those bindings with a clock the test holds still
+// (test/limiter-clock.ts), because Miniflare's windows follow the wall clock;
+// the real ones are checked in test/rate-limit.test.ts. The worker is called
+// directly, so console and fetch can be spied on.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 

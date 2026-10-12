@@ -8,7 +8,8 @@ import * as schema from "../src/db/schema";
 import { KIND_RULES, uploadKinds, type UploadKind } from "../src/uploads/kinds";
 import { deleteUploadByPath, storeUpload } from "../src/uploads/store";
 import { checkLimits } from "../src/security/rate-limit";
-import { awaitFreshWindow, call, signedInCookie, uniqueEmail } from "./helpers";
+import { call, signedInCookie, uniqueEmail } from "./helpers";
+import { withFrozenDate } from "./limiter-clock";
 import { auditRows, clearBucket, disguises, gif, jpeg, mediaRows, objectKeys, padTo, pdf, png, upload, webp, type Uploaded } from "./uploads-helpers";
 
 // The upload API against the real workerd runtime: a real local D1 and a real
@@ -379,7 +380,6 @@ describe("rate limit", () => {
     const heavy = await editor();
     const other = await editor();
     const small = png(2, 2);
-    await awaitFreshWindow(4000); // the limiter counts in windows that line up with the clock
 
     const statuses: number[] = [];
     for (let i = 0; i < 21; i++) statuses.push((await upload({ cookie: heavy, bytes: small, filename: `f${i}.png`, ip: "203.0.113.50" })).status);
@@ -397,7 +397,6 @@ describe("rate limit", () => {
 
   test("a refused upload (429) never reads the body", async () => {
     const cookie = await editor();
-    await awaitFreshWindow(4000);
     for (let i = 0; i < 20; i++) await upload({ cookie, bytes: png(2, 2) });
     const formData = vi.spyOn(Request.prototype, "formData");
     expect((await upload({ cookie })).status).toBe(429);
@@ -406,9 +405,12 @@ describe("rate limit", () => {
 
   test("without the binding a local run falls back to memory with the same numbers; production would refuse", async () => {
     const cookie = await editor();
-    const statuses: number[] = [];
-    for (let i = 0; i < 21; i++) statuses.push((await upload({ cookie, bytes: png(2, 2), env: { RL_UPLOAD: undefined } })).status);
-    expect(statuses).toEqual([...Array(20).fill(201), 429]);
+    // The fallback's window lasts a minute by the wall clock from the first upload: frozen, a slow run cannot outlast it.
+    await withFrozenDate(async () => {
+      const statuses: number[] = [];
+      for (let i = 0; i < 21; i++) statuses.push((await upload({ cookie, bytes: png(2, 2), env: { RL_UPLOAD: undefined } })).status);
+      expect(statuses).toEqual([...Array(20).fill(201), 429]);
+    });
 
     // The same lookup in production: no binding, nothing throttles, so the request is refused (503), not allowed.
     const verdict = await checkLimits({ ENVIRONMENT: "production" }, [{ name: "upload", key: "upload:someone" }]);

@@ -3,14 +3,19 @@ import { describe, expect, test, vi } from "vitest";
 import wranglerConfig from "../wrangler.jsonc?raw";
 import { checkLimits, limitedResponse, RATE_LIMITS, resetMemoryLimits, type LimitEnv } from "../src/security/rate-limit";
 import { clientIp, emailKey } from "../src/security/client";
-import { awaitFreshWindow, call, CAPTCHA, createVerifiedUser, emails, emailsTo, fakeNetwork, freshIp, PASSWORD, productionLike, register, signIn, uniqueEmail } from "./helpers";
+import { call, CAPTCHA, createVerifiedUser, emails, emailsTo, fakeNetwork, freshIp, PASSWORD, productionLike, register, signIn, uniqueEmail } from "./helpers";
+import { fakeRateLimit, inOneRealWindow, LIMITER_START, limiterBindings, limiterClock, realLimiterBindings, withFrozenDate } from "./limiter-clock";
 
-// The limits are Cloudflare rate limit bindings (wrangler.jsonc), the real
-// Miniflare implementation, so the numbers below are the production ones:
+// The limits are Cloudflare rate limit bindings (wrangler.jsonc); the numbers below are the production ones:
 //
 //   login 5/min per IP+email, loginAccount 20/min per email, register 10/min per IP,
 //   reset 5/min per IP, verifyResend 2/min per email, mailTarget 3/min per email,
-//   token 20/min per IP, contact 5/min per IP.
+//   token 20/min per IP, contact 5/min per IP, upload 20/min per user, blog preview 60/min per user.
+//
+// The route tests count against a limiter with the binding's contract and a clock that only the test moves
+// (test/limiter-clock.ts, which `call()` installs), because the window of Miniflare's own binding follows the wall
+// clock and a counting test fails whenever the minute turns while it runs (SAKEM-088). The real binding is checked
+// in the "real binding" block below, with the window watched. Docs: docs/cloudflare/auth.md#controlling-the-limiter-clock-in-tests.
 
 const legacy = {
   login: "Terlalu banyak percobaan masuk. Silakan tunggu beberapa menit lalu coba lagi.",
@@ -57,6 +62,19 @@ describe("login", () => {
     expect(blocked.headers.get("retry-after")).toBe("60");
     expect(blocked.headers.get("cache-control")).toBe("no-store");
     expect(await blocked.json()).toEqual({ error: "rate_limited", message: legacy.login, retryAfterSeconds: 60 });
+  });
+
+  test("a client that was refused may try again when the window has turned, and not a moment before", async () => {
+    const email = uniqueEmail();
+    const ip = freshIp();
+    await createVerifiedUser(email);
+    for (let i = 0; i < 5; i++) expect((await signIn(email, "wrong password", ip)).status).toBe(401);
+    expect((await signIn(email, PASSWORD, ip)).status).toBe(429);
+
+    limiterClock.advance(59_999); // the last millisecond of the window
+    expect((await signIn(email, PASSWORD, ip)).status).toBe(429);
+    limiterClock.advance(1); // the next window: the count starts again
+    expect((await signIn(email, PASSWORD, ip)).status).toBe(200);
   });
 
   test("another client is not affected by that client's failures", async () => {
@@ -171,7 +189,6 @@ describe("registration, reset, resend and the mailbox", () => {
   });
 
   test("resending the verification link: 2 a minute per email, from any address", async () => {
-    await awaitFreshWindow();
     const email = uniqueEmail();
     await register(email); // counts as one mail to this mailbox
     const statuses: number[] = [];
@@ -235,43 +252,48 @@ describe("registration, reset, resend and the mailbox", () => {
 describe("checkLimits and the in-memory fallback (local dev and tests only)", () => {
   const noBindings: LimitEnv = { ENVIRONMENT: "test" };
 
-  test("without a binding, outside production, the same limit applies in memory", async () => {
-    const statuses: boolean[] = [];
-    for (let i = 0; i < 7; i++) statuses.push((await checkLimits(noBindings, [{ name: "login", key: "k" }])).allowed);
-    expect(statuses).toEqual([true, true, true, true, true, false, false]);
-    expect(await checkLimits(noBindings, [{ name: "login", key: "another key" }])).toEqual({ allowed: true });
-  });
+  // The fallback's window starts at the first attempt and lasts the period by the wall clock (`Date.now()`), so every
+  // test that counts runs with `Date` frozen: a slow machine cannot outlast the window (SAKEM-088).
+  test("without a binding, outside production, the same limit applies in memory", () =>
+    withFrozenDate(async () => {
+      const statuses: boolean[] = [];
+      for (let i = 0; i < 7; i++) statuses.push((await checkLimits(noBindings, [{ name: "login", key: "k" }])).allowed);
+      expect(statuses).toEqual([true, true, true, true, true, false, false]);
+      expect(await checkLimits(noBindings, [{ name: "login", key: "another key" }])).toEqual({ allowed: true });
+    }));
 
-  test("the fallback window rolls over after the period", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    try {
+  test("the fallback window rolls over a period after the first attempt (not on a multiple of the period, unlike the binding)", () =>
+    withFrozenDate(async (clock) => {
       for (let i = 0; i < 6; i++) await checkLimits(noBindings, [{ name: "contact", key: "k" }]);
       expect((await checkLimits(noBindings, [{ name: "contact", key: "k" }])).allowed).toBe(false);
-      vi.setSystemTime(Date.now() + 61_000);
+      clock.advance(59_999);
+      expect((await checkLimits(noBindings, [{ name: "contact", key: "k" }])).allowed).toBe(false);
+      clock.advance(1); // 60 s after the first attempt
       expect((await checkLimits(noBindings, [{ name: "contact", key: "k" }])).allowed).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
+      for (let i = 0; i < 4; i++) expect((await checkLimits(noBindings, [{ name: "contact", key: "k" }])).allowed).toBe(true); // a new window: five allowed, the one above and these four
+      expect((await checkLimits(noBindings, [{ name: "contact", key: "k" }])).allowed).toBe(false);
+    }));
 
-  test("buckets do not share keys: the same key under two bindings is two counters", async () => {
-    for (let i = 0; i < 5; i++) await checkLimits(noBindings, [{ name: "login", key: "same" }]);
-    expect((await checkLimits(noBindings, [{ name: "login", key: "same" }])).allowed).toBe(false);
-    expect((await checkLimits(noBindings, [{ name: "loginAccount", key: "same" }])).allowed).toBe(true);
-  });
+  test("buckets do not share keys: the same key under two bindings is two counters", () =>
+    withFrozenDate(async () => {
+      for (let i = 0; i < 5; i++) await checkLimits(noBindings, [{ name: "login", key: "same" }]);
+      expect((await checkLimits(noBindings, [{ name: "login", key: "same" }])).allowed).toBe(false);
+      expect((await checkLimits(noBindings, [{ name: "loginAccount", key: "same" }])).allowed).toBe(true);
+    }));
 
-  test("when a check is refused, the others are still counted", async () => {
-    for (let i = 0; i < 5; i++) await checkLimits(noBindings, [{ name: "login", key: "a" }]);
-    const result = await checkLimits(noBindings, [
-      { name: "login", key: "a" },
-      { name: "loginAccount", key: "acct" },
-    ]);
-    expect(result).toEqual({ allowed: false, reason: "limited", name: "login" });
-    // loginAccount was counted once by that call; 19 more are allowed, the 20th call after that is not.
-    const rest: boolean[] = [];
-    for (let i = 0; i < 20; i++) rest.push((await checkLimits(noBindings, [{ name: "loginAccount", key: "acct" }])).allowed);
-    expect(rest.filter(Boolean)).toHaveLength(19);
-  });
+  test("when a check is refused, the others are still counted", () =>
+    withFrozenDate(async () => {
+      for (let i = 0; i < 5; i++) await checkLimits(noBindings, [{ name: "login", key: "a" }]);
+      const result = await checkLimits(noBindings, [
+        { name: "login", key: "a" },
+        { name: "loginAccount", key: "acct" },
+      ]);
+      expect(result).toEqual({ allowed: false, reason: "limited", name: "login" });
+      // loginAccount was counted once by that call; 19 more are allowed, the 20th call after that is not.
+      const rest: boolean[] = [];
+      for (let i = 0; i < 20; i++) rest.push((await checkLimits(noBindings, [{ name: "loginAccount", key: "acct" }])).allowed);
+      expect(rest.filter(Boolean)).toHaveLength(19);
+    }));
 
   test("production without the binding fails closed: 503, logged, never 'allowed'", async () => {
     const lines: string[] = [];
@@ -303,11 +325,13 @@ describe("checkLimits and the in-memory fallback (local dev and tests only)", ()
     const ip = freshIp();
     await createVerifiedUser(email);
     resetMemoryLimits();
-    const statuses: number[] = [];
-    for (let i = 0; i < 6; i++) {
-      statuses.push((await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: "wrong" }, ip, env: { RL_LOGIN: undefined, RL_LOGIN_ACCOUNT: undefined } })).status);
-    }
-    expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+    await withFrozenDate(async () => {
+      const statuses: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        statuses.push((await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: "wrong" }, ip, env: { RL_LOGIN: undefined, RL_LOGIN_ACCOUNT: undefined } })).status);
+      }
+      expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+    });
   });
 
   test("429 uses the legacy copy per concern and the period as Retry-After", async () => {
@@ -319,6 +343,81 @@ describe("checkLimits and the in-memory fallback (local dev and tests only)", ()
     }
     expect(RATE_LIMITS.contact.message).toBe(legacy.contact);
     expect(RATE_LIMITS.register.message).toBe(legacy.register);
+  });
+});
+
+describe("the real binding (Miniflare) and the test double of it", () => {
+  // The route tests above count against the double (test/limiter-clock.ts). What they cannot say is whether the
+  // double is the binding, so the real one is asked the same questions. Its window follows the wall clock and runs
+  // outside this isolate, so a scenario can meet a window that turns under it: `inOneRealWindow` runs it again, with
+  // new keys, when it failed in a turned window, and throws a failure that happened inside one.
+  const ask = async (binding: RateLimit, calls: number, key: string) => {
+    const outcomes: boolean[] = [];
+    for (let i = 0; i < calls; i++) outcomes.push((await binding.limit({ key })).success);
+    return outcomes;
+  };
+
+  for (const config of Object.values(RATE_LIMITS)) {
+    test(`${config.binding}: ${config.limit} per ${config.period} s per key, then refused; another key has its own count (the real one and the double alike)`, async () => {
+      const expected = [...Array(config.limit).fill(true), false, false];
+      await inOneRealWindow(config.period, async () => {
+        const real = env[config.binding];
+        expect(await ask(real, config.limit + 2, `contract:${crypto.randomUUID()}`)).toEqual(expected);
+        expect(await ask(real, 1, `contract:${crypto.randomUUID()}`)).toEqual([true]);
+      });
+      const double = limiterBindings()[config.binding];
+      expect(await ask(double, config.limit + 2, "contract:a")).toEqual(expected);
+      expect(await ask(double, 1, "contract:b")).toEqual([true]);
+    });
+  }
+
+  // Negative check: remove the gate (src/worker.ts), or stop reading the binding's answer (src/security/rate-limit.ts).
+  test("end to end with the real binding: the sixth attempt in a minute is refused, whatever second the minute turns in", async () => {
+    const real = realLimiterBindings(env);
+    await inOneRealWindow(RATE_LIMITS.login.period, async () => {
+      const email = uniqueEmail();
+      const ip = freshIp();
+      await createVerifiedUser(email);
+      const statuses: number[] = [];
+      for (let i = 0; i < 6; i++) statuses.push((await call("/api/auth/sign-in/email", { method: "POST", json: { email, password: "wrong password" }, ip, env: real })).status);
+      expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+    });
+  });
+
+  test("the double's windows are multiples of the period on its clock, as the binding's are: a count that straddles one starts again", async () => {
+    const binding = fakeRateLimit({ limit: 5, period: 60 });
+    limiterClock.set(LIMITER_START + 59_990);
+    const outcomes = await ask(binding, 3, "k");
+    limiterClock.advance(20); // :00 of the next minute, 10 ms after the first three
+    outcomes.push(...(await ask(binding, 3, "k")));
+    expect(outcomes).toEqual([true, true, true, true, true, true]); // six attempts, none refused: this is what a slow test run met
+    limiterClock.advance(59_989); // the last millisecond of that minute, with three counted in it
+    expect(await ask(binding, 3, "k")).toEqual([true, true, false]);
+    limiterClock.advance(1); // the minute after it
+    expect(await ask(binding, 2, "k")).toEqual([true, true]);
+  });
+
+  test("a window of 10 seconds turns every 10 seconds; a refused call is not counted", async () => {
+    const binding = fakeRateLimit({ limit: 2, period: 10 });
+    expect(await ask(binding, 4, "k")).toEqual([true, true, false, false]);
+    limiterClock.advance(9_999);
+    expect(await ask(binding, 1, "k")).toEqual([false]);
+    limiterClock.advance(1);
+    expect(await ask(binding, 3, "k")).toEqual([true, true, false]);
+  });
+
+  test("the double takes `{ key }` and nothing else, like Cloudflare's binding, and a throw is not an answer", async () => {
+    const binding = fakeRateLimit({ limit: 2, period: 60 });
+    await expect(binding.limit({ key: "k", limit: 1000 } as never)).rejects.toThrow("bad rate limit options: [limit]");
+    await expect(binding.limit({} as never)).rejects.toThrow("bad rate limit options");
+    await expect(binding.limit(undefined as never)).rejects.toThrow("bad rate limit options");
+  });
+
+  test("every test starts at the same instant with empty counters, and the clock moves only when a test moves it", async () => {
+    expect(limiterClock.read()).toBe(LIMITER_START); // the tests above moved it
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(limiterClock.read()).toBe(LIMITER_START);
+    expect(await ask(limiterBindings().RL_LOGIN, 6, "k")).toEqual([true, true, true, true, true, false]);
   });
 });
 
