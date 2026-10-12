@@ -107,10 +107,12 @@ export function Field({
 /**
  * Shared look of text inputs, textareas and selects (DESIGN.md, Forms). `md`
  * (48px, 16px text) is the default everywhere; `sm` (40px, 14px) is for the
- * filter rows above admin tables, next to `Button size="sm"`.
+ * filter rows above admin tables, next to `Button size="sm"`. A control with
+ * `aria-invalid` (set by `Field` when it has an error) gets a red border, also
+ * while focused.
  */
 export const controlVariants = cva(
-  "w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none",
+  "w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none aria-invalid:border-danger-fg aria-invalid:focus:border-danger-fg",
   {
     variants: {
       // A fixed line height so inputs and selects come out the same height
