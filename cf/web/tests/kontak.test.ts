@@ -59,9 +59,9 @@ describe('/kontak copy', () => {
     for (const name of ['fullName', 'email', 'subject', 'message']) expect(form).toMatch(new RegExp(`name="${name}"\\s+required`));
   });
 
-  it('the form posts to /kontak and works without JavaScript; the script only adds the pending state', () => {
+  it('the form is a plain POST to /kontak (it posts without JavaScript, where no bot check is enforced); its own script only adds the pending state, the widget has a script of its own', () => {
     expect(form).toContain('method="post" action="/kontak"');
-    const script = form.slice(form.indexOf('<script>'));
+    const script = form.slice(form.lastIndexOf('<script>')); // the form's own script is the last one; the widget's is the import before it
     expect(script.length).toBeLessThan(1200);
     expect(script).toContain("'Mengirim...'");
     expect(script).not.toContain('fetch(');

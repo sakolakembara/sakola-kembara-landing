@@ -18,7 +18,8 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { Window } from 'happy-dom';
-import { PORT_OFFSET, startStack, webRoot } from './lib/harness.mjs';
+import { PORT_OFFSET, TURNSTILE_TEST_SITE_KEY, startStack, webRoot } from './lib/harness.mjs';
+import { STUB_TOKEN, turnstileStubSource } from './lib/turnstile-stub.mjs';
 import { SAMPLE_REPORTS, SAMPLE_RESOURCES } from './fixture-api.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
 import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
@@ -1417,12 +1418,17 @@ await check('contact', 'GET /kontak: 200 html from the Worker, one h1, SEO tags,
   assert.match(html, /aria-label="Instagram"/);
   assert.ok(!html.includes('Pesan Terkirim'));
 });
-await check('contact', 'JavaScript is optional and tiny: the form script is inline, under 1 KB, and only toggles the pending state', async () => {
+await check('contact', 'the form\'s own script is inline, under 1 KB, and only toggles the pending state; the page\'s scripts are the navbar\'s, the widget\'s and that one, plus Cloudflare\'s file (see group "turnstile")', async () => {
   const html = await text(await get('/kontak'));
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-  assert.equal(scripts.length, 2, 'the navbar script and the form script');
-  assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0, 'no script file');
-  const formScript = scripts.find((m) => m[2].includes('Mengirim...'));
+  const inline = scripts.filter((m) => !/\ssrc=/.test(m[1]));
+  assert.equal(inline.length, 3, 'the navbar script, the widget script and the form script');
+  assert.deepEqual(
+    [...html.matchAll(/<script[^>]*\ssrc="([^"]*)"/g)].map((m) => m[1]),
+    ['https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'],
+    'no script file of ours: Cloudflare\'s is the only one',
+  );
+  const formScript = inline.find((m) => m[2].includes('Mengirim...'));
   assert.ok(formScript);
   assert.ok(Buffer.byteLength(formScript[2]) < 1000, `form script is ${Buffer.byteLength(formScript[2])} bytes`);
   assert.doesNotMatch(formScript[2], /fetch\(|XMLHttpRequest/);
@@ -1667,6 +1673,373 @@ await check('contact', 'with a rate-limit binding (CONTACT_LIMITER) the binding 
     assert.deepEqual(statuses, [303, 303, 429]);
   } finally {
     await s.stop();
+  }
+});
+
+// ---------------------------------------------------------------- Turnstile on /kontak (SAKEM-080 + SAKEM-081)
+// The Worker only carries the token (the API Worker verifies it): these checks are what the page contains, what
+// the API receives, how a refusal is shown, and the page's own scripts run in a DOM next to a stand-in
+// `window.turnstile` (scripts/lib/turnstile-stub.mjs). There is no browser and Cloudflare's script is never
+// requested: the tag is stripped from the HTML before the DOM runs it, and the stand-in is evaluated from outside.
+const CLOUDFLARE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const turnstileLogStart = stack.output().length;
+const lastContactEntry = async (before) => (await contactApi.log()).slice(before).at(-1);
+
+await check('turnstile', 'GET /kontak: the slot with the site key (from the Worker var) and the action, Cloudflare\'s script once (explicit, async, defer), the hidden failure line, the notice for visitors without JavaScript, the form still a plain POST', async () => {
+  const res = await get('/kontak');
+  assert.equal(res.status, 200);
+  const html = await text(res);
+  assert.match(html, new RegExp(`<div data-turnstile data-sitekey="${TURNSTILE_TEST_SITE_KEY}" data-action="contact" class="min-h-\\[65px\\]"></div>`));
+  assert.equal([...html.matchAll(/<script[^>]*challenges\.cloudflare\.com[^>]*>/g)].length, 1, 'Cloudflare\'s script, once');
+  assert.match(html, new RegExp(`<script[^>]*\\ssrc="${CLOUDFLARE_SCRIPT.replace(/[.?]/g, '\\$&')}"[^>]*\\sasync[^>]*\\sdefer[^>]*\\sdata-turnstile-api[^>]*>`));
+  assert.match(html, /<p data-turnstile-failed hidden role="status"[^>]*>\s*Verifikasi gagal\. Silakan coba lagi\.\s*<\/p>/);
+  assert.match(html, /<noscript>\s*<p class="[^"]*border-warning-border bg-warning-bg text-warning-fg[^"]*">\s*Aktifkan JavaScript untuk mengirim pesan\.\s*<\/p>\s*<\/noscript>/);
+  assert.match(html, /<form id="kontak-form" method="post" action="\/kontak" class="space-y-5" novalidate>/);
+  // inside the form, between the message and the button
+  const at = (s) => html.indexOf(s);
+  assert.ok(at('name="message"') < at('data-turnstile ') && at('data-turnstile ') < at('type="submit"') && at('type="submit"') < at('</form>'));
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  assert.match(html, /<title>Kontak \| Sakola Kembara<\/title>/, 'the SEO tags are unchanged');
+  assert.equal(res.headers.get('x-frame-options'), 'DENY');
+  // size of the widget's script (the one this change added to the page), for the report
+  const widget = inlineScripts(html).find((c) => c.includes('data-turnstile'));
+  assert.ok(widget, 'the widget script is inline');
+  const formScript = inlineScripts(html).find((c) => c.includes('Mengirim...'));
+  notes.push(`/kontak scripts: widget ${Buffer.byteLength(widget)} B raw inline, the form's own ${Buffer.byteLength(formScript)} B (unchanged), Cloudflare's file loaded from its origin (not ours)`);
+  assert.ok(Buffer.byteLength(widget) < 1500, `${Buffer.byteLength(widget)} bytes`);
+});
+
+await check('turnstile', 'Cloudflare\'s script is on /kontak and nowhere else: not on the other pages, the 404, the confirmation or an article', async () => {
+  for (const p of ['/', '/donasi', '/tim', '/laporan', '/gabung-siswa', '/gabung-siswa/docs', '/blog', `/blog/${slugs[0]}`, '/program/pembinaan', '/does-not-exist']) {
+    const html = await text(await get(p));
+    assert.ok(!html.includes('challenges.cloudflare.com'), `${p} names Cloudflare's script`);
+    assert.ok(!html.includes('data-turnstile'), `${p} has a widget or its script`);
+  }
+  // the confirmation has no form, so no slot, no Cloudflare script, no notice (the form component's small
+  // inline scripts are on it, as they were before: they find no form and do nothing)
+  const done = await text(await get('/kontak?terkirim=1'));
+  assert.ok(!done.includes('challenges.cloudflare.com') && !done.includes('<div data-turnstile') && !done.includes('Aktifkan JavaScript'));
+});
+
+await check('turnstile', 'a post with the widget\'s token: the API gets it in X-Sakem-Turnstile-Token (never in the body), the visitor gets the 303; the Worker logs nothing of it', async () => {
+  await contactApi.mode('ok');
+  const before = (await contactApi.log()).length;
+  const res = await postForm({ ...VALID_FORM(30), 'cf-turnstile-response': `${STUB_TOKEN}.30` });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('location'), '/kontak?terkirim=1');
+  const entry = await lastContactEntry(before);
+  assert.equal(entry.turnstileToken, `${STUB_TOKEN}.30`);
+  assert.equal(entry.headers['x-sakem-turnstile-token'], `${STUB_TOKEN}.30`);
+  assert.deepEqual(entry.body, { ...VALID_FORM(30), website: '' }, 'the JSON body is the form\'s fields only');
+  assert.ok(!JSON.stringify(entry.body).includes('DUMMY'));
+  assert.doesNotMatch(stack.output().slice(turnstileLogStart), /DUMMY\.TOKEN/);
+});
+
+await check('turnstile', 'a post without a token (no JavaScript; a local run where the API has no secret): still the 303, and the API got no token header: the Worker never refuses for lack of a token, the API decides', async () => {
+  await contactApi.mode('ok');
+  const before = (await contactApi.log()).length;
+  const res = await postForm(VALID_FORM(31));
+  assert.equal(res.status, 303);
+  const entry = await lastContactEntry(before);
+  assert.equal(entry.turnstileToken, undefined);
+  assert.equal('x-sakem-turnstile-token' in entry.headers && entry.headers['x-sakem-turnstile-token'] !== undefined, false);
+});
+
+await check('turnstile', 'a token that cannot travel in a header (a space, a line break, 3000 characters) is dropped, and the post goes on without it', async () => {
+  await contactApi.mode('ok');
+  for (const [i, token] of ['two words', 'abc\r\nx-sakem-client-ip: 9.9.9.9', 'a'.repeat(3000)].entries()) {
+    const before = (await contactApi.log()).length;
+    const res = await postForm({ ...VALID_FORM(32 + i), 'cf-turnstile-response': token }, { ip: `203.0.113.${150 + i}` });
+    assert.equal(res.status, 303, token.slice(0, 12));
+    const entry = await lastContactEntry(before);
+    assert.equal(entry.turnstileToken, undefined);
+    assert.equal(entry.clientIp, `203.0.113.${150 + i}`, 'the visitor address header was not touched');
+  }
+});
+
+await check('turnstile', 'API 400 turnstile_failed: 400, "Verifikasi gagal. Silakan coba lagi.", the typed text kept, no-store, and the form comes back with a fresh widget slot (the reset); no other banner', async () => {
+  await contactApi.mode('turnstile');
+  try {
+    const res = await postForm({ ...VALID_FORM(35), 'cf-turnstile-response': `${STUB_TOKEN}.35` });
+    assert.equal(res.status, 400);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.equal(res.headers.get('retry-after'), null);
+    const html = await text(res);
+    assert.match(html, /role="alert"[^>]*>\s*Verifikasi gagal\. Silakan coba lagi\.\s*<\/div>/);
+    assert.ok(!html.includes('Silakan periksa kembali isian formulir.') && !html.includes('Pesan belum dapat dikirim'), 'one message, not another');
+    assert.ok(!html.includes('API'), 'the API\'s own wording and name are not shown');
+    assert.ok(!html.includes('Muat ulang halaman lalu coba lagi'), 'the API\'s own wording is not shown');
+    assert.equal(valueOf(html, 'fullName'), VALID_FORM(35).fullName);
+    assert.equal(valueOf(html, 'email'), VALID_FORM(35).email);
+    assert.equal(textarea(html), VALID_FORM(35).message);
+    // a new widget, a new token: the slot and the script are in the page again, and the spent token is not
+    assert.match(html, new RegExp(`<div data-turnstile data-sitekey="${TURNSTILE_TEST_SITE_KEY}" data-action="contact"`));
+    assert.equal([...html.matchAll(/<script[^>]*challenges\.cloudflare\.com[^>]*>/g)].length, 1);
+    assert.ok(!html.includes('cf-turnstile-response') && !html.includes('DUMMY'), 'the spent token is not echoed');
+    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  } finally {
+    await contactApi.mode('ok');
+  }
+});
+
+await check('turnstile', 'an API that requires a token (the real one, with a secret set): without one 400 turnstile_failed, with one the 303', async () => {
+  await contactApi.mode('require_token');
+  try {
+    const without = await postForm(VALID_FORM(36));
+    assert.equal(without.status, 400);
+    assert.match(await text(without), /Verifikasi gagal\. Silakan coba lagi\./);
+    const withToken = await postForm({ ...VALID_FORM(37), 'cf-turnstile-response': `${STUB_TOKEN}.37` });
+    assert.equal(withToken.status, 303);
+  } finally {
+    await contactApi.mode('ok');
+  }
+});
+
+/** The served /kontak page in a DOM, as a browser would build it, without any <script> tag running or loading. */
+async function kontakInDom(html, { stub = 'before' } = {}) {
+  const requests = [];
+  const problems = [];
+  const sink = (...a) => void problems.push(a.join(' '));
+  const window = new Window({
+    url: `${base}/kontak`,
+    console: { error: sink, warn: sink, log() {}, info() {}, debug() {} },
+    settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true, disableIframePageLoading: true },
+  });
+  window.fetch = (...a) => (requests.push(String(a[0])), Promise.reject(new Error('offline'))); // the navbar script asks the legacy app, which is not here
+  window.addEventListener('error', (e) => problems.push(`window error: ${e.message}`));
+  const scripts = inlineScripts(html);
+  // every <script> goes, but Cloudflare's tag stays as an inert element (no src) so the page's script finds its place and a test can fire its events
+  window.document.documentElement.innerHTML = html
+    .replace(/<script[^>]*challenges\.cloudflare\.com[^>]*><\/script>/, '<script data-turnstile-api type="application/x-inert"></script>')
+    .replace(/<script(?![^>]*data-turnstile-api)[\s\S]*?<\/script>/g, '')
+    .replace(/<link rel="stylesheet"[^>]*>/g, '')
+    .replace(/^<!doctype html>/i, '');
+  if (stub === 'before') window.eval(turnstileStubSource);
+  // each inline script in a function of its own: they were separate module scripts, and two of them may use the same name at the top level
+  for (const code of scripts) window.eval(`(function () {\n${code}\n})();`);
+  if (stub === 'after') window.eval(turnstileStubSource);
+  return { window, requests, problems, doc: window.document, close: () => window.happyDOM.close() };
+}
+/** What the stand-in recorded, copied out of the DOM's realm (a plain object of this one). */
+const stubCalls = (window) => JSON.parse(window.eval('JSON.stringify(window.__turnstileStub ?? { renders: [], resets: [] })'));
+const fillForm = (doc, n) => {
+  const v = VALID_FORM(n);
+  for (const id of ['fullName', 'email', 'message']) doc.getElementById(id).value = v[id];
+  doc.getElementById('subject').value = v.subject;
+};
+const formFields = (window, doc) => new URLSearchParams(Object.fromEntries([...new window.FormData(doc.getElementById('kontak-form')).entries()].filter(([, v]) => typeof v === 'string')));
+
+await check('turnstile', 'the page\'s scripts in a DOM with a stand-in widget: rendered once with the site key and the action, the token field is in the form, the post carries it to the API; no request goes to Cloudflare', async () => {
+  const html = await text(await get('/kontak'));
+  const dom = await kontakInDom(html);
+  try {
+    const calls = stubCalls(dom.window);
+    assert.equal(calls.renders.length, 1);
+    assert.deepEqual(calls.renders[0].options, { sitekey: TURNSTILE_TEST_SITE_KEY, action: 'contact', theme: 'light', size: 'flexible', language: 'id' });
+    const field = dom.doc.querySelector('#kontak-form input[name="cf-turnstile-response"]');
+    assert.ok(field, 'the stand-in added the hidden field to the form, like the real widget');
+    assert.equal(field.value, `${STUB_TOKEN}.1`);
+    assert.equal(dom.doc.querySelector('[data-turnstile-failed]').hidden, true);
+
+    // what the browser would post: the form's own fields, token included
+    fillForm(dom.doc, 40);
+    const fields = formFields(dom.window, dom.doc);
+    assert.equal(fields.get('cf-turnstile-response'), `${STUB_TOKEN}.1`);
+    const before = (await contactApi.log()).length;
+    const res = await postForm(Object.fromEntries(fields), { ip: '203.0.113.160' });
+    assert.equal(res.status, 303);
+    const entry = await lastContactEntry(before);
+    assert.equal(entry.turnstileToken, `${STUB_TOKEN}.1`);
+    assert.equal(entry.body.email, VALID_FORM(40).email);
+
+    // the form's own script still works next to it: pending state, and a restored page resets the spent token
+    const button = dom.doc.querySelector('#kontak-form [type=submit]');
+    dom.doc.getElementById('kontak-form').dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+    assert.equal(button.disabled, true);
+    assert.equal(button.textContent.trim(), 'Mengirim...');
+    dom.window.dispatchEvent(Object.assign(new dom.window.Event('pageshow'), { persisted: true }));
+    assert.equal(button.disabled, false);
+    assert.equal(button.textContent.trim(), 'Kirim Pesan');
+    assert.deepEqual(stubCalls(dom.window).resets, ['stub-widget-1']);
+    assert.equal(dom.doc.querySelector('input[name="cf-turnstile-response"]').value, `${STUB_TOKEN}.reset1`, 'a fresh token after the reset');
+    assert.equal(dom.doc.querySelectorAll('input[name="cf-turnstile-response"]').length, 1);
+    // the only requests are the navbar's own same-origin ones to the legacy app (answered offline here); none goes to Cloudflare
+    assert.ok(dom.requests.length > 0 && dom.requests.every((u) => u.startsWith('/api/')), `requests of the page scripts: ${dom.requests.join(', ')}`);
+    assert.ok(!dom.requests.some((u) => u.includes('cloudflare')));
+  } finally {
+    await dom.close();
+  }
+  assert.deepEqual(dom.problems, []);
+});
+
+await check('turnstile', 'in a DOM where Cloudflare\'s script arrives after the page\'s (the load event), the widget still renders once; where it never arrives (the error event) the failure line shows and nothing renders', async () => {
+  const html = await text(await get('/kontak'));
+  const late = await kontakInDom(html, { stub: 'after' });
+  try {
+    assert.equal(stubCalls(late.window).renders.length, 0, 'nothing renders before the script is there');
+    const tag = late.doc.querySelector('script[data-turnstile-api]');
+    tag.dispatchEvent(new late.window.Event('load'));
+    assert.equal(stubCalls(late.window).renders.length, 1);
+    tag.dispatchEvent(new late.window.Event('load'));
+    assert.equal(stubCalls(late.window).renders.length, 1, 'once');
+    assert.equal(late.doc.querySelector('[data-turnstile-failed]').hidden, true);
+  } finally {
+    await late.close();
+  }
+  const blocked = await kontakInDom(html, { stub: 'none' });
+  try {
+    const failed = blocked.doc.querySelector('[data-turnstile-failed]');
+    assert.equal(failed.hidden, true);
+    blocked.doc.querySelector('script[data-turnstile-api]').dispatchEvent(new blocked.window.Event('error'));
+    assert.equal(failed.hidden, false);
+    assert.equal(failed.textContent.trim(), 'Verifikasi gagal. Silakan coba lagi.');
+    assert.equal(blocked.doc.querySelector('input[name="cf-turnstile-response"]'), null);
+  } finally {
+    await blocked.close();
+  }
+  assert.deepEqual([...late.problems, ...blocked.problems], []);
+});
+
+await check('turnstile', 'the stand-in is not a switch of the site: nothing the Worker serves names it, and a request for it is the real 404', async () => {
+  const html = await text(await get('/kontak'));
+  assert.doesNotMatch(html, /turnstile-stub|__turnstileStub|DUMMY\.TOKEN|probe-api/);
+  for (const p of ['/scripts/lib/turnstile-stub.mjs', '/turnstile-stub.js', '/__turnstile-stub.js']) assert.equal((await get(p)).status, 404, p);
+});
+
+await check('turnstile', 'a stack with no TURNSTILE_SITE_KEY: no widget, no Cloudflare script, no notice, the Worker log says so, and the form still posts (the API decides)', async () => {
+  const s = await startStack({ port: 8805, stubPort: 4419, fixturePort: 4420, inspectorPort: 9345, turnstileSiteKey: null });
+  try {
+    const res = await fetch(`${s.base}/kontak`);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.ok(!html.includes('challenges.cloudflare.com') && !html.includes('<div data-turnstile') && !html.includes('Aktifkan JavaScript') && !html.includes('<p data-turnstile-failed'));
+    assert.match(html, /<form id="kontak-form" method="post" action="\/kontak"/);
+    // the Worker's console reaches wrangler's output a moment after the response
+    for (let i = 0; i < 30 && !/TURNSTILE_SITE_KEY is not set/.test(s.output()); i++) await new Promise((r) => setTimeout(r, 100));
+    assert.match(s.output(), /contact: TURNSTILE_SITE_KEY is not set; the form is rendered without the bot-check widget/);
+    const post = await fetch(`${s.base}/kontak`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: s.base, 'cf-connecting-ip': '203.0.113.161' },
+      body: new URLSearchParams(VALID_FORM(41)).toString(),
+    });
+    assert.equal(post.status, 303);
+    // the confirmation page has no form, so it neither warns nor shows a widget
+    const before = s.output().length;
+    await fetch(`${s.base}/kontak?terkirim=1`);
+    await new Promise((r) => setTimeout(r, 500));
+    assert.doesNotMatch(s.output().slice(before), /TURNSTILE_SITE_KEY/);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('turnstile', 'the Worker\'s output has no token, no personal data and no error from any of the above', async () => {
+  const out = stack.output().slice(turnstileLogStart);
+  assert.doesNotMatch(out, /DUMMY\.TOKEN|XXXX\./);
+  assert.doesNotMatch(out, /Marker\d|marker\d|@example\.com|Halo, saya ingin bertanya|203\.0\.113\./);
+  assert.doesNotMatch(out, /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
+});
+
+// ---------------------------------------------------------------- the service binding (SAKEM-080 + SAKEM-081)
+// The built Worker with NO CONTENT_API_URL and NO CONTACT_API_URL, and a second local Worker named like the
+// `services` entry of the built config (`sakem-admin`) standing in for the API Worker on its `PublicApi`
+// entrypoint (scripts/lib/probe-api-worker.mjs). Every read and the contact post must go through it: the fixture
+// is only reachable from the probe, so a page that renders its data proves the binding carried the request.
+await check('binding', 'the built config binds `API` to the PublicApi entrypoint of `sakem-admin`, and sets neither API URL', async () => {
+  const config = JSON.parse(readFileSync(path.join(webRoot, 'dist/server/wrangler.json'), 'utf8'));
+  assert.deepEqual(config.services, [{ binding: 'API', service: 'sakem-admin', entrypoint: 'PublicApi' }]);
+  assert.deepEqual(config.vars, {}, 'no var in the deployed config: no API URL, no key');
+});
+
+await check('binding', 'with no API URL set, /tim, /laporan, /gabung-siswa/docs, the blog and the sitemap are rendered from data that only the binding can reach', async () => {
+  const s = await startStack({ port: 8806, stubPort: 4421, fixturePort: 4422, inspectorPort: 9346, binding: true });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  try {
+    const hits = async () => (await (await fetch(`${f}/__hits`)).json()).byEndpoint;
+    const pages = [
+      ['/tim', 'Anggota Contoh 1', 'x-team-source', 'team'],
+      ['/laporan', 'Laporan Dampak 2025/2026', 'x-reports-source', 'reports'],
+      ['/gabung-siswa/docs', 'Panduan Pendaftaran Siswa Baru', 'x-resources-source', 'resources'],
+    ];
+    for (const [p, marker, header, endpoint] of pages) {
+      const before = (await hits())[endpoint];
+      const res = await fetch(s.base + p);
+      assert.equal(res.status, 200, p);
+      assert.equal(res.headers.get(header), 'network', p);
+      assert.ok((await res.text()).includes(marker), `${p} shows the fixture's data`);
+      assert.equal((await hits())[endpoint], before + 1, `${p}: the API was asked once, through the binding`);
+    }
+    const blog = await fetch(`${s.base}/blog`);
+    assert.equal(blog.status, 200);
+    assert.equal(blog.headers.get('x-blog-source'), 'network');
+    const article = await fetch(`${s.base}/blog/${slugs[0]}`);
+    assert.equal(article.status, 200);
+    assert.equal(article.headers.get('x-blog-source'), 'network');
+    assert.equal((await fetch(`${s.base}/blog/does-not-exist`)).status, 404, 'the contract\'s 404 comes through the binding as a real 404');
+    assert.equal((await fetch(`${s.base}/sitemap.xml`)).status, 200);
+    assert.ok((await hits()).blog >= 4);
+    // (the startup banner of wrangler says "[not connected]" for a binding whose Worker registers a moment later; what matters is that no call failed)
+    assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError|Couldn't find|could not be found|no local dev session/i);
+    assert.match(s.output(), /env\.API \(sakem-admin#PublicApi\)\s+Worker/, 'the binding of the built config, to the entrypoint');
+    assert.ok(!/CONTENT_API_URL|CONTACT_API_URL/.test(s.output()), 'neither API URL is set in this stack');
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('binding', 'the contact form through the binding: the visitor address and the token reach the API in their headers, the answers map as before (303, turnstile_failed, 429)', async () => {
+  const s = await startStack({ port: 8807, stubPort: 4423, fixturePort: 4424, inspectorPort: 9347, binding: true });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  try {
+    const post = (n, extra = {}, ip = '203.0.113.170') =>
+      fetch(`${s.base}/kontak`, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', origin: s.base, 'cf-connecting-ip': ip },
+        body: new URLSearchParams({ ...VALID_FORM(n), ...extra }).toString(),
+      });
+    const sent = await post(50, { 'cf-turnstile-response': `${STUB_TOKEN}.50` });
+    assert.equal(sent.status, 303);
+    const [entry] = await (await fetch(`${f}/__contact-log`)).json();
+    assert.equal(entry.clientIp, '203.0.113.170');
+    assert.equal(entry.turnstileToken, `${STUB_TOKEN}.50`);
+    assert.equal(entry.headers['content-type'], 'application/json');
+    assert.deepEqual(entry.body, { ...VALID_FORM(50), website: '' });
+    await setFixtureMode(f, 'contact', 'turnstile');
+    const refused = await post(51, { 'cf-turnstile-response': `${STUB_TOKEN}.51` }, '203.0.113.171');
+    assert.equal(refused.status, 400);
+    assert.match(await refused.text(), /Verifikasi gagal\. Silakan coba lagi\./);
+    await setFixtureMode(f, 'contact', '429');
+    assert.equal((await post(52, {}, '203.0.113.172')).status, 429);
+    await setFixtureMode(f, 'contact', 'ok');
+    const page = await fetch(`${s.base}/kontak`);
+    assert.equal(page.status, 200, 'the page itself needs no API');
+    assert.doesNotMatch(s.output(), /Marker\d|marker\d|@example\.com|DUMMY\.TOKEN|\[ERROR\]|Uncaught|TypeError/);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('binding', 'a binding whose Worker is gone is an outage, not a crash: the pages show their degraded state and the form says it cannot send', async () => {
+  const s = await startStack({ port: 8808, stubPort: 4425, fixturePort: 4426, inspectorPort: 9348, binding: true });
+  try {
+    await s.fixture.close(); // the probe's upstream goes away: the entrypoint answers with a failure
+    const tim = await fetch(`${s.base}/tim`);
+    assert.equal(tim.status, 200, '/tim keeps its legacy empty state');
+    assert.equal(tim.headers.get('x-team-source'), 'empty');
+    assert.equal((await fetch(`${s.base}/laporan`)).status, 503);
+    const post = await fetch(`${s.base}/kontak`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: s.base, 'cf-connecting-ip': '203.0.113.173' },
+      body: new URLSearchParams(VALID_FORM(53)).toString(),
+    });
+    assert.equal(post.status, 503);
+    assert.match(await post.text(), /Pesan belum dapat dikirim saat ini\./);
+    assert.doesNotMatch(s.output(), /Marker\d|@example\.com|Uncaught/);
+  } finally {
+    await s.stop().catch(() => undefined);
   }
 });
 

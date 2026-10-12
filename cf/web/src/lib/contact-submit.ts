@@ -9,13 +9,19 @@
 //   4. Validate with the legacy rules (contact.ts). A filled honeypot is answered as a success
 //      and the API is never called.
 //   5. POST JSON to the API Worker through the SERVICE BINDING (api-client.ts), with the visitor
-//      address in `X-Sakem-Client-Ip`. The binding is the authentication: nothing public can
-//      reach that endpoint this way, so there is no signature and no shared secret. (The API
-//      trusts that header only for a call that came through the binding.)
-//   6. The status codes map to the legacy wording: 201 sent, 400 validation_failed, 429 rate_limited
-//      and duplicate_recent, anything else "unavailable".
+//      address in `X-Sakem-Client-Ip` and the form's Turnstile token (field `cf-turnstile-response`,
+//      added by the widget) in `X-Sakem-Turnstile-Token`. The binding is the authentication: nothing
+//      public can reach that endpoint this way, so there is no signature and no shared secret. (The
+//      API trusts the address header only for a call that came through the binding.) The token is
+//      forwarded when there is one and the API decides: it refuses a missing, failed or reused token
+//      when a Turnstile secret is configured (always in production) and skips the check otherwise, so
+//      this Worker never refuses a post for lack of a token itself (the no-JavaScript form keeps
+//      working in local runs and CI).
+//   6. The status codes map to the legacy wording: 201 sent, 400 validation_failed, 400
+//      turnstile_failed ("Verifikasi gagal. Silakan coba lagi."), 429 rate_limited and
+//      duplicate_recent, anything else "unavailable".
 //
-// Nothing here logs a name, an address or a message, ever: failures log a status code and the
+// Nothing here logs a name, an address, a message or a token, ever: failures log a status code and the
 // API's error code, which are fixed words. Both are checked by tests.
 
 import { contactApiTarget, type ApiEnv } from './api-client';
@@ -28,6 +34,7 @@ import {
   type ContactValues,
 } from './contact';
 import { createMemoryLimiter, type Limiter } from './contact-limit';
+import { TURNSTILE_MESSAGES, TURNSTILE_TOKEN_HEADER, turnstileToken } from './turnstile';
 
 /** The API's own cap (content-api.md): a body above it is refused there, so refuse it here first. */
 export const MAX_BODY_BYTES = 32 * 1024;
@@ -45,6 +52,8 @@ export type ContactOutcome =
   | { kind: 'invalid'; fieldErrors: ContactFieldErrors; values: ContactValues; message: string }
   | { kind: 'rate_limited'; message: string; retryAfter: number; values: ContactValues }
   | { kind: 'duplicate'; message: string; retryAfter: number; values: ContactValues }
+  /** The API refused the Turnstile token (missing, failed or reused). The form comes back with a fresh widget. */
+  | { kind: 'turnstile_failed'; message: string; values: ContactValues }
   | { kind: 'unavailable'; message: string; values: ContactValues }
   | { kind: 'forbidden' }
   | { kind: 'too_large' }
@@ -165,7 +174,7 @@ const retryAfterFrom = (res: Response, body: unknown, fallback: number): number 
 
 // ---- the call to the API Worker ---------------------------------------------
 
-async function sendToApi(data: ContactInput, ip: string, deps: ContactDeps): Promise<ContactOutcome> {
+async function sendToApi(data: ContactInput, ip: string, token: string | null, deps: ContactDeps): Promise<ContactOutcome> {
   const values: ContactValues = { ...data };
   const target = contactApiTarget(deps.env);
   if (!target) {
@@ -177,7 +186,13 @@ async function sendToApi(data: ContactInput, ip: string, deps: ContactDeps): Pro
   try {
     res = await target.fetchImpl(`${target.base}/api/public/contact`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json', [CLIENT_IP_HEADER]: ip },
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        [CLIENT_IP_HEADER]: ip,
+        // Only when the form carried one (never in the body, never logged); the API decides what a missing one means.
+        ...(token ? { [TURNSTILE_TOKEN_HEADER]: token } : {}),
+      },
       // The honeypot is empty by now: a filled one never gets here.
       body: JSON.stringify({ ...data, website: '' }),
       signal: AbortSignal.timeout(deps.timeoutMs ?? 8000),
@@ -198,6 +213,10 @@ async function sendToApi(data: ContactInput, ip: string, deps: ContactDeps): Pro
       values,
       message: CONTACT_MESSAGES.invalid,
     };
+  }
+  // Not logged: a refused token is the visitor's outcome (or a bot's), not a fault of ours.
+  if (res.status === 400 && code === 'turnstile_failed') {
+    return { kind: 'turnstile_failed', message: TURNSTILE_MESSAGES.failed, values };
   }
   if (res.status === 429) {
     return code === 'duplicate_recent'
@@ -239,5 +258,5 @@ export async function submitContact(request: Request, deps: ContactDeps): Promis
   if (parsed.kind === 'invalid') {
     return { kind: 'invalid', fieldErrors: parsed.fieldErrors, values: parsed.values, message: CONTACT_MESSAGES.invalid };
   }
-  return sendToApi(parsed.data, ip, deps);
+  return sendToApi(parsed.data, ip, turnstileToken(form), deps);
 }

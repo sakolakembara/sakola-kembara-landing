@@ -9,6 +9,7 @@ import SocialLinks from '~/components/SocialLinks.astro';
 import Base from '~/layouts/Base.astro';
 import { CONTACT_MESSAGES, FIELD_MESSAGES, contactInfo, type ContactFieldErrors, type ContactValues } from '~/lib/contact';
 import { drainBody, submitContact } from '~/lib/contact-submit';
+import { turnstileSiteKey } from '~/lib/turnstile';
 
 // Ported from app/(public)/kontak/page.tsx and layout.tsx. SSR, because the page receives the form:
 // a POST is handled here (lib/contact-submit.ts) and the form works without JavaScript.
@@ -47,6 +48,12 @@ if (method === 'POST') {
       Astro.response.status = 400;
       ({ message, fieldErrors, values } = outcome);
       break;
+    case 'turnstile_failed':
+      // The API refused the Turnstile token (missing, failed or already used). The form is rendered
+      // again below, which is also the widget's reset: a new widget, a new token. The typed text is kept.
+      Astro.response.status = 400;
+      ({ message, values } = outcome);
+      break;
     case 'bad_request':
       Astro.response.status = 400;
       message = CONTACT_MESSAGES.invalid;
@@ -71,6 +78,11 @@ if (method === 'POST') {
 }
 
 const sent = method !== 'POST' && Astro.url.searchParams.get('terkirim') === '1';
+
+// The Turnstile widget (explicit render, Cloudflare's script loaded by the form and only here). The site
+// key is public and comes from the Worker var TURNSTILE_SITE_KEY; without it the form has no widget
+// (and the helper says so in the Worker log). The confirmation page has no form, so no widget.
+const turnstileKey = sent ? null : turnstileSiteKey(env);
 ---
 
 <Base
@@ -102,6 +114,7 @@ const sent = method !== 'POST' && Astro.url.searchParams.get('terkirim') === '1'
               message={message}
               fieldErrors={fieldErrors}
               values={values}
+              turnstileSiteKey={turnstileKey ?? undefined}
             />
           </div>
 

@@ -20,13 +20,18 @@
 //
 //   POST /__mode?m=<mode>[&for=<endpoint>]
 //        modes: ok | 500 | slow | badjson | empty, and for the blog and the contact form also
-//        html404 (a 404 that is not the contract's JSON), 503 | 429 | duplicate | invalid (contact only).
+//        html404 (a 404 that is not the contract's JSON), 503 | 429 | duplicate | invalid (contact only),
+//        and for the contact form turnstile (always 400 turnstile_failed, the answer to a failed or
+//        reused token) and require_token (400 turnstile_failed only when the request carries no
+//        X-Sakem-Turnstile-Token, like the real API with a secret configured; the contract's position:
+//        after the field checks, before the duplicate check).
 //        Without `for` it applies to every endpoint and resets the per-endpoint overrides; `for` is
 //        team | reports | resources | blog | contact.
 //   GET  /__hits                { hits (team, kept for older checks), mode, overrides, byEndpoint }
 //   GET  /__requests?for=blog   the blog request targets (path + query), oldest first
-//   GET  /__contact-log         every contact request the fixture looked at: { clientIp, headers, body }
-//                               (a TEST fixture: the real API stores messages in D1, and the site never logs them)
+//   GET  /__contact-log         every contact request the fixture looked at: { clientIp, turnstileToken, headers, body }
+//                               (a TEST fixture: the real API stores messages in D1, and the site never logs them;
+//                               `turnstileToken` is the X-Sakem-Turnstile-Token header, or undefined when none came)
 //   POST /__reset               forget everything: mode, overrides, hits, requests, the contact log, limiter and duplicates
 //
 // All names, titles, texts and links below are made up for the fixture (example.org is reserved).
@@ -164,6 +169,8 @@ const MESSAGES = {
   invalid: 'Silakan periksa kembali isian formulir.',
   duplicate: 'Pesan dari email ini baru saja dikirim. Mohon tunggu beberapa menit sebelum mengirim ulang.',
   success: 'Pesan kamu sudah kami terima. Tim kami akan menghubungi via email.',
+  // The real API's own text for turnstile_failed (cf/admin src/public/contact.ts); the site shows its own wording instead.
+  botCheckFailed: 'Verifikasi keamanan gagal. Muat ulang halaman lalu coba lagi.',
 };
 const EMAIL = /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i;
 const IP_V4 = /^\d{1,3}(\.\d{1,3}){3}$/;
@@ -313,7 +320,13 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
       }
       const raw = Buffer.concat(chunks).toString('utf8');
       const clientIp = String(req.headers['x-sakem-client-ip'] ?? '').trim();
-      const entry = { clientIp, headers: { 'content-type': req.headers['content-type'], 'x-sakem-client-ip': clientIp || undefined }, body: undefined };
+      const turnstileToken = String(req.headers['x-sakem-turnstile-token'] ?? '').trim() || undefined;
+      const entry = {
+        clientIp,
+        turnstileToken,
+        headers: { 'content-type': req.headers['content-type'], 'x-sakem-client-ip': clientIp || undefined, 'x-sakem-turnstile-token': turnstileToken },
+        body: undefined,
+      };
       contact.log.push(entry);
 
       // The modes of the test hooks answer first, whatever the body is.
@@ -332,6 +345,7 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
       if (current === 'invalid') {
         return send(res, 400, { error: 'validation_failed', message: MESSAGES.invalid, fieldErrors: { email: ['Format email belum benar'] } }, noStore);
       }
+      if (current === 'turnstile') return send(res, 400, { error: 'turnstile_failed', message: MESSAGES.botCheckFailed }, noStore);
       if (current === 'slow') return setTimeout(() => send(res, 201, { ok: true, message: MESSAGES.success }, noStore), 10_000);
 
       // The contract's checks, in its order.
@@ -354,6 +368,8 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
       if (typeof body?.website === 'string' && body.website.length > 0) return send(res, 201, { ok: true, message: MESSAGES.success }, noStore); // honeypot: nothing saved
       const verdict = validateContact(body ?? {});
       if (verdict.errors) return send(res, 400, { error: 'validation_failed', message: MESSAGES.invalid, fieldErrors: verdict.errors }, noStore);
+      // After the field checks (a typo does not spend a single-use token), before the duplicate check: the real API's order.
+      if (current === 'require_token' && !turnstileToken) return send(res, 400, { error: 'turnstile_failed', message: MESSAGES.botCheckFailed }, noStore);
       const last = contact.recent.get(verdict.ok.email);
       if (last && now - last < 5 * 60_000) {
         return send(res, 429, { error: 'duplicate_recent', message: MESSAGES.duplicate, retryAfterSeconds: 300 }, { ...noStore, 'retry-after': '300' });
