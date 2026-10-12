@@ -12,7 +12,8 @@ import { drainBody, submitContact } from '~/lib/contact-submit';
 import { turnstileSiteKey } from '~/lib/turnstile';
 
 // Ported from app/(public)/kontak/page.tsx and layout.tsx. SSR, because the page receives the form:
-// a POST is handled here (lib/contact-submit.ts) and the form works without JavaScript.
+// a POST is handled here (lib/contact-submit.ts); the form is a plain HTML POST (the Turnstile widget, which
+// needs JavaScript, is the one thing that is not, see ContactForm.astro).
 //
 //   GET                      the page (`?terkirim=1`: the confirmation instead of the form)
 //   POST, valid              303 to /kontak?terkirim=1 (a refresh does not post again)

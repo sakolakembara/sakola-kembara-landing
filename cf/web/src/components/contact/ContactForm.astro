@@ -160,7 +160,7 @@ const aria = (field: keyof ContactFieldErrors) =>
       {
         turnstileSiteKey && (
           <div>
-            {/* The widget renders here (src/scripts/contact-form.ts). min-h is the widget's height: the page does not jump when it appears. */}
+            {/* The widget renders here (src/scripts/turnstile-widget.ts). min-h is the widget's height: the page does not jump when it appears. */}
             <div data-turnstile data-sitekey={turnstileSiteKey} data-action={TURNSTILE_ACTION} class="min-h-[65px]" />
             <p data-turnstile-failed hidden role="status" class="mt-1.5 text-xs text-danger-fg">
               {TURNSTILE_MESSAGES.failed}

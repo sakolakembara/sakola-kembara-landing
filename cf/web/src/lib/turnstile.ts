@@ -3,7 +3,7 @@
 //
 //   browser   the form loads Cloudflare's script (TURNSTILE_SCRIPT_URL, on /kontak only), renders the
 //             widget explicitly inside the form, and Turnstile adds a hidden field named
-//             `cf-turnstile-response` to the form (src/scripts/contact-form.ts)
+//             `cf-turnstile-response` to the form (src/scripts/turnstile-widget.ts)
 //   this      the Worker reads that field from the posted form (`turnstileToken`) and forwards it to the
 //   Worker    API Worker in the header `X-Sakem-Turnstile-Token`, through the service binding
 //   API       the API Worker verifies it with Siteverify (action "contact") and answers 400
@@ -15,7 +15,7 @@
 // The site key is public by design and comes from the Worker var TURNSTILE_SITE_KEY (set per deploy;
 // locally Cloudflare's always-pass test key from dev.vars.example). There is no real key in the repo.
 
-/** Cloudflare's script, with explicit rendering: the widget appears only when contact-form.ts asks for it. Loaded on /kontak and nowhere else. */
+/** Cloudflare's script, with explicit rendering: the widget appears only when turnstile-widget.ts asks for it. Loaded on /kontak and nowhere else. */
 export const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 /**
