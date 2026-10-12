@@ -19,17 +19,19 @@ const all = (html: string, re: RegExp) => [...html.matchAll(re)].map((m) => m[0]
 
 /**
  * The JS and CSS budget of the home page. The numbers are what `pnpm build` measured when the
- * sections were ported (SAKEM-080), plus a margin of about 15%: the test fails when the page ships
- * more JS or CSS than that, so growth is a decision, not an accident. Update the numbers in this
+ * sections were ported (SAKEM-080), plus a margin of about 15% for JS: the test fails when the page ships
+ * more JS than that, so growth is a decision, not an accident. The CSS limit is looser: the one
+ * stylesheet is shared by all pages and grows with every ported page. Update the numbers in this
  * file and in docs/cloudflare/web-skeleton.md ("JS and CSS budget") together.
  *
- * Measured: eager JS 7,809 B raw / 3,873 B gzip (navbar 3,444 + stat dialog 266 + carousel 1,028 inline,
- * plus the 3,071 B map loader); lazy map chunks 166,150 B raw / 50,000 B gzip; CSS 58,373 B raw / 10,444 B gzip.
+ * Measured: eager JS 7,803 B raw / 3,870 B gzip (navbar 3,444 + stat dialog 266 + carousel 1,028 inline,
+ * plus the 3,065 B map loader); lazy map chunks 166,150 B raw / 49,994 B gzip; CSS 62,103 B raw / 11,041 B gzip
+ * (after the program and donation pages joined the shared stylesheet).
  */
 const BUDGET = {
   eagerJs: { raw: 9_000, gzip: 4_600 },
   lazyMap: { raw: 190_000, gzip: 58_000 },
-  css: { raw: 67_000, gzip: 12_200 },
+  css: { raw: 75_000, gzip: 13_500 },
 };
 
 describe.skipIf(!built)('home page build output', () => {

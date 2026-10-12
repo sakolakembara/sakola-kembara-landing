@@ -107,6 +107,8 @@ describe.skipIf(!built)('build output', () => {
   it('_headers carries the security headers and immutable caching for hashed assets', () => {
     const file = read('client/_headers');
     expect(file).toContain('/_astro/*\n  Cache-Control: public, max-age=31536000, immutable');
+    // Gallery derivatives carry a content hash in their name (scripts/build-gallery.mjs).
+    expect(file).toContain('/images/program/galeri/*\n  Cache-Control: public, max-age=31536000, immutable');
     expect(file).toContain('X-Frame-Options: DENY');
   });
 

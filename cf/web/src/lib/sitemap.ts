@@ -1,6 +1,7 @@
 // sitemap.xml and robots.txt text, in the exact shape Next's
 // app/sitemap.ts and app/robots.ts produce (same fields, same disallow list).
 
+import { programs } from './programs';
 import { SITE_URL } from './seo';
 
 export interface SitemapEntry {
@@ -24,8 +25,8 @@ export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: S
   { path: '/kontak', priority: 0.7, changeFrequency: 'yearly' },
 ];
 
-/** Program pages (/program/<id>), ids from lib/data.ts of the root app until those pages are ported. */
-export const PROGRAM_IDS = ['prapembinaan', 'pembinaan', 'pasca-pembinaan'];
+/** Program pages (/program/<id>), the ids the page is generated for. */
+export const PROGRAM_IDS = programs.map((p) => p.id);
 
 const escapeXml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');

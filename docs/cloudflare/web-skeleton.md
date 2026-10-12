@@ -17,10 +17,11 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 
 | Command | What it does |
 | --- | --- |
-| `pnpm build` | Syncs a few root files (`scripts/sync-assets.mjs`), builds `dist/client` (assets) and `dist/server` (Worker) |
+| `pnpm build` | Syncs a few root files (`scripts/sync-assets.mjs`), builds the program photo galleries (`scripts/build-gallery.mjs`), then builds `dist/client` (assets) and `dist/server` (Worker). `dev`, `check` and `test` run the same two steps first |
+| `pnpm build-gallery` | Only the gallery step: derivatives into `public/images/program/galeri/` and the manifest `src/lib/gallery.generated.ts` (both gitignored) |
 | `pnpm check` | `astro check` (types for `.astro` and `.ts`) |
-| `pnpm test` | 475 unit tests (vitest); `built.test.ts`, `home-built.test.ts` and `home-dom.test.ts` read `dist/` and need `pnpm build` first (skipped without it) |
-| `pnpm test:e2e` | 273 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
+| `pnpm test` | 620 unit tests (vitest); `built.test.ts`, `home-built.test.ts` and `home-dom.test.ts` read `dist/` and need `pnpm build` first (skipped without it) |
+| `pnpm test:e2e` | 287 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
 | `pnpm measure [-- --next http://127.0.0.1:3055]` | Sizes, warm timings, and the "does the Worker run?" experiment; writes `.measure/results.json` |
 | `pnpm exec wrangler deploy --dry-run --outdir <dir> -c dist/server/wrangler.json` | Bundle size, no login needed |
 
@@ -33,15 +34,17 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 | `/` | prerendered, **assets layer** | All 7 sections (Hero, Mengapa Kami Ada?, Program Kami, Dampak, Partner, CTA, Cerita & Inspirasi), verbatim copy; Organization JSON-LD; the lazy Leaflet map (see "JS and CSS budget") |
 | `/blog` | **SSR** | List with `?page=N` (15 per page), reads only a small metadata index bundled in the Worker |
 | `/blog/<slug>` | prerendered, **assets layer**, 80 pages | Built from the root `content/blog/*.md`; Article JSON-LD, related articles |
+| `/program/<id>` (`prapembinaan`, `pembinaan`, `pasca-pembinaan`) | prerendered, **assets layer**, 3 pages | Ported from `app/(public)/program/[id]/`; Program JSON-LD; photo gallery from the build-time manifest (below). `/program` is a 307 to `/program/prapembinaan` in the redirect table; any other id is a real 404 |
+| `/donasi` | prerendered, **assets layer** | Ported from `app/(public)/donasi/`; QRIS image, bank details, confirmation and contact cards; one small inline script for the copy-account button |
 | `/tim` | **SSR** | `${CONTENT_API_URL}/api/public/team`, 2 s timeout, `caches.default`, stale-if-error |
 | unknown URL | **SSR 404 page**, HTTP 404 | noindex; also `/blog/<unknown slug>` |
 | `/sitemap.xml`, `/robots.txt` | prerendered, assets layer | Same routes and disallow list as the Next app |
 | `/cerita/<slug>/`, `/education/...`, `/feed`, ... | **`_redirects`**, assets layer, 308 | 80 WordPress URLs and the other rules, see below |
 | `/login`, `/portal/*`, `/admin/*`, `/api/*`, `/_next/*`, uploads | **forwarded to the legacy origin** | See "Pass-through" |
-| `/program/*`, `/laporan`, `/donasi`, `/kontak`, `/gabung-siswa*` | forwarded to the legacy origin | Not ported yet |
+| `/laporan`, `/kontak`, `/gabung-siswa*` | forwarded to the legacy origin | Not ported yet |
 | `/<slug>` (single segment, slug grammar) | forwarded to the legacy origin | Admin-managed shortlinks live in Postgres |
 
-Client JS has no framework. On every page: the **navbar script** (about 3.4 KB raw, 1.5 KB gzip, inline): mobile menu toggle, the auth-aware button (`/api/auth/session` -> Masuk / Portal / Dashboard), the announcement strip (`/api/announcements/current`) and the footer year (DESIGN.md says it is "computed live"); it exists because that state lives on the legacy app or in the browser. On `/tim`: a **dialog opener** (about 0.3 KB) for a member's native `<dialog>`. On `/` three more: the **stat dialog opener** (0.3 KB), the **carousel controls** (1 KB) and the **map loader** (3 KB, a file because it holds dynamic imports) that fetches Leaflet only when the map is within 400 px of the viewport. The numbers, what each one is for and the enforced budget are in "JS and CSS budget" below. Everything else is HTML and CSS; the entrance animations are CSS (`.anim-fade-up` on load, `.anim-reveal` on a view timeline), framer-motion is not used.
+Client JS has no framework. On every page: the **navbar script** (about 3.4 KB raw, 1.5 KB gzip, inline): mobile menu toggle, the auth-aware button (`/api/auth/session` -> Masuk / Portal / Dashboard), the announcement strip (`/api/announcements/current`) and the footer year (DESIGN.md says it is "computed live"); it exists because that state lives on the legacy app or in the browser. On `/tim`: a **dialog opener** (about 0.3 KB) for a member's native `<dialog>`. On `/donasi`: a **copy button** (about 0.7 KB, only on that page) that copies the account number and shows "Tersalin!" for two seconds. On `/` three more: the **stat dialog opener** (0.3 KB), the **carousel controls** (1 KB) and the **map loader** (3 KB, a file because it holds dynamic imports) that fetches Leaflet only when the map is within 400 px of the viewport; the numbers, what each one is for and the enforced budget are in "JS and CSS budget" below. The program pages add no script of their own: the stage tabs are plain links. Everything else is HTML and CSS; the entrance animations are CSS (`.anim-fade-up` on load, `.anim-reveal` on a view timeline), framer-motion is not used.
 
 ## Decisions and why
 
@@ -54,6 +57,8 @@ Client JS has no framework. On every page: the **navbar script** (about 3.4 KB r
 - **The 404 is SSR, not prerendered.** A prerendered `404.html` is a static file and the assets layer serves static files with status 200 (`/404` itself answered 200 in the first build). Cost: one small render per unknown URL.
 - **One URL per page.** The middleware folds a trailing slash and `.html` with a 308 (Next does the same for the slash); the page's canonical link is the second line of defence. A prerendered page requested with a trailing slash is redirected by the assets layer with a **307**, not Next's 308 (not configurable).
 - **Images.** Plain `<img>` with `width`/`height`; `loading="lazy"` except the hero photo (`loading="eager" fetchpriority="high"`). Images the components import (hero, program photos, logos) are hashed and the photos resized at build time with sharp (`imageService: { build: 'compile', runtime: 'passthrough' }`; no Cloudflare Images): the hero went from a 1.4 MB PNG to an 85 KB webp at 800 px. Blog covers and inline article images are **not** resized (see gaps).
+- **Program galleries: a build-time manifest** (`scripts/build-gallery.mjs`, SAKEM-080). The legacy `lib/gallery.ts` lists `public/images/program/galeri/<program-id>/` with `readdir` on every request, which a Worker cannot do (no file system; it would fail silently into an empty gallery). The script runs before every build/dev/check/test: it reads the same folders at the repo root (so adding a photo is still "drop `4.jpg` in the folder, rebuild"), writes WebP derivatives at 480 and 960 px (never enlarged, EXIF orientation applied; 15 photos, 15.5 MB of originals, become 30 files and 1.7 MB) to `cf/web/public/images/program/galeri/<id>/<name>.<hash>-<width>.webp`, and writes a typed manifest `src/lib/gallery.generated.ts` (`GalleryManifest` in `src/lib/gallery-types.ts`: per photo `name`, `width`, `height` of the largest variant, and `variants` with `src`, `width`, `height`). Both outputs are gitignored. Same listing rules as the legacy code: jpg/jpeg/png/webp/avif only, numbered files first in numeric order then other names alphabetically. The 8-character hash in the file name is taken from the source bytes (and the encoding settings), so replacing a photo in place changes its URL, which replaces the `?v=` suffix of the Next app, and `public/_headers` can cache the files as `immutable`; derivatives nothing refers to any more are deleted on the next run. A folder without photos, or no folder, **hides the whole "Galeri Foto" section** (no "coming soon" box). A photo sharp cannot read fails the build and names the file. **Alt text rule** (same as the legacy page): `Dokumentasi <program title> <position>`, with the position counting from 1 in display order, not the number in the file name. The images are plain `<img>` with `width`, `height`, `srcset`, `sizes` and `loading="lazy"` (the stage photo above them is the page's LCP image). The script is small on purpose and is not shared with the general asset pipeline yet; when that exists (`scripts/build-assets.mjs`), fold the encode step into it and keep the manifest.
+- **Program photos and the share image.** The stage photo and the four activity thumbnails are imported by the page, so they go through the same hash-and-resize step as the homepage photos. The share image (`og:image`, `twitter:image`) is the stage photo as a 1200 px JPEG made at build time; the Next layout used the original file (up to 2.6 MB), so the URL differs but still names the same photo.
 - **Security headers** that Caddy adds today (HSTS, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy) are re-added for Worker and asset responses (`public/_headers` and the middleware); a test keeps them equal to the Caddyfile.
 - **Team API contract** (`src/lib/team-types.ts`): `GET ${CONTENT_API_URL}/api/public/team` returns `{ "members": TeamMember[] }` shaped like the `team_members` row of `lib/db/schema/team-members.ts` (dates as ISO strings); a bare array is accepted. **This endpoint does not exist in the legacy app yet.** Cache: 5 min fresh, 7 days stale; on failure the stale copy is also re-served as fresh for 30 s so an outage costs one 2 s wait per 30 s, not one per request. `TEAM_CACHE_FRESH_SECONDS` tunes the fresh window.
 
@@ -78,14 +83,14 @@ How it works: the middleware (`src/middleware.ts`) checks the redirect table, th
 | `/api` | Auth.js `/api/auth/*`, SSO `/api/sso/*`, account, announcements, admin and portal APIs; the new navbar script calls two of them |
 | `/_next` | Chunks, hashed media and the `/_next/image` optimizer every legacy page needs |
 | `/blog/images`, `/images`, `/files`, `/reports`, `/resources` | Migrated and dashboard-uploaded files that live on the VPS volume |
-| not yet ported: `/program`, `/laporan`, `/donasi`, `/kontak`, `/gabung-siswa` | Delete an entry in the PR that ports its page |
+| not yet ported: `/laporan`, `/kontak`, `/gabung-siswa` | Delete an entry in the PR that ports its page |
 
 `tests/legacy.test.ts` reads the legacy `app/` folders and fails if the legacy app gains a top-level route that is neither Astro's nor listed, and checks the root `RESERVED_SLUGS` the same way.
 
 ### Conflicts and findings
 
 - **Shortlinks.** `sakolakembara.org/<slug>` is resolved by Next's root `[slug]` route against Postgres. Without care the Worker would answer those with a 404. The catch-all forwards a single segment that fits the slug grammar (same regex and 64-character limit as `validateSlug`) to the origin, which redirects (307) or answers its own 404; anything else is a 404 from the Worker without a database round trip. Static pages win over the catch-all, like in Next.
-- **Files both sides serve.** The Worker ships copies of `favicon.ico`, `icon.png`, `apple-icon.png`, `og-default.jpg` and `images/logo-sakola-kembara.png` (copied from the root at build time, gitignored, so the root stays the single source). The assets layer answers first, so the origin's identical files are shadowed. `/robots.txt`, `/sitemap.xml`, `/blog` and `/blog/<slug>` are also Astro's now; the origin's versions become unreachable. `/_astro/*` (this app) and `/_next/*` (legacy) do not overlap.
+- **Files both sides serve.** The Worker ships copies of `favicon.ico`, `icon.png`, `apple-icon.png`, `og-default.jpg` and `images/logo-sakola-kembara.png` (copied from the root at build time, gitignored, so the root stays the single source). The assets layer answers first, so the origin's identical files are shadowed. `/robots.txt`, `/sitemap.xml`, `/blog`, `/blog/<slug>`, `/program/<id>` and `/donasi` are also Astro's now; the origin's versions become unreachable. The program gallery derivatives live under `/images/program/galeri/<id>/` too (hashed `.webp` names, so they never collide with the origin's `.jpg` originals in that folder); the assets layer answers them before the `/images` pass-through. `/_astro/*` (this app) and `/_next/*` (legacy) do not overlap.
 - **Every pass-through is a Worker request** (100k per day on Free), including each `/_next` chunk, each `/blog/images/*` photo and each `/api/*` call. A `/blog` list view with 16 cover images is about 17 Worker requests. The navbar script keeps its two API answers in `sessionStorage` (announcement 5 min, signed-in session 5 min, signed-out session 30 s), so a visit costs two requests once per session, not per page. Moving the 235 blog images (69 MB) into this app's assets (free and unlimited, under the 20k-file limit) or to R2 removes most of the rest.
 - **Blog content source of truth.** `content/blog/*.md` is baked into the Docker image, and the legacy `/admin/blog` writes new and edited articles to the container's disk (only `public/` is a volume). Articles authored there are not in git, so this build cannot see them, and they do not survive a deploy of the legacy image anyway. Before cutover the blog needs one source: a content API like `/api/public/team` (the `/blog` list is already SSR), or commits.
 - **Client IP.** The legacy rate limiter prefers `CF-Connecting-IP`. The proxy forwards all request headers; whether Cloudflare keeps that header on a Worker's subrequest to the origin needs a check on a real zone.
@@ -94,17 +99,17 @@ How it works: the middleware (`src/middleware.ts`) checks the redirect table, th
 
 ## JS and CSS budget (home page)
 
-The home page is the only page with more than the navbar script, so its client weight is fixed in a test: `tests/home-built.test.ts` (needs `pnpm build`) fails when the page ships more than the numbers below. The limits are what the build measured plus about 15%; raising one is a decision, made in the PR that needs it, with the reason written here.
+The home page ships the most client weight of the site (the other pages add at most a 0.7 KB inline script to the navbar one), so it is fixed in a test: `tests/home-built.test.ts` (needs `pnpm build`) fails when the page ships more than the numbers below. The JS limits are what the build measured plus about 15%; raising one is a decision, made in the PR that needs it, with the reason written here. The CSS limit is looser because the one stylesheet is shared and grows with every ported page (it went from 58,373 to 62,103 B raw when the program and donation pages were merged in).
 
 | Part | Measured (raw / gzip) | Limit (raw / gzip) | Loaded |
 | --- | --- | --- | --- |
 | Navbar script (inline, every page) | 3,444 / 1,581 B | | on every page |
 | Stat dialog opener (inline) | 266 / 200 B | | on `/` |
 | Carousel controls (inline) | 1,028 / 532 B | | on `/` |
-| Map loader (`ImpactMap...js`, a file) | 3,071 / 1,560 B | | on `/`; half of it is Vite's dynamic-import helper |
-| **Eager JS of `/`** | **7,809 / 3,873 B** | **9,000 / 4,600 B** | |
+| Map loader (`ImpactMap...js`, a file) | 3,065 / 1,557 B | | on `/`; half of it is Vite's dynamic-import helper |
+| **Eager JS of `/`** | **7,803 / 3,870 B** | **9,000 / 4,600 B** | |
 | Leaflet + its CSS + marker CSS (3 lazy chunks) | 166,150 / 50,000 B | 190,000 / 58,000 B | only when the map is within 400 px of the viewport |
-| CSS of `/` (one stylesheet + inline `<style>`) | 58,373 / 10,444 B | 67,000 / 12,200 B | render blocking, on every page (the stylesheet is shared) |
+| CSS of `/` (one stylesheet + inline `<style>`) | 62,103 / 11,041 B | 75,000 / 13,500 B | render blocking, on every page (the stylesheet is shared) |
 
 What each island is for, and why it is not CSS:
 
@@ -118,13 +123,13 @@ The e2e script repeats the eager-JS check on the bytes the Worker serves, and ch
 
 ## Results (local, this machine)
 
-**Tests.** `pnpm test`: 475 passed (14 files). `pnpm test:e2e`: 273 of 273 checks. `pnpm check`: 0 errors, 0 warnings. Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
+**Tests.** `pnpm test`: 620 passed (17 files). `pnpm test:e2e`: 287 of 287 checks. `pnpm check`: 0 errors, 0 warnings (1 hint: the deprecated `document.execCommand` in `donasi.astro`). Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
 
 **What `/` loads** (JS means JS referenced by the HTML):
 
 | | HTML raw / gzip | JS raw / gzip | CSS raw / gzip |
 | --- | --- | --- | --- |
-| Astro `/` (all 7 sections) | 77.3 / 15.3 KB | 7.6 / 3.5 KB (3 inline scripts + 1 file, Leaflet lazy and not counted) | 57.0 / 10.2 KB (one file + a 0.3 KB inline `<style>`) |
+| Astro `/` (all 7 sections) | 77.3 / 15.3 KB | 7.6 / 3.5 KB (3 inline scripts + 1 file, Leaflet lazy and not counted) | 60.6 / 10.8 KB (one file + a 0.3 KB inline `<style>`) |
 | Astro `/blog/<slug>` | 30.5 / 8.7 KB | 3.4 / 1.5 KB | 56.7 / 10.1 KB |
 | Next `/` (all sections) | 131.7 / 22.0 KB | 1026.8 / 316.6 KB in 15 files, plus 32.2 / 8.4 KB in 16 inline scripts | 99.4 / 15.7 KB |
 
@@ -156,7 +161,7 @@ The Next row is measured from `next start` (the Next 16 build output no longer p
 | Title template `<page> \| Sakola Kembara`; home keeps the layout default | same | seo.test compares with the root `pageTitle`/`buildPageMetadata` |
 | Meta description, canonical (absolute), robots and googlebot | same | seo.test, e2e on `/`, `/blog`, `/tim`, article |
 | Open Graph (site_name, locale, title, description, url, image, type website) and Twitter card | same, including the 1200x630 alt on home | seo.test, e2e |
-| JSON-LD: Organization (home), Article (80 articles), Program (ported, unused until program pages) | identical objects; the Article description uses the cleaned excerpt instead of the raw `[&hellip;]` | seo.test (deepEqual with the root), built.test parses all 80 |
+| JSON-LD: Organization (home), Article (80 articles), Program (3 program pages) | identical objects; the Article description uses the cleaned excerpt instead of the raw `[&hellip;]` | seo.test (deepEqual with the root), built.test parses all 80 |
 | `sitemap.xml` | same 7 routes + 3 programs + 80 articles, same priorities; static routes have **no `<lastmod>`** (Next used `new Date()` on every request); articles carry their real date | headers-sitemap.test, e2e |
 | `robots.txt` | same rules and `Host`/`Sitemap` lines | headers-sitemap.test, e2e |
 | 404 | **real 404** with the 404 page and noindex, for unknown articles, unknown paths and `/404`; Next answered 200 with an empty shell for unknown slugs | e2e (8 URLs) |
@@ -169,7 +174,7 @@ Deliberate differences, for review: sitemap `lastmod` as above; trailing-slash a
 
 ## Known gaps
 
-- **Not a complete site.** The home page is complete, but 5 public routes plus `/gabung-siswa/docs` and three program pages are still forwarded to the legacy app (SAKEM-080 parts B onward). Mixed mode means the old and new navbar differ until the rest is ported.
+- **Not a complete site.** The home page, the program pages and `/donasi` are ported; 4 public routes (`/laporan`, `/kontak`, `/gabung-siswa`, `/gabung-siswa/docs`) are still forwarded to the legacy app (the rest of SAKEM-080). Mixed mode means the old and new navbar differ until the rest is ported.
 - **Home news covers are the blog's originals.** The three covers in "Cerita & Inspirasi" are `/blog/images/*` files at their original size (the two newest are 570 KB and 675 KB, one is 1.9 MB), served by the origin through the pass-through, one Worker request each, until the blog image derivatives exist (same gap as `/blog`). They are lazy, below the fold.
 - **The map's tiles and the lazy chunk were not seen in a browser.** The loader and Leaflet run in the happy-dom test (markers, popup, CSS injection), but no tile, marker pulse, popup placement or layout was looked at.
 - **Blog and team images are not optimized.** Covers and inline images are the originals (up to several hundred KB) served from the origin; the Next app resized them. Fix: build-time derivatives into this app's assets, then R2.
@@ -191,10 +196,10 @@ Deliberate differences, for review: sitemap `lastmod` as above; trailing-slash a
 Relative sizes are opinion (S: a few hours, M: about a day, L: several days).
 
 - [x] **Home, remaining sections** (SAKEM-080 part A). Problem (charts as markup, native `<dialog>` with a 0.3 KB opener), Impact (metrics, the lazy Leaflet map, the scroll-snap carousel), Partners (active and past, resized logos), CTA (the four role cards, with the documented orange exception) and News (the three newest articles from the blog index, guarded against a missing cover). Decisions: "Home sections", the carousel, the map and the CSS motion above; budget below. Note for the ticket text: the legacy CTA has four cards ("Empat peran"), not three.
-- [ ] **Program x3** `/program/<id>` (M): stepper, activity cards with PDFs, `programJsonLd`, prerender the three pages. The photo gallery reads a folder at request time (`lib/gallery.ts`), which a Worker cannot do: needs a build-time manifest or R2.
+- [x] **Program x3** `/program/<id>` (M, SAKEM-080): hero, stage tabs (plain links), intro, activity cards with PDFs, gallery, next stage, PitchDeck call to action, Program JSON-LD; the three pages are prerendered. The gallery comes from a build-time manifest (see Decisions). The **"Timeline Kegiatan" placeholder section is kept exactly as the legacy page has it** and is marked with a code comment pointing at SAKEM-057, which decides whether it is replaced or removed; the port does not decide that.
 - [ ] **`/laporan`** (M): reads Postgres; needs `/api/public/reports` in the legacy app (or the new API) and an SSR page like `/tim`.
-- [ ] **`/donasi`** (S-M): static copy, QRIS image, copy-account-number button (one small script).
+- [x] **`/donasi`** (S-M, SAKEM-080): static copy, QRIS image (plain `<img>` with dimensions, the original file), bank details, copy-account-number button (one small script), confirmation and contact cards. The legacy "QR file is missing" placeholder box is not ported: the QR is imported, so a missing file fails the build instead. The transparency block (stakeholders and reports) is a separate ticket and is not on this page.
 - [ ] **`/kontak`** (L): the form posts a Next server action with rate limiting and Postgres. The Worker cannot call a server action; it needs a POST endpoint (legacy `/api/...` or the new Hono API), `Origin` validation, a honeypot like the current one, and a decision on the same rate-limit client IP.
 - [ ] **`/gabung-siswa` and `/gabung-siswa/docs`** (M): recruitment page is static; docs lists `site_resources` from Postgres (needs `/api/public/resources`) with copy buttons.
-- [ ] Each ported page: delete its entry from `NOT_YET_PORTED`, add its URL to the sitemap routes (already there), add a copy-parity case to `tests/copy.test.ts`, and update `docs/current-state/information-architecture.md`.
+- [ ] Each ported page: delete its entry from `NOT_YET_PORTED`, add its URL to the sitemap routes (already there), add a copy-parity case to `tests/copy.test.ts`, and add a seo/built test like `tests/program-pages.test.ts`. `docs/current-state/` still describes the Next app that is live, so it is not edited per ported page; it changes at cutover.
 - [ ] Before cutover: blog source of truth (above), image derivatives, the route/DNS/rollback runbook, and the real-zone checks.

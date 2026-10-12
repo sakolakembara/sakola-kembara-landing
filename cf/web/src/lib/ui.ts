@@ -114,8 +114,15 @@ const tagSize: Record<TagSize, string> = {
   md: 'px-3 py-1.5',
   lg: 'px-3 py-1.5 text-sm',
 };
-export const tagClasses = (size: TagSize = 'md', className?: string) =>
-  cx('inline-flex items-center gap-1.5 rounded-full text-xs font-semibold bg-primary-blue text-white', tagSize[size], className);
+export type TagTone = 'brand' | 'soft';
+const tagTone: Record<TagTone, string> = {
+  /** Category and phase tags. */
+  brand: 'bg-primary-blue text-white',
+  /** Quiet chips, e.g. "290+ jam belajar setahun". */
+  soft: 'bg-primary-blue/10 text-primary-blue',
+};
+export const tagClasses = (size: TagSize = 'md', className?: string, tone: TagTone = 'brand') =>
+  cx('inline-flex items-center gap-1.5 rounded-full text-xs font-semibold', tagTone[tone], tagSize[size], className);
 
 // ---- Eyebrow --------------------------------------------------------------
 
