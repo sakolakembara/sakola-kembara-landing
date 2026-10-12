@@ -149,7 +149,7 @@ The same reasoning is why the redirect, the API's answer and the `307` all carry
 | --- | --- | --- |
 | The lookup | 1 `SELECT id, target_url ... WHERE slug = ? AND active = 1 LIMIT 1`: `SEARCH shortlinks USING INDEX shortlinks_slug_idx (slug=?)`, no scan | 1 read locally (budget 2: the index entry and the row it points to) |
 | The click | 1 `UPDATE ... SET click_count = click_count + 1, last_clicked_at = ? WHERE id = ?` by primary key | 1 read, **1 written** (`meta.rows_written` is 1: neither column is in an index, so the table row is the only row written) |
-| An unknown slug or an inactive link | the lookup only | 1 read, nothing written |
+| An unknown slug or an inactive link | the lookup only | 1 read, nothing written. Bots that probe slug-shaped paths (`/phpmyadmin`, `/xmlrpc`) cost one Worker request and this one read each, as they did in the legacy resolver; a path with a dot, an upper-case letter or a second segment never gets this far |
 | Something that is not a slug | none | 0 (the Worker answers before D1) |
 
 So a click is **at most 3 rows read and exactly 1 row written**, in two round trips, and the second is off the visitor's path.
