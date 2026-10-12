@@ -27,6 +27,28 @@ export function getImage(src: string): ImageEntry {
   return entry;
 }
 
+/**
+ * The images directly inside a folder, e.g. listImages("/images/program/galeri/pembinaan"):
+ * the build-time replacement for the legacy lib/gallery.ts, which read the
+ * folder at request time (a Worker has no file system). Same order: numbered
+ * names numerically (2.jpg before 10.jpg), the rest alphabetically after them.
+ * Empty when the folder has no images.
+ */
+export function listImages(dir: string): { src: string; name: string }[] {
+  const prefix = `${dir.replace(/\/$/, '')}/`;
+  const order = (name: string) => Number(name.replace(/\.[^.]+$/, ''));
+  return Object.keys(images)
+    .filter((src) => src.startsWith(prefix) && !src.slice(prefix.length).includes('/'))
+    .map((src) => ({ src, name: src.slice(prefix.length) }))
+    .sort((a, b) => {
+      const aNum = Number.isFinite(order(a.name));
+      const bNum = Number.isFinite(order(b.name));
+      if (aNum && bNum) return order(a.name) - order(b.name);
+      if (aNum !== bNum) return aNum ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+}
+
 export interface ImgAttrs {
   src: string;
   srcset: string;

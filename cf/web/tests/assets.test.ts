@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { matchRedirect } from '../redirects.config.mjs';
 import { FILES_DIR, IMAGE_DIRS, LIMITS, MAX_WIDTH, RASTER_RE, WIDTHS, assetUrl, rungsFor, srcsetFor, variantUrl } from '../assets.config.mjs';
 import { auditDist, checkImgTag, localUrls, parseAttrs, walkFiles } from '../scripts/lib/dist-audit.mjs';
-import { getImage, imgAttrs } from '~/lib/images';
+import { getImage, imgAttrs, listImages } from '~/lib/images';
 import { readWeb, repoRoot, webRoot } from './helpers';
 
 // The asset pipeline (scripts/build-assets.mjs) and its guards. `pnpm test` runs
@@ -160,6 +160,16 @@ describe('images referenced by the site', () => {
     expect(manifest.images[cover]).toBeDefined();
     expect(imgAttrs(cover, '100vw').src).toBe(assetUrl(cover));
     expect(imgAttrs(cover, '100vw').src).not.toContain('@');
+  });
+
+  it('listImages lists a gallery folder like the legacy lib/gallery.ts: numeric order, only direct children, [] when empty', () => {
+    const gallery = listImages('/images/program/galeri/pembinaan');
+    expect(gallery.map((g) => g.name)).toEqual(['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg']);
+    expect(gallery[0].src).toBe('/images/program/galeri/pembinaan/1.jpg');
+    expect(listImages('/images/program/galeri/pembinaan/').length).toBe(6);
+    expect(listImages('/images/program/galeri').length).toBe(0); // its photos are in the subfolders
+    expect(listImages('/images/program/galeri/nope')).toEqual([]);
+    expect(listImages('/images/program').map((g) => g.name)).toContain('mentoring.jpg');
   });
 
   it('getImage fails on an unknown path and imgAttrs points at files that exist', () => {
