@@ -4,6 +4,7 @@ import { announcementRoutes } from "./api/announcements";
 import { auditRoutes } from "./api/audit";
 import { applicationRoutes } from "./api/applications";
 import { batchRoutes } from "./api/batches";
+import { blogRoutes } from "./api/blog";
 import { dashboardRoutes } from "./api/dashboard";
 import { serveDevUpload } from "./api/dev-uploads";
 import { messageRoutes } from "./api/messages";
@@ -19,6 +20,7 @@ import { loadAccess } from "./auth/guard";
 import { visibleAreas, writableAreas } from "./auth/permissions";
 import { registerStudent } from "./auth/register";
 import { authContext } from "./auth/session";
+import { publicOrigin } from "./config/public-origin";
 import type { AppEnv } from "./context";
 import { scheduledCleanup } from "./cron/cleanup";
 import { mailbox } from "./email/send";
@@ -69,6 +71,8 @@ app.get("/api/config", (c) =>
     turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
     // Where uploaded files are served from, so the SPA can show them (docs/cloudflare/admin-crud.md). "" = same origin.
     uploadsBaseUrl: uploadsBase(c.env.UPLOADS_BASE_URL),
+    // The public site's origin, for "Lihat di publik" (docs/cloudflare/admin-blog.md). "" = no link.
+    siteUrl: publicOrigin(c.env.SITE_URL),
   }),
 );
 
@@ -108,6 +112,7 @@ app.route("/api/admin/messages", messageRoutes);
 app.route("/api/admin/batches", batchRoutes);
 app.route("/api/admin/applications", applicationRoutes);
 app.route("/api/admin/resources", resourceRoutes);
+app.route("/api/admin/blog", blogRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 app.route("/api/admin/audit", auditRoutes);

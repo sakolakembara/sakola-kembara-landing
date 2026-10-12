@@ -10,6 +10,9 @@ import { MOCK_RESOURCES } from "./registry";
 import { createMockResources } from "./resources";
 import { MOCK_SITE_KEY, MOCK_TOKEN_PREFIX } from "./turnstile";
 
+/** What the mock says the public site is (`siteUrl` of /api/config): the Astro dev server, so "Lihat di publik" shows up. */
+export const MOCK_SITE_URL = "http://localhost:4321";
+
 // MOCK, local development only. Answers the calls the SPA makes, in the shape
 // the Worker uses, so the screens can be worked on and reviewed without a
 // backend. It never touches the network.
@@ -93,7 +96,7 @@ export function createMockTransport(config: MockConfig): Transport {
 
     switch (route) {
       case "GET /api/config":
-        return json({ google: true, turnstileSiteKey: MOCK_SITE_KEY, uploadsBaseUrl: "" });
+        return json({ google: true, turnstileSiteKey: MOCK_SITE_KEY, uploadsBaseUrl: "", siteUrl: MOCK_SITE_URL });
 
       case "GET /api/me":
         return config.session.get() ? json(mockMeBody(config.persona)) : json({ error: "unauthenticated" }, 401);

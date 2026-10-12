@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { buildKey, idOfKey, keyForPath, keyRange, kindOfKey, KEY_PATTERN, MAX_SLUG_LENGTH, pathForKey, slugFromFilename } from "../src/uploads/key";
 import { areaOfPurpose, isUploadKind, KIND_RULES, MAX_UPLOAD_BYTES, uploadAreas, uploadKinds } from "../src/uploads/kinds";
 import { detectType, MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE, SNIFF_WINDOW, sniff } from "../src/uploads/sniff";
-import { disguises, jpeg, padTo, pdf, png, webp } from "./uploads-helpers";
+import { disguises, gif, jpeg, padTo, pdf, png, webp } from "./uploads-helpers";
 
 // Pure functions: what a file is from its bytes, the size of an image from its
 // header, and the shape of an object key. No Worker, no storage.
@@ -12,8 +12,11 @@ const ok = (bytes: Uint8Array) => sniff(bytes.slice(0, SNIFF_WINDOW), bytes.leng
 describe("what a file is, from its bytes", () => {
   // Negative check (scripts/negative-checks-uploads.mjs): make `sniff` believe the first bytes
   // are whatever they are and every disguised file below is accepted.
-  test("PNG, JPEG, WebP (three flavours) and PDF are recognised", () => {
+  test("PNG, JPEG, WebP (three flavours), GIF (both versions) and PDF are recognised", () => {
     expect(ok(png(640, 480))).toEqual({ ok: true, type: "png", width: 640, height: 480 });
+    expect(ok(gif(320, 200))).toEqual({ ok: true, type: "gif", width: 320, height: 200 });
+    expect(ok(gif(65535, 1, "87a"))).toEqual({ ok: false, reason: "dimensions_too_large" });
+    expect(ok(gif(499, 3000, "87a"))).toEqual({ ok: true, type: "gif", width: 499, height: 3000 });
     expect(ok(jpeg(1600, 900))).toEqual({ ok: true, type: "jpeg", width: 1600, height: 900 });
     expect(ok(webp("lossy", 800, 600))).toEqual({ ok: true, type: "webp", width: 800, height: 600 });
     expect(ok(webp("lossless", 801, 601))).toEqual({ ok: true, type: "webp", width: 801, height: 601 });
@@ -21,7 +24,7 @@ describe("what a file is, from its bytes", () => {
     expect(ok(pdf())).toEqual({ ok: true, type: "pdf", width: null, height: null });
   });
 
-  test("an executable, HTML, SVG, a zip, a GIF, text and an empty file are not any of them", () => {
+  test("an executable, HTML, SVG, a zip, a made-up GIF version, text and an empty file are not any of them", () => {
     for (const [name, bytes] of Object.entries(disguises)) {
       expect(sniff(bytes, bytes.length), name).toEqual({ ok: false, reason: "unknown_type" });
     }
@@ -63,6 +66,25 @@ describe("image dimensions", () => {
     expect(ok(png(10, 0))).toEqual({ ok: false, reason: "corrupt" });
     expect(ok(jpeg(0, 10))).toEqual({ ok: false, reason: "corrupt" });
     expect(ok(jpeg(10, 0))).toEqual({ ok: false, reason: "corrupt" });
+    expect(ok(gif(0, 10))).toEqual({ ok: false, reason: "corrupt" });
+    expect(ok(gif(10, 0))).toEqual({ ok: false, reason: "corrupt" });
+  });
+
+  test("GIF: the canvas size is read as unsigned little-endian, and the limits apply", () => {
+    expect(ok(gif(255, 256))).toMatchObject({ ok: true, width: 255, height: 256 });
+    expect(ok(gif(0xffff, 0xffff))).toEqual({ ok: false, reason: "dimensions_too_large" });
+    expect(ok(gif(MAX_IMAGE_SIDE + 1, 10))).toEqual({ ok: false, reason: "dimensions_too_large" });
+    expect(ok(gif(MAX_IMAGE_SIDE, 5000))).toMatchObject({ ok: true }); // exactly 50 megapixels
+    expect(ok(gif(MAX_IMAGE_SIDE, 5001))).toEqual({ ok: false, reason: "dimensions_too_large" });
+  });
+
+  test("GIF: a header cut before the screen descriptor is complete is refused; a polyglot is a GIF only by its first bytes", () => {
+    const file = gif(100, 80);
+    for (let length = 0; length < 13; length++) expect(ok(file.slice(0, length)).ok, `cut at ${length}`).toBe(false);
+    expect(ok(file.slice(0, 13))).toMatchObject({ ok: true, width: 100, height: 80 });
+    // A GIF header with a script behind it: too short for a descriptor, or "dimensions" made of its letters. Never accepted.
+    expect(ok(new TextEncoder().encode("GIF89a<s"))).toEqual({ ok: false, reason: "corrupt" });
+    expect(ok(new TextEncoder().encode("GIF89a<script>alert(1)</script>"))).toEqual({ ok: false, reason: "dimensions_too_large" });
   });
 
   // Negative check: remove the limits and the "huge" cases below are accepted.
@@ -251,6 +273,11 @@ describe("the kinds table", () => {
     expect([...uploadAreas].sort()).toEqual(["konten", "pendaftaran"]);
     // The row's purpose leads back to the same area, which is what DELETE checks.
     for (const kind of uploadKinds) expect(areaOfPurpose(KIND_RULES[kind].purpose), kind).toBe(KIND_RULES[kind].area);
+  });
+
+  test("only the blog's images take a GIF (the legacy blog did, the team form did not)", () => {
+    expect(KIND_RULES["blog-image"].types).toEqual(["png", "jpeg", "webp", "gif"]);
+    for (const kind of uploadKinds.filter((candidate) => candidate !== "blog-image")) expect(KIND_RULES[kind].types, kind).not.toContain("gif");
   });
 
   test("the limits are the legacy app's: team 5 MB, blog image 5 MB, report 20 MB, resource 25 MB", () => {

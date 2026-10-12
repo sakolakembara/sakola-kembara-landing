@@ -27,6 +27,8 @@ export function isUploadKind(value: unknown): value is UploadKind {
 }
 
 const IMAGES = ["png", "jpeg", "webp"] as const satisfies readonly FileType[];
+/** The legacy blog took GIF too (an animated picture in an article); the team form did not. PM decision, 2026-10-12. */
+const BLOG_IMAGES = [...IMAGES, "gif"] as const satisfies readonly FileType[];
 
 export interface KindRule {
   /** The area whose writers may upload this kind (403 for everyone else). */
@@ -41,7 +43,7 @@ export interface KindRule {
 
 export const KIND_RULES: Record<UploadKind, KindRule> = {
   "team-photo": { area: "konten", purpose: "team", maxBytes: 5_000_000, types: IMAGES },
-  "blog-image": { area: "konten", purpose: "blog", maxBytes: 5_000_000, types: IMAGES },
+  "blog-image": { area: "konten", purpose: "blog", maxBytes: 5_000_000, types: BLOG_IMAGES },
   report: { area: "konten", purpose: "report", maxBytes: 20_000_000, types: ["pdf"] },
   resource: { area: "pendaftaran", purpose: "resource", maxBytes: 25_000_000, types: [...IMAGES, "pdf"] },
   "registration-document": { area: "pendaftaran", purpose: "resource", maxBytes: 25_000_000, types: [...IMAGES, "pdf"] },

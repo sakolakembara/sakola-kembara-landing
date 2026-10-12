@@ -12,6 +12,7 @@ import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
 import { pendaftaranSpaChecks } from "./negative-checks-spa-pendaftaran.mjs";
+import { blogSpaChecks } from "./negative-checks-spa-blog.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -29,6 +30,9 @@ const checks = [
   ...kontenMiscSpaChecks,
   // Pendaftaran: Batch, Pendaftar, Pusat Dokumen (SAKEM-082): scripts/negative-checks-spa-pendaftaran.mjs.
   ...pendaftaranSpaChecks,
+
+  // The blog (SAKEM-082): scripts/negative-checks-spa-blog.mjs.
+  ...blogSpaChecks,
 
   // Who may see and do what
   {
@@ -354,8 +358,12 @@ const checks = [
   },
 ];
 
+// `node scripts/negative-checks-spa.mjs --only <text>` runs the checks whose name contains <text> (as the Worker's runner does).
+const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : undefined;
+
 let bad = 0;
 for (const check of checks) {
+  if (only && !check.name.includes(only)) continue;
   const original = readFileSync(check.file, "utf8");
   // `from`/`to` may be lists, to break a safeguard that has more than one layer.
   const froms = [check.from].flat();

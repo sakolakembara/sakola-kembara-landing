@@ -40,7 +40,7 @@ const KINDS = uploadKinds.join("|");
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
 /** The only shape a key built by buildKey can have. Anything else is not ours: never looked up, never served. */
-export const KEY_PATTERN = new RegExp(`^uploads/(${KINDS})/\\d{4}/(${UUID})-[a-z0-9][a-z0-9-]{0,${MAX_SLUG_LENGTH - 1}}\\.(png|jpg|webp|pdf)$`);
+export const KEY_PATTERN = new RegExp(`^uploads/(${KINDS})/\\d{4}/(${UUID})-[a-z0-9][a-z0-9-]{0,${MAX_SLUG_LENGTH - 1}}\\.(png|jpg|webp|gif|pdf)$`);
 
 export const UPLOAD_PATH_PREFIX = "/uploads/";
 

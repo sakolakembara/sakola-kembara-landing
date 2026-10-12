@@ -261,4 +261,19 @@ describe("where a stored file is shown", () => {
     expect(await read("javascript:alert(1)")).toBe("");
     expect(await read("https://files.example.org/path")).toBe("");
   });
+
+  test("GET /api/config answers siteUrl by the same rule: the public site's origin from SITE_URL, empty when it is unset or not an origin", async () => {
+    const read = async (value: string | undefined) => ((await (await call("/api/config", { env: { SITE_URL: value } })).json()) as { siteUrl: string }).siteUrl;
+    expect(await read(undefined)).toBe("");
+    expect(await read("")).toBe("");
+    expect(await read("https://sakolakembara.org")).toBe("https://sakolakembara.org");
+    expect(await read(" https://sakolakembara.org/ ")).toBe("https://sakolakembara.org");
+    expect(await read("http://localhost:4321")).toBe("http://localhost:4321");
+    for (const bad of ["sakolakembara.org", "javascript:alert(1)", "https://sakolakembara.org/blog", 'https://x.example"><script>', "//sakolakembara.org", "https://user@sakolakembara.org"]) {
+      expect(await read(bad), bad).toBe("");
+    }
+    // The two origins of the config are independent variables.
+    const both = (await (await call("/api/config", { env: { SITE_URL: "https://sakolakembara.org", UPLOADS_BASE_URL: "https://files.example.org" } })).json()) as Record<string, unknown>;
+    expect(both).toMatchObject({ siteUrl: "https://sakolakembara.org", uploadsBaseUrl: "https://files.example.org" });
+  });
 });

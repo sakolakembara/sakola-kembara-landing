@@ -26,7 +26,8 @@ export type RateLimitBinding =
   | "RL_MAIL_TARGET"
   | "RL_TOKEN"
   | "RL_CONTACT"
-  | "RL_UPLOAD";
+  | "RL_UPLOAD"
+  | "RL_BLOG_PREVIEW";
 
 export interface LimitConfig {
   binding: RateLimitBinding;
@@ -101,6 +102,17 @@ export const RATE_LIMITS = {
     limit: 20,
     period: 60,
     message: "Terlalu banyak unggahan. Silakan tunggu satu menit lalu coba lagi.",
+  },
+  /**
+   * The blog editor's preview (src/api/blog.ts, a markdown render on the Worker per request), 60 per minute per
+   * signed-in user. The editor asks at most once per 400 ms of a pause in typing, so a person never meets it; a
+   * stuck client or a stolen session cannot spend the CPU of the Worker. Key: user id.
+   */
+  blogPreview: {
+    binding: "RL_BLOG_PREVIEW",
+    limit: 60,
+    period: 60,
+    message: "Terlalu banyak permintaan pratinjau. Silakan tunggu satu menit lalu coba lagi.",
   },
 } as const satisfies Record<string, LimitConfig>;
 

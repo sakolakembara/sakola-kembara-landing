@@ -9,7 +9,7 @@ import { KIND_RULES, uploadKinds, type UploadKind } from "../src/uploads/kinds";
 import { deleteUploadByPath, storeUpload } from "../src/uploads/store";
 import { checkLimits } from "../src/security/rate-limit";
 import { awaitFreshWindow, call, signedInCookie, uniqueEmail } from "./helpers";
-import { auditRows, clearBucket, disguises, jpeg, mediaRows, objectKeys, padTo, pdf, png, upload, webp, type Uploaded } from "./uploads-helpers";
+import { auditRows, clearBucket, disguises, gif, jpeg, mediaRows, objectKeys, padTo, pdf, png, upload, webp, type Uploaded } from "./uploads-helpers";
 
 // The upload API against the real workerd runtime: a real local D1 and a real
 // (emulated) R2 bucket from wrangler.jsonc, the real rate limit binding.
@@ -122,6 +122,8 @@ describe("what is stored, and where", () => {
       cases.push({ kind, label: "webp lossless", file: () => webp("lossless", 801, 601), name: "b.webp", type: "image/webp", ext: "webp", width: 801, height: 601 });
       cases.push({ kind, label: "webp extended", file: () => webp("extended", 1920, 1080), name: "c.webp", type: "image/webp", ext: "webp", width: 1920, height: 1080 });
     }
+    // Only the blog's images take a GIF (PM decision, 2026-10-12): the size comes from the header's canvas.
+    if (types.includes("gif")) cases.push({ kind, label: "gif", file: () => gif(480, 270), name: "Animasi Belajar.GIF", type: "image/gif", ext: "gif", width: 480, height: 270 });
     if (types.includes("pdf")) cases.push({ kind, label: "pdf", file: () => pdf(), name: "Laporan Tahunan 2025.pdf", type: "application/pdf", ext: "pdf", width: null, height: null });
   }
 
@@ -202,7 +204,10 @@ describe("what is refused", () => {
     ["SVG with a script, as image/png", disguises.svg, "logo.png", "image/png"],
     ["SVG with a script, as itself", disguises.svg, "logo.svg", "image/svg+xml"],
     ["a zip named .pdf", disguises.zip, "berkas.pdf", "application/pdf"],
-    ["a GIF named .png", disguises.gif, "anim.png", "image/png"],
+    // A real GIF is not a disguise for the blog's images, but these kinds do not take one (whatever it is named).
+    ["a GIF named .png", gif(10, 10), "anim.png", "image/png"],
+    ["a GIF named .gif", gif(10, 10), "anim.gif", "image/gif"],
+    ["a made-up GIF version", disguises.gifLookalike, "anim.gif", "image/gif"],
     ["plain text named .jpg", disguises.text, "catatan.jpg", "image/jpeg"],
     ["a PDF with junk before the header", disguises.lateAndPdfish, "laporan.pdf", "application/pdf"],
   ];
@@ -215,7 +220,7 @@ describe("what is refused", () => {
         const body = (await response.json()) as { error: string; message: string; allowed: string[] };
         expect(body.error).toBe("unsupported_type");
         expect(body.message).toMatch(/^Tipe file tidak didukung\. Gunakan: /);
-        expect(body.allowed).toEqual(KIND_RULES[kind].types.map((type) => ({ png: "image/png", jpeg: "image/jpeg", webp: "image/webp", pdf: "application/pdf" })[type]));
+        expect(body.allowed).toEqual(KIND_RULES[kind].types.map((type) => ({ png: "image/png", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif", pdf: "application/pdf" })[type]));
         await nothingStored();
       });
     }

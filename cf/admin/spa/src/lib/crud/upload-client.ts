@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { api } from "../api";
+import { resetConfig, useConfig } from "../config";
 import { describeFailure, MESSAGES } from "./errors";
-import { normaliseBase, type UploadKindName } from "./upload-kinds";
+import type { UploadKindName } from "./upload-kinds";
 
 // The browser side of `POST /api/admin/uploads` (docs/cloudflare/uploads.md). A file upload cannot go through
 // `api()`: only XMLHttpRequest reports progress, so this has its own request, behind a seam like the
@@ -117,23 +117,8 @@ export function discardUpload(id: string): void {
 
 // ------------------------------------------------------------- where the files are shown
 
-let cachedBase: string | null = null;
-let pendingBase: Promise<string> | null = null;
-
-/** Forgets what `GET /api/config` said (tests). */
-export function resetUploadsBase(): void {
-  cachedBase = null;
-  pendingBase = null;
-}
-
-function loadUploadsBase(): Promise<string> {
-  pendingBase ??= api<unknown>("/api/config").then((result) => {
-    const body = result.ok && result.data !== null && typeof result.data === "object" ? (result.data as { uploadsBaseUrl?: unknown }) : {};
-    cachedBase = normaliseBase(body.uploadsBaseUrl);
-    return cachedBase;
-  });
-  return pendingBase;
-}
+/** Forgets what `GET /api/config` said (tests): the answer is shared with the site address, lib/config.ts. */
+export const resetUploadsBase = resetConfig;
 
 /**
  * The origin uploaded files are served from (`uploadsBaseUrl` of `GET /api/config`), read once per page load.
@@ -141,19 +126,5 @@ function loadUploadsBase(): Promise<string> {
  * development (the Vite proxy serves `/uploads`) and a broken image, never a crash, elsewhere.
  */
 export function useUploadsBase(): string {
-  const [base, setBase] = useState(cachedBase ?? "");
-  useEffect(() => {
-    if (cachedBase !== null) {
-      setBase(cachedBase);
-      return;
-    }
-    let cancelled = false;
-    void loadUploadsBase().then((value) => {
-      if (!cancelled) setBase(value);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return base;
+  return useConfig().uploadsBaseUrl;
 }

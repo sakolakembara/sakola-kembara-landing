@@ -69,6 +69,11 @@ export function webp(flavour: "lossy" | "lossless" | "extended", width: number, 
   return padTo(concat(text("RIFF"), le32(body.length), body), 30);
 }
 
+/** "GIF89a" (or "GIF87a"), the logical screen descriptor with the canvas size, a trailer: the smallest GIF a decoder reads. */
+export function gif(width: number, height: number, version: "87a" | "89a" = "89a"): Uint8Array {
+  return concat(text(`GIF${version}`), le16(width), le16(height), new Uint8Array([0x00, 0x00, 0x00]), new Uint8Array([0x3b]));
+}
+
 export function pdf(): Uint8Array {
   return text("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n");
 }
@@ -79,7 +84,8 @@ export const disguises = {
   html: text("<!doctype html><html><script>alert(document.cookie)</script></html>"),
   svg: text('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
   zip: concat(text("PK\x03\x04"), new Uint8Array(40)),
-  gif: concat(text("GIF89a"), le16(1), le16(1), new Uint8Array(10)),
+  // "GIF8" with a version nobody wrote: not a GIF.
+  gifLookalike: concat(text("GIF88a"), le16(1), le16(1), new Uint8Array(10)),
   empty: new Uint8Array(0),
   text: text("just some text"),
   // PDF text further into the file: the header must be at byte 0.

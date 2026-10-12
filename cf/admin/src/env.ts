@@ -20,6 +20,8 @@ export interface Bindings {
   RL_CONTACT: RateLimit;
   /** Admin uploads, per user (src/api/uploads.ts). */
   RL_UPLOAD: RateLimit;
+  /** The blog editor's preview, per user (src/api/blog.ts). */
+  RL_BLOG_PREVIEW: RateLimit;
 
   /** "production" unless set otherwise. Anything else is a local or test run. */
   ENVIRONMENT?: string;
@@ -51,6 +53,12 @@ export interface Bindings {
    * Answered to the SPA by GET /api/config as `uploadsBaseUrl`. docs/cloudflare/uploads.md, owner steps.
    */
   UPLOADS_BASE_URL?: string;
+  /**
+   * Origin of the public site (public variable), e.g. "https://sakolakembara.org": what the "Lihat di publik" link
+   * of a published blog article is built from. Empty, unset or not a plain http(s) origin = no link. Answered to the
+   * SPA by GET /api/config as `siteUrl`. docs/cloudflare/admin-blog.md.
+   */
+  SITE_URL?: string;
 }
 
 /** Only an explicit "development" or "test" opts out of production behaviour. */

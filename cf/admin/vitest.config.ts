@@ -46,6 +46,8 @@ export default defineConfig(async () => ({
     }),
   ],
   test: {
+    // Node-side, before the workers start: the oracle of the blog tests (test/global/blog-oracle.ts).
+    globalSetup: ["./test/global/blog-oracle.ts"],
     setupFiles: ["./test/setup.ts"],
     include: ["test/**/*.test.ts"],
   },

@@ -17,7 +17,7 @@ One table, `cf/admin/src/uploads/kinds.ts`; the numbers are the legacy app's (`a
 | `kind` | Area that may upload (needs **write**) | `media.purpose` | Accepted (by content) | Largest | Key folder |
 | --- | --- | --- | --- | --- | --- |
 | `team-photo` | `konten` | `team` | PNG, JPEG, WebP | 5 MB | `uploads/team-photo/` |
-| `blog-image` | `konten` | `blog` | PNG, JPEG, WebP | 5 MB | `uploads/blog-image/` |
+| `blog-image` | `konten` | `blog` | PNG, JPEG, WebP, GIF | 5 MB | `uploads/blog-image/` |
 | `report` | `konten` | `report` | PDF | 20 MB | `uploads/report/` |
 | `resource` | `pendaftaran` | `resource` | PDF, PNG, JPEG, WebP | 25 MB | `uploads/resource/` |
 | `registration-document` | `pendaftaran` | `resource` | PDF, PNG, JPEG, WebP | 25 MB | `uploads/registration-document/` |
@@ -35,6 +35,7 @@ The client's `Content-Type` and the file name are chosen by whoever uploads (an 
 | PNG | `89 50 4E 47 0D 0A 1A 0A`, then an `IHDR` chunk of length 13 | the IHDR, unsigned 32-bit |
 | JPEG | `FF D8 FF`, then the marker segments are walked (each says its own length, at most 512 of them) | the start-of-frame segment, behind EXIF and ICC metadata (a header past 1 MiB is refused as unreadable) |
 | WebP | `RIFF`, `WEBP`; the RIFF size must fit the file | `VP8 ` (lossy), `VP8L` (lossless) or `VP8X` (extended and animated) |
+| GIF | `GIF87a` or `GIF89a`; the 13-byte header must be there | the canvas width and height of the logical screen descriptor, little-endian u16 (the frames of an animation fit inside it); blog images only |
 | PDF | `%PDF-1.` or `%PDF-2.` at byte 0 | none |
 
 A file whose bytes are none of these is refused (`415`), a file with the right signature and a broken or cut-short header is refused (`422`). The size must be at least 1 pixel, at most **10,000 pixels on a side and 50 megapixels in all** (a browser needs about 4 bytes per pixel to show an image, so 50 MP is 200 MB): width and height are read as unsigned numbers, and `4294967295 x 4294967295` is refused like any other absurd size. Nothing decodes pixels or inflates data, so inspecting a "decompression bomb" costs the same as a small file; the dimension limits are what keep one from reaching a visitor.
@@ -42,7 +43,7 @@ A file whose bytes are none of these is refused (`415`), a file with the right s
 ### What is not accepted, and why
 
 - **SVG.** The legacy app never accepted it. An SVG is a document that can carry scripts, and the public domain would serve it as an image anyone can open directly. Making it safe needs a sanitiser, which is a library and CPU the Free plan does not leave. Refused (`415`); logos and illustrations go through the asset pipeline (`cf/web`).
-- **GIF and AVIF.** The legacy blog accepted GIF and AVIF and the team form AVIF. Not included here (the brief names PNG, JPEG and WebP). GIF is about ten lines to add (the size is in the header); AVIF needs an ISO-BMFF box walk. See [open decisions](#open-decisions).
+- **AVIF.** The legacy blog and team form accepted AVIF. Not included: it needs an ISO-BMFF box walk, and the asset pipeline of the public site does not read it either. (**GIF** was added for the blog's images only, by decision of the PM on 2026-10-12: the size is the canvas in the header, so it costs nothing to read. The team form never took it.) See [open decisions](#open-decisions).
 - **Word, Excel, PowerPoint, zip.** The legacy resource action accepted any file. A zip-based format cannot be told from any other zip by its first bytes, so none is accepted. The fixture of `cf/web` even lists a `.docx` template, so this is a real gap for the Pusat Dokumen; see [open decisions](#open-decisions).
 - **Not done:** EXIF is **not stripped** (a phone photo can carry a GPS position, and it is public once uploaded; stripping needs a re-encode), and a PDF is not inspected for scripts or links beyond its header.
 
@@ -55,7 +56,7 @@ uploads/<kind>/<yyyy>/<media id>-<slug>.<ext>      the R2 key
 
 - `<kind>` is from the table above, never from the client's text. `<yyyy>` is the server's UTC year. `<media id>` is a new UUID per upload, so a key never collides and an object is never overwritten (the put is also conditional, `onlyIf: etagDoesNotMatch: "*"`).
 - `<slug>` is rebuilt from the file name with a whitelist: accents folded, lowercased, anything other than `a-z0-9` becomes `-`, at most 60 characters, `file` when nothing is left. `../../etc/passwd`, `a\b`, a null byte, a right-to-left override, an emoji or 500 characters cannot put anything else in the key. The file name still ends up in the key, so a name with a person's name in it is public (the audit row and the key hold it, the logs do not).
-- `<ext>` is `png`, `jpg`, `webp` or `pdf`, from the type found in the bytes.
+- `<ext>` is `png`, `jpg`, `webp`, `gif` or `pdf`, from the type found in the bytes.
 - The object gets `Content-Type` from the same sniffed type and `Cache-Control: public, max-age=31536000, immutable` (the name is unique per upload, so a file never changes).
 - `media.key` is the key. The path is `"/" + key`. A path that is not exactly this shape (the legacy static paths `/blog/images/...`, `/files/...`, `/images/...`) is not ours and is never looked up, rewritten or deleted.
 
@@ -84,7 +85,7 @@ Order of the checks (the first failure answers):
 | 403 | `forbidden` | cannot write the area of the form's `kind` |
 | 400 | `file_required`, `empty_file` | no file, a text field called `file`, a file of 0 bytes |
 | 413 | `too_large` | the file is above the kind's limit (`maxBytes` in the body) |
-| 415 | `unsupported_type` | not one of the four types, or not one of this kind's types (`allowed` lists the content types) |
+| 415 | `unsupported_type` | not one of the five types, or not one of this kind's types (`allowed` lists the content types) |
 | 422 | `invalid_file` | right signature, broken or cut-short header |
 | 422 | `unreadable_size` | a JPEG whose frame header is past 1 MiB |
 | 422 | `dimensions_too_large` | above 10,000 px a side or 50 MP (`maxSide`, `maxPixels`) |
@@ -182,7 +183,7 @@ None of this exists yet and none is done by the code. Account and token: [`accou
 For Dzul, in order of weight:
 
 1. **Word, Excel and zip files for the Pusat Dokumen.** The legacy action took any file and the fixture lists a `.docx` template. Allowing OOXML means checking for the zip header and the `[Content_Types].xml` entry and trusting the extension for which of docx, xlsx and pptx; it is doable, and refuses macro formats by construction (only those three extensions). Until decided, a template has to be a PDF.
-2. **GIF (blog) and AVIF (blog and team)** were accepted by the legacy app. Add GIF? AVIF?
+2. ~~GIF (blog)~~ Decided by the PM and done: GIF for `blog-image` only. **AVIF (blog and team)** was accepted by the legacy app and is still not: add it?
 3. **`registration-document` and `resource`** share rules and a purpose. If they are the same thing (the document hub), drop one kind.
 4. **EXIF is not stripped.** Team photos from a phone may carry a GPS position and are public. Options: tell editors, or re-encode in the browser before upload (the SPA, not the Worker).
 5. **PDFs open in a tab, not as a download**, on the files domain (see above), unless `Content-Disposition: attachment` is set at upload.

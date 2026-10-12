@@ -393,12 +393,12 @@ describe("password reset", () => {
 
 describe("Google sign-in availability", () => {
   test("is reported off, and the route does not exist, until both variables are set", async () => {
-    expect(await (await call("/api/config")).json()).toEqual({ google: false, turnstileSiteKey: null, uploadsBaseUrl: "" });
+    expect(await (await call("/api/config")).json()).toEqual({ google: false, turnstileSiteKey: null, uploadsBaseUrl: "", siteUrl: "" });
     const start = await call("/api/auth/sign-in/social", { method: "POST", json: { provider: "google" } });
     expect(start.status).toBeGreaterThanOrEqual(400);
 
     const on = { GOOGLE_CLIENT_ID: "fake-client-id", GOOGLE_CLIENT_SECRET: "fake-client-secret" };
-    expect(await (await call("/api/config", { env: on })).json()).toEqual({ google: true, turnstileSiteKey: null, uploadsBaseUrl: "" });
+    expect(await (await call("/api/config", { env: on })).json()).toEqual({ google: true, turnstileSiteKey: null, uploadsBaseUrl: "", siteUrl: "" });
     const redirect = await call("/api/auth/sign-in/social", { method: "POST", json: { provider: "google", callbackURL: "/announcements" }, env: on });
     expect(redirect.status).toBe(200);
     const body = (await redirect.json()) as { url?: string };
@@ -412,7 +412,7 @@ describe("Google sign-in availability", () => {
   test("/api/config serves the public Turnstile site key and nothing secret", async () => {
     const res = await call("/api/config", { env: { TURNSTILE_SITE_KEY: "1x00000000000000000000AA", TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA" } });
     const text = await res.text();
-    expect(JSON.parse(text)).toEqual({ google: false, turnstileSiteKey: "1x00000000000000000000AA", uploadsBaseUrl: "" });
+    expect(JSON.parse(text)).toEqual({ google: false, turnstileSiteKey: "1x00000000000000000000AA", uploadsBaseUrl: "", siteUrl: "" });
     expect(text).not.toContain("0000000000000000000000000000000AA");
   });
 });
