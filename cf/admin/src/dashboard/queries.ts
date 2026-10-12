@@ -35,8 +35,11 @@ export const undecidedApplicationsQuery = (db: Db) =>
     .where(inArray(studentApplications.status, ["pending", "under_review"]))
     .groupBy(studentApplications.batchId, studentApplications.status);
 
+/** A message nobody has opened yet. The one definition of "unread": the dashboard counts it, and the Pesan screen lists and counts by it (src/api/messages.ts). */
+export const isUnreadMessage = isNull(contactMessages.readAt);
+
 /** Messages nobody has opened yet. Counts the `read_at` index entries that are NULL. */
-export const unreadMessagesQuery = (db: Db) => db.select({ n: count() }).from(contactMessages).where(isNull(contactMessages.readAt));
+export const unreadMessagesQuery = (db: Db) => db.select({ n: count() }).from(contactMessages).where(isUnreadMessage);
 
 /**
  * The newest batches by opening date: an ordered walk of the `opens_at` index

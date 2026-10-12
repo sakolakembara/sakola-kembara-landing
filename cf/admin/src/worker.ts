@@ -4,6 +4,7 @@ import { announcementRoutes } from "./api/announcements";
 import { auditRoutes } from "./api/audit";
 import { dashboardRoutes } from "./api/dashboard";
 import { serveDevUpload } from "./api/dev-uploads";
+import { messageRoutes } from "./api/messages";
 import { createPublicApp } from "./api/public";
 import { uploadRoutes } from "./api/uploads";
 import { AUTH_BASE_PATH } from "./auth/factory";
@@ -97,6 +98,7 @@ app.get("/api/dev/mailbox", (c) => {
 app.get("/uploads/*", serveDevUpload);
 
 app.route("/api/admin/announcements", announcementRoutes);
+app.route("/api/admin/messages", messageRoutes);
 app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 app.route("/api/admin/audit", auditRoutes);
