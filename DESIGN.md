@@ -238,7 +238,18 @@ Build forms from `components/ui/field.tsx` and `alert.tsx` (SAKEM-042):
 - `<Input>`, `<Textarea>`, `<Select>`: `w-full px-4 py-2.5 leading-6 border-2 border-gray-200 rounded-xl focus:border-primary-blue focus:outline-none` (48px for inputs and selects alike), 16px text (smaller text makes iOS zoom in on focus). Textareas don't resize unless given `resize-y`; selects are white.
 - Placeholders are example-style (`email@example.com`), not instructions.
 - Banners: `<Alert tone>` (`danger` by default, `success`, `warning`, `info`) in the status colors, `rounded-lg px-4 py-3 text-sm leading-relaxed`. Errors use `role="alert"`, the rest `role="status"`.
-- Submit: `<Button type="submit" size="lg">`, with a leading icon where one names the action. In the narrow auth cards it is `fullWidth`. The wizard's *Sebelumnya* / *Selanjutnya* / *Kirim Pendaftaran* row is lg too (`neutral` for back).
+- Submit: `<Button type="submit" size="lg">`, with a leading icon where one names the action. On the auth pages it is `fullWidth` (see *Auth pages* below). The wizard's *Sebelumnya* / *Selanjutnya* / *Kirim Pendaftaran* row is lg too (`neutral` for back).
+
+### Auth pages (`app/(auth)/`)
+
+`/login`, `/register`, `/forgot-password`, `/reset-password` and `/verify-email` share one layout, `AuthShell` (`app/(auth)/_auth-shell.tsx`, SAKEM-086), the same as the new admin sign-in:
+
+- **No card and no brand wordmark.** A narrow centered column (`sm:max-w-sm`, `px-4 py-10`) on a plain white page.
+- **One heading per page:** a centered `h1` in Lora (`text-xl font-semibold`). The login's is *Masuk ke Sakola Kembara*, which is true for students and admins, who share that page.
+- **A description under it only where it holds instructions** (register, forgot password, reset password); never on the login. A page doesn't say the same thing twice: no subtitle above the heading and no eyebrow or icon repeating it.
+- **The form comes first.** On the login and register pages `AuthDivider` (a thin rule with *atau* in `text-gray-500`) and then the Google button follow it: `<Button variant="neutral" size="lg" fullWidth>` with the Google "G" as an inline `fill="currentColor"` SVG, shown only when Google is configured.
+- **The link to the neighbouring page** (*Daftar di sini*, *Masuk di sini*, *Kembali ke halaman masuk*) is the footer, under a thin rule (`border-t border-gray-100`, `text-xs`), styled with `AUTH_LINK`.
+- **Pages without a form** (`/verify-email`, a reset link without a token) show the heading, an `Alert` in the matching tone and, where there is a next step, a full-width button.
 
 ### Modals
 
@@ -404,7 +415,7 @@ Gabung Siswa (SAKEM-040): `/gabung-siswa` and `/gabung-siswa/docs` use `Containe
 
 Layout (SAKEM-041): `Navbar`, `Footer`, `AuthNavButton` and `AnnouncementStrip` live in `components/layout/` and use `Container`; `SocialLinks` is a molecule in `components/ui/`. Kept as they are: the nav links, the footer column labels, the announcement strip's per-severity colors and its pill CTA (an exception to "no pill buttons", admin-configured), and the 36px social icons.
 
-Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. The student registration wizard (`/portal/daftar`, SAKEM-043) uses the same `Field` and controls in every step, `Field group` for its radio-card questions, `Alert` for its notices and submit error, and lg `Button`s without arrows; its closed-batch and success screens use `Eyebrow` and `Heading`. Kept inline there: the intro's program card and amber notices, the document-step notice, the organisation add/remove controls, the review's *Ubah* links and the WhatsApp button on the success screen.
+Forms (SAKEM-042): the `/kontak` form and the auth forms (`/login`, `/register`, `/forgot-password`, `/reset-password`) use `Field`, `Input`/`Select`/`Textarea`, `Alert` and `Button`; the auth cards move from their compact 40px, 14px fields to the standard 48px, 16px ones, and the black *Masuk* button becomes primary. The Google sign-in button is a `neutral` lg `Button`. (SAKEM-086 later took the auth pages out of their cards; see *Auth pages* in section 6.) The student registration wizard (`/portal/daftar`, SAKEM-043) uses the same `Field` and controls in every step, `Field group` for its radio-card questions, `Alert` for its notices and submit error, and lg `Button`s without arrows; its closed-batch and success screens use `Eyebrow` and `Heading`. Kept inline there: the intro's program card and amber notices, the document-step notice, the organisation add/remove controls, the review's *Ubah* links and the WhatsApp button on the success screen.
 
 Admin lists (SAKEM-044): every admin list page (and the headers of the dashboard and detail pages) uses `AdminPageHeader`, `Alert` for its flash messages, the `Table` parts, `Tag` hues for every category/status pill, `Button` for the header action, and `size="sm"` controls with a `sm` `Button` in its filter row. The admin title is the `subsection` heading level (24px on phones, 30px from `md`). Next: the admin editor forms (phase 5b), then the dashboard, detail pages and student portal (phase 5c).
 

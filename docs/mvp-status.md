@@ -20,7 +20,7 @@ The Next.js 16 rebuild is **feature-complete on `dev.angga`**. Public site has d
 - `/gabung-siswa/docs` — public docs catalog rendered from `site_resources`, grouped into 5 categories with anchor links (`#panduan`, `#berkas-pendaftaran`, `#berkas-marketing`, `#tutorial`, `#lainnya`); text-type entries render with a Salin button
 - `/kontak` — contact form, writes to `contact_messages`
 - `/program/[id]` — program detail (static; admin CRUD deferred)
-- `/login` — unified Auth.js sign-in (Google button + collapsible admin email/password form)
+- `/login` — unified Auth.js sign-in (email/password form, then the Google button when Google is configured). `/register`, `/forgot-password`, `/reset-password` and `/verify-email` use the same narrow white layout (`app/(auth)/_auth-shell.tsx`; see the *Auth pages* section of [`DESIGN.md`](../DESIGN.md))
 - `/portal`, `/portal/status` — signed-in student area: current-batch CTA + registration history + per-application result view (see [`architecture/student-portal.md`](architecture/student-portal.md))
 - `/robots.txt`, `/sitemap.xml`, every page has metadata + OG
 
