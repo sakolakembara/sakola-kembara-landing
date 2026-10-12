@@ -1,0 +1,130 @@
+---
+import { mapLocations, type MapLocation } from '~/lib/home-data';
+
+/**
+ * The map of branch locations. Server-rendered as a list of the locations (also
+ * what crawlers, screen readers and a visitor without JS get); the script below
+ * loads Leaflet only when the panel is within ~400 px of the viewport and then
+ * draws the markers over it. The list is the single source for the markers: each
+ * <li> carries its coordinates and its popup content, so the script holds no copy.
+ * Leaflet, its CSS and the marker CSS are one lazy chunk (about 145 KB raw, 42 KB
+ * gzip) that is never requested by a visit that does not scroll to the map.
+ */
+const markerColor: Record<MapLocation['type'], string> = {
+  bimbel: '#1E88E5',
+  roadshow: '#F9A825',
+};
+const typeLabel: Record<MapLocation['type'], string> = {
+  bimbel: 'Bimbel Aktif',
+  roadshow: 'Roadshow',
+};
+const typeBadge: Record<MapLocation['type'], string> = {
+  bimbel: 'bg-blue-100 text-blue-700',
+  roadshow: 'bg-yellow-100 text-yellow-700',
+};
+---
+
+<div class="relative rounded-2xl overflow-hidden shadow-lg" data-impact-map>
+  <div class="relative z-0 w-full h-[500px] bg-gradient-to-br from-blue-50 to-blue-100" data-map-canvas>
+    <ul
+      aria-label="Lokasi Sakola Kembara"
+      class="h-full overflow-y-auto grid grid-cols-2 sm:grid-cols-4 content-center gap-3 p-4 sm:p-6"
+      data-map-locations
+    >
+      {
+        mapLocations.map((location) => (
+          <li
+            class="bg-white rounded-xl shadow-sm"
+            data-lat={location.lat}
+            data-lng={location.lng}
+            data-title={location.name}
+            data-color={markerColor[location.type]}
+          >
+            <div class="text-center p-2">
+              <h4 class="font-bold text-gray-900">{location.name}</h4>
+              <p class="text-sm text-gray-500">{location.region}</p>
+              <span class={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${typeBadge[location.type]}`}>
+                {typeLabel[location.type]}
+              </span>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  {/* Legend: shown with the map, not with the list (each list card names its own type). */}
+  <div class="absolute bottom-6 left-6 bg-white p-4 rounded-xl shadow-lg z-[1000]" data-map-legend hidden>
+    <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Legenda</h4>
+    <div class="space-y-2">
+      <div class="flex items-center gap-2.5 text-[13px] text-gray-700">
+        <div class="w-3 h-3 rounded-full bg-primary-blue"></div>
+        <span>Bimbel Aktif</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Lazy map. Everything Leaflet needs is imported dynamically, so nothing of it is in the page's
+  // own JS: the chunk is fetched when the panel nears the viewport. If it fails to load (offline,
+  // blocked), the location list simply stays.
+  const root = document.querySelector<HTMLElement>('[data-impact-map]');
+  const canvas = root?.querySelector<HTMLElement>('[data-map-canvas]');
+  const list = root?.querySelector<HTMLElement>('[data-map-locations]');
+
+  async function showMap() {
+    if (!root || !canvas || !list) return;
+    // The CSS comes in as strings and is injected here, so it never becomes a render-blocking
+    // <link> of the page (a plain CSS import in this script would).
+    const [L, leafletCss, mapCss] = await Promise.all([
+      import('leaflet'),
+      import('leaflet/dist/leaflet.css?inline').then((m) => m.default),
+      import('~/styles/map.css?inline').then((m) => m.default),
+    ]);
+    const style = document.createElement('style');
+    style.textContent = leafletCss + mapCss;
+    document.head.append(style);
+    const items = [...list.querySelectorAll<HTMLElement>('li[data-lat]')];
+
+    const map = L.map(canvas, { center: [-6.9175, 107.6191], zoom: 9, scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const points: [number, number][] = [];
+    for (const item of items) {
+      const lat = Number(item.dataset.lat);
+      const lng = Number(item.dataset.lng);
+      const color = item.dataset.color;
+      points.push([lat, lng]);
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="position:relative;width:40px;height:40px"><div class="animate-pulse-marker" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;background:${color}33;border-radius:50%"></div><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;background:${color};border-radius:50%;box-shadow:0 0 0 4px ${color}4D"></div></div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
+      });
+      L.marker([lat, lng], { icon, title: item.dataset.title })
+        .addTo(map)
+        .bindPopup(item.firstElementChild!.cloneNode(true) as HTMLElement);
+    }
+    map.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
+    // Only now, with the map built, does it replace the list (the legend belongs to the map).
+    list.hidden = true;
+    root.querySelector<HTMLElement>('[data-map-legend]')!.hidden = false;
+  }
+
+  // Without IntersectionObserver (a very old browser) nothing is loaded and the list stays.
+  if (root && 'IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        observer.disconnect();
+        showMap().catch(() => {});
+      },
+      { rootMargin: '400px 0px' },
+    );
+    observer.observe(root);
+  }
+</script>
