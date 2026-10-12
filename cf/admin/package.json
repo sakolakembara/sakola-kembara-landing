@@ -20,6 +20,7 @@
     "db:seed:local": "tsx scripts/seed.ts",
     "db:drift": "node scripts/check-migrations.mjs",
     "measure": "tsx scripts/measure.ts",
+    "measure:public": "node scripts/measure-public.mjs",
     "test:negative": "node scripts/negative-checks.mjs",
     "test:negative:spa": "node scripts/negative-checks-spa.mjs"
   },

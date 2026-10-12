@@ -13,6 +13,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
+// The public API (SAKEM-081, part C): docs/cloudflare/public-api.md.
+const PUBLIC_READ = "test/public-read.test.ts";
+const PUBLIC_BLOG = "test/public-blog.test.ts";
+const PUBLIC_LEAK = "test/public-leak.test.ts";
+const PUBLIC_CONTACT = "test/public-contact.test.ts";
+const PUBLIC_BUDGET = "test/public-budget.test.ts";
+const PUBLIC_PURGE = "test/public-purge.test.ts";
+
 const checks = [
   // ---------------------------------------------------------------- auth
   {
@@ -195,6 +203,212 @@ const checks = [
     from: "REFERENCES `admission_batches`(`id`) ON UPDATE no action ON DELETE restrict",
     to: "REFERENCES `admission_batches`(`id`) ON UPDATE no action ON DELETE cascade",
     tests: "test/schema.test.ts",
+  },
+
+  // --------------------------------------------------- the public API: leaks
+  {
+    name: "public serializer passes the whole row through (no field allow-list)",
+    file: "src/public/serializers.ts",
+    from: "export function serializeReport(row: PublicReport): PublicReport {\n  return {\n    id: row.id,\n    title: row.title,\n    description: row.description,\n    category: row.category,\n    year: row.year,\n    filePath: row.filePath,\n    fileSize: row.fileSize,\n  };\n}",
+    to: "export function serializeReport(row: PublicReport): PublicReport {\n  return { ...row };\n}",
+    tests: PUBLIC_LEAK,
+  },
+  {
+    name: "public blog card exposes an extra column (the author's user id)",
+    file: "src/public/serializers.ts",
+    from: "    author: row.author,\n    featured: row.featured,\n  };\n}\n\nexport interface BlogArticleRow",
+    to: "    author: row.author,\n    featured: row.featured,\n    createdBy: (row as unknown as { createdBy?: string }).createdBy,\n  } as PublicBlogSummary;\n}\n\nexport interface BlogArticleRow",
+    tests: PUBLIC_LEAK,
+  },
+
+  // --------------------------------------------- the public API: what is served
+  {
+    name: "public blog serves drafts (published-only filter removed)",
+    file: "src/public/queries.ts",
+    from: 'const published = eq(blogPosts.status, "published");',
+    to: "const published = sql`1 = 1`;",
+    tests: `${PUBLIC_BLOG} ${PUBLIC_LEAK}`,
+  },
+  {
+    name: "announcement shown although it is switched off",
+    file: "src/public/queries.ts",
+    from: "and(eq(announcements.active, true), or(isNull(announcements.startsAt)",
+    to: "and(sql`1 = 1`, or(isNull(announcements.startsAt)",
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "announcement still shown after its end (window end ignored)",
+    file: "src/public/queries.ts",
+    from: "or(isNull(announcements.endsAt), gte(announcements.endsAt, now))",
+    to: "sql`1 = 1`",
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "announcement shown before its start (window start ignored)",
+    file: "src/public/queries.ts",
+    from: "or(isNull(announcements.startsAt), lte(announcements.startsAt, now))",
+    to: "sql`1 = 1`",
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "team not ranked by category",
+    file: "src/public/queries.ts",
+    from: ".orderBy(rankBy(teamMembers.category, teamCategory), asc(teamMembers.displayOrder)",
+    to: ".orderBy(asc(teamMembers.displayOrder)",
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "resources in category text order instead of the page's order",
+    file: "src/public/queries.ts",
+    from: "rankBy(siteResources.category, resourceCategory)",
+    to: "asc(siteResources.category)",
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "reports oldest year first",
+    file: "src/public/queries.ts",
+    from: ".orderBy(desc(reports.year), desc(reports.uploadedAt), byRowidDesc)",
+    to: ".orderBy(asc(reports.year), desc(reports.uploadedAt), byRowidDesc)",
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "blog oldest first",
+    file: "src/public/queries.ts",
+    from: "const newestFirst = [desc(blogPosts.publishedAt), byRowidDesc] as const;",
+    to: "const newestFirst = [asc(blogPosts.publishedAt), byRowidDesc] as const;",
+    tests: PUBLIC_BLOG,
+  },
+  {
+    name: "featured article repeated in the grid",
+    file: "src/public/queries.ts",
+    from: "and(published, ne(blogPosts.id, sql`(${featuredId})`))",
+    to: "published",
+    tests: PUBLIC_BLOG,
+  },
+  {
+    name: "blog page not clamped to the last page",
+    file: "src/public/blog-rules.ts",
+    from: "const page = Math.min(Math.max(1, requestedPage ?? 1), totalPages);",
+    to: "const page = Math.max(1, requestedPage ?? 1);",
+    tests: `${PUBLIC_BLOG} test/public-rules.test.ts`,
+  },
+  {
+    name: "related window one day too wide",
+    file: "src/public/blog-rules.ts",
+    from: "export const RELATED_WINDOW_DAYS = 180;",
+    to: "export const RELATED_WINDOW_DAYS = 181;",
+    tests: `${PUBLIC_BLOG} test/public-rules.test.ts`,
+  },
+  {
+    name: "Cache-Control of the lists no longer the contract's",
+    file: "src/public/cache.ts",
+    from: 'export const CACHE_CONTENT = "public, s-maxage=60, stale-while-revalidate=300";',
+    to: 'export const CACHE_CONTENT = "public, s-maxage=3600";',
+    tests: PUBLIC_READ,
+  },
+  {
+    name: "public answers put behind the admin API's blanket no-store",
+    file: "src/worker.ts",
+    from: 'app.route("/", createPublicApp());',
+    to: 'app.use("/api/public/*", async (c, next) => {\n  await next();\n  c.header("Cache-Control", "no-store");\n});\napp.route("/", createPublicApp());',
+    tests: PUBLIC_READ,
+  },
+
+  // --------------------------------------------------- the public API: the budget
+  {
+    name: "blog index queries run one after the other instead of in one batch (round trips triple)",
+    file: "src/api/public/read.ts",
+    from: "const [featuredRows, countRows, guessedRows] = await db.batch([\n    featuredPostQuery(db),\n    publishedCountQuery(db),\n    blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize),\n  ]);",
+    to: "const featuredRows = await featuredPostQuery(db);\n  const countRows = await publishedCountQuery(db);\n  const guessedRows = await blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize);",
+    tests: PUBLIC_BUDGET,
+  },
+  {
+    name: "an impossible slug is looked up in D1 instead of refused (no shape check)",
+    file: "src/api/public/read.ts",
+    from: "if (slug.length > SLUG_MAX_LENGTH || !SLUG_PATTERN.test(slug)) return notFound(c);",
+    to: "",
+    tests: PUBLIC_BUDGET,
+  },
+  {
+    name: "index for the featured article dropped from the migration (a sort of every article)",
+    file: "migrations/0004_public_blog_index.sql",
+    from: "CREATE INDEX `blog_posts_status_featured_published_idx` ON `blog_posts` (`status`,`featured`,`published_at`);",
+    to: "SELECT 1;",
+    tests: PUBLIC_BUDGET,
+  },
+
+  // ------------------------------------------- the public API: the contact form
+  {
+    name: "contact route mounted on the public app, with the service binding mark (the internet can post)",
+    file: "src/api/public/index.ts",
+    from: "export function createPublicApp() {\n  const app = new Hono<{ Bindings: Bindings }>();\n",
+    to: 'export function createPublicApp() {\n  const app = new Hono<{ Bindings: Bindings }>();\n  app.use("*", markServiceBindingCall);\n  app.route(PUBLIC_BASE_PATH, createContactRoutes(resolveContactDeps));\n',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact route no longer checks that the call came through the binding",
+    file: "src/api/public/contact.ts",
+    from: 'routes.post("/contact", requireServiceBinding, async (c) => {',
+    to: 'routes.post("/contact", async (c) => {',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "visitor address taken from CF-Connecting-IP when the header is missing",
+    file: "src/api/public/contact.ts",
+    from: "const ip = c.req.header(CLIENT_IP_HEADER)?.trim();",
+    to: 'const ip = (c.req.header(CLIENT_IP_HEADER) ?? c.req.header("cf-connecting-ip"))?.trim();',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "visitor address taken from X-Forwarded-For",
+    file: "src/api/public/contact.ts",
+    from: "const ip = c.req.header(CLIENT_IP_HEADER)?.trim();",
+    to: 'const ip = (c.req.header("x-forwarded-for")?.split(",")[0] ?? c.req.header(CLIENT_IP_HEADER))?.trim();',
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact rate limit not applied",
+    file: "src/api/public/contact.ts",
+    from: "if (!verdict.allowed) {",
+    to: "if (false) {",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact body size not capped while reading",
+    file: "src/api/public/contact.ts",
+    from: "if (size > max) {",
+    to: "if (false) {",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact honeypot hit is processed like a real message",
+    file: "src/api/public/contact.ts",
+    from: 'if (parsed.kind === "honeypot") return c.json({ ok: true, message: CONTACT_MESSAGES.success }, 201, headers);',
+    to: "",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact duplicate guard removed (the same email is saved again within 5 minutes)",
+    file: "src/public/contact.ts",
+    from: "WHERE NOT EXISTS (SELECT 1 FROM contact_messages WHERE email = ? AND created_at >= ?)",
+    to: "WHERE ? IS NOT NULL AND ? IS NOT NULL",
+    tests: PUBLIC_CONTACT,
+  },
+  {
+    name: "contact audit row written even when the message was refused as a duplicate",
+    file: "src/public/contact.ts",
+    from: "WHERE EXISTS (SELECT 1 FROM contact_messages WHERE id = ?)",
+    to: "WHERE ? IS NOT NULL",
+    tests: PUBLIC_CONTACT,
+  },
+
+  // ------------------------------------------------ the public API: purge plan
+  {
+    name: "purge plan of a team save names no cache tag",
+    file: "src/public/purge.ts",
+    from: "return { paths: [PATHS.team], tags: [TAGS.team] };",
+    to: "return { paths: [PATHS.team], tags: [] };",
+    tests: PUBLIC_PURGE,
   },
 ];
 
