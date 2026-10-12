@@ -10,7 +10,7 @@ export function AuthErrorPage() {
   usePageTitle("Gagal Masuk");
   const [params] = useSearchParams();
   return (
-    <AuthShell title="Gagal masuk" subtitle="Masuk untuk mengelola konten Sakola Kembara.">
+    <AuthShell title="Gagal masuk">
       <Alert>{queryErrorMessage(params.get("error"))}</Alert>
       <Button href="/login" size="lg" fullWidth>
         Kembali ke halaman masuk

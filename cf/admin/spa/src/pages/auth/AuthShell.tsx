@@ -7,14 +7,11 @@ import type { ReactNode } from "react";
  */
 export function AuthShell({
   title,
-  subtitle,
   description,
   footer,
   children,
 }: {
   title: string;
-  /** Under the brand name, above the title. */
-  subtitle?: string;
   /** Under the title. */
   description?: string;
   /** Below a rule at the bottom, e.g. the way back to sign-in. */
@@ -27,7 +24,6 @@ export function AuthShell({
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <div className="mb-8 text-center">
             <p className="inline-block font-[family-name:var(--font-display)] text-2xl text-gray-900">Sakola Kembara</p>
-            {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
           </div>
           <h1 className="text-center font-[family-name:var(--font-display)] text-xl font-semibold text-gray-900">{title}</h1>
           {description && <p className="mt-2 text-center text-sm text-gray-600">{description}</p>}
