@@ -4,9 +4,10 @@ What the account owner does in the terminal and dashboard, and **when** each ste
 
 ## Decisions this guide relies on
 
-- Sakola Kembara runs in the **organisation account** (named after dzul@sakolakembara.org, plan **Free**, no card). The owner's personal account and any other account the login can see are **not** used.
+- Sakola Kembara runs in the **organisation account** (named after dzul@sakolakembara.org, plan **Free**; a payment card is on file only because enabling R2 requires one). The owner's personal account and any other account the login can see are **not** used.
 - A single wrangler login can see several accounts (personal, organisation, client accounts). **Always pin the account explicitly** (`CLOUDFLARE_ACCOUNT_ID` or `--account-id`) and never run a command without it.
 - Because the plan is Free, the 10 ms CPU limit is enforced there and error 1102 is a valid signal. Real per-route CPU is measured in this account (SAKEM-084).
+- "$0" means no charges while staying inside the free tiers (R2: 10 GB storage, 1 million Class A and 10 million Class B operations per month). The card is not a spending cap: keep uploads small and set a usage or billing alert in the dashboard (Notifications).
 - This repo is public: no account id, token, resource id or infrastructure hostname goes into a tracked file, ticket, PR or chat message. Say "done" or "failed", never the value.
 
 ## What is needed when
@@ -14,12 +15,12 @@ What the account owner does in the terminal and dashboard, and **when** each ste
 | Milestone | Needed from the account |
 | --- | --- |
 | M1 to M4 (building, local) | Nothing. All work runs locally. |
-| M5 staging | Terminal login (Part 2), CI token and GitHub secrets (Part 3), `workers.dev` subdomain. The zone is **not** needed: staging lives on `workers.dev`. |
+| M5 staging | Terminal login (Part 2), CI token and GitHub secrets (Part 3). A `workers.dev` staging works for most checks, but the Workers Cache API is only documented to work on custom domains, so testing cache behaviour needs a staging subdomain on `sakolakembara.org`, which means an **active zone** (nameservers moved) before cutover. Open decision, see SAKEM-084. |
 | Cutover | Zone and DNS, Resend domain, Turnstile, R2 public domain, rollback notes (Part 4). |
 
 ## Part 1: quick checks (5 minutes, now)
 
-1. Sign in to the Cloudflare dashboard, switch to the organisation account and confirm: the plan is **Free** (Billing or Subscriptions) with no card attached, and your role is **Administrator** (or equivalent), which you need to create tokens and resources.
+1. Sign in to the Cloudflare dashboard, switch to the organisation account and confirm: the plan is **Free** (Billing or Subscriptions), R2 is enabled, a usage or billing notification is set, and your role is **Administrator** (or equivalent), which you need to create tokens and resources.
 2. Check your GitHub permission on the repo (needed for environment secrets):
 
    ```bash
