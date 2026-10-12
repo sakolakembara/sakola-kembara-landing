@@ -22,7 +22,7 @@ Why the site is moving to Cloudflare Workers, what the target looks like, and in
 
 1. **Public site on Astro** (`cf/web/`; this slice proves it). The new Worker sits in front of the legacy origin. It serves the ported public pages and **passes every other path through** to the old Next app, so `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, `/portal/*`, `/admin/*`, `/api/*` and the static files those pages need keep working on the same hostname. URLs, cookies and SSO do not change.
 2. Port the remaining public pages (program, laporan, donasi, kontak, gabung-siswa) and shrink the not-yet-ported list in the Worker.
-3. Admin and portal on Hono + React SPA + D1; migrate data from Postgres; retire the VPS. First slice (local only, SAKEM-078): [`admin-skeleton.md`](admin-skeleton.md).
+3. Admin and portal on Hono + React SPA + D1; migrate data from Postgres; retire the VPS. First slice (local only, SAKEM-078): [`admin-skeleton.md`](admin-skeleton.md). Full D1 schema and the permission model (SAKEM-081, local D1 only): [`d1-schema.md`](d1-schema.md).
 
 ## Pass-through idea
 

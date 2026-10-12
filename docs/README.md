@@ -52,6 +52,7 @@ Decisions and the first local slice of the new public site (`cf/web/`, Astro on 
 
 - [`cloudflare/README.md`](cloudflare/README.md) — Why ($0, Workers Free limits, SEO parity), the target (Astro public site; Hono + React SPA + D1 for admin later), the phases, and the pass-through idea.
 - [`cloudflare/web-skeleton.md`](cloudflare/web-skeleton.md) — How to run `cf/web`, what was built, the asset pipeline (images, PDFs, headers, budgets, how to add an image), the legacy path list and conflicts, measurements, the SEO parity checklist, known gaps, what needs a real zone, and the port checklist for the remaining public pages.
+- [`cloudflare/d1-schema.md`](cloudflare/d1-schema.md) — The full D1 schema of the new admin backend (`cf/admin`): conventions, every legacy table mapped column by column, the new tables (area grants, blog, media), the constraint catalog, the permission model (roles x areas, who may grant), how to migrate and seed locally, and the Workers Free headroom estimate. Local D1 only.
 
 ## How to use this folder
 

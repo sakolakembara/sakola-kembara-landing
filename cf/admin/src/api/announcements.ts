@@ -2,11 +2,12 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireAccess } from "../auth/guard";
+import { requireArea } from "../auth/guard";
 import type { AppEnv } from "../context";
 import { auditStatement } from "../db/audit";
 import * as schema from "../db/schema";
 import { announcementSeverity } from "../db/schema";
+import { readJson } from "./json";
 
 // Port of app/(admin)/admin/announcements/actions.ts. Same fields and the same
 // validation messages; the legacy form posts "on" for the checkbox and strings
@@ -50,27 +51,16 @@ const announcementInput = z
 
 export const announcementRoutes = new Hono<AppEnv>();
 
-/**
- * Cookies authenticate this API, and a cookie scoped to the parent domain is
- * also sent from sibling subdomains. Requiring a JSON content type closes the
- * "simple request" route for cross-site writes (a form or text/plain post
- * cannot carry it, and any other content type needs a CORS preflight, which
- * this app never grants).
- */
-async function readJson(c: { req: { header(name: string): string | undefined; json(): Promise<unknown> } }) {
-  if (!c.req.header("content-type")?.toLowerCase().startsWith("application/json")) return undefined;
-  return c.req.json().catch(() => undefined);
-}
-
-// Reading needs any admin role; writing needs editor or super_admin. This is
-// the whole of the viewer-is-read-only rule.
-announcementRoutes.get("/", requireAccess("admin-read"), async (c) => {
+// Announcements belong to the `komunikasi` area (docs/cloudflare/admin-ia.md).
+// Reading needs any admin role except students; writing needs super_admin or
+// an editor who was granted `komunikasi`. Viewers never write.
+announcementRoutes.get("/", requireArea("komunikasi", "read"), async (c) => {
   const db = drizzle(c.env.DB, { schema });
   const rows = await db.select().from(schema.announcements).orderBy(desc(schema.announcements.createdAt));
   return c.json({ announcements: rows });
 });
 
-announcementRoutes.post("/", requireAccess("admin-write"), async (c) => {
+announcementRoutes.post("/", requireArea("komunikasi", "write"), async (c) => {
   const raw = await readJson(c);
   if (raw === undefined) return c.json({ error: "json_required" }, 415);
   const parsed = announcementInput.safeParse(raw);
@@ -86,6 +76,7 @@ announcementRoutes.post("/", requireAccess("admin-write"), async (c) => {
     db.insert(schema.announcements).values({ id, ...data, createdBy: user.id }).returning(),
     auditStatement(db, user, {
       action: "announcement.create",
+      resourceType: "announcement",
       resourceId: id,
       metadata: { title: data.title, severity: data.severity, active: data.active },
     }),
@@ -93,7 +84,7 @@ announcementRoutes.post("/", requireAccess("admin-write"), async (c) => {
   return c.json({ announcement: inserted[0] }, 201);
 });
 
-announcementRoutes.put("/:id", requireAccess("admin-write"), async (c) => {
+announcementRoutes.put("/:id", requireArea("komunikasi", "write"), async (c) => {
   const raw = await readJson(c);
   if (raw === undefined) return c.json({ error: "json_required" }, 415);
   const parsed = announcementInput.safeParse(raw);
@@ -119,6 +110,7 @@ announcementRoutes.put("/:id", requireAccess("admin-write"), async (c) => {
       .returning(),
     auditStatement(db, user, {
       action: "announcement.update",
+      resourceType: "announcement",
       resourceId: id,
       metadata: { title: data.title, severity: data.severity, active: data.active },
     }),
@@ -126,7 +118,7 @@ announcementRoutes.put("/:id", requireAccess("admin-write"), async (c) => {
   return c.json({ announcement: updated[0] });
 });
 
-announcementRoutes.delete("/:id", requireAccess("admin-write"), async (c) => {
+announcementRoutes.delete("/:id", requireArea("komunikasi", "write"), async (c) => {
   const user = c.get("user");
   const db = drizzle(c.env.DB, { schema });
   const id = c.req.param("id");
@@ -141,6 +133,7 @@ announcementRoutes.delete("/:id", requireAccess("admin-write"), async (c) => {
     db.delete(schema.announcements).where(eq(schema.announcements.id, id)),
     auditStatement(db, user, {
       action: "announcement.delete",
+      resourceType: "announcement",
       resourceId: id,
       metadata: { title: existing.title },
     }),

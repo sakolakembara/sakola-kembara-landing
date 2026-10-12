@@ -13,6 +13,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply sakem-admin --local",
+    "db:seed:local": "tsx scripts/seed.ts",
+    "db:drift": "node scripts/check-migrations.mjs",
     "measure": "tsx scripts/measure.ts",
     "test:negative": "node scripts/negative-checks.mjs"
   },

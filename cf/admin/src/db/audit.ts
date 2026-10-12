@@ -4,8 +4,24 @@ import * as schema from "./schema";
 
 export type Db = DrizzleD1Database<typeof schema>;
 
+/**
+ * Actions written so far. The names are the legacy ones (lib/audit-labels.ts,
+ * which holds their Indonesian labels); the union grows as each area is
+ * ported. Rows keep their action as free text, so old names stay readable.
+ */
+export type AuditAction =
+  | "announcement.create"
+  | "announcement.update"
+  | "announcement.delete"
+  // An admin's area grants changed (Pengaturan). Legacy label: "Admin diubah".
+  | "admin.update";
+
+/** Resource types written so far (legacy names, see RESOURCE_TYPES in lib/audit-labels.ts). */
+export type AuditResourceType = "announcement" | "admin_user";
+
 export interface AuditEntry {
-  action: "announcement.create" | "announcement.update" | "announcement.delete";
+  action: AuditAction;
+  resourceType: AuditResourceType;
   resourceId: string;
   metadata?: Record<string, unknown>;
 }
@@ -22,7 +38,7 @@ export function auditStatement(db: Db, actor: Pick<AuthUser, "id" | "email">, en
     actorId: actor.id,
     actorEmail: actor.email.toLowerCase(),
     action: entry.action,
-    resourceType: "announcement",
+    resourceType: entry.resourceType,
     resourceId: entry.resourceId,
     metadata: entry.metadata ?? null,
   });
