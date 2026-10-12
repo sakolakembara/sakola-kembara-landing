@@ -46,6 +46,7 @@ contact form, any of:
 | `team`, `reports`, `resources`, `blog`, `blog/{slug}` | `public, s-maxage=60, stale-while-revalidate=300` | [L] values, verified on the built legacy server |
 | `announcements/current` | `public, s-maxage=30, stale-while-revalidate=60` | [L] |
 | `blog/{slug}`, unknown slug (404) | `public, s-maxage=30` | [L] |
+| `shortlinks/{slug}`, every answer | `no-store` | [N] addition, see [the endpoint](#get-apipublicshortlinksslug) |
 | `POST contact`, every error | `no-store` | [L] |
 
 **[L] Why those numbers.** A change is visible to a cache in front of the API after at most `s-maxage` (60 s), plus one stale answer while it refetches, so an edit shows within about a minute and never takes more than about six. Announcements get the shorter window because an urgent notice should appear and disappear quickly. A 404 is cached for 30 s so probing cannot hammer the origin while a newly published article still appears within 30 s. Responses carry no cookies and depend on no request header, so they are safe to share. (Under Next, `Vary` also lists the RSC headers; a server-to-server caller never sends them. A Worker does not add them.)
@@ -58,7 +59,7 @@ contact form, any of:
 
 | Status | `error` | Used by |
 | --- | --- | --- |
-| `404` | `not_found` | unknown or unpublished blog slug |
+| `404` | `not_found` | unknown or unpublished blog slug; unknown or inactive shortlink |
 | `400` | `body_too_large`, `invalid_client_ip`, `invalid_json`, `validation_failed` | contact |
 | `401` | `unauthorized` (+ `reason`) | contact, only when the HMAC option is enabled |
 | `429` | `rate_limited`, `duplicate_recent` (+ `Retry-After`, `retryAfterSeconds`) | contact |
@@ -272,6 +273,27 @@ Exactly one of `filePath` (with `fileSize`), `externalUrl`, `bodyText` is set, m
 | `contentMarkdown`, `contentHtml` | stored, rendered together at save |
 | (not exposed) | status, `wpId`, `sourceUrl`, audit columns |
 
+### `GET /api/public/shortlinks/{slug}`
+
+> **An addition to this contract (SAKEM-082), [N] in every part: the legacy app resolved short links inside its own `[slug]` route and had no API for them.** How it is built, the cost per visit and the reasons: [`admin-konten.md`](admin-konten.md#6-the-redirect).
+
+Where a short link (`sakolakembara.org/<slug>`) goes. The consumer (`cf/web`) turns the answer into a redirect. Served on the **internal face only** (the `PublicApi` entrypoint, [`public-api.md`](public-api.md)); the Worker's public face answers the plain `404` for this path like every other under `/api/public`.
+
+| Request | Rule |
+| --- | --- |
+| `{slug}` | lowercase letters, digits and single inner hyphens, at most 64 characters (the grammar of the admin's slug and of the table's CHECK). Anything else, an upper-case letter included, is a `404` **without a D1 read**: the consumer lower-cases the path first |
+
+```json
+{ "shortlink": { "targetUrl": "https://forms.gle/abc123" } }
+```
+
+- `targetUrl` is a path of the site (one leading `/`) or an `http(s)` URL, with no control character and no backslash. The API never answers one that is not (it answers the `404` for it), and the consumer checks again before it follows it. Nothing else about the link is exposed: not the id, the note, the count or the dates.
+- **`404 { "error": "not_found" }` is the answer for an unknown slug and for an inactive link alike**, so a retired link does not confirm that it ever existed. Only this exact `404` means "not found": the consumer treats any other `404` (an HTML page, other JSON) as an outage, so a wrong base URL cannot make every link look deleted.
+- **Every answer is `Cache-Control: no-store`**, with no `Cache-Tag`, no cookie and no CORS. Nothing may cache it: a hit would not reach the API, so its visit would not be counted, and a link switched off or repointed must work that way at the next visit.
+- **A visit is counted by this call, and this is the one read endpoint with a side effect.** When it answers `200` it also adds one to the link's click count and stamps the time of the last click, **after the answer is decided, in `waitUntil`**: the answer never waits for the write and never fails because of it (a failed write is one fixed line in the log). Every call that finds an active link counts, without a limit (Dzul, 2026-10-12). No address, user agent or referrer is read or kept.
+- Cost: one indexed read (the unique slug index), one `UPDATE` of one row written; none for a path that cannot be a slug.
+- The consumer answers `307` with `Location: targetUrl` and `Cache-Control: no-store` (not `308`: a slug is repointed at any time), the site's 404 for `not_found`, and a `503` for any failure. The fixture API (`cf/web/scripts/fixture-api.mjs`) serves this endpoint with the same shapes, three links, a click counter at `GET /__clicks`, and the failure modes `500`, `429`, `slow`, `badjson`, `html404`, `empty` and `unsafe`.
+
 ### `POST /api/public/contact`
 
 The contact form. The contract below is **neutral about how the request arrives**: the same body, rules, responses and rate limit apply whichever transport is used. Only authentication and the source of the visitor's address differ.
@@ -435,6 +457,7 @@ The legacy shapes are the row types (`TeamMember`, `Report`, `SiteResource`, `An
 - **Caching on the site.** It does not read the API's `Cache-Control`: it keeps the parsed payload in `caches.default` for **60 s** (`CONTENT_CACHE_FRESH_SECONDS`, the one knob of every content list), the last good copy for 7 days (served when the API is down or invalid), and a "not found" for 30 s. So an admin edit shows within about a minute plus whatever caching the API adds. There is no purge hook on the site side; the cache keys are the exact API URLs (`.../api/public/blog?page=1&pageSize=15`, `.../api/public/blog/<slug>`), so an API Worker on the same zone could delete them from `caches.default`.
 - **Fields it uses.** List entries: everything in the contract; an optional `modifiedISO` on an entry is used for the sitemap `lastmod` (without it the sitemap shows `dateISO`, so adding it is a backwards compatible improvement). Article: `contentHtml` (required, injected unescaped, so the API must sanitize at save), `modifiedISO`, `imageWidth`/`imageHeight` (the `width` and `height` of the hero and cards). **`contentMarkdown` is never used** and is dropped when the payload is parsed; leaving it out of the public response would roughly halve the JSON the Worker parses on a cache miss. `featured` on an entry is ignored: the featured card is the `featured` object of the list payload.
 - **Images.** `image` is used as given, except that a path the build's asset manifest knows (the migrated articles' images) gets its WebP `srcset`. Inline images of `contentHtml` are used as given too, so the HTML that renders the 80 migrated articles should come from the build pipeline (`plugins/blog-content.mjs`, `createBlogReader`) to keep their `srcset`, `width` and `height`. An R2 upload (`/uploads/...`) gets `UPLOADS_BASE_URL` in front, also inside `contentHtml` (see [`uploads.md`](uploads.md#the-public-site-uploads_base_url)).
+- **Shortlinks** (an addition). `/<slug>` is handled by the catch-all route (`src/pages/[...path].astro`), after every real page, legacy path, redirect rule and static file: a single segment that fits the slug grammar (lower-cased first) is looked up with one `GET /api/public/shortlinks/<slug>`, never cached on the site, 2 s timeout, answered as `307`, the site's 404 (the contract's `404 not_found` only) or a plain `503` for any other failure (`cf/web/src/lib/shortlink.ts`). The legacy app is no longer asked for shortlinks.
 - **Contact.** The Astro Worker validates first with the legacy rules (checked against the real zod schema), keeps the honeypot, applies its own rate limit by `CF-Connecting-IP`, then sends `{ fullName, email, subject, message, website: "" }` as JSON with `X-Sakem-Client-Ip` set to that address, or `0.0.0.0` when the header is missing or not a single IP literal (the contract's shared "unknown" bucket), and `X-Sakem-Turnstile-Token` set to the form's Turnstile token when it has one (an addition to this contract, [`public-api.md`](public-api.md): the API answers `400 turnstile_failed` for a missing, failed or reused token wherever a secret is configured; the site shows "Verifikasi gagal. Silakan coba lagi."). It shows its own constants for the messages (the legacy wording), never the `message` strings of a response, uses `fieldErrors` of a `400 validation_failed`, and reads `Retry-After` or `retryAfterSeconds` of a `429`. A `429` with `duplicate_recent` is the duplicate message, any other `429` the rate-limit message. **Every other answer** (`503`, `5xx`, `401`, `400` with another code, a network error, no answer in 8 s) is one plain "could not be sent" page with a 503 status. The API must still validate and rate-limit: the site's checks are a first line, not the trust boundary. The one deliberate wording difference from the legacy form: an email over 254 characters shows `Maksimal 254 karakter` (the legacy schema had no message there, so zod's English default would show).
 
 ## What the Worker API must reproduce
@@ -478,6 +501,7 @@ Decided (recorded so the implementing PR does not reopen them):
 - **The contact form uses transport A** (Dzul, 2026-10-12): the Astro Worker calls the API Worker through an internal service binding. No HMAC, no shared secret, so `PUBLIC_API_SHARED_SECRET` does not exist; the visitor address travels in `X-Sakem-Client-Ip` and is trusted because the binding authenticates the caller. B and C stay described as options.
 - **Uploaded files live in R2 on a separate public domain**, with root-relative paths in the payloads; nothing is proxied through a Worker (Dzul, 2026-10-12). The site rewrites paths under `/uploads/` to `UPLOADS_BASE_URL` when it renders, in the fields and inside `contentHtml` (PM, 2026-10-12; [`uploads.md`](uploads.md)).
 - **The blog is managed in the new admin** (D1): HTML rendered at save time and stored; the site caches 60 s and the API purges its own cache on save.
+- **Shortlinks are resolved by the API** (SAKEM-082, an addition): one internal `GET /api/public/shortlinks/{slug}` per visit, which also counts the click after it has answered, without a limit (Dzul, 2026-10-12); never cached. [`admin-konten.md`](admin-konten.md#6-the-redirect).
 
 Open:
 

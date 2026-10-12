@@ -9,7 +9,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | Part | Where |
 | --- | --- |
 | Drizzle schema, one file per concern, re-exported from `src/db/schema.ts` | `cf/admin/src/db/schema/` |
-| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)) | `cf/admin/migrations/` |
+| Four SQL migrations, one per concern, `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), and `0007_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0007)) | `cf/admin/migrations/` |
 | Permission model (pure) and the `requireArea` guard | `src/auth/permissions.ts`, `src/auth/guard.ts` |
 | Super-admin routes to grant and revoke an editor's areas | `src/api/admin-users.ts` |
 | Dev seed for every table | `scripts/seed-data.ts`, `scripts/seed.ts` |
@@ -108,7 +108,7 @@ Same columns (`fullName`, `email`, `subject`, `message`, `readAt` null until ope
 
 ### `reports`
 
-Same columns (`title`, `description`, `category`, `year`, `filePath`, `fileSize`, `uploadedBy` `SET NULL`, `uploadedAt`). Added CHECKs: `category` enum; `year` is `2025` or `2025/2026` (the text sort order depends on 4-digit padding); `file_size >= 0`. Index `(category, year)` kept.
+Same columns (`title`, `description`, `category`, `year`, `filePath`, `fileSize`, `uploadedBy` `SET NULL`, `uploadedAt`), plus **`updated_at`** (migration `0007`, added with the Laporan screen: the legacy admin could edit a report's metadata and the edit needs a version for `If-Match`; existing rows take their upload time). Added CHECKs: `category` enum; `year` is `2025` or `2025/2026` (the text sort order depends on 4-digit padding); `file_size >= 0`. Index `(category, year)` kept.
 
 ### `team_members`
 
@@ -120,7 +120,7 @@ Same columns. Added CHECKs: `category` and `content_type` enums; `file_size >= 0
 
 ### `shortlinks`
 
-Same columns. Unique index `shortlinks_slug_idx` kept. Added CHECKs: the legacy `validateSlug` grammar (lowercase letters, digits, single inner hyphens, 1 to 64 characters), so the database is the final arbiter even when two admins submit the same slug at once; the target is `/path` (not `//host`) or `http(s)://`; `click_count >= 0`. The reserved-slug list (paths of real routes) stays application code because it follows the routing of the public site.
+Same columns. Unique index `shortlinks_slug_idx` kept. Added CHECKs: the legacy `validateSlug` grammar (lowercase letters, digits, single inner hyphens, 1 to 64 characters), so the database is the final arbiter even when two admins submit the same slug at once; the target is `/path` (not `//host`) or `http(s)://`; `click_count >= 0`. The reserved-slug list (paths of real routes) stays application code because it follows the routing of the public site (`cf/admin/src/shortlinks/reserved.ts`). The CHECK does **not** refuse a `/\evil.example` or a tab inside a path (the application's target rule does: [`admin-konten.md`](admin-konten.md#5-shortlink)). `click_count` and `last_clicked_at` are written only by the redirect, one `UPDATE` of one row after the answer, which leaves `updated_at` alone.
 
 ### `audit_log`
 
@@ -282,7 +282,7 @@ Rows **written** per day (the tighter budget; a row = the table row plus one per
 | Shortlink click | 1 | `click_count` update, one row |
 | Contact form | about 13 | the message 5 (table, primary key, 3 indexes) plus its audit row 8 |
 
-A typical day (a few dozen sign-ins, 20 admin actions) is under 1,000 writes; an admission-season peak (500 sign-ups in a day) is about 10,000, a tenth of the budget. **The one unbounded writer is the shortlink counter**: one write per click, so a viral link (100,000 clicks a day) would use the whole budget. Mitigate before launch (count in `waitUntil` with sampling, or off D1) when the shortlink API is built.
+A typical day (a few dozen sign-ins, 20 admin actions) is under 1,000 writes; an admission-season peak (500 sign-ups in a day) is about 10,000, a tenth of the budget. **The one unbounded writer is the shortlink counter**: one write per click, so a viral link (100,000 clicks a day) would use the whole budget. **Decided (Dzul, 2026-10-12): every click is counted, without a limit, one write per click**, in `waitUntil` after the redirect is answered, so a failing or exhausted write never fails or delays the redirect. The risk he accepted: one viral link can spend the day's 100,000 writes, after which every write (admin sign-in, a contact message) fails until 00:00 UTC while the redirects keep working. The arithmetic (1 row written and at most 3 read per click; the Worker's own 100,000 requests a day is the same wall) and the fallbacks he named (a per-link cap of 2,000 clicks a day, or no counting) are in [`admin-konten.md`](admin-konten.md#7-d1-and-request-budget); SAKEM-084 watches rows written per day.
 
 Rows **read** per day: an authenticated admin request reads about 4 to 10 rows (session, user, an editor's grants); the dashboard adds, in one round trip, about two rows per application still waiting for a decision (an index entry and the row, to read its batch), one per unread message and up to nine for the three newest batches (an index entry, the row and the first application's entry for each), so about 140 at the peak of a review season (60 waiting, 12 unread) and a handful the rest of the year, whatever the history (measured with the local D1's `meta.rows_read`; the real D1 is only confirmed on the deployed Worker, SAKEM-084). Public list endpoints are the cost: `team`, `reports`, `resources` up to about 50 rows each, a blog page about 100 to 200 (index range plus the page and the count), a blog article similar for the related ones. Uncached, one page view is on the order of 300 rows; at 5,000,000 a day that is about 16,000 uncached page views. The 60 s edge cache in the content contract is what keeps real traffic far below that (a few thousand page views a day cost about 1,000,000 rows uncached, and much less cached). Reading the list columns without `content_html` and `content_markdown` keeps each row small; the article endpoint is the only reader of the two body columns.
 
@@ -292,4 +292,4 @@ Rows **read** per day: an authenticated admin request reads about 4 to 10 rows (
 2. **Aktivitas for super_admin only.** Applied as decided; the older IA proposal had it for every role. Say so if viewers and editors should see their own activity.
 3. **`lastLoginAt` was dropped.** Derive it from the latest session, or add a column written by a Better Auth session hook in the auth ticket.
 4. **`student_applications.batch_id` and `email` are NOT NULL** and a `file` resource requires `file_size`, because the legacy exceptions existed only for historic rows. Revert one of them if you plan to import such rows.
-5. **Shortlink click counting** needs a plan before the shortlink API ships (see headroom).
+5. ~~**Shortlink click counting** needs a plan before the shortlink API ships.~~ **Decided 2026-10-12: unlimited, one write per click, after the answer** (see headroom and [`admin-konten.md`](admin-konten.md#6-the-redirect)).
