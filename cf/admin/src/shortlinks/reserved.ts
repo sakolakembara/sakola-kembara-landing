@@ -41,8 +41,9 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "static",
 
   // ---- new for the Cloudflare site
-  // The 404 page has a URL of its own (cf/web/src/pages/404.astro).
+  // The 404 page has a URL of its own (cf/web/src/pages/404.astro), and `index` is the name of the home page's file.
   "404",
+  "index",
   // Redirect sources of cf/web/redirects.config.mjs: the assets layer answers them before the Worker runs, so a
   // shortlink with one of these names would never be reached. Old WordPress category archives:
   "cerita",

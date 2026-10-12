@@ -168,7 +168,7 @@ const stats = (xs) => {
       ['/login', 'legacy pass-through'],
       ['/_next/static/a.js', 'legacy pass-through'],
       ['/donasi', 'not yet ported -> pass-through'],
-      ['/no-such-link', 'shortlink candidate -> pass-through'],
+      ['/no-such-link', 'shortlink candidate -> API lookup, 404'],
     ];
     const home = await (await fetch(`${stack.base}/`)).text(); // (this request is counted too)
     const css = home.match(/href="(\/_astro\/[^"]+\.css)"/)?.[1];
