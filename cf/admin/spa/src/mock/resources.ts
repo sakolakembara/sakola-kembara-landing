@@ -49,7 +49,17 @@ export interface MockResource<T extends MockRowBase = MockRowBase> {
    * `"abc/publish"` for a verb. Return the Response, or `null` to let the generic store answer. `rows` is the
    * store's own array: a custom answer may read and change it.
    */
-  custom?: (request: { method: string; rest: string; url: URL; init: RequestInit; rows: T[]; access: Access }) => Response | null;
+  custom?: (request: MockRequest<T>) => Response | null;
+}
+
+/** What `custom` is given. `rest` is the path below the collection, as the request has it (not decoded). */
+export interface MockRequest<T extends MockRowBase = MockRowBase> {
+  method: string;
+  rest: string;
+  url: URL;
+  init: RequestInit;
+  rows: T[];
+  access: Access;
 }
 
 /** A resource of any row type, for the list of all of them. */
@@ -62,6 +72,9 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
   new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
 
 const error = (status: number, code: string, message?: string, extra: Record<string, unknown> = {}) => json({ error: code, ...(message ? { message } : {}), ...extra }, status);
+
+/** For a `custom` handler: the same JSON answers the generic store gives. */
+export { error as mockError, json as mockJson };
 
 function positiveInt(raw: string | null, fallback: number, max: number): number {
   if (raw === null || !/^\d{1,30}$/.test(raw.trim())) return fallback;

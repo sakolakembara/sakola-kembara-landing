@@ -1,0 +1,61 @@
+// What the blog screens know that is not React: the field limits (a copy of the Worker's `src/blog/rules.ts`; a
+// Worker test fails when they differ), the legacy date and author helpers, and the two small text functions of the
+// editor. Pure: no DOM, no React, so the Worker's contract test can import it.
+
+/** The fixed list of the legacy admin (lib/blog-types.ts BLOG_CATEGORIES), also the Worker's `blogCategories`. */
+export const BLOG_CATEGORIES = ["Career", "Cerita", "Education", "Kiat kiat", "News", "Testimonials", "Tips", "Uncategorized"] as const;
+export type BlogCategory = (typeof BLOG_CATEGORIES)[number];
+
+/** The limits of the form: the legacy ones, and the body's lowered to what rendering on the Worker can afford (docs/cloudflare/admin-blog.md). */
+export const LIMITS = {
+  titleMin: 3,
+  titleMax: 200,
+  excerptMin: 20,
+  excerptMax: 500,
+  bodyMin: 50,
+  bodyMax: 12_000,
+  authorMin: 2,
+  authorMax: 120,
+  slugMax: 160,
+} as const;
+
+/** "12.000", the way the Worker's message writes the limit. */
+export const BODY_LIMIT_LABEL = String(LIMITS.bodyMax).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+/** How long the preview waits after the last keystroke before it asks the Worker to render. */
+export const PREVIEW_DELAY_MS = 400;
+
+const MONTHS_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+/** "2026-05-21" becomes "21 Mei 2026" (the legacy `formatDateIndonesian`); anything else is returned as it came. */
+export function formatIsoDay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const month = Number(match[2]) - 1;
+  if (month < 0 || month > 11) return iso;
+  return `${Number(match[3])} ${MONTHS_ID[month]} ${match[1]}`;
+}
+
+/** The author a new article starts with: the part of the signed-in email before the "@", dots, hyphens and underscores as spaces (as the legacy page did). */
+export function defaultAuthor(email: string | null | undefined): string {
+  const local = email?.split("@")[0]?.replace(/[.\-_]/g, " ").trim();
+  return local ? local : "Sakola Kembara";
+}
+
+/** `text` with `insertion` put in place of the selection `[start, end)`, and where the cursor goes after it. */
+export function insertAtCursor(text: string, start: number, end: number, insertion: string): { value: string; cursor: number } {
+  const from = Math.max(0, Math.min(start, text.length));
+  const to = Math.max(from, Math.min(end, text.length));
+  return { value: text.slice(0, from) + insertion + text.slice(to), cursor: from + insertion.length };
+}
+
+/** The markdown a "Sisipkan Gambar" writes: on its own lines, the alt text made from the file name (the legacy rule). */
+export function imageMarkdown(fileName: string, path: string): string {
+  const alt = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]/g, " ")
+    .replace(/[\[\]\r\n]/g, " ")
+    .trim();
+  return `\n![${alt}](${path})\n`;
+}
