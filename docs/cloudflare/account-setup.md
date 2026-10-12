@@ -15,7 +15,7 @@ What the account owner does in the terminal and dashboard, and **when** each ste
 | Milestone | Needed from the account |
 | --- | --- |
 | M1 to M4 (building, local) | Nothing. All work runs locally. |
-| M5 staging | Terminal login (Part 2), CI token and GitHub secrets (Part 3). A `workers.dev` staging works for most checks, but the Workers Cache API is only documented to work on custom domains, so testing cache behaviour needs a staging subdomain on `sakolakembara.org`, which means an **active zone** (nameservers moved) before cutover. Open decision, see SAKEM-084. |
+| M5 staging | Terminal login (Part 2), CI token and GitHub secrets (Part 3), and, once the staging database exists and has its migrations, the first super_admin ([`first-super-admin.md`](first-super-admin.md)). A `workers.dev` staging works for most checks, but the Workers Cache API is only documented to work on custom domains, so testing cache behaviour needs a staging subdomain on `sakolakembara.org`, which means an **active zone** (nameservers moved) before cutover. Open decision, see SAKEM-084. |
 | Cutover | Zone and DNS, Resend domain, Turnstile, R2 public domain, rollback notes (Part 4). |
 
 ## Part 1: quick checks (5 minutes, now)
