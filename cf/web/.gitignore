@@ -6,3 +6,5 @@
 /public/images/
 # Local measurement output
 /.measure/
+# Written by scripts/build-gallery.mjs (derivatives are under /public/images/, ignored above)
+/src/lib/gallery.generated.ts
