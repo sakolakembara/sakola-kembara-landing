@@ -1,0 +1,92 @@
+---
+import Container from '~/components/Container.astro';
+import SectionHeader from '~/components/SectionHeader.astro';
+
+/**
+ * Homepage "Bergabung Bersama Kami": four ways to take part, one card each.
+ * Copy is verbatim from the root CTASection.tsx. The cards' colored buttons are
+ * a documented exception to the Button variants (DESIGN.md, Color): orange
+ * appears nowhere else. Every class is spelled out in full so Tailwind finds it.
+ */
+const ctaOptions = [
+  {
+    id: 'siswa',
+    title: 'Menjadi Siswa',
+    description:
+      'Pembinaan penuh selama satu tahun, Agustus hingga April, tanpa biaya. Terbuka bagi siswa kelas 12 dan lulusan yang menyiapkan UTBK maupun ujian mandiri.',
+    buttonText: 'Daftar Sekarang',
+    href: '/gabung-siswa',
+    color: 'bg-orange-500 hover:bg-orange-600 text-white',
+  },
+  {
+    id: 'donatur',
+    title: 'Menjadi Donatur',
+    description:
+      'Donasi mulai Rp50.000 dapat membantu menopang kegiatan belajar pekanan, asrama, dan pendampingan beasiswa hingga siswa benar-benar duduk di bangku kuliah.',
+    buttonText: 'Donasi Sekarang',
+    href: '/donasi',
+    color: 'bg-primary-blue hover:bg-primary-blue-dark text-white',
+  },
+  {
+    id: 'relawan',
+    title: 'Menjadi Relawan',
+    description:
+      'Mengajar di kelas pekanan, mendampingi asrama, atau menopang operasional cabang. Sekitar separuh relawan kami adalah alumni yang kembali.',
+    buttonText: 'Gabung Tim',
+    href: '/kontak',
+    color: 'bg-secondary-green hover:bg-green-600 text-white',
+  },
+  {
+    id: 'partner',
+    title: 'Menjadi Partner',
+    description:
+      'Dukungan institusi memperluas jangkauan kami dari delapan cabang di tiga provinsi ke daerah yang belum terjangkau.',
+    buttonText: 'Hubungi Kami',
+    href: '/kontak',
+    color: 'bg-secondary-yellow hover:bg-secondary-yellow/90 text-gray-900',
+  },
+];
+---
+
+<section class="py-14 md:py-16 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
+  {/* Background decoration */}
+  <div class="absolute inset-0" aria-hidden="true">
+    <div class="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl"></div>
+  </div>
+
+  <Container class="relative z-10">
+    <SectionHeader
+      class="mb-10 anim-reveal"
+      tone="dark"
+      eyebrow="Bergabung Bersama Kami"
+      title="Jadilah Bagian dari Perubahan"
+      lead="Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya. Empat peran berikut membuat program kami terus berjalan, dan semuanya terbuka lebar untuk Anda."
+    />
+
+    <div class="grid md:grid-cols-2 gap-5 max-w-[1000px] mx-auto">
+      {
+        ctaOptions.map((option, index) => (
+          <div
+            class="bg-white rounded-2xl p-5 sm:p-6 flex flex-col hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 anim-reveal"
+            style={`--i:${index}`}
+          >
+            <h3 class="text-lg font-bold text-gray-900 mb-1.5">{option.title}</h3>
+            <p class="text-sm text-gray-600 leading-snug mb-4">{option.description}</p>
+            {/* mt-auto keeps the buttons on a common baseline when two cards in a row have blurbs of different lengths. */}
+            <a
+              href={option.href}
+              class={`mt-auto inline-flex w-full sm:w-auto sm:self-start items-center justify-center sm:min-w-[160px] px-4 py-2.5 sm:py-2 ${option.color} text-sm font-semibold rounded-lg transition-colors`}
+            >
+              {option.buttonText}
+            </a>
+          </div>
+        ))
+      }
+    </div>
+
+    <p class="text-center text-white/60 mt-8 text-sm anim-reveal">
+      Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami bantu mencarikannya.
+    </p>
+  </Container>
+</section>

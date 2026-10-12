@@ -1,0 +1,65 @@
+---
+import Button from '~/components/Button.astro';
+import Container from '~/components/Container.astro';
+import SectionHeader from '~/components/SectionHeader.astro';
+import Tag from '~/components/Tag.astro';
+import type { BlogMeta } from '~/lib/blog-types';
+
+/**
+ * Homepage "Cerita & Inspirasi": the newest articles, as the root NewsSection
+ * does. The caller passes them (the home page takes the three newest from the
+ * blog index at build time). A cover is optional: dashboard-authored posts can
+ * have none, and then the card shows no <img> at all rather than an empty src.
+ * Cover files are the blog's own /blog/images/*, sized by the metadata index.
+ */
+interface Props {
+  articles: BlogMeta[];
+}
+const { articles } = Astro.props;
+---
+
+<section class="py-14 md:py-16 bg-white" id="blog">
+  <Container>
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8 anim-reveal">
+      <SectionHeader align="left" eyebrow="Blog" title="Cerita & Inspirasi" />
+      <Button href="/blog" variant="outline" class="self-start sm:self-auto">Lihat Semua</Button>
+    </div>
+
+    {/* Compact article list */}
+    <div class="grid md:grid-cols-3 gap-6">
+      {
+        articles.map((article, index) => (
+          <article class="anim-reveal" style={`--i:${index}`}>
+            <a
+              href={`/blog/${article.id}`}
+              class="group block bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
+            >
+              <div class="h-[160px] relative overflow-hidden">
+                {article.image && (
+                  <img
+                    src={article.image}
+                    alt={article.title}
+                    width={article.imageWidth ?? undefined}
+                    height={article.imageHeight ?? undefined}
+                    loading="lazy"
+                    decoding="async"
+                    class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                )}
+                <Tag size="sm" class="absolute top-3 left-3">
+                  {article.category}
+                </Tag>
+              </div>
+              <div class="p-4">
+                <p class="text-xs text-gray-400 mb-2">{article.date}</p>
+                <h3 class="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 group-hover:text-primary-blue transition-colors">
+                  {article.title}
+                </h3>
+              </div>
+            </a>
+          </article>
+        ))
+      }
+    </div>
+  </Container>
+</section>
