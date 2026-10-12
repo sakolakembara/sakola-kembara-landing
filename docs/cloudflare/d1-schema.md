@@ -225,7 +225,7 @@ Dashboard has no area: every admin role may open it. Public endpoints (`/api/pub
 
 `src/auth/permissions.ts` is pure (no I/O): `can`, `levelIn`, `visibleAreas`, `writableAreas`, `visibleMenu`. Never compare role strings or area names elsewhere.
 
-Usage: reads `requireArea("komunikasi", "read")`; changes `requireArea("komunikasi", "write")`; Sistem `requireArea("sistem", ...)`. A mutation also writes its audit row in the same `db.batch([...])` (one transaction), with the area-appropriate action name.
+Usage: reads `requireArea("komunikasi", "read")`; changes `requireArea("komunikasi", "write")`; Sistem `requireArea("sistem", ...)`; what has no area and is open to every admin role (the dashboard) `requireAdmin()` (401 without a session, 403 for a student; an editor with no grants passes, and what the route then shows them is limited by `visibleAreas`). A mutation also writes its audit row in the same `db.batch([...])` (one transaction), with the area-appropriate action name.
 
 ### API added
 
@@ -233,6 +233,7 @@ Usage: reads `requireArea("komunikasi", "read")`; changes `requireArea("komunika
 | --- | --- | --- |
 | `GET /api/me` | signed in | `{ user, areas: { granted, visible, writable } }`, computed by the same functions as the guards. 401 without a session. |
 | `GET /api/announcements`, `POST`, `PUT /:id`, `DELETE /:id` | `komunikasi` read / write | The SAKEM-078 sample, now under the area guard. An editor needs the `komunikasi` grant for the read too. |
+| `GET /api/dashboard` | any admin role | Added in SAKEM-082, guarded by `requireAdmin()` (401 / 403 for a student). The items of the areas the caller may see (`pendaftaran`: waiting applicants per status and the batch; `komunikasi`: unread messages), counts and links only. At most three statements in one round trip, none for an area the caller cannot see; plans and rows read are tested (`test/dashboard.test.ts`). |
 | `GET /api/admin/users` | `sistem` read | Admin accounts (viewer, editor, super_admin) with their areas. |
 | `PUT /api/admin/users/:id/areas` | `sistem` write | Body `{ "areas": ["konten", ...] }` sets the editor's complete list: adds what is missing, removes what is not listed, keeps `granted_by` of the rest, writes one audit row (`admin.update`, resource `admin_user`, metadata `{ field, before, after }`) only if something changed. 404 for an unknown user, **409 `not_editor`** for any other role, 400 for `sistem` or an unknown area, 415 for a body that is not JSON. |
 
@@ -282,7 +283,7 @@ Rows **written** per day (the tighter budget; a row = the table row plus one per
 
 A typical day (a few dozen sign-ins, 20 admin actions) is under 1,000 writes; an admission-season peak (500 sign-ups in a day) is about 10,000, a tenth of the budget. **The one unbounded writer is the shortlink counter**: one write per click, so a viral link (100,000 clicks a day) would use the whole budget. Mitigate before launch (count in `waitUntil` with sampling, or off D1) when the shortlink API is built.
 
-Rows **read** per day: an authenticated admin request reads about 4 to 10 rows (session, user, an editor's grants). Public list endpoints are the cost: `team`, `reports`, `resources` up to about 50 rows each, a blog page about 100 to 200 (index range plus the page and the count), a blog article similar for the related ones. Uncached, one page view is on the order of 300 rows; at 5,000,000 a day that is about 16,000 uncached page views. The 60 s edge cache in the content contract is what keeps real traffic far below that (a few thousand page views a day cost about 1,000,000 rows uncached, and much less cached). Reading the list columns without `content_html` and `content_markdown` keeps each row small; the article endpoint is the only reader of the two body columns.
+Rows **read** per day: an authenticated admin request reads about 4 to 10 rows (session, user, an editor's grants); the dashboard adds, in one round trip, about two rows per application still waiting for a decision (an index entry and the row, to read its batch), one per unread message and three for the batches, so about 140 at the peak of a review season (60 waiting, 12 unread) and a handful the rest of the year, whatever the history (measured with the local D1's `meta.rows_read`; the real D1 is only confirmed on the deployed Worker, SAKEM-084). Public list endpoints are the cost: `team`, `reports`, `resources` up to about 50 rows each, a blog page about 100 to 200 (index range plus the page and the count), a blog article similar for the related ones. Uncached, one page view is on the order of 300 rows; at 5,000,000 a day that is about 16,000 uncached page views. The 60 s edge cache in the content contract is what keeps real traffic far below that (a few thousand page views a day cost about 1,000,000 rows uncached, and much less cached). Reading the list columns without `content_html` and `content_markdown` keeps each row small; the article endpoint is the only reader of the two body columns.
 
 ## Open decisions for Dzul
 

@@ -99,18 +99,27 @@ SISTEM                 (hanya super_admin)
 
 Halaman awal sama untuk ketiganya (Dashboard) karena Dashboard tidak punya area: isinya yang dibatasi ke area yang boleh dilihat peran itu (bagian 3.3). Area adalah satuan izin editor; peran tidak bertambah (jawaban atas pertanyaan 2: grup menjadi satuan izin lewat `admin_area_grants`, tanpa peran baru).
 
-### 3.3 Dashboard: menonjolkan yang perlu ditangani
+### 3.3 Dashboard: hanya Perlu perhatian dan Tindakan Cepat
 
-Memakai data yang sudah tampil hari ini; urutan blok dari atas:
+*Diputuskan 2026-10-12; usulan awal punya lima blok, yang tiga di antaranya dibuang (lihat akhir bagian ini).* Dashboard terbuka untuk semua peran admin, tetapi **setiap item hanya muncul bila peran itu boleh melihat areanya**: item pendaftar dan batch milik area Pendaftaran, item pesan milik area Komunikasi, dan Konten Situs tidak punya item. Dua blok, urutan dari atas:
 
-1. **Perlu perhatian** (hanya muncul bila ada isinya):
-   - Pendaftar belum diputuskan: `pending` dan `under_review` sebagai dua hitungan, masing-masing menaut ke `Pendaftar?status=…` (filter sudah didukung).
-   - Pesan belum dibaca, menaut ke `Pesan?filter=unread`.
-   - Keadaan batch berjalan, dari turunan status yang sudah ada di halaman batch: "Buka sampai …", "Menunggu keputusan: N belum diputuskan", atau "Siap dipublikasikan", menaut ke detail batch.
-2. **Tindakan Cepat** (empat tombol yang ada), disembunyikan untuk `viewer` jika pertanyaan 1 dijawab "tegakkan".
-3. **Pendaftar terbaru** dan **Pesan terbaru** (tetap).
-4. **Aktivitas terakhir**, kini dengan tautan "Semua" ke menu Aktivitas.
-5. **Ringkasan konten** (Pengumuman yang benar-benar tampil sekarang, Artikel, Laporan, Anggota tim) dipindah ke baris kecil di bawah: informasi, bukan tugas.
+1. **Perlu perhatian.** Tiap item punya hitungan (atau keadaan) dan tautan ke daftar yang sudah terfilter (`GET /api/dashboard`, kontraknya di `cf/admin/spa/src/lib/dashboard.ts`):
+
+   | Item | Area | Isi | Menaut ke |
+   | --- | --- | --- | --- |
+   | Pendaftar pending | `pendaftaran` | jumlah `pending` di semua batch | `/applications?status=pending` |
+   | Pendaftar dalam review | `pendaftaran` | jumlah `under_review` di semua batch | `/applications?status=under_review` |
+   | Pesan belum dibaca | `komunikasi` | pesan tanpa `read_at` | `/messages?filter=unread` |
+   | Batch | `pendaftaran` | satu batch dan keadaannya: "Dibuka …", "Buka sampai …", "Menunggu keputusan: N belum diputuskan", "Siap dipublikasikan", atau "Hasil dipublikasikan" | `/batches/<id>` |
+
+   Keadaan batch dihitung server (jam peramban tidak dipakai): jendela buka-tutup sama dengan daftar batch (kedua ujung termasuk), lalu setelah tutup: sudah dipublikasikan, masih ada pendaftar yang belum diputuskan (`pending` + `under_review` di batch itu), atau semuanya sudah diputuskan dan siap dipublikasikan. Bila ada lebih dari satu batch yang relevan, yang ditampilkan satu saja, dipilih dari tiga batch terbaru menurut tanggal buka: batch yang menunggu keputusan atau publikasi dulu (itu yang butuh orang), lalu yang sedang buka, lalu yang belum buka (yang paling dekat), lalu yang sudah dipublikasikan (yang terbaru). Batch tua di luar tiga terbaru tidak dilihat.
+
+   Isi jawabannya hanya hitungan, tanggal batch, dan tautan: tidak ada nama, email, nomor telepon, isi pesan, atau nama batch. Editor Konten saja (atau editor tanpa area) mendapat `attention` kosong; dashboard lalu menampilkan "Tidak ada yang perlu ditindaklanjuti saat ini.", kalimat yang sama bila semua hitungan nol dan tidak ada batch.
+
+   Biaya (Workers Free dan D1 Free): paling banyak tiga pernyataan, satu per item (pendaftar menurut batch dan status, pesan belum dibaca, tiga batch terbaru), dalam satu perjalanan ke D1; pernyataan untuk area yang tidak boleh dilihat peran itu tidak dijalankan sama sekali. Semuanya memakai indeks yang sudah ada, tanpa migrasi; jumlah baris yang dibaca mengikuti yang menunggu (sekitar dua baris per pendaftar yang belum diputuskan, satu per pesan belum dibaca, tiga batch), bukan riwayat sekolah. Jawabannya `Cache-Control: no-store`.
+2. **Tindakan Cepat** (empat tombol yang ada: Tulis artikel, Buat pengumuman, Unggah laporan, Tambah anggota tim). Tidak berasal dari API: SPA menyaringnya dari `areas.writable` di `GET /api/me`, jadi `viewer` tidak mendapat satu pun, editor hanya yang areanya diberikan kepadanya (Konten: tiga tombol, Komunikasi: satu, Pendaftaran saja: tidak ada), dan `super_admin` keempatnya. Tombol tampil juga saat data blok pertama masih dimuat atau gagal.
+
+**Dibuang dari usulan awal (keputusan 2026-10-12):** Pendaftar terbaru, Pesan terbaru, ringkasan konten (Pengumuman aktif, Artikel, Laporan, Anggota tim) dan **Aktivitas terakhir**. Aktivitas hanya ada di menu Sistem › Aktivitas (hanya `super_admin`).
 
 ### 3.4 Pintasan dan tautan silang
 
@@ -191,7 +200,7 @@ Tidak ada yang hilang. Dua hal berpindah tempat, bukan hilang: data tabel pendaf
 
 | Sekarang | Di admin baru |
 | --- | --- |
-| `/admin` Dashboard | Dashboard; 6 kartu → "Perlu perhatian" + "Ringkasan konten"; Tindakan Cepat, Pendaftar/Pesan terbaru, Aktivitas terakhir tetap |
+| `/admin` Dashboard | Dashboard; 6 kartu → "Perlu perhatian" (hitungan dan batch, per area yang boleh dilihat peran); Tindakan Cepat tetap. Pendaftar terbaru, Pesan terbaru, ringkasan konten dan Aktivitas terakhir **dibuang** (keputusan 2026-10-12) |
 | `/admin/batches`, `/new`, `/[id]` | Pendaftaran › Batch (daftar, baru, detail + panel publikasi) |
 | `/admin/applications`, `/[id]` | Pendaftaran › Pendaftar (daftar berfilter, detail + panel tinjau) |
 | `/admin/resources`, `/new`, `/[id]/edit` | Pendaftaran › Pusat Dokumen |
@@ -225,7 +234,7 @@ Yang **bertahan** adalah aturan bisnis; yang **dibangun ulang** adalah UI dan pe
 
 | Menu | Bertahan (logika bisnis) | Dibangun ulang |
 | --- | --- | --- |
-| Dashboard | Definisi hitungan (pending, belum dibaca, aktif, total) | Kartu, widget, query agregat |
+| Dashboard | Definisi hitungan (pending, dalam review, belum dibaca) dan keadaan batch | Kartu, `GET /api/dashboard` (tiga query berindeks, lihat 3.3) |
 | Batch | Tahun unik dan 2024–2100; `closesAt` setelah `opensAt`; syarat publikasi (ada pendaftar, `pending` = 0, `under_review` = 0); publikasi/pembatalan = isi/kosongkan `resultsPublishedAt`; turunan status batch; janji privasi (siswa melihat vonis hanya setelah publikasi) | Form, tabel, pembersihan cache portal setelah publikasi |
 | Pendaftar | Alur `pending → under_review → accepted / rejected`; catatan wajib saat terima/tolak; pencabutan (`accepted → rejected`) butuh alasan ≥ 20 karakter dan aksi audit `application.revoke`; bentuk `form_data` v2 | Tampilan profil, panel tinjau; daftar 50 teratas tanpa paginasi perlu paginasi di API |
 | Pesan | Tandai dibaca saat dibuka (idempoten), tandai belum dibaca, hapus + audit | Daftar, filter, tautan balas via email |
