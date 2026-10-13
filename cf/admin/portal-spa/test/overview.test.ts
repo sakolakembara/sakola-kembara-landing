@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { daysLeft, parseOverview } from "~/lib/overview";
 import { NOW, openBatch, overviewBody } from "./helpers";
 
@@ -56,6 +56,19 @@ describe("parseOverview", () => {
 });
 
 describe("daysLeft", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("the phone's clock is never consulted: a phone set years ahead or behind changes nothing", () => {
+    for (const phone of ["2020-01-01T00:00:00.000Z", "2040-01-01T00:00:00.000Z"]) {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(phone));
+      expect(daysLeft("2026-10-23T03:00:00.000Z", NOW), phone).toBe(10);
+      vi.useRealTimers();
+    }
+  });
+
   test("whole days until the batch closes, counted from the server's clock (the legacy rule: ceil)", () => {
     expect(daysLeft("2026-10-23T03:00:00.000Z", NOW)).toBe(10);
     expect(daysLeft("2026-10-23T03:00:01.000Z", NOW)).toBe(11);

@@ -38,7 +38,21 @@ describe("sign-in", () => {
     expect(await screen.findByRole("button", { name: "Memeriksa…" })).toHaveProperty("disabled", true);
   });
 
-  test("a form submitted by a script before the token arrives sends nothing", async () => {
+  test("an expired token is not sent: the button waits for a fresh one", async () => {
+    const turnstile = fakeTurnstile();
+    turnstile.preload();
+    stubApi(withKey());
+    renderApp("/portal/login");
+    await screen.findByRole("button", { name: "Memeriksa…" });
+    turnstile.solve("token-1");
+    await screen.findByRole("button", { name: "Masuk" });
+    turnstile.expire();
+    expect(await screen.findByRole("button", { name: "Memeriksa…" })).toHaveProperty("disabled", true);
+  });
+});
+
+describe("a form submitted by a script before the token arrives sends nothing (the button is disabled, but a script does not press it)", () => {
+  test("sign-in", async () => {
     const user = userEvent.setup();
     const turnstile = fakeTurnstile();
     turnstile.preload();
@@ -53,16 +67,53 @@ describe("sign-in", () => {
     expect(api.count(`POST ${ENDPOINTS.signIn}`)).toBe(0);
   });
 
-  test("an expired token is not sent: the button waits for a fresh one", async () => {
+  test("registration", async () => {
+    const user = userEvent.setup();
     const turnstile = fakeTurnstile();
     turnstile.preload();
-    stubApi(withKey());
-    renderApp("/portal/login");
+    const api = stubApi(withKey({ [`POST ${ENDPOINTS.register}`]: respond({ ok: true }) }));
+    renderApp("/portal/register");
+    await screen.findByRole("heading", { name: "Daftar akun baru" });
+    await type(user, "Nama lengkap", "Sari Dewi");
+    await type(user, "Email", "sari@contoh.test");
+    await type(user, "Password", "rahasia123");
+    await type(user, "Ulangi password", "rahasia123");
     await screen.findByRole("button", { name: "Memeriksa…" });
-    turnstile.solve("token-1");
-    await screen.findByRole("button", { name: "Masuk" });
-    turnstile.expire();
-    expect(await screen.findByRole("button", { name: "Memeriksa…" })).toHaveProperty("disabled", true);
+    (screen.getByLabelText("Email").closest("form") as HTMLFormElement).requestSubmit();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(api.count(`POST ${ENDPOINTS.register}`)).toBe(0);
+  });
+
+  test("forgot password", async () => {
+    const user = userEvent.setup();
+    const turnstile = fakeTurnstile();
+    turnstile.preload();
+    const api = stubApi(withKey({ [`POST ${ENDPOINTS.requestReset}`]: respond({ status: true }) }));
+    renderApp("/portal/forgot-password");
+    await screen.findByRole("heading", { name: "Lupa password?" });
+    await type(user, "Email", "sari@contoh.test");
+    await screen.findByRole("button", { name: "Memeriksa…" });
+    (screen.getByLabelText("Email").closest("form") as HTMLFormElement).requestSubmit();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(api.count(`POST ${ENDPOINTS.requestReset}`)).toBe(0);
+  });
+
+  test("'Kirim ulang tautan' (its button is the only thing between the click and the request)", async () => {
+    const user = userEvent.setup();
+    const turnstile = fakeTurnstile();
+    turnstile.preload();
+    const api = stubApi({
+      [`GET ${ENDPOINTS.me}`]: respond({ user: { id: "u1", name: "Sari", email: "sari@contoh.test", emailVerified: false, role: "student" } }),
+      [`GET ${ENDPOINTS.overview}`]: respond({ now: "2026-10-13T03:00:00.000Z", student: { name: "Sari", firstName: "Sari" }, openBatch: null, current: { state: "none" }, history: [] }),
+      ...withKey({ [`POST ${ENDPOINTS.sendVerification}`]: respond({ status: true }) }),
+    });
+    renderApp("/portal/");
+    const button = (await screen.findByRole("button", { name: "Memeriksa…" })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    // A click on a disabled button does nothing; the guard inside the handler is for a caller that is not a click.
+    await user.click(button);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(api.count(`POST ${ENDPOINTS.sendVerification}`)).toBe(0);
   });
 });
 

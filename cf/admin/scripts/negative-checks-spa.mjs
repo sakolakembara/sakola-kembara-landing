@@ -13,6 +13,7 @@ import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
 import { pendaftaranSpaChecks } from "./negative-checks-spa-pendaftaran.mjs";
 import { blogSpaChecks } from "./negative-checks-spa-blog.mjs";
+import { portalSpaChecks } from "./negative-checks-spa-portal.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -33,6 +34,10 @@ const checks = [
 
   // The blog (SAKEM-082): scripts/negative-checks-spa-blog.mjs.
   ...blogSpaChecks,
+
+  // The student portal's SPA (SAKEM-083): scripts/negative-checks-spa-portal.mjs. Its checks run the portal's own tests
+  // (`config` names portal-spa/vitest.config.ts).
+  ...portalSpaChecks,
 
   // Who may see and do what
   {
@@ -376,7 +381,8 @@ for (const check of checks) {
   }
   try {
     writeFileSync(check.file, froms.reduce((text, from, i) => text.replace(from, tos[i]), original));
-    const run = spawnSync("pnpm", ["exec", "vitest", "run", "--config", "spa/vitest.config.ts", ...check.tests.split(" ")], {
+    // A check says which SPA's tests it runs with `config` (the portal's); the default is the admin's.
+    const run = spawnSync("pnpm", ["exec", "vitest", "run", "--config", check.config ?? "spa/vitest.config.ts", ...check.tests.split(" ")], {
       encoding: "utf8",
     });
     const failed = (run.stdout + run.stderr).match(/Tests\s+(\d+) failed/);
