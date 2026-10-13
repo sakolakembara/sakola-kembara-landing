@@ -135,6 +135,13 @@ export async function seed(d1: D1Database, options: SeedOptions = {}): Promise<S
   for (const table of [
     schema.auditLog,
     schema.adminAreaGrants,
+    // The portal's tables (SAKEM-083). Drafts reference a batch with RESTRICT, so they go before the batches. The seed
+    // writes none of them: a draft is made through the portal, and a file row would point at an object that the dev
+    // bucket does not have. Emptying the files table does not empty the dev bucket (delete .wrangler/state to do that).
+    schema.applicationFiles,
+    schema.applicationDrafts,
+    schema.emailDaily,
+    schema.privateStorage,
     schema.studentApplications,
     schema.admissionBatches,
     schema.announcements,
@@ -152,6 +159,9 @@ export async function seed(d1: D1Database, options: SeedOptions = {}): Promise<S
   ]) {
     statements.push(db.delete(table));
   }
+
+  // The private-storage counter is one row that always exists (migration 0012); nothing is stored in the seed, so zero.
+  put(schema.privateStorage, [{ id: "private-files", bytes: 0, files: 0 }]);
 
   // ------------------------------------------------------------ identity
   const userIds = new Map<string, string>();

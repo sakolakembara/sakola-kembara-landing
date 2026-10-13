@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { SEED_USERS, seed } from "../scripts/seed-data";
 import { userRoles } from "../src/auth/roles";
 import { call, cookiesOf, signIn } from "./helpers";
-import { TABLES_CHILD_FIRST } from "./tables";
+import { TABLES_CHILD_FIRST, UNSEEDED_TABLES } from "./tables";
 
 // The dev seed has to stay valid as the schema grows: it is what a developer
 // runs to get a working local admin. It also must stay free of real data,
@@ -23,6 +23,10 @@ describe("dev seed", () => {
     const result = await seed(env.DB, { password: PASSWORD, now: NOW });
     const actual = await counts();
     for (const table of TABLES_CHILD_FIRST) {
+      if (UNSEEDED_TABLES.includes(table)) {
+        expect(actual[table], `${table} is left empty on purpose`).toBe(0);
+        continue;
+      }
       expect(actual[table], table).toBeGreaterThan(0);
       expect(result.counts[table], `reported ${table}`).toBe(actual[table]);
     }
