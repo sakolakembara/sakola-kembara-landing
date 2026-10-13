@@ -13,7 +13,7 @@ import { NotFoundPage } from "./pages/NotFound";
 import { StatusPage } from "./pages/Status";
 
 // The routes of the student portal. Paths are relative to the router's basename (/portal), so `/status` is
-// sakolakembara.org/portal/status. docs/cloudflare/portal-architecture.md#51-layout-and-base-path lists them.
+// <apex>/portal/status. docs/cloudflare/portal-architecture.md#51-layout-and-base-path lists them.
 
 export function App() {
   return (

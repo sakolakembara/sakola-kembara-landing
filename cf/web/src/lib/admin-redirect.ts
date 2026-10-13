@@ -1,6 +1,6 @@
 // `/admin` and everything under it used to be the legacy dashboard, forwarded to the old Next app. Since M4 (SAKEM-083)
 // the admin lives on its own host (docs/cloudflare/portal-architecture.md#66-what-happens-to-the-pass-through-of-cfweb), and
-// this Worker answers the old paths with a 308 to it, so a bookmark of `sakolakembara.org/admin/blog` still lands on the blog
+// this Worker answers the old paths with a 308 to it, so a bookmark of `<apex>/admin/blog` still lands on the blog
 // screen: the new admin's routes are the old ones without the `/admin` prefix (`/blog`, `/applications`, `/audit`...), so what
 // comes after the prefix is kept, with the query.
 //

@@ -3,11 +3,11 @@ import { httpOrigin, NO_PORTAL_CONFIG, parsePortalConfig, siteLink } from "~/lib
 
 describe("parsePortalConfig", () => {
   test("reads what the Worker answers", () => {
-    expect(parsePortalConfig({ google: true, turnstileSiteKey: "1x00000000000000000000AA", siteUrl: "https://sakolakembara.org", adminUrl: "https://admin.sakolakembara.org" })).toEqual({
+    expect(parsePortalConfig({ google: true, turnstileSiteKey: "1x00000000000000000000AA", siteUrl: "https://www.example.org", adminUrl: "https://admin.example.org" })).toEqual({
       google: true,
       turnstileSiteKey: "1x00000000000000000000AA",
-      siteUrl: "https://sakolakembara.org",
-      adminUrl: "https://admin.sakolakembara.org",
+      siteUrl: "https://www.example.org",
+      adminUrl: "https://admin.example.org",
     });
   });
 
@@ -22,7 +22,7 @@ describe("parsePortalConfig", () => {
 
 describe("httpOrigin: a place a student may be sent", () => {
   test("an http(s) origin, without a path, a query or a trailing slash", () => {
-    expect(httpOrigin("https://sakolakembara.org/")).toBe("https://sakolakembara.org");
+    expect(httpOrigin("https://www.example.org/")).toBe("https://www.example.org");
     expect(httpOrigin("  http://localhost:5173/x?y=1 ")).toBe("http://localhost:5173");
   });
 
@@ -33,7 +33,7 @@ describe("httpOrigin: a place a student may be sent", () => {
 
 describe("siteLink", () => {
   test("with the public site's origin, or a path of this origin (the apex serves both)", () => {
-    expect(siteLink("https://sakolakembara.org", "/gabung-siswa")).toBe("https://sakolakembara.org/gabung-siswa");
+    expect(siteLink("https://www.example.org", "/gabung-siswa")).toBe("https://www.example.org/gabung-siswa");
     expect(siteLink("", "/gabung-siswa")).toBe("/gabung-siswa");
   });
 });

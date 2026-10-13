@@ -68,13 +68,13 @@ describe("home: the batch gate", () => {
 
   test("no batch is open: the legacy sentence, the way to Gabung Siswa on the public site, and no way to start", async () => {
     const api = await openHome(overviewBody({ openBatch: null }), {
-      [`GET ${ENDPOINTS.config}`]: respond({ google: false, turnstileSiteKey: null, siteUrl: "https://sakolakembara.org" }),
+      [`GET ${ENDPOINTS.config}`]: respond({ google: false, turnstileSiteKey: null, siteUrl: "https://www.example.org" }),
     });
     expect(await screen.findByRole("heading", { name: "Belum ada batch yang dibuka" })).toBeTruthy();
     expect(screen.getByText(/Pendaftaran Sakola Kembara dibuka sekali dalam setahun/)).toBeTruthy();
     // The public site is another Worker: its link is a plain one, with the site's own origin.
     await screen.findByRole("link", { name: "Gabung Siswa" });
-    expect((await screen.findByRole("link", { name: "Gabung Siswa" })).getAttribute("href")).toBe("https://sakolakembara.org/gabung-siswa");
+    expect((await screen.findByRole("link", { name: "Gabung Siswa" })).getAttribute("href")).toBe("https://www.example.org/gabung-siswa");
     expect(screen.queryByRole("link", { name: /Mulai daftar|Lanjutkan pendaftaran/ })).toBeNull();
     expect(api.count(`GET ${ENDPOINTS.config}`)).toBe(1);
   });
