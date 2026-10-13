@@ -1,0 +1,14 @@
+# Headers of the files the assets layer serves for the student portal (docs/cloudflare/portal-architecture.md#51-layout-and-base-path).
+# They apply to asset responses only, never to a response the Worker script makes (the Worker sets the same ones in code).
+# scripts/finish-portal-spa.mjs copies this file to the root of dist/portal-spa.
+
+# Hashed names: a file never changes under its name.
+/portal/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Everything else (the page itself, served for /portal and every path of the SPA) keeps the default: revalidate every time.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'

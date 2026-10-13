@@ -9,7 +9,10 @@ import Icon from './Icon.astro';
  * Fixed site header: logo, menu, auth button. Server-rendered HTML; one small
  * script (below) handles what cannot be static: the mobile menu toggle, the
  * auth-aware button ("Masuk" / "Portal" / "Dashboard") and the announcement
- * strip, which are read from the legacy /api/* the same way the Next navbar does.
+ * strip. The session comes from the student portal's own Worker, which serves
+ * `/portal/api/*` on this same host (M4, SAKEM-083): Better Auth's
+ * `get-session`, `null` without a cookie, so a visitor who never signed in
+ * costs one Worker request and no database read.
  */
 ---
 
@@ -40,7 +43,7 @@ import Icon from './Icon.astro';
     </ul>
 
     <div class="hidden md:flex items-center justify-self-end">
-      <a href="/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'sm' })}>Masuk</a>
+      <a href="/portal/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'sm' })}>Masuk</a>
     </div>
 
     <button
@@ -72,7 +75,7 @@ import Icon from './Icon.astro';
       }
     </ul>
     <div class="flex flex-col mt-6">
-      <a href="/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'md' })}>Masuk</a>
+      <a href="/portal/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'md' })}>Masuk</a>
     </div>
   </div>
 </nav>
@@ -80,8 +83,9 @@ import Icon from './Icon.astro';
 <script>
   // Client JS of the whole site, in one place (about 1.7 KB minified):
   //  1. mobile menu toggle,
-  //  2. auth-aware nav button (GET /api/auth/session),
-  //  3. announcement strip (GET /api/announcements/current),
+  //  2. auth-aware nav button (GET /portal/api/auth/get-session, the student portal's Worker),
+  //  3. announcement strip (GET /api/announcements/current: the apex has no such endpoint since M4, so the strip stays
+  //     empty until the web Worker gets a small one of its own, listed for SAKEM-084 in docs/cloudflare/portal-architecture.md),
   //  4. copyright year in the footer ("computed live", DESIGN.md section 9).
   // Both API answers are kept in sessionStorage for a few minutes so a visit
   // costs the Worker (and the origin) two requests once, not on every page.
@@ -132,8 +136,10 @@ import Icon from './Icon.astro';
   type Session = { user?: { role?: string } } | null;
   const ADMIN_ROLES = ['viewer', 'editor', 'super_admin'];
   // A signed-in answer is kept 5 minutes; a signed-out one only 30 seconds, so
-  // the button catches up soon after someone signs in on the legacy pages.
-  void cachedJson<Session>('sk:session', '/api/auth/session', (s) => (s?.user ? 300_000 : 30_000)).then(
+  // the button catches up soon after someone signs in on the portal. Better Auth answers `null`
+  // without a cookie and `{ session, user }` with one; `user.role` is the field read here. An admin
+  // account is sent to `/admin`, which this Worker answers with a 308 to the admin host (ADMIN_URL).
+  void cachedJson<Session>('sk:session', '/portal/api/auth/get-session', (s) => (s?.user ? 300_000 : 30_000)).then(
     (session) => {
       if (!session?.user) return;
       const admin = ADMIN_ROLES.includes(session.user.role ?? '');

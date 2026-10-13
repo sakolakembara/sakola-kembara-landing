@@ -2,20 +2,25 @@
 //
 //   node scripts/stub-origin.mjs            listens on STUB_ORIGIN_PORT (default 4390)
 //
-// It answers like the real origin would for the paths the Worker forwards, and
-// echoes what it received, so a test can prove method, headers, body and
-// cookies arrived unchanged. Everything it returns carries `x-stub-origin: 1`.
+// It answers like the real origin would for the paths the Worker still forwards (since M4, SAKEM-083: /_next,
+// /images, /blog/images, /files, /reports, /resources), and echoes what it received, so a test can prove method,
+// headers, body and cookies arrived unchanged. Everything it returns carries `x-stub-origin: 1`.
 //
 //   GET  /__log          every request received so far (JSON), newest last
 //   POST /__log/clear    forget them
+//   /files/echo/...      answers 200 with what it received (method, path, query, headers, body)
+//   /files/cookies       answers with two Set-Cookie headers, so a test can prove both survive
+//
+// It knows NOTHING about /login, /register, /portal, /admin or /api any more: those no longer reach the old app (the
+// Worker redirects them, answers a 404, or another Worker owns them), and a request that did reach it would get the
+// stub's 404 with `x-stub-origin`, which the e2e checks notice.
 //
 // Not a copy of any real behaviour: no auth, no data, nothing from production.
 
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
-const PAGES = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
-const PAGE_PREFIXES = ['/portal', '/admin', '/program', '/laporan', '/donasi', '/kontak', '/gabung-siswa'];
+const PAGE_PREFIXES = ['/program', '/laporan', '/donasi', '/kontak', '/gabung-siswa'];
 
 export function startStubOrigin({ port = Number(process.env.STUB_ORIGIN_PORT ?? 4390), host = '127.0.0.1' } = {}) {
   /** @type {Record<string, unknown>[]} */
@@ -57,29 +62,14 @@ export function startStubOrigin({ port = Number(process.env.STUB_ORIGIN_PORT ?? 
 
     const p = url.pathname;
 
-    if (p === '/api/auth/session') return json(200, {});
-    if (p === '/api/announcements/current') {
-      return json(200, { announcement: process.env.STUB_ANNOUNCEMENT ? sampleAnnouncement : null });
-    }
-    if (p.startsWith('/api/')) {
+    if (p === '/files/echo' || p.startsWith('/files/echo/')) {
       // Echo: lets a test compare what was sent with what arrived.
       return json(200, { echo: true, method: req.method, path: p, search: url.search, headers: req.headers, body });
     }
-
-    if (p === '/login') {
+    if (p === '/files/cookies') {
       // Two cookies on purpose: Set-Cookie must survive as two headers.
-      return html(200, '/login', { 'set-cookie': ['authjs.csrf-token=stub1; Path=/; HttpOnly', 'authjs.callback-url=%2F; Path=/'] });
+      return reply(200, 'text/plain', 'cookies', { 'set-cookie': ['stub-one=1; Path=/; HttpOnly', 'stub-two=2; Path=/'] });
     }
-    if (p === '/portal' || p.startsWith('/portal/') || p === '/admin' || p.startsWith('/admin/')) {
-      const cookie = String(req.headers.cookie ?? '');
-      if (!cookie.includes('stub-session=1')) {
-        // Like the auth middleware: unauthenticated -> redirect to /login. The Worker must hand
-        // this 307 to the browser as is, not follow it.
-        return reply(307, 'text/plain', '', { location: `http://${req.headers.host}/login?from=${encodeURIComponent(p)}` });
-      }
-      return html(200, p);
-    }
-    if (PAGES.includes(p)) return html(200, p);
     if (PAGE_PREFIXES.some((x) => p === x || p.startsWith(`${x}/`))) return html(200, p);
 
     if (p.startsWith('/_next/')) {
@@ -98,15 +88,6 @@ export function startStubOrigin({ port = Number(process.env.STUB_ORIGIN_PORT ?? 
     server.listen(port, host, () => resolve({ server, port, log, close: () => new Promise((r) => server.close(r)) }));
   });
 }
-
-const sampleAnnouncement = {
-  id: 'stub',
-  title: 'Pengumuman contoh',
-  body: 'Teks pengumuman untuk uji lokal.',
-  severity: 'info',
-  ctaLabel: 'Selengkapnya',
-  ctaUrl: '/blog',
-};
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { port } = await startStubOrigin();

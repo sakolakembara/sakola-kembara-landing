@@ -132,7 +132,7 @@ export const crudSpaChecks = [
   },
   {
     name: "crud: a save never sends the version it loaded (no If-Match)",
-    file: "spa/src/lib/api.ts",
+    file: "shared/spa/api.ts",
     from: 'if (init.ifMatch) headers["If-Match"] = init.ifMatch;',
     to: "",
     tests: t("crud/api-extension.test.ts", ANNOUNCEMENTS),

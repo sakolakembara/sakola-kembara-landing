@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   LEGACY_PATHS,
   NOT_YET_PORTED,
+  PORTAL_OWNED_PATHS,
+  isAdminPath,
+  isApiPath,
   isLegacyPath,
+  isPortalOwnedPath,
   isShortlinkCandidate,
   legacyKind,
 } from '~/lib/legacy-paths';
@@ -18,14 +22,54 @@ import { readRoot, repoRoot } from './helpers';
 
 describe('legacy path list', () => {
   it.each([
-    '/login', '/register', '/forgot-password', '/reset-password', '/verify-email',
-    '/portal', '/portal/status', '/portal/daftar', '/admin', '/admin/blog/new',
-    '/api', '/api/auth/session', '/api/auth/callback/google', '/api/sso/session', '/api/announcements/current',
     '/_next/static/chunks/a.js', '/_next/image',
     '/blog/images/2026/05/a.jpg', '/images/team/a.jpg', '/files/a.pdf', '/reports/2025/a.pdf', '/resources/a.pdf',
   ])('%s is forwarded as legacy', (p) => {
     expect(legacyKind(p)).toBe('legacy');
     expect(isLegacyPath(p)).toBe(true);
+  });
+
+  // M4 (SAKEM-083, docs/cloudflare/portal-architecture.md#66): the signed-in and auth surface is no longer forwarded.
+  it.each([
+    '/login', '/register', '/forgot-password', '/reset-password', '/verify-email',
+    '/portal', '/portal/status', '/portal/daftar', '/admin', '/admin/blog/new',
+    '/api', '/api/auth/session', '/api/auth/callback/google', '/api/sso/session', '/api/announcements/current',
+  ])('%s is NOT forwarded to the legacy origin any more, and is portal-owned', (p) => {
+    expect(legacyKind(p)).toBeNull();
+    expect(isLegacyPath(p)).toBe(false);
+    expect(isPortalOwnedPath(p)).toBe(true);
+  });
+
+  it('exactly the eight names of the design left the legacy list (and nothing else did)', () => {
+    expect(LEGACY_PATHS.map((p) => p.path)).toEqual(['/_next', '/blog/images', '/images', '/files', '/reports', '/resources']);
+    expect(PORTAL_OWNED_PATHS.map((p) => p.path).sort()).toEqual(
+      ['/admin', '/api', '/forgot-password', '/login', '/portal', '/register', '/reset-password', '/verify-email'].sort(),
+    );
+  });
+
+  it('the portal-owned names are matched on a segment boundary, case-sensitively, like the rest', () => {
+    for (const p of ['/portal-x', '/portalx', '/administrator', '/apis', '/login-help', '/Portal', '/API']) expect(isPortalOwnedPath(p), p).toBe(false);
+    expect(isPortalOwnedPath('/admin/')).toBe(true);
+    expect(isAdminPath('/admin')).toBe(true);
+    expect(isAdminPath('/admin/blog')).toBe(true);
+    expect(isAdminPath('/administrator')).toBe(false);
+    expect(isApiPath('/api')).toBe(true);
+    expect(isApiPath('/api/x')).toBe(true);
+    expect(isApiPath('/apis')).toBe(false);
+    expect(isApiPath('/portal/api/me')).toBe(false); // that is the portal Worker's, not the apex's
+  });
+
+  it('every portal-owned entry says why it is there, and is a plain absolute path', () => {
+    for (const p of PORTAL_OWNED_PATHS) {
+      expect(p.path).toMatch(/^\/[A-Za-z0-9_\-/]+$/);
+      expect(p.path.endsWith('/')).toBe(false);
+      expect(p.why.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('a name is either forwarded or portal-owned, never both', () => {
+    const forwarded = new Set([...LEGACY_PATHS, ...NOT_YET_PORTED].map((p) => p.path));
+    for (const p of PORTAL_OWNED_PATHS) expect(forwarded.has(p.path), p.path).toBe(false);
   });
 
   it('every public page is ported: nothing is forwarded as not yet ported', () => {
@@ -40,8 +84,9 @@ describe('legacy path list', () => {
   );
 
   it('matching is on a segment boundary and case-sensitive like Next', () => {
-    expect(isLegacyPath('/Admin')).toBe(false);
-    expect(isLegacyPath('/admin/')).toBe(true);
+    expect(isLegacyPath('/Files')).toBe(false);
+    expect(isLegacyPath('/files/')).toBe(true);
+    expect(isLegacyPath('/filesx')).toBe(false);
   });
 
   it('every entry says why it is there, and is a plain absolute path', () => {
@@ -72,12 +117,14 @@ describe('the legacy app has no top-level route this Worker does not know about'
   // Pages the Worker serves itself.
   const astroOwned = new Set(['blog', 'tim', 'program', 'donasi', 'laporan', 'gabung-siswa', 'kontak']);
 
-  it.each([...segments].sort())('/%s is Astro-owned or listed', (segment) => {
+  it.each([...segments].sort())('/%s is Astro-owned, forwarded or portal-owned', (segment) => {
     const owned = astroOwned.has(segment);
     const listed = isLegacyPath(`/${segment}`);
-    expect(owned || listed, `/${segment} would be answered 404 by the Worker`).toBe(true);
-    // a listed prefix must not also be Astro's
-    if (owned) expect(listed).toBe(false);
+    const portal = isPortalOwnedPath(`/${segment}`);
+    expect(owned || listed || portal, `/${segment} would be answered 404 by the Worker without anyone having decided it`).toBe(true);
+    // a listed prefix must not also be Astro's, nor portal-owned
+    if (owned) expect(listed || portal).toBe(false);
+    if (listed) expect(portal).toBe(false);
   });
 
   it('every reserved shortlink slug of the legacy app is either a known route/prefix, or just reserved', () => {
@@ -88,8 +135,8 @@ describe('the legacy app has no top-level route this Worker does not know about'
     const generated = new Set(['robots', 'sitemap']); // Astro serves them from static files
     const reservedOnly = new Set(['logout', 'auth', 'dashboard', 'favicon', 'static']); // reserved for the future, no route
     for (const slug of reserved) {
-      const known = isLegacyPath(`/${slug}`) || astroOwned.has(slug) || generated.has(slug) || reservedOnly.has(slug);
-      expect(known, `reserved slug "${slug}" is neither listed nor Astro's`).toBe(true);
+      const known = isLegacyPath(`/${slug}`) || isPortalOwnedPath(`/${slug}`) || astroOwned.has(slug) || generated.has(slug) || reservedOnly.has(slug);
+      expect(known, `reserved slug "${slug}" is neither listed, portal-owned nor Astro's`).toBe(true);
     }
   });
 });

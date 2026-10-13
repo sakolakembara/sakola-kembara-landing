@@ -32,7 +32,7 @@ if (!existsSync(path.join(webRoot, 'dist/server/wrangler.json'))) {
 }
 
 const articles = JSON.parse(readFileSync(path.join(webRoot, '../../lib/blog-posts.json'), 'utf8')).articles;
-const stack = await startStack({ log: path.join(webRoot, 'dist/e2e-wrangler.log'), vars: { TEAM_CACHE_FRESH_SECONDS: '2', CONTENT_CACHE_FRESH_SECONDS: '2' } });
+const stack = await startStack({ log: path.join(webRoot, 'dist/e2e-wrangler.log'), vars: { TEAM_CACHE_FRESH_SECONDS: '2', CONTENT_CACHE_FRESH_SECONDS: '2', ADMIN_URL: 'https://admin.example.test' } });
 const { base, stub } = stack;
 const fixtureBase = `http://127.0.0.1:${stack.fixture.port}`;
 
@@ -143,6 +143,11 @@ const other = [
   ['/tips', 308, '/blog'], ['/testimonials', 308, '/blog'], ['/career', 308, '/blog'], ['/kiat-kiat', 308, '/blog'],
   ['/daftar', 308, '/gabung-siswa'], ['/apply', 308, '/gabung-siswa'],
   ['/gabung-siswa/form', 308, '/portal/daftar'],
+  // M4: the legacy auth pages moved into the student portal (a Worker of its own on the route <apex>/portal/*).
+  ['/login', 308, '/portal/login'], ['/login/', 308, '/portal/login'], ['/register', 308, '/portal/register'],
+  ['/forgot-password', 308, '/portal/forgot-password'], ['/reset-password', 308, '/portal/reset-password'],
+  ['/verify-email', 308, '/portal/verify-email'],
+  ['/login?from=%2Fportal%2Fstatus', 308, '/portal/login?from=%2Fportal%2Fstatus'],
   ['/tentang-kami', 308, '/tim'], ['/about', 308, '/tim'],
   ['/impact-reports', 308, '/laporan'], ['/impact-reports/2025/foo', 308, '/laporan'],
   ['/blog/page/3', 308, '/blog?page=3'], ['/blog/page/3/', 308, '/blog?page=3'],
@@ -185,7 +190,7 @@ for (const [from, to] of [['/tim/', '/tim'], ['/blog/', '/blog'], ['/blog/?page=
 }
 await check('canonical-url', 'a legacy path with a trailing slash is not touched: the origin decides (Next redirects it itself)', async () => {
   clearStub();
-  const res = await get('/login/');
+  const res = await get('/files/a/');
   assert.notEqual(res.status, 308);
   assert.equal(res.headers.get('x-stub-origin'), '1');
   assert.equal(stubHits().length, 1);
@@ -197,44 +202,90 @@ await check('canonical-url', 'an article with a trailing slash: the Worker sends
 });
 
 // ---------------------------------------------------------------- pass-through
-const legacyPages = ['/login', '/register', '/forgot-password', '/reset-password?token=abc', '/verify-email?token=abc'];
-for (const p of legacyPages) {
-  await check('pass-through', `GET ${p} reaches the origin (200)`, async () => {
+// M4 (SAKEM-083): the signed-in and auth surface is no longer forwarded to the old app. The student portal is a Worker of its own on the
+// route <apex>/portal/* (not part of this stack: here /portal is this Worker's 404), the old auth pages are redirects (group
+// `redirects`), /admin is a 308 to the admin host and /api is a JSON 404. None of it reaches the origin.
+const ADMIN_URL = 'https://admin.example.test';
+for (const [from, to] of [
+  ['/admin', `${ADMIN_URL}/`],
+  ['/admin/', `${ADMIN_URL}/`],
+  ['/admin/blog', `${ADMIN_URL}/blog`],
+  ['/admin/blog/new?x=1&y=%20z', `${ADMIN_URL}/blog/new?x=1&y=%20z`],
+  ['/admin/applications?status=pending', `${ADMIN_URL}/applications?status=pending`],
+  ['/admin//evil.example', `${ADMIN_URL}/evil.example`],
+]) {
+  await check('portal-paths', `GET ${from} is a 308 to the admin host: ${to}, and never reaches the origin`, async () => {
     clearStub();
-    const res = await get(p);
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get('x-stub-origin'), '1');
-    const hit = stubHits();
-    assert.equal(hit.length, 1);
-    assert.equal(hit[0].path + hit[0].search, p);
+    const res = await get(from);
+    assert.equal(res.status, 308);
+    assert.equal(res.headers.get('location'), to);
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff', 'the security headers are on it');
+    assert.equal(stubHits().length, 0);
   });
 }
-for (const p of ['/portal/status', '/admin/blog', '/admin']) {
-  await check('pass-through', `GET ${p} (no session): the origin's 307 reaches the browser, not followed`, async () => {
-    clearStub();
-    const res = await get(p);
-    assert.equal(res.status, 307);
-    assert.ok(res.headers.get('location').startsWith(`http://127.0.0.1:${new URL(base).port}/login?from=`), res.headers.get('location'));
-    assert.equal(stubHits().length, 1, 'only the first hop');
-  });
-}
-await check('pass-through', 'cookie is preserved: the origin sees it and answers 200', async () => {
+await check('portal-paths', 'a POST to /admin is redirected the same way (a 308 keeps the method)', async () => {
   clearStub();
-  const res = await get('/portal/status', { headers: { cookie: 'stub-session=1; other=2' } });
+  const res = await get('/admin/blog', { method: 'POST', body: 'x' });
+  assert.equal(res.status, 308);
+  assert.equal(res.headers.get('location'), `${ADMIN_URL}/blog`);
+  assert.equal(stubHits().length, 0);
+});
+for (const p of ['/administrator', '/adminx/y']) {
+  await check('portal-paths', `GET ${p} is not /admin: the site's own 404`, async () => {
+    clearStub();
+    const res = await get(p);
+    assert.equal(res.status, 404);
+    assert.match(await text(res), /Halaman tidak ditemukan/);
+    assert.equal(stubHits().length, 0);
+  });
+}
+for (const [p, method] of [
+  ['/api', 'GET'], ['/api/', 'GET'], ['/api/auth/session', 'GET'], ['/api/announcements/current', 'GET'], ['/api/sso/session', 'GET'],
+  ['/api/admin/users', 'GET'], ['/api/auth/callback/credentials?x=1', 'POST'], ['/api/anything', 'DELETE'],
+]) {
+  await check('portal-paths', `${method} ${p}: a JSON 404 from this Worker (the apex has no API), nothing reaches the origin or the API Worker`, async () => {
+    clearStub();
+    const res = await get(p, method === 'POST' || method === 'DELETE' ? { method, body: p.includes('?') ? 'x' : undefined } : {});
+    assert.equal(res.status, 404);
+    assert.match(res.headers.get('content-type'), /application\/json/);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await res.json(), { error: 'not_found' });
+    assert.equal(stubHits().length, 0);
+  });
+}
+await check('portal-paths', '/apis and /api-docs are not /api: the site\'s own 404 page', async () => {
+  for (const p of ['/apis', '/api-docs']) {
+    const res = await get(p);
+    assert.equal(res.status, 404, p);
+    assert.match(await text(res), /Halaman tidak ditemukan/, p);
+  }
+});
+for (const p of ['/portal', '/portal/status', '/portal/daftar', '/portal/api/me']) {
+  await check('portal-paths', `GET ${p}: in production another Worker answers it; here it is this Worker's 404 and it never reaches the origin`, async () => {
+    clearStub();
+    const res = await get(p);
+    assert.equal(res.status, 404);
+    assert.equal(stubHits().length, 0);
+    assert.equal(res.headers.get('x-stub-origin'), null);
+  });
+}
+await check('pass-through', 'a legacy path\'s cookie is preserved: the origin sees it and answers 200', async () => {
+  clearStub();
+  const res = await get('/files/a.pdf', { headers: { cookie: 'stub-session=1; other=2' } });
   assert.equal(res.status, 200);
   assert.equal(stubHits()[0].headers.cookie, 'stub-session=1; other=2');
 });
 await check('pass-through', 'two Set-Cookie headers from the origin arrive as two', async () => {
-  const res = await get('/login');
+  const res = await get('/files/cookies');
   const cookies = res.headers.getSetCookie();
   assert.equal(cookies.length, 2);
-  assert.match(cookies[0], /^authjs\.csrf-token=stub1/);
-  assert.match(cookies[1], /^authjs\.callback-url=/);
+  assert.match(cookies[0], /^stub-one=1/);
+  assert.match(cookies[1], /^stub-two=2/);
 });
 await check('pass-through', 'POST: method, query, body and custom headers arrive unchanged', async () => {
   clearStub();
   const payload = JSON.stringify({ email: 'tes@example.com', n: 'α β ✓' });
-  const res = await get('/api/auth/callback/credentials?x=1&y=%20z', {
+  const res = await get('/files/echo/credentials?x=1&y=%20z', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-custom': 'abc', 'next-action': 'deadbeef', authorization: 'Bearer fake', cookie: 'a=b' },
     body: payload,
@@ -242,7 +293,7 @@ await check('pass-through', 'POST: method, query, body and custom headers arrive
   assert.equal(res.status, 200);
   const seen = stubHits()[0];
   assert.equal(seen.method, 'POST');
-  assert.equal(seen.path, '/api/auth/callback/credentials');
+  assert.equal(seen.path, '/files/echo/credentials');
   assert.equal(seen.search, '?x=1&y=%20z');
   assert.equal(seen.body, payload);
   for (const [k, v] of Object.entries({ 'content-type': 'application/json', 'x-custom': 'abc', 'next-action': 'deadbeef', authorization: 'Bearer fake', cookie: 'a=b' })) {
@@ -251,9 +302,9 @@ await check('pass-through', 'POST: method, query, body and custom headers arrive
   const echoed = await res.json();
   assert.equal(echoed.body, payload);
 });
-await check('pass-through', 'POST to a page path (a Next server action) reaches the origin', async () => {
+await check('pass-through', 'POST to a legacy path (a Next server action) reaches the origin', async () => {
   clearStub();
-  const res = await get('/login', { method: 'POST', headers: { 'next-action': 'abc', 'content-type': 'text/plain' }, body: '["a"]' });
+  const res = await get('/files/echo/action', { method: 'POST', headers: { 'next-action': 'abc', 'content-type': 'text/plain' }, body: '["a"]' });
   assert.equal(res.status, 200);
   assert.equal(stubHits()[0].method, 'POST');
   assert.equal(stubHits()[0].body, '["a"]');
@@ -261,14 +312,14 @@ await check('pass-through', 'POST to a page path (a Next server action) reaches 
 await check('pass-through', 'a 1 MB POST body goes through intact', async () => {
   clearStub();
   const big = 'x'.repeat(1_000_000);
-  const res = await get('/api/upload', { method: 'POST', body: big, headers: { 'content-type': 'text/plain' } });
+  const res = await get('/files/echo/upload', { method: 'POST', body: big, headers: { 'content-type': 'text/plain' } });
   assert.equal(res.status, 200);
   assert.equal(stubHits()[0].body.length, 1_000_000);
 });
 await check('pass-through', 'PUT, PATCH, DELETE and HEAD keep their method', async () => {
   for (const method of ['PUT', 'PATCH', 'DELETE', 'HEAD']) {
     clearStub();
-    const res = await get('/api/x', { method, ...(method === 'HEAD' || method === 'DELETE' ? {} : { body: 'b' }) });
+    const res = await get('/files/echo/x', { method, ...(method === 'HEAD' || method === 'DELETE' ? {} : { body: 'b' }) });
     assert.equal(res.status, 200, method);
     assert.equal(stubHits()[0].method, method);
   }
@@ -278,7 +329,7 @@ await check('pass-through', 'hop-by-hop request headers (te, keep-alive, proxy-a
   // fetch() refuses to send some of these, so use a raw request.
   const status = await new Promise((resolve, reject) => {
     const req = http.request(
-      `${base}/api/x`,
+      `${base}/files/echo/x`,
       { headers: { te: 'trailers', 'keep-alive': 'timeout=5', 'proxy-authorization': 'x', connection: 'close, x-drop-me', 'x-drop-me': '1', 'x-keep-me': '1' } },
       (res) => {
         res.resume();
@@ -298,13 +349,13 @@ await check('pass-through', 'hop-by-hop request headers (te, keep-alive, proxy-a
   assert.equal(h['x-keep-me'], '1');
 });
 await check('pass-through', 'hop-by-hop response headers from the origin do not reach the client', async () => {
-  const res = await get('/login');
+  const res = await get('/files/a.pdf');
   assert.equal(res.headers.get('keep-alive'), null);
   assert.equal(res.headers.get('transfer-encoding') === null || res.headers.get('transfer-encoding') === 'chunked', true);
 });
 await check('pass-through', 'the origin sees the original host as X-Forwarded-Host (local mode)', async () => {
   clearStub();
-  await get('/api/x');
+  await get('/files/echo/x');
   assert.equal(stubHits()[0].headers['x-forwarded-host'], new URL(base).host);
   assert.equal(stubHits()[0].headers['x-forwarded-proto'], 'http');
 });
@@ -320,9 +371,20 @@ await check('pass-through', 'origin cache headers survive (immutable for /_next)
   const res = await get('/_next/static/a.js');
   assert.match(res.headers.get('cache-control'), /immutable/);
 });
-await check('pass-through', 'announcement and session endpoints used by the navbar script answer through the Worker', async () => {
-  assert.deepEqual(await (await get('/api/auth/session')).json(), {});
-  assert.deepEqual(await (await get('/api/announcements/current')).json(), { announcement: null });
+await check('portal-paths', 'the navbar script asks the portal Worker for the session (/portal/api/auth/get-session, a path this stack does not serve: the answer is a 404 and the button stays "Masuk")', async () => {
+  clearStub();
+  const html = await text(await get('/blog'));
+  assert.ok(html.includes('/portal/api/auth/get-session'), 'the script asks the portal');
+  assert.ok(!html.includes('/api/auth/session'), 'and no longer the apex /api');
+  assert.equal((await get('/portal/api/auth/get-session')).status, 404);
+  assert.equal(stubHits().length, 0);
+});
+await check('portal-paths', 'the navbar\'s "Masuk" is /portal/login in the bar and in the mobile menu, on every kind of page', async () => {
+  for (const p of ['/', '/blog', '/tim', '/gabung-siswa', '/kontak']) {
+    const html = await text(await get(p));
+    assert.equal((html.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length, 2, p);
+    assert.ok(!/href="\/login"/.test(html), p);
+  }
 });
 
 // shortlinks (SAKEM-082): `/<slug>` is looked up through the API Worker, one call per visit, and the legacy origin
@@ -419,6 +481,14 @@ await check('shortlinks', 'static pages and the pages of the Worker win over the
   clearStub();
   const { asked } = await visiting(async () => {
     for (const p of ['/', '/blog', '/tim', '/laporan', '/kontak', '/donasi', '/gabung-siswa', '/robots.txt', '/program/pembinaan', '/daftar']) await get(p);
+  });
+  assert.deepEqual(asked, []);
+  assert.equal(stubHits().length, 0);
+});
+await check('shortlinks', 'the names the portal owns (/portal, /admin, /api, the old auth pages) are reserved: they never ask the API for a shortlink either', async () => {
+  clearStub();
+  const { asked } = await visiting(async () => {
+    for (const p of ['/portal', '/admin', '/api', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email']) await get(p);
   });
   assert.deepEqual(asked, []);
   assert.equal(stubHits().length, 0);
@@ -791,7 +861,7 @@ await check('resources', 'the copy script, run against the served page in a DOM:
       .replace(/<script[\s\S]*?<\/script>/g, '')
       .replace(/<link rel="stylesheet"[^>]*>/g, '')
       .replace(/^<!doctype html>/i, '');
-    window.fetch = () => Promise.reject(new Error('offline')); // the navbar script asks the legacy app, which is not here
+    window.fetch = () => Promise.reject(new Error('offline')); // the navbar script asks the portal Worker (and for the announcement), which are not here
     let copied = null;
     let writeOk = true;
     Object.defineProperty(window.navigator, 'clipboard', {
@@ -1045,9 +1115,9 @@ await check('seo', 'skip link is the first focusable element and #konten-utama e
   assert.ok(html.indexOf('href="#konten-utama"') < html.indexOf('<nav'));
   assert.match(html, /id="konten-utama"/);
 });
-await check('seo', 'robots.txt: same rules as the Next app', async () => {
+await check('seo', 'robots.txt: the rules of the Next app, plus /portal (the student portal is not for search engines)', async () => {
   const body = await text(await get('/robots.txt'));
-  assert.equal(body, 'User-Agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nDisallow: /login\n\nHost: https://sakolakembara.org\nSitemap: https://sakolakembara.org/sitemap.xml\n');
+  assert.equal(body, 'User-Agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nDisallow: /login\nDisallow: /portal\n\nHost: https://sakolakembara.org\nSitemap: https://sakolakembara.org/sitemap.xml\n');
 });
 await check('seo', 'sitemap.xml: 80 articles with real lastmod, static routes without lastmod', async () => {
   const res = await get('/sitemap.xml');
@@ -1892,7 +1962,7 @@ async function kontakInDom(html, { stub = 'before' } = {}) {
     console: { error: sink, warn: sink, log() {}, info() {}, debug() {} },
     settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true, disableIframePageLoading: true },
   });
-  window.fetch = (...a) => (requests.push(String(a[0])), Promise.reject(new Error('offline'))); // the navbar script asks the legacy app, which is not here
+  window.fetch = (...a) => (requests.push(String(a[0])), Promise.reject(new Error('offline'))); // the navbar script asks the portal Worker (and for the announcement), which are not here
   window.addEventListener('error', (e) => problems.push(`window error: ${e.message}`));
   const scripts = inlineScripts(html);
   // every <script> goes, but Cloudflare's tag stays as an inert element (no src) so the page's script finds its place and a test can fire its events
@@ -1950,8 +2020,8 @@ await check('turnstile', 'the page\'s scripts in a DOM with a stand-in widget: r
     assert.deepEqual(stubCalls(dom.window).resets, ['stub-widget-1']);
     assert.equal(dom.doc.querySelector('input[name="cf-turnstile-response"]').value, `${STUB_TOKEN}.reset1`, 'a fresh token after the reset');
     assert.equal(dom.doc.querySelectorAll('input[name="cf-turnstile-response"]').length, 1);
-    // the only requests are the navbar's own same-origin ones to the legacy app (answered offline here); none goes to Cloudflare
-    assert.ok(dom.requests.length > 0 && dom.requests.every((u) => u.startsWith('/api/')), `requests of the page scripts: ${dom.requests.join(', ')}`);
+    // the only requests are the navbar's own same-origin ones (the portal's session, the announcement; answered offline here); none goes to Cloudflare
+    assert.ok(dom.requests.length > 0 && dom.requests.every((u) => u.startsWith('/portal/api/') || u.startsWith('/api/')), `requests of the page scripts: ${dom.requests.join(', ')}`);
     assert.ok(!dom.requests.some((u) => u.includes('cloudflare')));
   } finally {
     await dom.close();

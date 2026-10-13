@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REDIRECTS } from '../redirects.config.mjs';
 import { RESERVED_SLUGS } from '../../admin/src/shortlinks/reserved';
-import { LEGACY_PATHS, NOT_YET_PORTED, isShortlinkCandidate } from '~/lib/legacy-paths';
+import { LEGACY_PATHS, NOT_YET_PORTED, PORTAL_OWNED_PATHS, isShortlinkCandidate } from '~/lib/legacy-paths';
 import { readRoot, webRoot } from './helpers';
 
 // A shortlink is looked for only AFTER everything the site really serves has had its chance (the catch-all route
@@ -33,6 +33,8 @@ const claimed = (() => {
   };
   for (const name of pageNames()) claim(name, 'a page of src/pages');
   for (const { path: prefix } of [...LEGACY_PATHS, ...NOT_YET_PORTED]) claim(firstSegment(prefix), 'a legacy path (src/lib/legacy-paths.ts)');
+  // M4: the signed-in and auth surface is no longer forwarded, but the names stay claimed (PORTAL_OWNED_PATHS).
+  for (const { path: prefix } of PORTAL_OWNED_PATHS) claim(firstSegment(prefix), 'a portal-owned path (PORTAL_OWNED_PATHS in src/lib/legacy-paths.ts)');
   for (const source of Object.keys(REDIRECTS)) claim(firstSegment(source), 'a redirect source (redirects.config.mjs)');
   // The 404 page has a URL of its own.
   claim('404', 'the 404 page');
@@ -45,6 +47,19 @@ describe('the names the site claims are reserved', () => {
       expect(claimed.has(expected), expected).toBe(true);
     }
     expect(claimed.size).toBeGreaterThan(25);
+  });
+
+  it('the portal-owned names stay reserved after they left the legacy list: portal, login, register, forgot-password, reset-password, verify-email, admin, api', () => {
+    for (const name of ['portal', 'login', 'register', 'forgot-password', 'reset-password', 'verify-email', 'admin', 'api']) {
+      expect(claimed.has(name), `${name} is no longer derived as claimed`).toBe(true);
+      expect(RESERVED_SLUGS.has(name), `${name} is no longer reserved: a shortlink with that name would sit in the admin list and never fire`).toBe(true);
+    }
+  });
+
+  it('they are claimed through PORTAL_OWNED_PATHS (and the redirect table for the auth pages), not through the forwarded list', () => {
+    const forwarded = new Set([...LEGACY_PATHS, ...NOT_YET_PORTED].map((p) => firstSegment(p.path)));
+    for (const name of ['portal', 'admin', 'api']) expect(forwarded.has(name), name).toBe(false);
+    for (const { path: prefix } of PORTAL_OWNED_PATHS) expect(RESERVED_SLUGS.has(firstSegment(prefix)), prefix).toBe(true);
   });
 
   it.each([...claimed].sort())('%s', (name) => {

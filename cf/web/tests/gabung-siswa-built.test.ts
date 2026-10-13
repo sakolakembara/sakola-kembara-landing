@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isLegacyPath } from '~/lib/legacy-paths';
+import { isLegacyPath, isPortalOwnedPath } from '~/lib/legacy-paths';
 import { absoluteUrl } from '~/lib/seo';
 import { STATIC_ROUTES } from '~/lib/sitemap';
 import { importRoot, readRoot, webRoot } from './helpers';
@@ -110,15 +110,15 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('every internal link of the page leads somewhere the Worker or the legacy app answers', () => {
+  it('every internal link of the page leads somewhere the Worker, the student portal or the legacy app answers', () => {
     const internal = links(html)
       .map((tag) => attr(tag, 'href'))
       .filter((href) => href.startsWith('/') && !href.startsWith('//'));
     expect(internal.length).toBeGreaterThan(5);
-    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak', '/login']);
+    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak']);
     for (const href of internal) {
       const p = href.split(/[?#]/)[0];
-      expect(known.has(p) || isLegacyPath(p), href).toBe(true);
+      expect(known.has(p) || isLegacyPath(p) || isPortalOwnedPath(p), href).toBe(true);
     }
   });
 

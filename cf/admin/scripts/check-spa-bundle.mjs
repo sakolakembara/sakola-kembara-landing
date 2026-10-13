@@ -3,7 +3,11 @@
 //   - fails when the development mock (spa/src/mock) ended up in the build;
 //   - fails when the CSS lacks classes only this app's own files use, which is
 //     what happens when Tailwind stops scanning them (see sharedTokens in
-//     spa/vite.config.ts).
+//     shared/vite/spa-base.ts), or classes only the module shared with the
+//     student portal's SPA (shared/spa) uses;
+//   - fails when zod is in the build: the admin sends no form to a schema, and
+//     zod (the portal wizard's, shared/application-form/schemas.ts) must stay
+//     out of it (docs/cloudflare/portal-architecture.md#52-the-shared-module-what-moves-and-what-is-imported).
 //
 //   pnpm build:spa && pnpm check:spa
 //
@@ -32,15 +36,20 @@ const MOCK_MARKERS = [
   "mock-batch-2026",
   "belum-verifikasi@",
   "createMockTransport",
-  // The stand-in for Cloudflare's widget (spa/src/mock/turnstile.ts).
+  // The stand-in for Cloudflare's widget (shared/spa/mock-turnstile.ts).
   "Pemeriksaan keamanan tiruan",
   "mock-turnstile-token-",
   "mock-site-key",
 ];
 
+// Strings that exist only in zod 4's bundle (they survive minification: names it tags its classes with).
+const ZOD_MARKERS = ["$ZodType", "$ZodObject", "$ZodError"];
+
 // Classes used by this app's own files and not by components/ui (the shell's
 // frame, the auth card, the drawer). If they are missing, Tailwind did not scan the SPA.
-const SPA_ONLY_CLASSES = ["h-dvh", "min-h-screen", "max-w-md", "starting\\:-translate-x-full"];
+// The last two are used only by files in shared/spa (the auth layout, the crash screen): if they are missing,
+// the shared module is no longer scanned (`@source "../../shared/spa"` in spa/src/styles.css).
+const SPA_ONLY_CLASSES = ["h-dvh", "min-h-screen", "max-w-md", "starting\\:-translate-x-full", "sm\\:max-w-sm", "max-w-lg"];
 
 const kb = (bytes) => `${(bytes / 1000).toFixed(2)} kB`;
 let failed = false;
@@ -63,6 +72,12 @@ for (const file of walk(root)) {
       failed = true;
     }
   }
+  for (const marker of ZOD_MARKERS) {
+    if (text.includes(marker)) {
+      console.error(`FAIL: ${path.relative(root, file)} contains zod ("${marker}"): the admin bundle must not ship it`);
+      failed = true;
+    }
+  }
 }
 
 for (const name of SPA_ONLY_CLASSES) {
@@ -74,4 +89,4 @@ for (const name of SPA_ONLY_CLASSES) {
 
 console.log(`${"JS + CSS total".padEnd(40)} ${kb(total.raw).padStart(11)}  gzip ${kb(total.gzip).padStart(10)}`);
 if (failed) process.exit(1);
-console.log("OK: the mock is not in the build, and the SPA's own classes are in the CSS.");
+console.log("OK: the mock and zod are not in the build, and the SPA's own classes are in the CSS.");

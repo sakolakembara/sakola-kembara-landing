@@ -55,7 +55,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     name: 'navbar',
     web: 'src/components/Navbar.astro',
     root: ['components/layout/navbar.tsx', 'components/layout/auth-nav-button.tsx'],
-    phrases: ['Buka menu', 'Tutup menu', 'Masuk', 'Portal', 'Dashboard', '/api/auth/session', '/api/announcements/current'],
+    phrases: ['Buka menu', 'Tutup menu', 'Masuk', 'Portal', 'Dashboard', '/api/announcements/current'],
   },
   {
     name: 'skip link',

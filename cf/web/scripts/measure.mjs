@@ -106,8 +106,9 @@ const routes = [
   ['/tim (SSR, cache hit)', '/tim'],
   ['404 (SSR render)', '/blog/does-not-exist'],
   ['redirect (/cerita/x/, _redirects)', '/cerita/some-slug/'],
-  ['pass-through (/login, stub origin)', '/login'],
-  ['pass-through (/api/auth/session)', '/api/auth/session'],
+  ['pass-through (/files/a.pdf, stub origin)', '/files/a.pdf'],
+  ['/api/* (JSON 404 of the middleware, M4)', '/api/auth/session'],
+  ['/admin (308 to the admin host, M4)', '/admin/blog'],
   ['/robots.txt (static)', '/robots.txt'],
 ];
 const stats = (xs) => {
@@ -115,7 +116,7 @@ const stats = (xs) => {
   return { median: s[Math.floor(s.length / 2)], p95: s[Math.floor(s.length * 0.95)], min: s[0] };
 };
 {
-  const stack = await startStack({ port: 8796, stubPort: 4398, fixturePort: 4399, inspectorPort: 9336 });
+  const stack = await startStack({ port: 8796, stubPort: 4398, fixturePort: 4399, inspectorPort: 9336, vars: { ADMIN_URL: 'https://admin.example.test' } });
   out.timings = {};
   try {
     // The article is rendered by the Worker: fetch it and weigh it like the prerendered pages.
@@ -165,7 +166,7 @@ const stats = (xs) => {
       ['/blog', 'SSR page'],
       ['/tim', 'SSR page'],
       ['/blog/does-not-exist', 'unknown path -> 404'],
-      ['/login', 'legacy pass-through'],
+      ['/files/a.pdf', 'legacy pass-through'],
       ['/_next/static/a.js', 'legacy pass-through'],
       ['/donasi', 'not yet ported -> pass-through'],
       ['/no-such-link', 'shortlink candidate -> API lookup, 404'],
