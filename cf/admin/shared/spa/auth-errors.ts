@@ -33,7 +33,8 @@ export const EMAIL_UNAVAILABLE_MESSAGE = "Layanan email sedang tidak tersedia, j
 /** The widget itself could not run (its script was blocked or offline, or the challenge errored): no token will come until the page is reloaded. */
 export const WIDGET_ERROR_MESSAGE = "Pemeriksaan keamanan tidak dapat dijalankan. Periksa koneksi internet, lalu muat ulang halaman.";
 
-function captchaMessage(code: string | undefined): string | null {
+/** The line for a refusal of the security check, or null when `code` is not one (a page that has more routes to explain than the shared ones, such as the portal's registration, uses it). */
+export function captchaMessage(code: string | undefined): string | null {
   if (code === "captcha_failed") return CAPTCHA_FAILED_MESSAGE;
   if (code === "captcha_unavailable") return CAPTCHA_UNAVAILABLE_MESSAGE;
   return null;
