@@ -2,17 +2,18 @@ import { existsSync, readdirSync } from 'node:fs';
 import { bodies } from 'virtual:blog-bodies';
 import { describe, expect, it } from 'vitest';
 import { PAGE_SIZE, cleanExcerpt, getAllArticles, getArticleBySlug, getBlogPage, getRelated, pageNumbers } from '~/lib/blog';
-import { blogPosts, importRoot, repoRoot } from './helpers';
+import { ARTICLE_COUNT, blogPosts, importRoot, repoRoot } from './helpers';
 
 const articles = getAllArticles();
 
 describe('blog content (virtual modules built from the root content/blog)', () => {
-  it('has the 80 articles of lib/blog-posts.json and nothing else (README.md is not an article)', () => {
+  it('has the articles of lib/blog-posts.json and nothing else (README.md is not an article)', () => {
     const files = readdirSync(`${repoRoot}content/blog`).filter((f) => f.endsWith('.md'));
-    expect(files).toHaveLength(81); // 80 articles + README.md
-    expect(articles).toHaveLength(80);
+    expect(files).toHaveLength(ARTICLE_COUNT + 1); // the articles + README.md
+    expect(articles).toHaveLength(ARTICLE_COUNT);
     expect(articles.map((a) => a.id).sort()).toEqual(blogPosts().articles.map((a) => a.id).sort());
-    expect(new Set(articles.map((a) => a.id)).size).toBe(80);
+    expect(new Set(articles.map((a) => a.id)).size).toBe(ARTICLE_COUNT);
+    expect(blogPosts().meta.total).toBe(ARTICLE_COUNT);
   });
 
   it('is sorted newest first, deterministic on ties', () => {
@@ -114,7 +115,7 @@ describe('blog helpers', () => {
       if (page.featured) seen.add(page.featured.id);
       page.items.forEach((i) => seen.add(i.id));
     }
-    expect(seen.size).toBe(80); // every article is reachable from the list
+    expect(seen.size).toBe(ARTICLE_COUNT); // every article is reachable from the list
   });
 
   it.each([['0', 1], ['-3', 1], ['abc', 1], ['', 1], [null, 1], ['999', 6], ['2.9', 2]])('page %j clamps to %i', (raw, expected) => {

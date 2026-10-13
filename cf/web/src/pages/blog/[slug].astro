@@ -10,7 +10,6 @@ import Base from '~/layouts/Base.astro';
 import { coverAttrs, getBlogSource, headerSource } from '~/lib/blog';
 import { blogRuntime } from '~/lib/blog-runtime';
 import { contentPageHeaders } from '~/lib/content-api';
-import { articleJsonLd } from '~/lib/seo';
 import { rewriteUploadsInHtml } from '~/lib/uploads';
 
 // SSR: the article comes from the content API at request time (a new or edited article shows
@@ -58,8 +57,20 @@ const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttr
     description: article.excerpt,
     path: `/blog/${article.slug}`,
     ogImage: cover?.src,
+    article: {
+      dateISO: article.dateISO,
+      modifiedISO: article.modifiedISO,
+      author: article.author,
+      category: article.category,
+      imageWidth: article.imageWidth,
+      imageHeight: article.imageHeight,
+    },
+    crumbs: [
+      { name: 'Beranda', path: '/' },
+      { name: 'Blog', path: '/blog' },
+      { name: article.title, path: `/blog/${article.slug}` },
+    ],
   }}
-  jsonLd={[articleJsonLd({ ...article, id: article.slug, image: cover?.src })]}
 >
   <main class="min-h-screen bg-gray-50">
     <section class="relative overflow-hidden">

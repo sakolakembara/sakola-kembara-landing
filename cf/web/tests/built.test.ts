@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { bodies } from 'virtual:blog-bodies';
 import { describe, expect, it } from 'vitest';
-import { blogPosts, webRoot } from './helpers';
+import { ARTICLE_COUNT, blogPosts, graphTypes, webRoot } from './helpers';
 
 // Checks on the build output (dist/). They need `pnpm build` first and are
 // skipped, not failed, when dist/ is missing, so `pnpm test` works on a fresh clone.
@@ -29,13 +29,14 @@ describe.skipIf(!built)('build output', () => {
     for (const f of ['blog.html', 'blog/index.html', 'kontak.html', 'tim.html', 'sitemap.xml', '404.html']) {
       expect(existsSync(path.join(dist, 'client', f)), f).toBe(false); // a static 404 would be served with status 200
     }
-    expect(articles.length).toBe(80);
+    expect(articles.length).toBe(ARTICLE_COUNT);
   });
 
-  it('home page: Organization JSON-LD, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {
+  it('home page: the site graph with the Organization, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {
     const html = read('client/index.html');
     expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(1);
     expect(html).toContain('"@type":["NGO","EducationalOrganization"]');
+    expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage']); // no breadcrumb on the home page: a trail of one step is not a trail
     const imgs = [...html.matchAll(/<img [^>]*>/g)].map((m) => m[0]);
     expect(imgs.length).toBeGreaterThanOrEqual(5);
     for (const img of imgs) {

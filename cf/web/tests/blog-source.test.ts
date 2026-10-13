@@ -20,7 +20,7 @@ import { parseBlogArticle, parseBlogList, parseSummary, safeImagePath, type Blog
 import { coverAttrs, getAllArticles, getBlogSource, getRelated, getBlogPage, headerSource } from '~/lib/blog';
 import { contentApiTarget } from '~/lib/api-client';
 import { contentPageHeaders } from '~/lib/content-api';
-import { blogPosts, readRoot } from './helpers';
+import { ARTICLE_COUNT, blogPosts, readRoot } from './helpers';
 
 const articles = getAllArticles();
 
@@ -114,14 +114,14 @@ describe('blog-contract: the rules of GET /api/public/blog', () => {
     expect(pickRelated(far[0], [far[0]])).toEqual([]);
   });
 
-  it('the slug grammar admits the 80 migrated slugs and rejects what cannot be a slug', () => {
+  it('the slug grammar admits the slugs of every article and rejects what cannot be a slug', () => {
     for (const a of articles) expect(BLOG_SLUG.test(a.id), a.id).toBe(true);
     for (const bad of ['', 'A', 'a b', '../x', 'a/b', '-a', 'a.b', 'é', 'x'.repeat(201), 'a%20b']) expect(BLOG_SLUG.test(bad), bad).toBe(false);
   });
 });
 
 describe('blog.ts keeps one implementation: the sync helpers are the contract\'s functions', () => {
-  it('getRelated and getBlogPage (the build-time index) agree with the contract on all 80 articles', () => {
+  it('getRelated and getBlogPage (the build-time index) agree with the contract on every article', () => {
     const wire = articles.map((a) => toWireSummary(a));
     for (const a of articles) {
       expect(getRelated(a).map((r) => r.id)).toEqual(pickRelated(toWireSummary(a), wire).map((r) => r.slug));
@@ -232,9 +232,9 @@ describe('getBlogSource', () => {
 
 // ---------------------------------------------------------------------------------------------------
 // Parity: the site reading the API (here the fixture server, the real HTTP and the real parsers) gives
-// exactly what the build-time markdown adapter gave, for all 80 articles.
+// exactly what the build-time markdown adapter gave, for every article (ARTICLE_COUNT).
 
-describe('the API client and the markdown adapter agree on all 80 articles', () => {
+describe('the API client and the markdown adapter agree on every article', () => {
   let fixture: Awaited<ReturnType<typeof startFixtureApi>>;
   let api: BlogSource;
   let base: string;
@@ -260,9 +260,9 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
     }
   });
 
-  it('all 80 articles: slug, title, dates, category, excerpt, cover, author, HTML, and the related summaries', async () => {
+  it('every article (ARTICLE_COUNT): slug, title, dates, category, excerpt, cover, author, HTML, and the related summaries', async () => {
     const legacyIds = blogPosts().articles;
-    expect(articles).toHaveLength(80);
+    expect(articles).toHaveLength(ARTICLE_COUNT);
     for (const meta of articles) {
       const [a, m] = await Promise.all([api.article(meta.id), markdownBlogSource.article(meta.id)]);
       if (!a.data || !m.data) throw new Error(`${meta.id}: ${a.source} / ${m.source}`);
@@ -282,7 +282,7 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
       expect(related).toHaveLength(3);
       expect(related.find((r) => r.slug === meta.id)).toBeUndefined();
 
-      // the WordPress scrape that the 80 articles came from: same slug, title and date
+      // the WordPress scrape that the articles came from (lib/blog-posts.json): same slug, title and date
       const wp = legacyIds.find((x) => x.id === meta.id);
       expect(wp, meta.id).toBeDefined();
       expect(article.title).toBe(wp!.title);
@@ -290,12 +290,12 @@ describe('the API client and the markdown adapter agree on all 80 articles', () 
     }
   });
 
-  it('all(): the contract\'s enumeration (pageSize=50 plus the featured article) finds exactly the 80, newest first', async () => {
+  it('all(): the contract\'s enumeration (pageSize=50 plus the featured article) finds exactly every article, newest first', async () => {
     await fetch(`${base}/__reset`, { method: 'POST' });
     const all = await api.all();
     if (!all.data) throw new Error('all failed');
     expect(all.data.map((a) => a.slug)).toEqual(articles.map((a) => a.id));
-    expect(new Set(all.data.map((a) => a.slug)).size).toBe(80);
+    expect(new Set(all.data.map((a) => a.slug)).size).toBe(ARTICLE_COUNT);
     const requests: string[] = await (await fetch(`${base}/__requests?for=blog`)).json();
     expect(requests).toEqual(['/api/public/blog?page=1&pageSize=50', '/api/public/blog?page=2&pageSize=50']);
     const m = await markdownBlogSource.all();

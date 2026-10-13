@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, toUnderscoreRedirects } from '../redirects.config.mjs';
-import { blogPosts, readRoot, repoRoot, webRoot } from './helpers';
+import { ARTICLE_COUNT, blogPosts, readRoot, repoRoot, webRoot } from './helpers';
 
 /** The article files of the repo root (README.md is not one). */
 const articleFiles = () => readdirSync(`${repoRoot}content/blog`).filter((f) => f.endsWith('.md') && f !== 'README.md');
@@ -42,11 +42,11 @@ function evalUnderscoreRedirects(file: string, pathname: string, search = ''): {
 
 const file = toUnderscoreRedirects();
 
-describe('every WordPress sourceUrl of the 80 articles redirects to /blog/<slug> with 308', () => {
+describe('every WordPress sourceUrl of the articles redirects to /blog/<slug> with 308', () => {
   const { articles } = blogPosts();
 
-  it('the dataset is the 80 articles', () => {
-    expect(articles).toHaveLength(80);
+  it('the dataset is every article', () => {
+    expect(articles).toHaveLength(ARTICLE_COUNT);
   });
 
   it.each(articles.map((a) => [a.id, a.sourceUrl] as const))('%s', (id, sourceUrl) => {

@@ -8,7 +8,7 @@ import { matchRedirect } from '../redirects.config.mjs';
 import { FILES_DIR, IMAGE_DIRS, LIMITS, MAX_WIDTH, RASTER_RE, WIDTHS, assetUrl, rungsFor, srcsetFor, variantUrl } from '../assets.config.mjs';
 import { auditDist, checkImgTag, localUrls, parseAttrs, walkFiles } from '../scripts/lib/dist-audit.mjs';
 import { getImage, imgAttrs, listImages } from '~/lib/images';
-import { readWeb, repoRoot, webRoot } from './helpers';
+import { ARTICLE_COUNT, readWeb, repoRoot, webRoot } from './helpers';
 
 // The asset pipeline (scripts/build-assets.mjs) and its guards. `pnpm test` runs
 // the pipeline first, so cf/web/public/ and the manifest are current here; the
@@ -135,8 +135,8 @@ describe('images referenced by the site', () => {
   }
   const local = [...refs].filter(([url]) => url.startsWith('/'));
 
-  it('every cover and inline image of the 80 articles is in the manifest and in the output', () => {
-    expect(articles).toHaveLength(80);
+  it('every cover and inline image of the articles is in the manifest and in the output', () => {
+    expect(articles).toHaveLength(ARTICLE_COUNT);
     expect(local.length).toBeGreaterThan(90);
     for (const [url, file] of local) {
       expect(manifest.images[url], `${url} (${file}) is not in the manifest`).toBeDefined();

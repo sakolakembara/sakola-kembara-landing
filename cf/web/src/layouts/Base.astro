@@ -4,13 +4,14 @@ import lora700 from '@fontsource/lora/files/lora-latin-700-normal.woff2?url';
 import jakarta400 from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-400-normal.woff2?url';
 import Footer from '~/components/Footer.astro';
 import Navbar from '~/components/Navbar.astro';
-import { KEYWORDS, LEGAL_NAME, SITE_NAME, THEME_COLOR, buildSeo, jsonLdScript, type SeoInput } from '~/lib/seo';
+import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph, buildSeo, jsonLdScript, type SeoInput } from '~/lib/seo';
 
 /**
  * The page shell: SEO <head>, skip link, navbar, content slot, footer.
  *
- * `seo` picks the head data (see buildSeo in lib/seo.ts); `jsonLd` is a list of
- * schema.org objects, each emitted as its own application/ld+json script.
+ * `seo` picks the head data (see buildSeo in lib/seo.ts) and the site graph (buildGraph: Organization, WebSite,
+ * WebPage, BreadcrumbList, and for an article BlogPosting and Person), emitted as ONE application/ld+json script;
+ * `jsonLd` is a list of further schema.org objects (a program's), each emitted as a script of its own.
  * The LCP image of a page is marked on the <img> itself (fetchpriority="high").
  */
 interface Props {
@@ -19,10 +20,11 @@ interface Props {
 }
 const { seo, jsonLd = [] } = Astro.props;
 const s = buildSeo(seo);
+const graph = buildGraph(seo);
 ---
 
 <!doctype html>
-<html lang="id" class="scroll-smooth">
+<html lang={SITE_LANGUAGE} class="scroll-smooth">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -48,6 +50,9 @@ const s = buildSeo(seo);
     {s.og.image.height && <meta property="og:image:height" content={String(s.og.image.height)} />}
     {s.og.image.alt && <meta property="og:image:alt" content={s.og.image.alt} />}
     <meta property="og:type" content={s.og.type} />
+    {s.og.article && <meta property="article:published_time" content={s.og.article.published} />}
+    {s.og.article && <meta property="article:modified_time" content={s.og.article.modified} />}
+    {s.og.article?.section && <meta property="article:section" content={s.og.article.section} />}
 
     <meta name="twitter:card" content={s.twitter.card} />
     <meta name="twitter:title" content={s.twitter.title} />
@@ -62,6 +67,7 @@ const s = buildSeo(seo);
     <link rel="preload" href={lora700} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={jakarta400} as="font" type="font/woff2" crossorigin />
 
+    {graph && <script type="application/ld+json" set:html={jsonLdScript(graph)} />}
     {jsonLd.map((data) => <script type="application/ld+json" set:html={jsonLdScript(data)} />)}
   </head>
   <body class="antialiased">

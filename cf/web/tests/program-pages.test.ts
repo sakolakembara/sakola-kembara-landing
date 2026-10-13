@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { galleryAlt, getProgramGallery } from '~/lib/gallery';
 import { programs } from '~/lib/programs';
 import { PROGRAM_IDS, STATIC_ROUTES } from '~/lib/sitemap';
-import { importRoot, readRoot, webRoot } from './helpers';
+import { graphTypes, importRoot, readRoot, webRoot } from './helpers';
 
 // Checks on the pages `pnpm build` generates for /program/<id> and /donasi (dist/client/*.html).
 // Skipped, not failed, when dist/ is missing, like tests/built.test.ts.
@@ -49,8 +49,8 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     const text = textOf(html);
     const index = programs.indexOf(program);
 
-    it('lang id, exactly one h1, and it is the stage title', () => {
-      expect(html).toContain('<html lang="id"');
+    it('lang id-ID, exactly one h1, and it is the stage title', () => {
+      expect(html).toContain('<html lang="id-ID"');
       expect([...html.matchAll(/<h1[\s>]/g)]).toHaveLength(1);
       expect(decode(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)![1].replace(/<[^>]+>/g, '').trim())).toBe(program.title);
     });
@@ -155,7 +155,7 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     });
 
     it('SEO: title, description, canonical, robots, Open Graph and Twitter (same values as the Next layout)', () => {
-      expect(decode(html.match(/<title>([^<]*)<\/title>/)![1])).toBe(`Program ${program.title} | Sakola Kembara`);
+      expect(decode(html.match(/<title>([^<]*)<\/title>/)![1])).toBe(`Program ${program.title} - Yayasan Sakola Kembara Indonesia`);
       expect(meta(html, 'name', 'description')).toBe(program.description);
       expect(canonical(html)).toBe(`https://sakolakembara.org/program/${program.id}`);
       expect(meta(html, 'name', 'robots')).toBe('index, follow');
@@ -179,12 +179,13 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
       expect(statSync(file).size).toBeLessThan(300 * 1024);
     });
 
-    it('Program JSON-LD: the only structured data, parses, and equals the root programJsonLd()', () => {
+    it('Program JSON-LD: the site graph, then the program block, which parses and equals the root programJsonLd()', () => {
       const data = jsonLd(html);
-      expect(data).toHaveLength(1);
-      expect(data[0]).toEqual(rootSeo.programJsonLd(program));
-      expect(data[0]['@type']).toBe('EducationalOccupationalProgram');
-      expect(data[0].url).toBe(`https://sakolakembara.org/program/${program.id}`);
+      expect(data).toHaveLength(2);
+      expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList']);
+      expect(data[1]).toEqual(rootSeo.programJsonLd(program));
+      expect(data[1]['@type']).toBe('EducationalOccupationalProgram');
+      expect(data[1].url).toBe(`https://sakolakembara.org/program/${program.id}`);
     });
 
     it('no external script and no framework: one inline module script (the navbar)', () => {
@@ -206,9 +207,9 @@ describe.skipIf(!built)('/donasi build output', async () => {
     expect(existsSync(path.join(client, 'donasi/index.html'))).toBe(false);
   });
 
-  it('SEO: "Donasi | Sakola Kembara", the legacy description, canonical, Open Graph, default share image, no JSON-LD', () => {
+  it('SEO: "Donasi - Yayasan Sakola Kembara Indonesia", the legacy description, canonical, Open Graph, default share image, the site graph only', () => {
     const description = legacyLayout.match(/description:\s*"([^"]+)"/)![1];
-    expect(html).toContain('<title>Donasi | Sakola Kembara</title>');
+    expect(html).toContain('<title>Donasi - Yayasan Sakola Kembara Indonesia</title>');
     expect(meta(html, 'name', 'description')).toBe(description);
     expect(canonical(html)).toBe('https://sakolakembara.org/donasi');
     expect(meta(html, 'property', 'og:title')).toBe('Donasi');
@@ -217,7 +218,8 @@ describe.skipIf(!built)('/donasi build output', async () => {
     expect(meta(html, 'property', 'og:image')).toBe('https://sakolakembara.org/og-default.jpg');
     expect(meta(html, 'name', 'twitter:image')).toBe('https://sakolakembara.org/og-default.jpg');
     expect(meta(html, 'name', 'robots')).toBe('index, follow');
-    expect(jsonLd(html)).toEqual([]);
+    expect(jsonLd(html)).toHaveLength(1);
+    expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList']);
   });
 
   it('exactly one h1, the hero title, with the lead', () => {

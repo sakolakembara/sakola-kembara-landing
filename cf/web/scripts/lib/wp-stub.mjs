@@ -19,11 +19,14 @@ export const PRODUCTION_ORIGIN = 'https://sakolakembara.org';
 /** What the stub does on purpose, for the rehearsal's assertions. */
 export const PLANTED = {
   /** A page the live site has and the candidate does not: a BLOCKER (url-missing). */
-  missingOnCandidate: ['/halaman-lama/', '/category/cerita/', '/category/news/'],
+  missingOnCandidate: ['/halaman-lama/', '/arsip-lama/', '/kegiatan-lama/'],
+  /** Category archives, which the candidate now sends to the blog index (SAKEM-090): INFO (address-moved), never a blocker. */
+  redirectedArchives: ['/category/cerita/', '/category/news/'],
   /** A page whose title differs in more than the suffix: a WARN (title-changed). */
   titleChanged: '/tim/',
-  /** A page with a BreadcrumbList the candidate does not render: a WARN (jsonld-type-dropped). */
-  breadcrumbDropped: '/kontak/',
+  /** A page with a BreadcrumbList the candidate does not render: a WARN (jsonld-type-dropped). The candidate gives every
+   *  page but the home page a breadcrumb since SAKEM-090 (a trail of one step is not a trail), so it is the home page. */
+  breadcrumbDropped: '/',
   /** A feed (RSS) where the candidate redirects to an HTML page: a WARN (content-type-changed). */
   feed: '/feed/',
   /** A page the candidate redirects to another address: INFO (address-moved). */
@@ -110,12 +113,12 @@ export async function startWpStub({ port = 0, articles, pages, cleanExcerpt = cl
     if (p.path !== '/') routes.set(p.path.replace(/\/$/, ''), redirect(p.path));
     pageEntries.push({ path: p.path });
   }
-  const extraPages = [PLANTED.moved, ...PLANTED.missingOnCandidate.filter((p) => !p.startsWith('/category/'))];
+  const extraPages = [PLANTED.moved, ...PLANTED.missingOnCandidate];
   for (const p of extraPages) {
     routes.set(p, html(wpPage({ path: p, core: p.replace(/\//g, ' ').trim().replace(/-/g, ' '), description: `Halaman ${p}` })));
     pageEntries.push({ path: p });
   }
-  const categoryEntries = PLANTED.missingOnCandidate.filter((p) => p.startsWith('/category/')).map((p) => ({ path: p }));
+  const categoryEntries = PLANTED.redirectedArchives.map((p) => ({ path: p }));
   for (const e of categoryEntries) routes.set(e.path, html(wpPage({ path: e.path, core: `Kategori ${e.path.split('/')[2]}`, description: 'Arsip kategori' })));
   routes.set('/index.php', redirect('/'));
   routes.set('/blog/page/2/', html(wpPage({ path: '/blog/page/2/', core: 'Blog - Halaman 2', description: 'Arsip blog halaman 2' })));

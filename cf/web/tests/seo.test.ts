@@ -5,11 +5,16 @@ import {
   ORG_LOGO,
   SITE_NAME,
   SITE_TAGLINE,
+  DEFAULT_TITLE,
+  LEGAL_NAME as LEGAL,
+  ORG_ID,
+  SITE_LANGUAGE,
   SITE_URL,
   SOCIAL_URLS,
   TITLE_TEMPLATE,
+  WEBSITE_ID,
   absoluteUrl,
-  articleJsonLd,
+  buildGraph,
   buildSeo,
   jsonLdScript,
   organizationJsonLd,
@@ -45,11 +50,11 @@ interface RootSeo {
 describe('SEO parity with the root lib/seo.ts', async () => {
   const root = await importRoot<RootSeo>('lib/seo.ts');
 
+  // The title template is NOT in this list any more: SAKEM-090 moved it to the live WordPress pattern (see below).
   it('site identity constants are identical', () => {
-    expect({ SITE_URL, SITE_NAME, TITLE_TEMPLATE, LEGAL_NAME, SITE_TAGLINE, ORG_LOGO, DEFAULT_OG_IMAGE, SOCIAL_URLS }).toEqual({
+    expect({ SITE_URL, SITE_NAME, LEGAL_NAME, SITE_TAGLINE, ORG_LOGO, DEFAULT_OG_IMAGE, SOCIAL_URLS }).toEqual({
       SITE_URL: root.SITE_URL,
       SITE_NAME: root.SITE_NAME,
-      TITLE_TEMPLATE: root.TITLE_TEMPLATE,
       LEGAL_NAME: root.LEGAL_NAME,
       SITE_TAGLINE: root.SITE_TAGLINE,
       ORG_LOGO: root.ORG_LOGO,
@@ -58,9 +63,15 @@ describe('SEO parity with the root lib/seo.ts', async () => {
     });
   });
 
-  it('title template: "<page> | Sakola Kembara"', () => {
-    expect(pageTitle('Tim Kami')).toBe('Tim Kami | Sakola Kembara');
-    expect(pageTitle('Tim Kami')).toBe(root.pageTitle('Tim Kami').absolute);
+  it('title template (SAKEM-090, the live WordPress pattern, not the root app\'s): "<page> - Yayasan Sakola Kembara Indonesia"', () => {
+    expect(TITLE_TEMPLATE).toBe('%s - Yayasan Sakola Kembara Indonesia');
+    expect(pageTitle('Tim Kami')).toBe('Tim Kami - Yayasan Sakola Kembara Indonesia');
+    // the root app says "Tim Kami | Sakola Kembara": the one deliberate difference
+    expect(root.pageTitle('Tim Kami').absolute).toBe('Tim Kami | Sakola Kembara');
+  });
+
+  it('a title is text, never a replacement pattern ($& and $1 stay as typed)', () => {
+    expect(pageTitle('Rp $& $1 $$')).toBe('Rp $& $1 $$ - Yayasan Sakola Kembara Indonesia');
   });
 
   it('jsonLdScript escapes < and the line separators exactly like the root', () => {
@@ -82,22 +93,12 @@ describe('SEO parity with the root lib/seo.ts', async () => {
     expect(programJsonLd(p)).toEqual(root.programJsonLd(p));
   });
 
-  it('Article JSON-LD is identical (relative, absolute and missing image; with and without author)', () => {
-    const base = { id: 'a-b', title: 'T', excerpt: 'E', dateISO: '2026-05-21' };
-    for (const extra of [
-      { image: '/blog/images/2026/05/x.jpg', author: 'Deanita', modifiedISO: '2026-06-01' },
-      { image: 'https://example.org/x.jpg' },
-      {},
-    ]) {
-      expect(articleJsonLd({ ...base, ...extra })).toEqual(root.articleJsonLd({ ...base, ...extra }));
-    }
-  });
-
   it('page head data equals buildPageMetadata() of the root', () => {
     const input = { title: 'Blog & Cerita', description: 'Deskripsi halaman.', path: '/blog' };
     const seo = buildSeo({ kind: 'page', ...input });
     const meta = root.buildPageMetadata(input);
-    expect(seo.title).toBe(meta.title.absolute);
+    expect(seo.title).toBe(pageTitle('Blog & Cerita')); // the root's differs in the suffix only (SAKEM-090)
+    expect(seo.title.replace(` - ${LEGAL}`, '')).toBe(meta.title.absolute.replace(' | Sakola Kembara', ''));
     expect(seo.description).toBe(meta.description);
     expect(seo.canonical).toBe(absoluteUrl(meta.alternates.canonical));
     expect(seo.og.title).toBe(meta.openGraph.title);
@@ -126,12 +127,15 @@ describe('SEO parity with the root lib/seo.ts', async () => {
     );
   });
 
-  it('home uses the root layout defaults: no suffix, 1200x630 image with alt, canonical "/"', () => {
+  it('home uses the root layout defaults: no suffix, 1200x630 image with alt, canonical "/"; the title has the live site\'s comma', () => {
     const layout = readRoot('app/layout.tsx');
     const defaultTitle = layout.match(/const DEFAULT_TITLE = "([^"]+)"/)?.[1];
     const defaultDescription = layout.match(/const DEFAULT_DESCRIPTION =\s*"([^"]+)"/)?.[1];
     const seo = buildSeo({ kind: 'home' });
-    expect(seo.title).toBe(defaultTitle);
+    // SAKEM-090: the live home page says "Sakola Kembara, Pendidikan Untuk Semua"; the root app says "... - ..."
+    expect(defaultTitle).toBe('Sakola Kembara - Pendidikan Untuk Semua');
+    expect(seo.title).toBe('Sakola Kembara, Pendidikan Untuk Semua');
+    expect(seo.title).toBe(DEFAULT_TITLE);
     expect(seo.description).toBe(defaultDescription);
     expect(seo.canonical).toBe(`${SITE_URL}/`);
     expect(seo.og.image).toEqual({ url: `${SITE_URL}${DEFAULT_OG_IMAGE}`, width: 1200, height: 630, alt: SITE_NAME });
@@ -144,7 +148,7 @@ describe('SEO parity with the root lib/seo.ts', async () => {
     const seo = buildSeo({ kind: 'notfound' });
     expect(seo.robots).toBe('noindex');
     expect(seo.canonical).toBeNull();
-    expect(seo.title).toBe('Halaman tidak ditemukan | Sakola Kembara');
+    expect(seo.title).toBe('Halaman tidak ditemukan - Yayasan Sakola Kembara Indonesia');
   });
 });
 

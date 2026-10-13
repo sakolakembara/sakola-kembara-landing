@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { absoluteUrl, buildSeo } from '~/lib/seo';
-import { importRoot, readRoot, readWeb } from './helpers';
+import { importRoot, liveTitle, readRoot, readWeb } from './helpers';
 
 // Source-level checks for the pages of SAKEM-080 part D: /laporan, /gabung-siswa and
 // /gabung-siswa/docs. What they render is checked in tests/gabung-siswa-built.test.ts (the
@@ -51,7 +51,7 @@ describe.each(pages)('$route', (page) => {
 
     const seo = buildSeo({ kind: 'page', ...ours });
     const meta = root.buildPageMetadata(theirs);
-    expect(seo.title).toBe(meta.title.absolute);
+    expect(seo.title).toBe(liveTitle(meta.title.absolute)); // the suffix is the live pattern since SAKEM-090
     expect(seo.description).toBe(meta.description);
     expect(seo.canonical).toBe(absoluteUrl(meta.alternates.canonical));
     expect(seo.og).toMatchObject({ title: meta.openGraph.title, description: meta.openGraph.description, url: absoluteUrl(meta.openGraph.url), type: 'website' });
