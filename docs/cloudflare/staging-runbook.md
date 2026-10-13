@@ -63,7 +63,7 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | 1 | Pin the account, log in | a login on this Mac | yes |
 | 2 | Check locally | nothing on Cloudflare | no |
 | 3 | Create the D1 database | an empty database | yes |
-| 4 | Apply the migrations | 12 migrations, `0000` to `0011` | yes |
+| 4 | Apply the migrations | 13 migrations, `0000` to `0012` | yes |
 | 5 | Create the R2 bucket and turn its `r2.dev` URL on | a bucket, public | yes |
 | 6 | First deploy of the admin Worker | the Worker, its bindings, the cron | yes (**checkpoint: rate limits**) |
 | 7 | Turnstile widget and Resend key | dashboard objects | yes |
@@ -135,11 +135,11 @@ CI=1 pnpm exec wrangler d1 create sakem-staging --location apac
 - **Verify:** `pnpm exec wrangler d1 info sakem-staging` (shows `version: production`); `git status --short` is clean.
 - **Revert:** `pnpm exec wrangler d1 delete sakem-staging` (the database is empty: nothing is lost).
 
-## 4. Apply the migrations (`0000` to `0011`)
+## 4. Apply the migrations (`0000` to `0012`)
 
 ```bash
 cd cf/admin
-pnpm exec wrangler d1 migrations list  sakem-staging --env staging --remote     # twelve not yet applied
+pnpm exec wrangler d1 migrations list  sakem-staging --env staging --remote     # thirteen not yet applied
 pnpm exec wrangler d1 migrations apply sakem-staging --env staging --remote     # shows them, asks you to confirm
 pnpm exec wrangler d1 execute sakem-staging --env staging --remote --command \
   "SELECT type, name FROM sqlite_master WHERE name IN ('signable_super_admins', 'users_keep_one_super_admin')"
@@ -148,7 +148,7 @@ pnpm exec wrangler d1 execute sakem-staging --env staging --remote --command \
 - **Changes:** creates every table, index, view and trigger of `cf/admin/migrations/` in order, one transaction per file; a failing file is rolled back and the earlier ones stay. Wrangler takes a backup after applying. D1 counts these as a few hundred rows written (of 100,000 a day, per account).
 - **Your OK:** yes.
 - **Verify:** the last query returns **two rows**, a view and a trigger. `migrations list` now says there is nothing to apply.
-- **Deploy order.** On an empty database the order against the Worker does not matter, so migrations come first here. For a **later** migration, read its note: `0010` came before the Worker that reads it, `0011` goes the other way (**deploy the Worker first, then apply `0011`**: [`auth.md`](auth.md#the-last-super_admin)). The rule: a migration that only adds what the new Worker needs goes first; one that changes what the old Worker reads goes after the new Worker is live. Write the direction in the PR of every migration.
+- **Deploy order.** On an empty database the order against the Worker does not matter, so migrations come first here. For a **later** migration, read its note: `0010` came before the Worker that reads it, `0011` goes the other way (**deploy the Worker first, then apply `0011`**: [`auth.md`](auth.md#the-last-super_admin)); `0012` (`blog_posts.meta_description`, an additive nullable column, SAKEM-090) goes first, because the new API Worker selects it. The rule: a migration that only adds what the new Worker needs goes first; one that changes what the old Worker reads goes after the new Worker is live. Write the direction in the PR of every migration.
 - **Revert:** a database with nothing in it: `d1 delete sakem-staging` and step 3 again. With data: `pnpm exec wrangler d1 time-travel info sakem-staging --env staging` first (it prints a bookmark: write it down), then `d1 time-travel restore sakem-staging --env staging --timestamp <time before>`. Time Travel keeps 7 days on the Free plan.
 
 ## 5. Create the R2 bucket and turn its public URL on
@@ -295,15 +295,15 @@ Things only these two requests can show (note them for the PM, no values): `curl
 
 ## 12. Seed data
 
-**The 80 articles** (explicit approval; **this writes**). It writes 80 `blog_posts` rows (about 400 to 500 D1 rows written with their index entries, of 100,000 a day) in one idempotent upsert per article: rerunning it leaves an article that was edited in the admin alone. The longest statement is 20,965 bytes (D1's limit is 100,000).
+**The 86 articles** (the 80 migrated and the 6 added on 2026-10-13; explicit approval; **this writes**). It writes 86 `blog_posts` rows (about 430 to 540 D1 rows written with their index entries, of 100,000 a day) in one idempotent upsert per article, each with its `meta_description` (migration `0012` must be applied first): rerunning it leaves an article that was edited in the admin alone. The longest statement is 21,161 bytes (D1's limit is 100,000).
 
 ```bash
 cd cf/admin
 pnpm exec wrangler d1 time-travel info sakem-staging --env staging          # write down the bookmark: the way back
 pnpm blog:import:local -- --out /private/tmp/legacy-blog.sql                # only writes the SQL; nothing is applied
-wc -l /private/tmp/legacy-blog.sql                                          # 80 lines; read a few
+wc -l /private/tmp/legacy-blog.sql                                          # 86 lines; read a few
 pnpm exec wrangler d1 execute sakem-staging --env staging --remote --file /private/tmp/legacy-blog.sql   # <- your OK
-pnpm exec wrangler d1 execute sakem-staging --env staging --remote --command "SELECT count(*) AS n FROM blog_posts"   # 80
+pnpm exec wrangler d1 execute sakem-staging --env staging --remote --command "SELECT count(*) AS n FROM blog_posts"   # 86
 rm /private/tmp/legacy-blog.sql
 ```
 

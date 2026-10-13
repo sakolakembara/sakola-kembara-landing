@@ -239,10 +239,10 @@ Every Worker gets `<name>.<account subdomain>.workers.dev` unless `workers_dev: 
 | Time Travel | **7 days on Free** (30 on Paid), always on, free; restores are a `wrangler d1 time-travel` command | the revert for a bad import or migration on staging | OK |
 | `EXPLAIN` | `EXPLAIN QUERY PLAN` is documented for checking index use on D1 | already run on every hot statement locally | OK |
 | Bound parameters per query | **100** | one statement can exceed it: the blog save looks up the media rows of an article's inline images in one `IN (...)` ([`src/api/blog.ts`](../../cf/admin/src/api/blog.ts) `uploadSizes`), so an article with 100 or more distinct uploaded images would fail with a 500; the 12,000-character body makes it possible in theory, an editor would never do it | low RISK; fix: chunk by 90 |
-| Statement length / row size | 100,000 bytes / 2,000,000 bytes | the import writes one statement per article; the longest is **20,965 bytes** (80 articles, 971,360 bytes in all, measured here with `pnpm blog:import:local -- --out`) | OK |
+| Statement length / row size | 100,000 bytes / 2,000,000 bytes | the import writes one statement per article; the longest is **21,161 bytes** (86 articles, 1,080,402 bytes in all, measured with `pnpm blog:import:local -- --out` on 2026-10-13) | OK |
 | Queries per invocation | 50 | at most 30 (cron), usually under 10 | OK |
 | Batches | statements in a `batch()` are one transaction; each keeps the per-statement limits | used for audit and write pairs | OK |
-| Migrations | `wrangler d1 migrations apply` runs each file in a transaction and rolls back a failing one; takes a backup after applying | twelve, `0000` to `0011` | OK |
+| Migrations | `wrangler d1 migrations apply` runs each file in a transaction and rolls back a failing one; takes a backup after applying | thirteen, `0000` to `0012` | OK |
 
 **The accepted RISK.** Every short-link click is counted, with no cap (Dzul, 2026-10-12): one link that goes viral can spend the day's 100,000 writes, after which every write (admin sign-in, a contact message) fails until 00:00 UTC while redirects keep working. Rows written per day is on the watch list ([`staging-runbook.md`](staging-runbook.md#14-limits-to-watch)). The two fallbacks he named: a per-link cap of 2,000 clicks a day, or no counting. The account limit is shared by staging and production.
 

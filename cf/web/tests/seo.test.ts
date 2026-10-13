@@ -6,15 +6,10 @@ import {
   SITE_NAME,
   SITE_TAGLINE,
   DEFAULT_TITLE,
-  LEGAL_NAME as LEGAL,
-  ORG_ID,
-  SITE_LANGUAGE,
   SITE_URL,
   SOCIAL_URLS,
   TITLE_TEMPLATE,
-  WEBSITE_ID,
   absoluteUrl,
-  buildGraph,
   buildSeo,
   jsonLdScript,
   organizationJsonLd,
@@ -98,7 +93,7 @@ describe('SEO parity with the root lib/seo.ts', async () => {
     const seo = buildSeo({ kind: 'page', ...input });
     const meta = root.buildPageMetadata(input);
     expect(seo.title).toBe(pageTitle('Blog & Cerita')); // the root's differs in the suffix only (SAKEM-090)
-    expect(seo.title.replace(` - ${LEGAL}`, '')).toBe(meta.title.absolute.replace(' | Sakola Kembara', ''));
+    expect(seo.title.replace(` - ${LEGAL_NAME}`, '')).toBe(meta.title.absolute.replace(' | Sakola Kembara', ''));
     expect(seo.description).toBe(meta.description);
     expect(seo.canonical).toBe(absoluteUrl(meta.alternates.canonical));
     expect(seo.og.title).toBe(meta.openGraph.title);
