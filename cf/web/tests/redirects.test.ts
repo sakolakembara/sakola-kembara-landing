@@ -72,6 +72,15 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     ['/daftar', '', 308, '/gabung-siswa'],
     ['/apply', '', 308, '/gabung-siswa'],
     ['/gabung-siswa/form', '', 308, '/portal/daftar'],
+    // M4: the legacy auth pages moved into the student portal.
+    ['/login', '', 308, '/portal/login'],
+    ['/login/', '', 308, '/portal/login'],
+    ['/register', '', 308, '/portal/register'],
+    ['/forgot-password', '', 308, '/portal/forgot-password'],
+    ['/reset-password', '', 308, '/portal/reset-password'],
+    ['/verify-email', '', 308, '/portal/verify-email'],
+    ['/login', '?from=%2Fportal%2Fstatus', 308, '/portal/login?from=%2Fportal%2Fstatus'],
+    ['/reset-password', '?token=abc', 308, '/portal/reset-password?token=abc'],
     ['/tentang-kami', '', 308, '/tim'],
     ['/about', '', 308, '/tim'],
     ['/impact-reports', '', 308, '/laporan'],
@@ -91,7 +100,7 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     expect(evalUnderscoreRedirects(file, path, search)).toEqual({ status, location });
   });
 
-  it.each(['/', '/blog', '/blog/some-slug', '/tim', '/portal/daftar', '/cerita/a/b', '/blog/page', '/wp-content', '/programs', '/login'])(
+  it.each(['/', '/blog', '/blog/some-slug', '/tim', '/portal/daftar', '/portal/login', '/cerita/a/b', '/blog/page', '/wp-content', '/programs', '/login-help', '/registered', '/admin', '/api'])(
     '%s is not redirected',
     (path) => {
       expect(matchRedirect(path)).toBeNull();
@@ -121,10 +130,15 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules + the two SAKEM-075 additions + 2 x 7 category rules', () => {
+  it('table = next.config.ts rules + the two SAKEM-075 additions + the five auth pages of M4 + 2 x 7 category rules', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
     // next.config.ts: 11 literal rules; the 14 category rules are generated from the list.
-    expect(Object.keys(REDIRECTS)).toHaveLength(explicit + WP_BLOG_CATEGORIES.length * 2 + 2);
+    expect(Object.keys(REDIRECTS)).toHaveLength(explicit + WP_BLOG_CATEGORIES.length * 2 + 2 + 5);
+  });
+
+  it('the auth pages that moved into the portal are exactly the five names, each to the same name under /portal', () => {
+    const auth = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+    for (const name of auth) expect(REDIRECTS[name], name).toEqual({ status: 308, destination: `/portal${name}` });
   });
 });
 

@@ -12,6 +12,9 @@ CONTACT_API_URL=http://127.0.0.1:4391
 # key: it works on any host (localhost included), needs no account, and yields a dummy token. Production
 # sets its own key as a Worker var at deploy time (the matching secret key lives on the API Worker only).
 TURNSTILE_SITE_KEY=1x00000000000000000000AA
+# The admin's origin: `/admin` and everything under it is a 308 to it (src/lib/admin-redirect.ts). Production sets its
+# own at deploy time (a public value); locally the admin SPA's dev server (`pnpm dev:spa` in cf/admin, port 5173).
+ADMIN_URL=http://localhost:5173
 # Optional: seconds a fetched list, blog page or article is cached before the API is asked again (default 60).
 # CONTENT_CACHE_FRESH_SECONDS=60
 # Optional: where files uploaded in the admin are served from (R2 behind its own domain in production), no

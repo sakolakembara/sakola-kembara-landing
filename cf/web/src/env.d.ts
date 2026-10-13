@@ -17,6 +17,12 @@ declare namespace Cloudflare {
      * renders no widget and loads no Cloudflare script.
      */
     TURNSTILE_SITE_KEY?: string;
+    /**
+     * The admin's origin (a PUBLIC variable, set per deploy, not kept in the repository), e.g. `https://admin.example.org`:
+     * `/admin` and everything under it is a 308 to it (src/lib/admin-redirect.ts). Unset or not an http(s) origin: no
+     * redirect, the path is the site's 404. Locally `dev.vars.example` points it at the admin SPA's dev server.
+     */
+    ADMIN_URL?: string;
     /** Seconds a fetched team list is served from the cache before the API is asked again (default 300). */
     TEAM_CACHE_FRESH_SECONDS?: string;
     /** Same for the other lists (reports, resources) and for the blog pages and articles: default 60, the contract's `s-maxage`. */

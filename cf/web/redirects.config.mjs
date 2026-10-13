@@ -1,5 +1,6 @@
 // Redirect rules, ported from the root next.config.ts (`redirects()`) plus two
-// rules added by SAKEM-075. One table, four consumers:
+// rules added by SAKEM-075 and the five auth pages that moved into the portal
+// (SAKEM-083). One table, four consumers:
 //
 //   - astro.config.mjs → an integration writes it to dist/client/_redirects
 //     (toUnderscoreRedirects below). The Workers assets layer answers those
@@ -51,6 +52,16 @@ export const REDIRECTS = {
   '/apply': to('/gabung-siswa'),
   // Registration form moved under /portal (auth-gated there).
   '/gabung-siswa/form': to('/portal/daftar'),
+  // The legacy auth pages moved into the student portal (M4, SAKEM-083: a Worker of its own on the route <apex>/portal/*).
+  // Static rules, so the assets layer answers them without a Worker request. An old emailed link or bookmark ends up on
+  // the portal's page of the same name; a token in its query is a legacy one, which the portal refuses with its own
+  // "tautan tidak valid" page, and a legacy `from=/portal/status` is understood by the portal's sign-in (it accepts the
+  // path with or without its /portal prefix).
+  '/login': to('/portal/login'),
+  '/register': to('/portal/register'),
+  '/forgot-password': to('/portal/forgot-password'),
+  '/reset-password': to('/portal/reset-password'),
+  '/verify-email': to('/portal/verify-email'),
   // "About" page rename: the public team page took over.
   '/tentang-kami': to('/tim'),
   '/about': to('/tim'),
