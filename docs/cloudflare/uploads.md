@@ -8,7 +8,7 @@ Nothing here touches a Cloudflare account: the bucket binding in `wrangler.jsonc
 
 - **Files live in R2 and are served from a separate public domain.** No Worker request per download (that would spend the 100,000 a day of Workers Free on PDFs and photos) and no redeploy after an upload.
 - **API payloads keep upload paths root-relative** (`/uploads/<kind>/<year>/<id>-<name>.<ext>`), as the legacy columns did. The public site puts `UPLOADS_BASE_URL` in front when it renders ([the rule](#the-public-site-uploads_base_url)).
-- **Everything in the bucket is public.** The public domain serves any key. Never upload anything private through this API; applicant documents (a portal milestone) need a private bucket and signed access, not this one.
+- **Everything in the bucket is public.** The public domain serves any key. Never upload anything private through this API; applicant documents (a portal milestone) need a private bucket, not this one. **Decided 2026-10-13:** applicants upload to a private bucket (`sakem-private`) that is read only through a Worker after an authorization check, never through a public domain; the design is [`portal-architecture.md`](portal-architecture.md#8-d6-private-file-storage), the contract [`portal-api.md`](portal-api.md#11-file-routes-student).
 
 ## What can be uploaded
 

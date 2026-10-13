@@ -14,7 +14,7 @@ From the epic and its milestones (Saung SAKEM-074, 081, 082, 083; the PM's brief
 
 - **$0 on Workers Free.** 10 ms CPU per request, 100,000 requests a day per account, D1 Free (5,000,000 rows read and 100,000 rows written a day), R2 Free (10 GB-month, 1 million Class A and 10 million Class B operations a month; a card is on file only because R2 requires it), Resend Free (100 emails a day, 3,000 a month).
 - All work lives on the long-lived branch `cloudflare`; the old Next app (`app/(portal)/**`, `app/(auth)/**`, `lib/application-status.ts`, `lib/admission*.ts`, `lib/db/schema/{student-applications,users}.ts`) is the reference for every rule and message. Visual style and Indonesian copy are fixed (`DESIGN.md`, `docs/context/tone-of-voice.md`). Production holds dummy data only, so no data is migrated.
-- **The portal lives at the path `/portal` of the apex** (`sakolakembara.org/portal/...`, Dzul: "pake path aja"); the admin lives on `admin.sakolakembara.org`. The student session and the admin session are separate, host-only `__Host-` cookies (PR #49, [`auth.md`](auth.md#cookies-and-csrf)).
+- **The portal lives at the path `/portal` of the apex** (`sakolakembara.org/portal/...`, Dzul: "pake path aja"); the admin lives on its own subdomain of the same domain (`admin.<domain>` below). The student session and the admin session are separate, host-only `__Host-` cookies (PR #49, [`auth.md`](auth.md#cookies-and-csrf)).
 - Students register themselves (`POST /api/auth/register`, Turnstile, no enumeration), **verify their email before the first sign-in**, can sign in with password or Google, reset their password. Admins never verify (SAKEM-089) and do not matter here.
 - The portal's login, register, forgot, reset and verify pages follow the admin login layout: one narrow column, no card, one heading ([`spa/src/pages/auth/AuthShell.tsx`](../../cf/admin/spa/src/pages/auth/AuthShell.tsx)); the Indonesian copy is the legacy copy.
 - SSO to the LMS is deferred. Nothing in this design depends on it and nothing in it prepares for it, except that the host-only cookie decision stands ([`auth.md`](auth.md#cookies-and-csrf)).
@@ -47,7 +47,7 @@ Everything below is from the Cloudflare documentation read on 2026-10-13 (URLs i
 - A known bug concerns `.../images/*` against `.../images*` on two Workers (the second wins for all three URLs of the example). We use neither shape against the other; the web Worker's pattern is `.../*` and ours is `.../portal/*`. Verify.
 - A route needs a proxied DNS record for its hostname. A Worker's `fetch()` of the incoming URL reaches the origin behind the hostname; **a route cannot be the target of a same-zone `fetch()`**, and Worker-to-Worker calls on one zone go through service bindings. At most 1,000 routes per zone.
 - **Routes can `fetch()` a Custom Domain and take precedence over one on the same hostname**; the documented example is a logging Worker on route `app.example.com/*` in front of an application Worker on a Custom Domain of the same hostname. A Custom Domain matches on the exact hostname only; its path is not considered.
-- On the Free plan a route has a failure mode once the day's 100,000 requests are spent: fail open bypasses the Worker, fail closed answers error 1027 ("security-critical Workers"). It is a toggle on the route.
+- On the Free plan a route has a failure mode once the day's 100,000 requests are spent: fail open bypasses the Worker, fail closed answers error 1027 (the documentation recommends closed for security-critical Workers). It is a toggle on the route.
 
 **Static assets.**
 
@@ -67,7 +67,7 @@ Everything below is from the Cloudflare documentation read on 2026-10-13 (URLs i
 | --- | --- | --- | --- |
 | How a request gets there | route `apex/portal/*` to the admin Worker | route `apex/*` to the web Worker, which calls `env.PORTAL.fetch(request)` for `/portal/*` | route `apex/portal/*` to `sakem-portal` |
 | Portal SPA | The admin Worker already owns its one asset collection and its one `/index.html` fallback. A deep link such as `/portal/status` would be answered with the **admin's** `index.html`. To serve the portal's, `/portal/*` must run the Worker first (a billed request per page load, `env.ASSETS.fetch` for the shell), or the two SPAs become one bundle with one base (rejected: one base cannot be both `/` and `/portal/`, and children's phones would download the admin). | The portal's own assets are not served by the assets layer of the web Worker; every file, including each hashed script, goes **through the web Worker first**. | Own asset collection: the shell, scripts, styles and fonts are free asset requests; deep links get the portal's own fallback. |
-| Worker requests for a page view with 6 asset files and 3 API calls | 3 to 4 (if the navigation is exempted), else 9 | **9** on the web Worker, plus the CPU of the Astro middleware for each, plus the calls into the portal Worker | **3** |
+| Worker requests for a page view with 6 asset files (the HTML shell included) and 3 API calls | **4**: the shell must run the Worker to be the portal's, the other five files stay free if laid out under `portal/` | **9** on the web Worker, plus the CPU of the Astro middleware for each, plus the calls into the portal Worker | **3** |
 | Failure and deploy isolation | A portal change redeploys the admin; a portal bug can take the admin down. | The web Worker is on the critical path of the portal; a web deploy affects it. | Independent deploys; the web and admin Workers never run portal code. |
 | Host-dependent code | The same Hono app serves two hosts: every route needs a host check so `/portal/api/admin/*` can never exist and `/api/admin/*` never answers on the apex. | None for the apex, but the web Worker needs a binding and a routing rule. | Each Worker mounts only its own routes; no host check can be forgotten. |
 | Staging on `workers.dev` (Dzul's decision) | Works on one host. | Needs both Workers. | Works on one host: the Worker serves the `/portal` prefix itself, so the same build runs at `https://<worker>.<subdomain>.workers.dev/portal/`. |
@@ -141,7 +141,7 @@ cf/admin/
     private-files/                slots, key, store, quota, retention
     api/application-files.ts      admin file routes
   shared/                         pure TypeScript used by the Worker and by both SPAs
-    application-form/             slots.ts, schemas.ts (zod), normalize.ts, form-data.ts, limits.ts
+    application-form/             slots.ts, limits.ts, steps.ts, schemas.ts (zod), form-data.ts
     spa/                          React and browser code shared by the two SPAs
     vite/                         the shared Vite pieces
   spa/                            the admin SPA (as today)
@@ -152,7 +152,7 @@ cf/admin/
 ### 4.2 What it shares and what it must not import
 
 - **Shared as they are:** `src/security/{client,csrf,rate-limit,turnstile}.ts`, `src/email/*`, `src/db/*`, `src/uploads/sniff.ts`, the CRUD kit's error envelope (`src/api/crud/errors.ts`).
-- **Shared after one change, owned by P1a:** `src/auth/factory.ts`, `gate.ts` and `register.ts` take a **base path and an audience** (`/api/auth` and `admin`, or `/portal/api/auth` and `student`) instead of the constant `AUTH_BASE_PATH`. The admin's behaviour must stay byte for byte the same; the existing 700+ Worker tests are the proof, plus new tests that run the whole route table under the portal base path.
+- **Shared after one change, owned by P1a:** `src/auth/factory.ts`, `gate.ts` and `register.ts` take a **base path and an audience** (`/api/auth` and `admin`, or `/portal/api/auth` and `student`) instead of the constant `AUTH_BASE_PATH`. The admin's behaviour must stay byte for byte the same; the existing Worker suite (1,761 tests at the last count in [`admin-pendaftaran.md`](admin-pendaftaran.md#measured)) is the proof, plus new tests that run the whole route table under the portal base path.
 - **Must not be imported:** `src/blog/*`, `src/api/blog.ts`, `src/public/*`, `src/api/public/*`, `src/api/{reports,team,shortlinks,messages,announcements,...}.ts` and the markdown libraries. The admin bundle is 2.9 MiB raw (497 KiB gzip) mostly because of the blog; the portal does not need it. A test fails when a file under `src/portal/` or `src/private-files/` imports one of them, and the dry-run size is a gate (target at most 350 KiB gzip, hard ceiling the 3 MiB of the Free plan).
 - **The Worker suite stays one pool.** `vitest.config.ts` keeps `wrangler.jsonc` as the pool's config (the admin Worker's bindings, which will include `PRIVATE_FILES` and the new limiters); the portal's entry is imported and called directly like `src/worker.ts` is today. A test reads `wrangler.portal.jsonc` and fails if its D1 `database_name`, `migrations_dir`, `compatibility_date`, limiter numbers or R2 bucket name differ from the admin's where they must be equal.
 
@@ -247,7 +247,7 @@ The admin SPA is one chunk of 539 kB raw, 162.7 kB gzip with its CSS at 52 kB ra
 | --- | --- | --- |
 | `/portal/api/auth/*` | `sakem-portal` | Better Auth through the same route table as the admin (`AUTH_POLICIES`), base path parameterised ([`auth.md`](auth.md#endpoints)) |
 | `/portal/api/config`, `/portal/api/me` | `sakem-portal` | public config; the signed-in student |
-| `/portal/api/overview`, `/portal/api/applications...` | `sakem-portal` | the student API ([`portal-api.md`](portal-api.md)) |
+| `/portal/api/overview`, `/portal/api/applications...`, `/portal/api/files/:id` | `sakem-portal` | the student API ([`portal-api.md`](portal-api.md)) |
 | `/portal/api/dev/mailbox` | `sakem-portal`, only `ENVIRONMENT=development` | the emails this isolate "sent" (as the admin's `/api/dev/mailbox`) |
 | `/portal/*` anything else | assets layer | the SPA |
 | `/api/admin/applications/:id/files/...` | `sakem-admin` | the admin's side of the private files |
@@ -268,7 +268,7 @@ Why two names and two secrets although the hosts already differ: the sessions ar
 
 `__Host-` requires `Path=/`, so the browser sends the portal cookie to every path of the apex, including the public pages. The web Worker never reads it, the public pages never set a cookie, and the Cache API keys on the URL, so nothing about public caching changes; the only cost is about 150 bytes on each request to the apex. The cookie is never visible to `admin.` or any other subdomain, and the admin's never to the apex.
 
-**Origin and CSRF.** The same `sameOriginGuard` runs on every write to `/portal/api/*` (the apex's own origin is trusted, `TRUSTED_ORIGINS` stays unset). Note that `admin.sakolakembara.org` is **same-site** with the apex, and the guard refuses `Sec-Fetch-Site: same-site`: a page on the admin host cannot post to the portal API, nor the reverse. **CORS: none.** No `Access-Control-*` header is sent by either Worker and there is no `OPTIONS` handler: the portal SPA, the API and the web Worker's navbar calls are all same-origin.
+**Origin and CSRF.** The same `sameOriginGuard` runs on every write to `/portal/api/*` (the apex's own origin is trusted, `TRUSTED_ORIGINS` stays unset). Note that `admin.<domain>` is **same-site** with the apex, and the guard refuses `Sec-Fetch-Site: same-site`: a page on the admin host cannot post to the portal API, nor the reverse. **CORS: none.** No `Access-Control-*` header is sent by either Worker and there is no `OPTIONS` handler: the portal SPA, the API and the web Worker's navbar calls are all same-origin.
 
 **Google.** The callback is `https://<apex>/portal/api/auth/callback/google`, to be registered as an authorized redirect URI (the admin's is `https://admin.<domain>/api/auth/callback/google`). Two separate OAuth clients (one per Worker) keep a leaked portal secret away from admin sign-in; one client with two URIs works too. Google stays optional (off until both variables exist) and the verified-email rules of [`auth.md`](auth.md#account-linking) apply unchanged.
 
@@ -289,7 +289,7 @@ Authenticated routes are limited by **user id**, never by address or email (a sc
 | `GET` of the draft, overview, status, own files | none | `RL_PORTAL_READ` 60/60 s by user |
 | admin `GET .../files/:fileId` | none | `RL_ADMIN_FILE` 120/60 s by admin id (on `sakem-admin`) |
 
-The new bindings are declared by P1a in both configs (placeholder namespace ids, like the existing ones) and added to `RATE_LIMITS`; the test that compares `RATE_LIMITS` with the wrangler files covers them. The limiter is checked **before** anything is read from D1 or R2, and in production a missing binding is a 503, as for the existing ones.
+The new bindings are declared by P1a in both configs (placeholder namespace ids, like the existing ones) and added to `RATE_LIMITS`; the test that compares `RATE_LIMITS` with the wrangler files covers them. The limiter runs right after the session is read (its key is the user id) and before the body is read or any other D1 or R2 access; in production a missing binding is a 503, as for the existing ones.
 
 ### 6.4 Headers on API responses
 
@@ -335,7 +335,7 @@ The legacy statuses are exactly four (`lib/application-status.ts`, `applicationS
 | `under_review` | the same row, set by an admin | the same as submitted | the admin |
 | `accepted`, `rejected` | the same row, with a review note, set by an admin | `processing` **until the batch's `results_published_at` is set**, then the verdict | the admin |
 
-After submitting, an application is **final for the student** (the legacy had no edit and no withdrawal; neither is added, open decision 13). The privacy contract of [`docs/architecture/student-portal.md`](../architecture/student-portal.md) is enforced **in the API**, not only in the screen: before the batch's results are published the status endpoint does not send the status, the review notes or the review time at all ([`portal-api.md`](portal-api.md#status-and-the-privacy-contract)).
+After submitting, an application is **final for the student** (the legacy had no edit and no withdrawal; neither is added, open decision 13). The privacy contract of [`docs/architecture/student-portal.md`](../architecture/student-portal.md) is enforced **in the API**, not only in the screen: before the batch's results are published the status endpoint does not send the status, the review notes or the review time at all ([`portal-api.md`](portal-api.md#10-status-and-the-privacy-contract)).
 
 ### 7.2 The "no open batch" gate
 
@@ -366,7 +366,7 @@ One migration for every table of the portal, so the numbering cannot collide bet
 | `id` | text primary key; becomes `student_applications.id` |
 | `user_id` | text not null, foreign key `users(id)` **on delete cascade** |
 | `batch_id` | text not null, foreign key `admission_batches(id)` **on delete restrict** (a batch with drafts cannot be deleted; the admin's existing foreign-key-to-409 mapping answers `in_use`) |
-| `form_data` | text not null default `'{}'`; `json_valid` and `json_type(form_data) = 'object'` and `length(form_data) <= 65536` |
+| `form_data` | text not null default `'{}'`; `json_valid` and `json_type(form_data) = 'object'` and `length(form_data) <= 98304` (a step body is at most 32 KiB, an interview of six 2,000-character answers with multi-byte characters can pass 16) |
 | `last_step` | text, nullable, `CHECK` in the seven bucket names |
 | `created_at`, `updated_at` | integer ms, default now |
 | Index | `UNIQUE (user_id, batch_id)` |
@@ -408,7 +408,7 @@ Paper estimates, with the arithmetic of [section 10](#10-cost-and-limits-of-the-
 
 ### 8.2 The slots: the legacy documents and marketing steps
 
-Each legacy link field becomes a **slot**. Where the legacy said "make one PDF" (several photos, three months of bills) a slot now takes several files, which is the point of uploading from a phone. The `*Url` fields of `formData.documents` and `formData.marketing` disappear from version 3.
+Each legacy link field becomes a **slot**. Where the legacy said "make one PDF" (several photos, three months of bills) a slot now takes several files, which is the point of uploading from a phone. The `*Url` fields of `formData.documents` and `formData.marketing` disappear from version 3. The authoritative copy of this table is [`portal-api.md`](portal-api.md#111-the-slots-authoritative) (the code is `shared/application-form/slots.ts`); it is repeated here to be read with the reasoning.
 
 | Slot | Legacy field | Label (legacy wording) | Required | Max files |
 | --- | --- | --- | --- | --- |
@@ -452,7 +452,7 @@ Sixteen slots, 10 required (11 with DTKS), 35 files at most. The drive-link inst
 
 `PUT /portal/api/applications/current/files/:slot` with the **raw file as the request body** (`Content-Length` required; `Content-Type` is ignored). Not multipart. The admin's upload parses a multipart body in memory (and its document lists the parse of the 20 and 25 MB kinds as the CPU risk to watch); that is acceptable for a few admins and wrong for a public endpoint used by hundreds of children on slow networks, where several 10 MB bodies in one isolate (the body, the parsed copy, the `Blob`) would press on the 128 MB of memory. A raw body costs about 1 MiB of head plus the chunks in flight, whatever the file size.
 
-The order, cheapest first, nothing before the limiter touches D1 or R2 (the full status table is in [`portal-api.md`](portal-api.md#file-routes-student)):
+The order, cheapest first, with nothing but the session read before the limiter (the full status table is in [`portal-api.md`](portal-api.md#11-file-routes-student)):
 
 1. session, role `student`, verified email; `RL_PORTAL_UPLOAD`;
 2. the slot exists; `Content-Length` is present, positive and at most 10 MB (`411`, `413`);
@@ -462,7 +462,7 @@ The order, cheapest first, nothing before the limiter touches D1 or R2 (the full
 6. build the key, then `PRIVATE_FILES.put(key, stream, { onlyIf: { etagDoesNotMatch: "*" }, httpMetadata: { contentType: <sniffed>, cacheControl: "private, no-store" }, ssecKey })`, with the head and the rest of the body joined into a `FixedLengthStream` of the declared length (a body shorter or longer than declared makes the put fail: nothing is stored);
 7. one `INSERT ... SELECT ... WHERE EXISTS (the draft is still editable)` of the file row with the MD5 R2 returned, and the counter adjustment, in a batch; if it fails the object is deleted and the reservation released.
 
-`?replace=<file id>` makes the new file and the removal of the old one one step: the insert and the soft delete of the old row in one batch, then the old object is deleted (and the counter adjusted). A client that aborts leaves nothing: R2 refuses a put whose stream ends early.
+`?replace=<file id>` makes the new file and the removal of the old one one step: the insert and the soft delete of the old row in one batch, then the old object is deleted (and the counter adjusted). A client that aborts should leave nothing: a put whose stream ends before the declared length fails and stores no object (P4 proves it in workerd, risk (b) below; real R2 is SAKEM-084's).
 
 ### 8.5 Removing a file
 
@@ -474,7 +474,7 @@ The order, cheapest first, nothing before the limiter touches D1 or R2 (the full
 
 | Reader | Route | Rule |
 | --- | --- | --- |
-| The student | `GET /portal/api/applications/current/files/:fileId` | the file belongs to the student's own draft or application (any other id, or another student's, is `404`, never `403`); not deleted |
+| The student | `GET /portal/api/files/:fileId` | the file belongs to the student's own draft or application, in any batch (any other id, or another student's, is `404`, never `403`); not deleted |
 | An admin | `GET /api/admin/applications/:id/files/:fileId` | `requireArea("pendaftaran", "write")`: an editor with the `pendaftaran` grant or a super_admin; the file belongs to application `:id`; not deleted; one audit row per open; `RL_ADMIN_FILE` |
 
 **The viewer.** A `viewer` reads every area except Sistem, but these are documents of minors: scans of the Kartu Keluarga (national ID numbers of the parents and siblings), income letters and photographs of a child and a home. The recommendation is that **a viewer sees what files an applicant has (the list: slot, count, size, type) but cannot open them**: opening needs `pendaftaran` write. The viewer already reads the applicant's address, income and answers; the scans add identity numbers and faces. Open decision 1.
@@ -610,7 +610,7 @@ One worker per task, each with its own files. P1 is delivered as two pull reques
 | --- | --- | --- | --- | --- |
 | **P1a** Backend foundation | the migration and the tables; the shared form module; the base path and audience of auth; the portal Worker skeleton and its config; the new bindings and limiters | `migrations/0012_portal_applications.sql` and `meta/*`; `src/db/schema/portal.ts`, `src/db/schema.ts` (one export); `shared/application-form/**`; `src/auth/{factory,gate,register}.ts`; `src/portal/worker.ts` (guards, auth mount, `config`, `me`, 404, error handler); `wrangler.portal.jsonc`; `wrangler.jsonc` (the new bindings and variables, declared once for everyone); `src/env.ts`; `src/security/rate-limit.ts`; `vitest.config.ts`; `package.json` scripts (`dev:portal`, `build:portal-worker`); `scripts/negative-checks-portal-foundation.mjs`; tests `test/portal-foundation*.test.ts`, `test/portal-auth.test.ts` | this PR | the SPAs, `src/portal/applications.ts` |
 | **P1b** Application API | overview, current, steps, submit, status list; the gate and the state rules; the confirmation email; the email budget | `src/portal/{applications,rules,queries,present}.ts`; one mount line in `src/portal/worker.ts`; `src/email/{send,templates}.ts`; `src/db/schema/admission.ts` (the `StudentApplicationFormData` type becomes version 2 or 3, `CURRENT_FORM_DATA_VERSION` 3); `src/db/audit.ts` only if a label is missing; `docs/cloudflare/portal-api.md` (corrections); tests `test/portal-applications*.test.ts`; `scripts/negative-checks-portal-api.mjs` | P1a merged | `shared/**` (reports a needed change to P1a's owner instead) |
-| **P2** Portal SPA shell | the SPA, its routes and auth pages, the nav, the status and home pages, the not-a-student screen, the mock; **the shared module extraction**; the `cf/web` side of [6.6](#66-what-happens-to-the-pass-through-of-cfweb) | `portal-spa/**` (all but `src/pages/daftar/**`); `shared/spa/**` (all but `xhr.ts`), `shared/vite/**`; the admin SPA's import changes and re-export shims; `scripts/check-portal-spa-bundle.mjs`, `scripts/negative-checks-spa-portal.mjs`; `package.json` scripts; `cf/web/**` as listed in 6.6; `docs/cloudflare/web-skeleton.md` (the pass-through section) | this PR (against the contract and the mock); integrates with the real Worker once P1a is merged | `src/**`, `migrations/**` |
+| **P2** Portal SPA shell | the SPA, its routes and auth pages, the nav, the status and home pages, the not-a-student screen, the mock; **the shared module extraction**; the `cf/web` side of [6.6](#66-what-happens-to-the-pass-through-of-cfweb) | `portal-spa/**` (all but `src/pages/daftar/**`); `shared/spa/**` (all but `xhr.ts`), `shared/vite/**`; the admin SPA's import changes and re-export shims; `scripts/check-portal-spa-bundle.mjs`, `scripts/check-spa-bundle.mjs` (one marker: no zod in the admin bundle), `scripts/negative-checks-spa-portal.mjs`; `package.json` scripts; `cf/web/**` as listed in 6.6; `docs/cloudflare/web-skeleton.md` (the pass-through section) | this PR (against the contract and the mock); integrates with the real Worker once P1a is merged | `src/**`, `migrations/**` |
 | **P3** The wizard | the seven steps, the review, the success screen, the stepper, local persistence, the per-step save plumbing | `portal-spa/src/pages/daftar/**`, `portal-spa/src/lib/wizard/**`, `portal-spa/src/mock/applications.ts`, tests; one route line in `portal-spa/src/App.tsx` | P2 merged (shell, shared module) and P1a (the form module); the two file steps wait for P4's field | `src/**` |
 | **P4** Private files | the bucket binding use; the student upload, delete and read; the admin read; the admin detail changes; the retention job | `src/private-files/**`; `src/portal/files.ts` and one mount line in `src/portal/worker.ts`; `src/api/application-files.ts` and one mount line in `src/worker.ts`; `src/cron/cleanup.ts`; `src/db/audit.ts`, `src/audit/lists.ts`, `spa/src/lib/audit.ts` (the labels); `spa/src/pages/applications/{answers.ts,model.ts,ApplicationDetailPage.tsx,FilesSection.tsx}` and the mock; `portal-spa/src/components/FileSlotField.tsx` and `portal-spa/src/lib/files/**` (compression, the upload client); `shared/spa/xhr.ts` and the thin `spa/src/lib/crud/upload-client.ts`; negative checks and tests | P1a merged (the tables and the worker file); the field after P2's shared module | the wizard's own steps |
 
@@ -618,9 +618,11 @@ One worker per task, each with its own files. P1 is delivered as two pull reques
 
 ```
 this PR merges
-   |-- P1a ------------> merged (small, early) --+-- P1b ---------------------------+
-   |-- P2  ------------> merged -----------------+-- P3 (steps 1 to 5, review) -----+--> PM: full suite once, then Dzul's visual check
-                                                  '-- P4 --> FileSlotField --> P3 (documents and marketing steps)
+  P1a (small, merge early) --> P1b -------------------------------------------------+
+    |                                                                                |
+    +--> P4 --> FileSlotField --> P3: the documents and marketing steps -------------+--> the PM runs the
+  P2 --------> P3: steps 1 to 5 and the review ------------------------------------+    full suite once,
+                                                                                         then Dzul's visual check
 ```
 
 - **In parallel at the start:** P1a and P2 (P2 works against the contract and its mock; it integrates with the real Worker when P1a lands).
@@ -633,7 +635,7 @@ this PR merges
 | File | Touched by | Rule |
 | --- | --- | --- |
 | `src/worker.ts` (admin) | P4 | one `app.route(...)` line and the `scheduled` handler change; nobody else |
-| `src/portal/worker.ts` | P1a creates; P1b and P4 add one mount line each | a block marked `// mounts` , one line per route file, alphabetical: a conflict is mechanical |
+| `src/portal/worker.ts` | P1a creates; P1b and P4 add one mount line each | a block marked `// mounts`, one line per route file, alphabetical: a conflict is mechanical |
 | `migrations/` and `meta/_journal.json` | **P1a only** (`0012`) | P4 needs no table of its own; if a worker finds it needs one it asks the PM, who numbers it `0013` after `0012` has merged |
 | `src/db/audit.ts`, `src/audit/lists.ts`, `spa/src/lib/audit.ts` | P4 (`application_file.view`, `application_file.purge`, resource type `application_file`); P1b only if a label is missing | additive |
 | `src/env.ts`, both wrangler configs | P1a declares every new binding, variable and limiter for everyone | the others use them |
