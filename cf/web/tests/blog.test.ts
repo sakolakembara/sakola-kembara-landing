@@ -2,18 +2,34 @@ import { existsSync, readdirSync } from 'node:fs';
 import { bodies } from 'virtual:blog-bodies';
 import { describe, expect, it } from 'vitest';
 import { PAGE_SIZE, cleanExcerpt, getAllArticles, getArticleBySlug, getBlogPage, getRelated, pageNumbers } from '~/lib/blog';
-import { ARTICLE_COUNT, blogPosts, importRoot, repoRoot } from './helpers';
+import { ARTICLE_COUNT, IMPORTED_2026_10_13, blogPosts, importRoot, repoRoot } from './helpers';
 
 const articles = getAllArticles();
 
 describe('blog content (virtual modules built from the root content/blog)', () => {
-  it('has the articles of lib/blog-posts.json and nothing else (README.md is not an article)', () => {
+  it('has the articles of lib/blog-posts.json and nothing else (README.md is not an article): 80 migrated + 6 imported on 2026-10-13', () => {
     const files = readdirSync(`${repoRoot}content/blog`).filter((f) => f.endsWith('.md'));
     expect(files).toHaveLength(ARTICLE_COUNT + 1); // the articles + README.md
     expect(articles).toHaveLength(ARTICLE_COUNT);
     expect(articles.map((a) => a.id).sort()).toEqual(blogPosts().articles.map((a) => a.id).sort());
     expect(new Set(articles.map((a) => a.id)).size).toBe(ARTICLE_COUNT);
     expect(blogPosts().meta.total).toBe(ARTICLE_COUNT);
+  });
+
+  it('the 6 articles imported on 2026-10-13 are all there, unfeatured, with the front matter shape of the first 80', () => {
+    for (const slug of IMPORTED_2026_10_13) {
+      const a = articles.find((x) => x.id === slug)!;
+      expect(a, slug).toBeDefined();
+      expect(a.featured, slug).toBe(false);
+      expect(a.wpId, slug).toBeGreaterThan(5000);
+      expect(a.sourceUrl, slug).toMatch(new RegExp(`^https://sakolakembara\\.org/(news|cerita|tips|education|testimonials|career|kiat-kiat)/${slug}/$`));
+      expect(a.image, slug).toMatch(/^\/blog\/images\/2026\/\d\d\/\S+\.(jpe?g|png)$/);
+      expect(a.date, slug).toMatch(/^\d{1,2} (Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember) 2026$/);
+      expect(a.dateISO, slug).toMatch(/^2026-\d\d-\d\d$/);
+      expect(a.author.length, slug).toBeGreaterThan(2);
+    }
+    // the featured article of the index did not change: only the newest flagged one is featured, and none of the 6 is
+    expect(articles.filter((a) => a.featured).map((a) => a.id)).toEqual(['tanpa-jasa-ahdan-mewujudkan-murid-masuk-perguruan-tinggi']);
   });
 
   it('is sorted newest first, deterministic on ties', () => {

@@ -943,7 +943,7 @@ describe('what the run asks the network for', () => {
 // ---------------------------------------------------------------- the repository around it
 
 describe('the tool and the repository agree', () => {
-  it('the WordPress article URLs it checks are the ones of lib/blog-posts.json, which redirects.test.ts proves are redirected', () => {
+  it('the WordPress article URLs (80 migrated + 6 imported) it checks are the ones of lib/blog-posts.json, which redirects.test.ts proves are redirected', () => {
     const plan = planRun(parseCli(['--live-dir', 'a', '--candidate-dir', 'b', '--no-main', '--no-wp-ids']) as never);
     expect(plan.sources.articles).toBe(ARTICLE_COUNT);
     expect(plan.urlsBeforeSitemap).toBe(ARTICLE_COUNT);

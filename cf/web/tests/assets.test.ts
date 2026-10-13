@@ -135,7 +135,7 @@ describe('images referenced by the site', () => {
   }
   const local = [...refs].filter(([url]) => url.startsWith('/'));
 
-  it('every cover and inline image of the articles is in the manifest and in the output', () => {
+  it('every cover and inline image of the articles (80 migrated + 6 imported on 2026-10-13) is in the manifest and in the output', () => {
     expect(articles).toHaveLength(ARTICLE_COUNT);
     expect(local.length).toBeGreaterThan(90);
     for (const [url, file] of local) {

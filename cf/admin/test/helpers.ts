@@ -9,6 +9,14 @@ import { SITEVERIFY_URL, TURNSTILE_TEST_SECRETS } from "../src/security/turnstil
 import worker from "../src/worker";
 import { limiterBindings } from "./limiter-clock";
 
+/**
+ * How many articles content/blog holds, and so how many the import script writes and the public API serves: the 80 that
+ * were migrated plus the 6 the live WordPress site had published since (imported 2026-10-13, SAKEM-090). A constant, not a
+ * count taken from the folder, so that a file that goes missing (or an article added without its tests) fails here. It is
+ * the same number as ARTICLE_COUNT in cf/web/tests/helpers.ts: change both together with the content.
+ */
+export const ARTICLE_COUNT = 86;
+
 export const ORIGIN = "https://admin.test";
 export const PASSWORD = "correct horse battery staple";
 

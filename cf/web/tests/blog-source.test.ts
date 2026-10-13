@@ -114,7 +114,7 @@ describe('blog-contract: the rules of GET /api/public/blog', () => {
     expect(pickRelated(far[0], [far[0]])).toEqual([]);
   });
 
-  it('the slug grammar admits the slugs of every article and rejects what cannot be a slug', () => {
+  it('the slug grammar admits the slugs of every article (80 migrated + 6 imported) and rejects what cannot be a slug', () => {
     for (const a of articles) expect(BLOG_SLUG.test(a.id), a.id).toBe(true);
     for (const bad of ['', 'A', 'a b', '../x', 'a/b', '-a', 'a.b', 'é', 'x'.repeat(201), 'a%20b']) expect(BLOG_SLUG.test(bad), bad).toBe(false);
   });

@@ -1192,9 +1192,9 @@ await check('seo', 'robots.txt: the rules of the Next app, plus /portal (the stu
   const body = await text(await get('/robots.txt'));
   assert.equal(body, 'User-Agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nDisallow: /login\nDisallow: /portal\n\nHost: https://sakolakembara.org\nSitemap: https://sakolakembara.org/sitemap.xml\n');
 });
-// The articles of content/blog, as lib/blog-posts.json (the sync of content/blog) lists them, pinned here so that an article
-// added without its redirect, sitemap entry and checks fails loudly.
-const ARTICLE_COUNT = 80;
+// The articles: the 80 migrated + the 6 imported on 2026-10-13 (SAKEM-090). Counted from lib/blog-posts.json (the sync of
+// content/blog) and pinned here, so that an article added without its redirect, sitemap entry and checks fails loudly.
+const ARTICLE_COUNT = 86;
 await check('seo', `lib/blog-posts.json lists the ${ARTICLE_COUNT} articles of content/blog, the fixture API serves all of them`, async () => {
   assert.equal(articles.length, ARTICLE_COUNT);
   const list = await apiJson('/api/public/blog?page=1&pageSize=50');

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, toUnderscoreRedirects } from '../redirects.config.mjs';
-import { ARTICLE_COUNT, blogPosts, readRoot, repoRoot, webRoot } from './helpers';
+import { ARTICLE_COUNT, IMPORTED_2026_10_13, blogPosts, readRoot, repoRoot, webRoot } from './helpers';
 
 /** The article files of the repo root (README.md is not one). */
 const articleFiles = () => readdirSync(`${repoRoot}content/blog`).filter((f) => f.endsWith('.md') && f !== 'README.md');
@@ -42,11 +42,20 @@ function evalUnderscoreRedirects(file: string, pathname: string, search = ''): {
 
 const file = toUnderscoreRedirects();
 
-describe('every WordPress sourceUrl of the articles redirects to /blog/<slug> with 308', () => {
+describe('every WordPress sourceUrl of the articles (80 migrated + 6 imported on 2026-10-13) redirects to /blog/<slug> with 308', () => {
   const { articles } = blogPosts();
 
   it('the dataset is every article', () => {
     expect(articles).toHaveLength(ARTICLE_COUNT);
+  });
+
+  it('the 6 imported on 2026-10-13 are in it, with the WordPress address the live sitemap lists for each', () => {
+    const ids = new Set(articles.map((a) => a.id));
+    for (const slug of IMPORTED_2026_10_13) {
+      expect(ids.has(slug), slug).toBe(true);
+      const { sourceUrl } = articles.find((a) => a.id === slug)!;
+      expect(new URL(sourceUrl).pathname.split('/').filter(Boolean).at(-1)).toBe(slug);
+    }
   });
 
   it.each(articles.map((a) => [a.id, a.sourceUrl] as const))('%s', (id, sourceUrl) => {
