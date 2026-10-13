@@ -84,7 +84,7 @@ There is no create, edit or delete of an application (a record with a lifecycle:
 
 **The detail** has everything the legacy page showed, as sections built by `answers.ts` (which row exists when, how a value is shown), with the legacy titles except two: "Berkas Pendaftaran" and "Berkas Marketing" (the names of two menu items and categories of Pusat Dokumen) became "Tautan berkas" and "Bukti Marketing" ([`admin-ia.md`](admin-ia.md), 3.4; the IA proposed "Berkas yang diunggah", but the files are links the applicant pasted, so the exact word wins). An old application has no `formData` and shows its legacy story; any part of `formData` that is missing or of another shape is read as empty, never as a crash.
 
-**Applicant documents.** In the legacy wizard the applicant **pastes links** to files in their own Google Drive; the app stores no file of theirs. The detail page therefore links those addresses, as the legacy page did, and that is all it can do. They are shown as text and are clickable only when they are `http` or `https` (a `javascript:` address typed into a document field is shown as text; tested). **If the portal milestone replaces the links with uploads, they must go to a private bucket with signed access, not to the public one of [`uploads.md`](uploads.md); nothing of that exists, and nothing here pretends to.**
+**Applicant documents.** In the legacy wizard the applicant **pastes links** to files in their own Google Drive; the app stores no file of theirs. The detail page therefore links those addresses, as the legacy page did, and that is all it can do. They are shown as text and are clickable only when they are `http` or `https` (a `javascript:` address typed into a document field is shown as text; tested). **If the portal milestone replaces the links with uploads, they must go to a private bucket, not to the public one of [`uploads.md`](uploads.md); nothing of that exists yet, and nothing here pretends to.** (Decided 2026-10-13: applicants upload, to a private bucket read only through a Worker; what changes on this screen is [`portal-architecture.md`](portal-architecture.md#88-what-changes-in-the-admins-pendaftar-detail).)
 
 **The review** (`POST applications/:id/status`, a verb route; the legacy form was "Ubah Status"). The rules are the legacy ones and only those:
 
@@ -204,4 +204,4 @@ Answered by the PM on 2026-10-12 (the rest stands as built):
 
 Still open:
 
-7. **Applicant documents in the portal milestone** need a private bucket with signed access if applicants upload instead of pasting links. Nothing of that exists.
+7. **Applicant documents in the portal milestone** need a private bucket if applicants upload instead of pasting links. **Decided 2026-10-13** (uploads, a private bucket, reads only through a Worker, an audit row per admin view): design in [`portal-architecture.md`](portal-architecture.md#8-d6-private-file-storage). Nothing of it exists yet.
