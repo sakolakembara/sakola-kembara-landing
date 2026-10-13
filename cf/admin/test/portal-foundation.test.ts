@@ -198,16 +198,16 @@ describe("GET /portal/api/dev/mailbox", () => {
 });
 
 describe("the error handler", () => {
-  test("an unexpected error is a JSON 500 with no message, and the log line holds the message only (no stack, no request)", async () => {
-    const routes = new Hono<AppEnv>();
-    routes.get("/boom", () => {
-      throw new Error("something broke");
-    });
+  test("an unexpected error is a JSON 500 with no message, and the log line holds the message only (no stack, no request): the real Worker, with its secret missing", async () => {
+    // Better Auth refuses to be built without BETTER_AUTH_SECRET (never a built-in one), and `me` is the first thing
+    // that builds it: a real error inside the real Worker, with the cookie and the address of the request at hand.
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = await portalCall("/portal/api/boom", { via: portalAppAround({ "/portal/api": routes }) });
+    const res = await portalCall("/portal/api/me", { env: { BETTER_AUTH_SECRET: undefined }, cookie: "sakem-student.session_token=a-cookie-value", ip: "203.0.113.99" });
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "internal" });
-    expect(error.mock.calls).toEqual([["[portal] unhandled error: something broke"]]);
+    expectApiHeaders(res, "the 500");
+    expect(error.mock.calls).toEqual([["[portal] unhandled error: BETTER_AUTH_SECRET is not set"]]);
+    expect(JSON.stringify(error.mock.calls)).not.toMatch(/a-cookie-value|203\.0\.113\.99|\n\s+at /);
   });
 });
 
