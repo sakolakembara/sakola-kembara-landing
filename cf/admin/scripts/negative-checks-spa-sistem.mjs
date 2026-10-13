@@ -182,6 +182,13 @@ export const sistemSpaChecks = [
 
   // ------------------------------------------- an admin never has to verify an address (SAKEM-089)
   {
+    name: "email-twice: a password with a different second address is sent anyway",
+    file: "spa/src/pages/settings/model.ts",
+    from: 'return values.password !== "" && values.email.trim().toLowerCase() !== values.emailConfirm.trim().toLowerCase();',
+    to: "return false;",
+    tests: t(SETTINGS),
+  },
+  {
     name: "no-verify: the mock leaves an admin made with a password unverified, so not Aktif and not another super_admin",
     file: "spa/src/mock/handlers/sistem.ts",
     from: "      hasAccount: !invited || accepted,\n      deactivated: false,\n      emailVerified: !invited || accepted,",

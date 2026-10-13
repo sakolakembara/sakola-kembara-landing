@@ -94,6 +94,7 @@ export const FIELD_LABELS: Record<string, string> = {
   email: "Email",
   name: "Nama",
   password: "Password",
+  emailConfirm: "Ketik ulang email",
   role: "Peran",
   areas: "Area",
 };
@@ -104,6 +105,8 @@ export interface AdminValues extends Record<string, string | boolean> {
   email: string;
   name: string;
   password: string;
+  /** Typed again when a password is given: that admin signs in at once, never verified by email (SAKEM-089). */
+  emailConfirm: string;
   role: AdminRole;
   pendaftaran: boolean;
   komunikasi: boolean;
@@ -116,11 +119,21 @@ export function toValues(item: AdminItem | null): AdminValues {
     email: item?.email ?? "",
     name: item?.name ?? "",
     password: "",
+    emailConfirm: "",
     role: item?.role ?? "editor",
     pendaftaran: item?.areas.includes("pendaftaran") ?? false,
     komunikasi: item?.areas.includes("komunikasi") ?? false,
     konten: item?.areas.includes("konten") ?? false,
   };
+}
+
+/**
+ * An admin made with a password signs in at once and is never verified by email, so a mistyped address would hand
+ * the role to whoever owns it (Dzul's decision, 2026-10-13): the address is typed twice, and the form refuses a
+ * difference before anything is sent. Case and surrounding spaces do not count as a difference.
+ */
+export function emailsDiffer(values: AdminValues): boolean {
+  return values.password !== "" && values.email.trim().toLowerCase() !== values.emailConfirm.trim().toLowerCase();
 }
 
 /** The areas ticked, if the role is an editor (the other roles have none: the Worker refuses areas for them). */
