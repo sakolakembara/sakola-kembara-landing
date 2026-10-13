@@ -175,9 +175,46 @@ export const sistemSpaChecks = [
   {
     name: "last-super-admin: the mock counts an invitation nobody opened as another super_admin who can sign in",
     file: "spa/src/mock/handlers/sistem.ts",
-    from: "const canSignIn = (row: AdminRow) => row.role === \"super_admin\" && !row.deactivated && row.emailVerified && row.hasAccount;",
+    from: "const canSignIn = (row: AdminRow) => row.role === \"super_admin\" && !row.deactivated && row.hasAccount;",
     to: "const canSignIn = (row: AdminRow) => row.role === \"super_admin\" && !row.deactivated;",
     tests: t(MOCK),
+  },
+
+  // ------------------------------------------- an admin never has to verify an address (SAKEM-089)
+  {
+    name: "no-verify: the mock leaves an admin made with a password unverified, so not Aktif and not another super_admin",
+    file: "spa/src/mock/handlers/sistem.ts",
+    from: "      hasAccount: !invited || accepted,\n      deactivated: false,\n      emailVerified: !invited || accepted,",
+    to: "      hasAccount: accepted,\n      deactivated: false,\n      emailVerified: accepted,",
+    tests: t(MOCK),
+  },
+  {
+    name: "no-verify: the mock says an admin made with a password was mailed a verification email",
+    file: "spa/src/mock/handlers/sistem.ts",
+    from: "...(invited ? { email: { sent: true, kind: \"invite\" } } : {}) }",
+    to: "email: { sent: true, kind: invited ? \"invite\" : \"verification\" } }",
+    tests: t(MOCK),
+  },
+  {
+    name: "no-verify: the mock fails the invitation's email for an admin made with a password too",
+    file: "spa/src/mock/handlers/sistem.ts",
+    from: "if (invited && local === \"email-gagal\")",
+    to: "if (local === \"email-gagal\")",
+    tests: t(MOCK),
+  },
+  {
+    name: "no-verify: the form's notice for an admin made with a password still says a verification email went out",
+    file: "spa/src/pages/settings/AdminFormPage.tsx",
+    from: '"Admin bisa langsung masuk dengan password yang kamu isi."',
+    to: "`Email verifikasi dikirim ke ${values.email.trim()}.`",
+    tests: t(SETTINGS),
+  },
+  {
+    name: "no-verify: the password field still tells the person that the admin must verify the email first",
+    file: "spa/src/pages/settings/AdminFormPage.tsx",
+    from: "Jika diisi, admin langsung bisa masuk dengan password itu tanpa verifikasi email, jadi pastikan emailnya benar dan sampaikan password-nya langsung ke admin.",
+    to: "Jika diisi, admin tetap harus membuka email verifikasi dulu sebelum bisa masuk.",
+    tests: t(SETTINGS),
   },
 
   // ------------------------------------------- the confirm buttons of Nonaktifkan and Aktifkan kembali (SAKEM-087)

@@ -52,6 +52,13 @@ export const ROLE_HINT: Record<AdminRole, string> = {
   viewer: "Hanya bisa membaca semua area, kecuali Sistem. Tidak bisa mengubah apa pun.",
 };
 
+/**
+ * What the Worker derives and the screen shows (`statusOf` in src/api/admin-users.ts; SAKEM-089):
+ *   Aktif     has a way to sign in (an account) and is not deactivated. An admin made with a password is Aktif at
+ *             once: nobody has to verify an address, so there is nothing to wait for.
+ *   Diundang  an invitation nobody has opened: no account yet. The only state that offers "Kirim ulang undangan".
+ *   Nonaktif  deactivated (wins over the others); the way back is "Aktifkan lagi".
+ */
 export const STATUS = makeStatusMap({
   active: { label: "Aktif", tone: "green" },
   invited: { label: "Diundang", tone: "amber" },

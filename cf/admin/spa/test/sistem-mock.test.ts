@@ -210,9 +210,54 @@ describe("Pengaturan", () => {
     expect(invite!.status).toBe(201);
     expect(invite!.body.item).toMatchObject({ status: "invited", role: "editor", areas: ["pendaftaran", "konten"], emailVerified: false });
     expect(invite!.body.email).toEqual({ sent: true, kind: "invite" });
+    // With a password nothing is mailed: the admin is verified and active at once (SAKEM-089).
     const password = await ask("POST", "/api/admin/users", { email: "sandi@contoh.test", role: "viewer", password: "kata sandi awal" });
-    expect(password!.body.email).toEqual({ sent: true, kind: "verification" });
+    expect(password!.status).toBe(201);
+    expect(password!.body.email).toBeUndefined();
+    expect(password!.body.item).toMatchObject({ status: "active", emailVerified: true });
     expect((await ask("GET", "/api/admin/users"))!.body.total).toBe(8);
+  });
+
+  test("the statuses: Aktif has an account and is not deactivated, Diundang has no account yet, Nonaktif is deactivated; the filter and 'Kirim ulang undangan' follow", async () => {
+    const ask = setup();
+    const byStatus = async (status: string) => ((await ask("GET", `/api/admin/users?status=${status}`))!.body.items as { email: string }[]).map((item) => item.email).sort();
+    expect(await byStatus("invited")).toEqual(["guru-baru@contoh.test"]);
+    expect(await byStatus("deactivated")).toEqual(["mantan@contoh.test"]);
+    expect(await byStatus("active")).toEqual(["budi@contoh.test", "dewi@contoh.test", "sari@contoh.test", "super-admin@contoh.test"]);
+    // An admin made with a password is Aktif straight away (it has an account and nothing to verify)...
+    await ask("POST", "/api/admin/users", { email: "sandi@contoh.test", role: "viewer", password: "kata sandi awal" });
+    expect(await byStatus("active")).toContain("sandi@contoh.test");
+    expect(await byStatus("invited")).toEqual(["guru-baru@contoh.test"]);
+    // ...and one invited is Diundang until the invitation is opened (the mock's `sudah-masuk@...` has opened it).
+    await ask("POST", "/api/admin/users", { email: "undangan@contoh.test", role: "editor" });
+    await ask("POST", "/api/admin/users", { email: "sudah-masuk@contoh.test", role: "editor" });
+    expect(await byStatus("invited")).toEqual(["guru-baru@contoh.test", "undangan@contoh.test"]);
+    expect(await byStatus("active")).toContain("sudah-masuk@contoh.test");
+    // The invitation can be sent again only while it is Diundang.
+    expect((await ask("POST", "/api/admin/users/mock-admin-baru/resend-invite", {}))!.status).toBe(200);
+    expect((await ask("POST", `/api/admin/users/${dewi}/resend-invite`, {}))!.body.error).toBe("not_pending_invite");
+    expect((await ask("POST", "/api/admin/users/mock-admin-lama/resend-invite", {}))!.body.error).toBe("not_pending_invite");
+  });
+
+  // Negative check: the mock still asks for a verified address (or makes a password-made admin unverified).
+  test("an admin made with a password counts at once as another super_admin who can sign in: the first may step down, and the new one is then the last", async () => {
+    const ask = setup();
+    const self = "mock-user";
+    const v = await version(ask, self);
+    expect((await ask("PUT", `/api/admin/users/${self}`, { name: "Pengguna Contoh", role: "viewer", areas: [] }, { "If-Match": `"${v}"` }))!.status).toBe(409);
+    const second = await ask("POST", "/api/admin/users", { email: "kedua@contoh.test", name: "Kedua", role: "super_admin", password: "kata sandi awal" });
+    expect(second!.body.item).toMatchObject({ status: "active", emailVerified: true });
+    expect((await ask("PUT", `/api/admin/users/${self}`, { name: "Pengguna Contoh", role: "viewer", areas: [] }, { "If-Match": `"${v}"` }))!.status).toBe(200);
+    expect((await ask("POST", `/api/admin/users/${second!.body.item.id}/deactivate`, {}))!.body.error).toBe("last_super_admin");
+  });
+
+  test("the addresses that play up are about the invitation's email: with a password no email is involved, so nothing fails", async () => {
+    const ask = setup();
+    const made = await ask("POST", "/api/admin/users", { email: "email-gagal@contoh.test", role: "viewer", password: "kata sandi awal" });
+    expect(made!.status).toBe(201);
+    expect(made!.body.item.status).toBe("active");
+    const noService = await ask("POST", "/api/admin/users", { email: "email-tidak-tersedia@contoh.test", role: "viewer", password: "kata sandi awal" });
+    expect(noService!.status).toBe(201);
   });
 
   test("an address that plays up: the account is made and the email fails (502), or there is no email service (503, nothing made)", async () => {
