@@ -10,7 +10,7 @@ import { focusFirstInvalid, useAutoFocus, usePageTitle, useSubmitLock } from "~/
 import { usePublicConfig } from "~/lib/public-config";
 import { useTurnstile } from "~/lib/turnstile";
 import { validateForgot } from "~/lib/validation";
-import { AUTH_LINK, AuthShell } from "./AuthShell";
+import { AUTH_LINK, AuthShell } from "@shared/spa/AuthShell";
 
 // Where the link in the reset email lands, with ?token= (or ?error= when the
 // link is spent or expired). Better Auth redirects there after checking it.

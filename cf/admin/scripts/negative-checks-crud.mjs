@@ -298,7 +298,7 @@ export const crudChecks = [
   },
   {
     name: "crud: the SPA no longer reads the Worker's `fields`",
-    file: "spa/src/lib/api.ts",
+    file: "shared/spa/api.ts",
     from: "fields: stringFields(failure.fields),",
     to: "fields: undefined,",
     tests: SPA_CONTRACT,
