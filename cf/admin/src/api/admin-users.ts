@@ -1,4 +1,3 @@
-import { createEmailVerificationToken } from "better-auth/api";
 import { and, asc, count, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { BatchItem } from "drizzle-orm/batch";
@@ -15,7 +14,7 @@ import { auditStatementIfChanged } from "../audit/statement";
 import { auditStatement, type Db } from "../db/audit";
 import * as schema from "../db/schema";
 import { emailAvailable, sendEmail, type SendResult } from "../email/send";
-import { adminInviteEmail, verificationEmail, ADMIN_INVITE_SECONDS } from "../email/templates";
+import { adminInviteEmail, ADMIN_INVITE_SECONDS } from "../email/templates";
 import { emailKey } from "../security/client";
 import { checkLimits, limitedResponse } from "../security/rate-limit";
 import {
@@ -47,12 +46,16 @@ import { readJson } from "./json";
 //
 //   - an admin is invited by email (a link to choose their own password, 7 days,
 //     single use); a super_admin can still set a first password
+//   - an admin made here never has to verify an address (SAKEM-089): the super_admin
+//     who created or invited them is the trust. One created with a password is verified
+//     at once; an invited one is verified by opening the invite link, which is also what
+//     gives them a password. Students are not made here and still verify (docs/cloudflare/auth.md)
 //   - nobody is deleted: an account is deactivated (sessions revoked, cannot
 //     sign in by any method) so the audit trail keeps pointing at a real row,
 //     and it can be reactivated
 //   - the last super_admin who can sign in can be neither demoted nor deactivated
 //     (an unaccepted invitation is not one), and a database trigger holds that line
-//     even if two of them try it at once (migrations 0006 and 0010)
+//     even if two of them try it at once (migrations 0006, 0010 and 0011)
 //   - nobody can deactivate themselves
 //   - students are not touched here: an address that already has an account of
 //     any role answers 409 email_taken
@@ -82,7 +85,7 @@ const createInput = z
     email: emailField,
     name: nameField.optional(),
     role: roleField,
-    /** Omit to invite by email. Set it and the admin can sign in with it once the verification email is confirmed. */
+    /** Omit to invite by email. Set it and the admin can sign in with it right away: the super_admin who typed it is the trust. */
     password: z
       .string()
       .min(PASSWORD_MIN_LENGTH, `Password minimal ${PASSWORD_MIN_LENGTH} karakter`)
@@ -167,7 +170,7 @@ function present(row: AdminUserRow) {
   };
 }
 
-/** The super_admins who can sign in now. Defined once, in migration 0010; the trigger reads the same view. */
+/** The super_admins who can sign in now. Defined once, in the view of migration 0011 (0010 made it); the trigger reads the same view. */
 const SIGNABLE_SUPER_ADMINS = "signable_super_admins";
 
 /** True when the account has a way to sign in. */
@@ -223,9 +226,9 @@ function mentions(error: unknown, text: string): boolean {
 
 /**
  * Would taking `userId` out of the super_admins who can sign in leave nobody? True only when `userId` is one of
- * them and is the only one. "Can sign in" is the view `signable_super_admins` (migration 0010: not deactivated,
- * email verified, has an account), which the trigger of the same migration reads too, so this friendly answer and
- * the guarantee underneath it cannot disagree. Someone who cannot sign in anyway (a pending invitation) is not
+ * them and is the only one. "Can sign in" is the view `signable_super_admins` (migration 0011: not deactivated and
+ * has an account; an admin never has to verify an address), which the trigger of migration 0010 reads too, so this
+ * friendly answer and the guarantee underneath it cannot disagree. Someone who cannot sign in anyway (a pending invitation) is not
  * one of them, so demoting or deactivating them is never refused: it takes nobody away.
  */
 async function wouldLeaveNoSignableSuperAdmin(c: Context<AppEnv>, userId: string): Promise<boolean> {
@@ -381,15 +384,20 @@ adminUserRoutes.get("/:id", requireArea("sistem", "read"), async (c) => {
 });
 
 /**
- * Creates an admin. Without `password` it is an invitation: the account exists
- * (unverified, no password) and an email carries a 7-day link to choose one.
- * With `password` the account can sign in once its verification email is
- * confirmed (a typo in the address must not hand out an admin account, so
- * nothing is verified on the super_admin's word).
+ * Creates an admin. How they get in is the one thing that differs:
  *
- * The email is sent in the request, not after it, because this caller is a
- * signed-in super_admin (nothing to enumerate) and must be told when it failed:
- * 502, with the created user, never a plain success.
+ *   - With `password` the account is made verified and can sign in at once (SAKEM-089). The super_admin chose the
+ *     address and the password and tells the person themselves; no email is sent, so none is needed.
+ *   - Without it, it is an invitation: the account exists (unverified, no password) and an email carries a 7-day
+ *     link to choose one. Opening the link is what verifies the address and creates the credential account.
+ *
+ * Why it is safe to take the super_admin's word: the route is `sistem` + write (a signed-in super_admin and nobody
+ * else), the role of the new row is the one in the validated body (the public sign-up only ever makes students and
+ * cannot be told a role), and a student is never touched here (an address that already has an account of any role is
+ * a 409). What a mistyped address costs is in docs/cloudflare/auth.md#admins-and-email-verification.
+ *
+ * The invitation's email is sent in the request, not after it, because this caller is a signed-in super_admin
+ * (nothing to enumerate) and must be told when it failed: 502, with the created user, never a plain success.
  */
 adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
   const raw = await readJson(c);
@@ -400,16 +408,21 @@ adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
   const areas = role === "editor" ? grantableAreas.filter((area) => parsed.data.areas?.includes(area)) : [];
   const name = parsed.data.name || email.split("@")[0]!;
 
-  if (!emailAvailable(c.env)) {
-    return c.json({ error: "email_unavailable", message: "Layanan email sedang tidak tersedia. Silakan coba lagi nanti." }, 503);
+  // Only an invitation sends anything, so only an invitation needs the provider and the per-mailbox cap.
+  if (!password) {
+    if (!emailAvailable(c.env)) {
+      return c.json({ error: "email_unavailable", message: "Layanan email sedang tidak tersedia. Silakan coba lagi nanti." }, 503);
+    }
+    const limited = await checkLimits(c.env, [{ name: "mailTarget", key: await emailKey(email) }]);
+    if (!limited.allowed) return limitedResponse(limited);
   }
-  const limited = await checkLimits(c.env, [{ name: "mailTarget", key: await emailKey(email) }]);
-  if (!limited.allowed) return limitedResponse(limited);
 
   const actor = c.get("user");
   const db = drizzle(c.env.DB, { schema });
   const id = crypto.randomUUID();
-  const statements: BatchItem<"sqlite">[] = [db.insert(schema.users).values({ id, name, email, role, emailVerified: false })];
+  // `emailVerified` is the whole of SAKEM-089 for a password: the flag `requireEmailVerification` reads is set where the
+  // row is made, so the global requirement stays on for students. An invitation starts unverified and its link fixes that.
+  const statements: BatchItem<"sqlite">[] = [db.insert(schema.users).values({ id, name, email, role, emailVerified: password !== undefined })];
   if (password) {
     statements.push(db.insert(schema.accounts).values({ id: crypto.randomUUID(), accountId: id, providerId: "credential", userId: id, password: await hashPassword(password) }));
   }
@@ -434,21 +447,13 @@ adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
   }
 
   const created = (await loadAdmins(c, id))[0]!;
-  const message = password
-    ? verificationEmail(email, await verificationLink(c, email))
-    : adminInviteEmail(email, await createInviteLink(c, id), { role, inviterName: actor.name });
-  const sent = await sendEmail(c.env, message);
-  if (!sent.ok) return emailFailure(c, sent, present(created));
-  // `item` is the convention's key; `user` stays for the callers written before it.
-  return c.json({ item: present(created), user: present(created), email: { sent: true, kind: password ? "verification" : "invite" } }, 201);
-});
+  // `item` is the convention's key; `user` stays for the callers written before it. No `email` key: nothing was mailed.
+  if (password) return c.json({ item: present(created), user: present(created) }, 201);
 
-/** A fresh email-verification link for an address, the same one sign-in would send. */
-async function verificationLink(c: Context<AppEnv>, email: string): Promise<string> {
-  const context = await c.get("auth")().$context;
-  const token = await createEmailVerificationToken(context.secret, email, undefined, 24 * 60 * 60);
-  return `${context.baseURL}/verify-email?token=${token}&callbackURL=${encodeURIComponent("/login?verified=1")}`;
-}
+  const sent = await sendEmail(c.env, adminInviteEmail(email, await createInviteLink(c, id), { role, inviterName: actor.name }));
+  if (!sent.ok) return emailFailure(c, sent, present(created));
+  return c.json({ item: present(created), user: present(created), email: { sent: true, kind: "invite" } }, 201);
+});
 
 /**
  * Changes an admin's role and/or name. Moving away from `editor` removes that

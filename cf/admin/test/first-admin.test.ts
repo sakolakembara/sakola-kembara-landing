@@ -136,7 +136,8 @@ describe("what the command checks before it writes", () => {
     const email = uniqueEmail("probe");
     expect(await env.DB.prepare(inspectSql(email)).first()).toEqual({ signable: 0, same_email: 0 });
     await insertSuperAdmin({ email });
-    await insertSuperAdmin({ verified: false });
+    await insertSuperAdmin({ account: false }); // an invitation nobody accepted: not one who can sign in
+    await insertSuperAdmin({ deactivated: true });
     expect(await env.DB.prepare(inspectSql(email)).first()).toEqual({ signable: 1, same_email: 1 });
   });
 

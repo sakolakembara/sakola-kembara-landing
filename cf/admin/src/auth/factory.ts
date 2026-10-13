@@ -144,6 +144,9 @@ export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestCon
 
     emailAndPassword: {
       enabled: true,
+      // On for everyone, and it is what makes a student verify. An admin never meets it (SAKEM-089), not because it is
+      // loosened here but because the rows are made verified where the super_admin makes them: at creation with a
+      // password (src/api/admin-users.ts) and when an invitation's link is opened (`onPasswordReset` below).
       requireEmailVerification: true,
       minPasswordLength: PASSWORD_MIN_LENGTH,
       maxPasswordLength: PASSWORD_MAX_LENGTH,
@@ -159,8 +162,10 @@ export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestCon
       },
       // Redeeming a reset (or invite) link proves control of the mailbox, which
       // is all "verified" means. It also lets an invited admin, who has no
-      // password and never signed up, sign in after choosing one. Sessions were
-      // already revoked by `revokeSessionsOnPasswordReset`.
+      // password and never signed up, sign in after choosing one: the credential
+      // account is created by Better Auth in the same call, so accepting an
+      // invitation is exactly "gets an account and is verified" (SAKEM-089).
+      // Sessions were already revoked by `revokeSessionsOnPasswordReset`.
       onPasswordReset: async ({ user }) => {
         await db.batch([
           db.update(schema.users).set({ emailVerified: true }).where(eq(schema.users.id, user.id)),

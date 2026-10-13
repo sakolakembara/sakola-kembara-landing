@@ -268,23 +268,22 @@ describe("creating an admin by invitation", () => {
 });
 
 describe("creating an admin with a first password", () => {
-  test("the account can sign in once the verification email is confirmed; the password is never in the audit row", async () => {
+  // SAKEM-089: the super_admin who creates the account is the trust, so the address is verified at creation. How
+  // that holds up through the real sign-in route, for each role and for a student, is in test/admin-no-verify.test.ts.
+  test("the account is verified and can sign in at once, nothing is mailed, and the password is never in the audit row", async () => {
     const boss = await superAdmin();
     const { res, email, body } = await invite(boss.cookie, "editor", uniqueEmail("pw"), { password: "first password 123" });
     expect(res.status).toBe(201);
-    expect(body.email).toEqual({ sent: true, kind: "verification" });
-    expect(body.user).toMatchObject({ status: "active", emailVerified: false });
+    expect(body.email).toBeUndefined(); // nothing to report: no email was involved
+    expect(body.user).toMatchObject({ status: "active", emailVerified: true });
+    expect((await userRow(email))?.verified).toBe(1);
+    expect(emailsTo(email)).toEqual([]);
 
     const account = await env.DB.prepare("SELECT a.password FROM account a JOIN users u ON u.id = a.user_id WHERE u.email = ?").bind(email).first<{ password: string }>();
     expect(account?.password).toMatch(/^pbkdf2-sha256\$100000\$/);
     expect(JSON.stringify(await audit("admin.create"))).not.toContain("first password 123");
     expect((await audit("admin.create"))[0]!.metadata).toEqual({ email, role: "editor", mode: "password" });
 
-    // Not verified on the super_admin's word: a typo in the address must not give someone an admin account.
-    expect((await signIn(email, "first password 123")).status).toBe(403);
-    const message = emailsTo(email).find((m) => m.purpose === "verify-email")!;
-    expect(message).toBeDefined();
-    expect((await call(linkIn(message))).headers.get("location")).toBe("/login?verified=1");
     expect((await signIn(email, "first password 123")).status).toBe(200);
   });
 });

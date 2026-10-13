@@ -10,9 +10,12 @@
 
 const AUDIT = "test/audit-viewer.test.ts";
 const USERS = "test/sistem-users.test.ts";
-// SAKEM-087: the last super_admin is the last one who can sign in (migration 0010's view).
-const SIGNIN = "test/last-super-admin.test.ts test/admin-users.test.ts test/sistem-users.test.ts";
-const VIEW = "migrations/0010_last_super_admin_signin.sql";
+// SAKEM-087: the last super_admin is the last one who can sign in. SAKEM-089: an admin never has to verify an address.
+// The view is migration 0011's (it replaced 0010's); the trigger that reads it is still 0010's.
+const SIGNIN = "test/last-super-admin.test.ts test/admin-users.test.ts test/sistem-users.test.ts test/admin-no-verify.test.ts";
+const VIEW = "migrations/0011_admin_signin_without_verification.sql";
+const TRIGGER = "migrations/0010_last_super_admin_signin.sql";
+const NO_VERIFY = "test/admin-no-verify.test.ts";
 const FIRST_ADMIN = "scripts/first-admin-sql.ts";
 const FIRST_ADMIN_TESTS = "test/first-admin.test.ts";
 
@@ -240,20 +243,21 @@ export const sistemChecks = [
   },
 
   // ------------------------------------------------------- the last super_admin is the last who can sign in (SAKEM-087)
-  // One definition, the view `signable_super_admins`, read by the trigger and by the API. Taking any of its three
-  // conditions out brings back a way for the only super_admin who can sign in to step down.
+  // One definition, the view `signable_super_admins` (0011), read by the trigger (0010) and by the API. Taking either
+  // of its two conditions out brings back a way for the only super_admin who can sign in to step down; putting the
+  // old third one back (the address verified) refuses an admin the sign-in route lets in.
   {
     name: "last-super-admin: an unopened invitation counts again (the view no longer asks for an account)",
     file: VIEW,
-    from: "  AND `u`.`email_verified` = 1\n  AND EXISTS (SELECT 1 FROM `account` AS `a` WHERE `a`.`user_id` = `u`.`id`);",
-    to: "  AND `u`.`email_verified` = 1;",
+    from: "  AND `u`.`deactivated_at` IS NULL\n  AND EXISTS (SELECT 1 FROM `account` AS `a` WHERE `a`.`user_id` = `u`.`id`);",
+    to: "  AND `u`.`deactivated_at` IS NULL;",
     tests: SIGNIN,
   },
   {
-    name: "last-super-admin: an address nobody has verified counts again (the view no longer asks for email_verified)",
+    name: "last-super-admin: an admin who never verified is not counted (the view asks for email_verified again, as migration 0010 did)",
     file: VIEW,
-    from: "  AND `u`.`email_verified` = 1\n",
-    to: "",
+    from: "  AND `u`.`deactivated_at` IS NULL\n  AND EXISTS (SELECT 1 FROM `account` AS `a` WHERE `a`.`user_id` = `u`.`id`);",
+    to: "  AND `u`.`deactivated_at` IS NULL\n  AND `u`.`email_verified` = 1\n  AND EXISTS (SELECT 1 FROM `account` AS `a` WHERE `a`.`user_id` = `u`.`id`);",
     tests: SIGNIN,
   },
   {
@@ -265,14 +269,14 @@ export const sistemChecks = [
   },
   {
     name: "last-super-admin: the trigger counts 'another' the way migration 0006 did (an invitation is one)",
-    file: VIEW,
+    file: TRIGGER,
     from: "AND NOT EXISTS (SELECT 1 FROM `signable_super_admins` WHERE `id` <> OLD.`id`)",
     to: "AND NOT EXISTS (SELECT 1 FROM `users` WHERE `role` = 'super_admin' AND `deactivated_at` IS NULL AND `id` <> OLD.`id`)",
     tests: SIGNIN,
   },
   {
     name: "last-super-admin: the trigger also guards a row that cannot sign in anyway (a pending invitation cannot be demoted)",
-    file: VIEW,
+    file: TRIGGER,
     from: "WHEN OLD.`id` IN (SELECT `id` FROM `signable_super_admins`)\n  AND (",
     to: "WHEN OLD.`role` = 'super_admin' AND OLD.`deactivated_at` IS NULL\n  AND (",
     tests: SIGNIN,
@@ -336,5 +340,59 @@ export const sistemChecks = [
     from: "return `'${value.replaceAll(\"'\", \"''\")}'`;",
     to: "return `'${value}'`;",
     tests: FIRST_ADMIN_TESTS,
+  },
+
+  // ------------------------------------------------------- an admin never has to verify an address (SAKEM-089)
+  // The flag is set where the row is made (and where an invitation is opened: "a password reset no longer proves the
+  // mailbox" in negative-checks.mjs); `requireEmailVerification` stays on for students ("verification requirement
+  // removed" there). These break the rest: who is made verified, and the one-off statement of the migration.
+  {
+    name: "no-verify: an admin created with a password is left unverified (the sign-in route refuses them, 403)",
+    file: "src/api/admin-users.ts",
+    from: "emailVerified: password !== undefined })];",
+    to: "emailVerified: false })];",
+    tests: SIGNIN,
+  },
+  {
+    name: "no-verify: an invitation is made verified before anyone opens the link",
+    file: "src/api/admin-users.ts",
+    from: "emailVerified: password !== undefined })];",
+    to: "emailVerified: true })];",
+    tests: SIGNIN,
+  },
+  {
+    name: "no-verify: the create route accepts the role student (a student made verified on a super_admin's word)",
+    file: "src/api/admin-users.ts",
+    from: "const roleField = z.enum(adminRoles);",
+    to: 'const roleField = z.enum(["student", ...adminRoles]);',
+    tests: NO_VERIFY,
+  },
+  {
+    name: "no-verify: an admin made with a password is also mailed an invitation (it falls through to the invite path, and needs the provider)",
+    file: "src/api/admin-users.ts",
+    from: "  if (password) return c.json({ item: present(created), user: present(created) }, 201);\n",
+    to: "",
+    tests: SIGNIN,
+  },
+  {
+    name: "no-verify: migration 0011 does not verify the admins made before it",
+    file: VIEW,
+    from: "UPDATE `users`\nSET `email_verified` = 1\nWHERE `email_verified` = 0\n",
+    to: "UPDATE `users`\nSET `email_verified` = 1\nWHERE `email_verified` = 0 AND 0\n",
+    tests: NO_VERIFY,
+  },
+  {
+    name: "no-verify: migration 0011 verifies students too (the role condition is gone)",
+    file: VIEW,
+    from: "  AND `role` IN ('viewer', 'editor', 'super_admin')\n",
+    to: "",
+    tests: NO_VERIFY,
+  },
+  {
+    name: "no-verify: migration 0011 verifies an invitation nobody opened (the account condition is gone)",
+    file: VIEW,
+    from: "  AND EXISTS (SELECT 1 FROM `account` AS `a` WHERE `a`.`user_id` = `users`.`id`);",
+    to: ";",
+    tests: NO_VERIFY,
   },
 ];

@@ -24,9 +24,10 @@ export const users = sqliteTable(
      * revoked at that moment; the row, its audit trail and its role stay.
      * Additional field for Better Auth (`input: false`), so no client can set it.
      * The migrations also add a trigger that refuses to remove the last super_admin
-     * who can sign in (not deactivated, email verified, has an account): see
-     * migrations/0006_keep_one_super_admin.sql and, for the current definition and
-     * the view it reads, migrations/0010_last_super_admin_signin.sql.
+     * who can sign in (not deactivated, has an account; an admin never has to verify
+     * an address, SAKEM-089): see migrations/0006_keep_one_super_admin.sql, the trigger
+     * in migrations/0010_last_super_admin_signin.sql and the view it reads, as
+     * migrations/0011_admin_signin_without_verification.sql defines it.
      */
     deactivatedAt: timestampMs("deactivated_at"),
     createdAt: createdAt(),
