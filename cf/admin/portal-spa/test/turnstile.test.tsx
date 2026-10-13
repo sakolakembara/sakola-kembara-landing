@@ -98,8 +98,7 @@ describe("a form submitted by a script before the token arrives sends nothing (t
     expect(api.count(`POST ${ENDPOINTS.requestReset}`)).toBe(0);
   });
 
-  test("'Kirim ulang tautan' (its button is the only thing between the click and the request)", async () => {
-    const user = userEvent.setup();
+  test("'Kirim ulang tautan'", async () => {
     const turnstile = fakeTurnstile();
     turnstile.preload();
     const api = stubApi({
@@ -110,8 +109,7 @@ describe("a form submitted by a script before the token arrives sends nothing (t
     renderApp("/portal/");
     const button = (await screen.findByRole("button", { name: "Memeriksa…" })) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
-    // A click on a disabled button does nothing; the guard inside the handler is for a caller that is not a click.
-    await user.click(button);
+    button.closest("form")!.requestSubmit();
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(api.count(`POST ${ENDPOINTS.sendVerification}`)).toBe(0);
   });

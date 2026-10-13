@@ -1,7 +1,7 @@
 import { api } from "@shared/spa/api";
 import { TurnstileWidget } from "@shared/spa/TurnstileWidget";
 import { useTurnstile } from "@shared/spa/turnstile";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useSubmitLock } from "~/lib/hooks";
@@ -20,8 +20,9 @@ export function ResendVerification({ email, callbackURL }: { email: string; call
   const { pending, run } = useSubmitLock();
   const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
 
-  function resend() {
-    // The button is disabled until the check has a token; this covers a call that does not come from it (a script).
+  function resend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    // The button is disabled until the check has a token; this covers a submit that does not come from it (a script).
     if (turnstile.blocked) return;
     void run(async () => {
       setNotice(null);
@@ -36,12 +37,12 @@ export function ResendVerification({ email, callbackURL }: { email: string; call
   }
 
   return (
-    <div className="space-y-3" aria-busy={pending}>
+    <form onSubmit={resend} noValidate className="space-y-3" aria-busy={pending}>
       {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
       <TurnstileWidget turnstile={turnstile} />
-      <Button type="button" variant="neutral" fullWidth disabled={pending || turnstile.blocked} onClick={resend}>
+      <Button type="submit" variant="neutral" fullWidth disabled={pending || turnstile.blocked}>
         {pending ? "Mengirim…" : turnstile.checking ? "Memeriksa…" : "Kirim ulang tautan"}
       </Button>
-    </div>
+    </form>
   );
 }

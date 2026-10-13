@@ -451,11 +451,11 @@ export const portalSpaChecks = [
 
   // ---------------------------------------------- the nav and the shell
   {
-    name: "portal: Beranda is marked as the current page on every page",
+    name: "portal: the page the student is on is not marked in the nav (plain links instead of NavLink)",
     config: CONFIG,
     file: "portal-spa/src/components/PortalNav.tsx",
-    from: "end={item.end}",
-    to: "end={false}",
+    from: 'import { NavLink } from "react-router";',
+    to: 'import { Link as NavLink } from "react-router";',
     tests: t(NAV),
   },
   {

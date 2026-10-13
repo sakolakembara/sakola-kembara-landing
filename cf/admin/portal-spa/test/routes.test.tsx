@@ -67,7 +67,8 @@ describe("the guard", () => {
     stubApi({ [`GET ${ENDPOINTS.me}`]: respond(meBody("super_admin")) });
     renderApp("/portal/status");
     expect(await screen.findByRole("heading", { name: "Akun ini bukan akun calon siswa" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Buka halaman admin" })).toBeNull();
+    // No link, and not a dead one either (an anchor with no address would not be a "link" to the accessibility tree).
+    expect(screen.queryByText("Buka halaman admin")).toBeNull();
     expect(location()).toBe("/status");
   });
 
