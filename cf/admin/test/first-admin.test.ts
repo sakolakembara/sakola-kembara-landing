@@ -112,6 +112,24 @@ describe("the SQL does nothing when it should not", () => {
     expect((await signIn(input.email, PASSWORD)).status).toBe(200);
   });
 
+  // The runbook's "Locked out" row (docs/cloudflare/first-super-admin.md): the owner takes the lost account's way in
+  // with a direct write, and the command then proceeds. This runs that very statement.
+  test("the only super_admin lost their way in (the owner's break-glass: their account row removed): the command proceeds", async () => {
+    const lost = uniqueEmail("lost");
+    const lostId = await insertSuperAdmin({ email: lost });
+    expect(await n("signable_super_admins")).toBe(1);
+    await env.DB.prepare("DELETE FROM account WHERE user_id = (SELECT id FROM users WHERE email = ?)").bind(lost).run();
+    expect(await n("signable_super_admins")).toBe(0);
+
+    const { input } = await first();
+    await run(firstAdminStatements(input));
+    expect(await n("users")).toBe(2);
+    expect(await n("signable_super_admins")).toBe(1);
+    expect((await signIn(input.email, PASSWORD)).status).toBe(200);
+    // The old one is still a row with its role, who Pengaturan lists as "Diundang" (nothing to sign in with).
+    expect(await env.DB.prepare("SELECT role FROM users WHERE id = ?").bind(lostId).first()).toEqual({ role: "super_admin" });
+  });
+
   test("an address that already has an account (a student's, say) fails at the first statement and leaves nothing behind", async () => {
     const email = uniqueEmail("student");
     await env.DB.prepare("INSERT INTO users (id, name, email, email_verified, role) VALUES (?, 'Siswa', ?, 1, 'student')").bind(crypto.randomUUID(), email).run();
@@ -136,7 +154,8 @@ describe("what the command checks before it writes", () => {
     const email = uniqueEmail("probe");
     expect(await env.DB.prepare(inspectSql(email)).first()).toEqual({ signable: 0, same_email: 0 });
     await insertSuperAdmin({ email });
-    await insertSuperAdmin({ verified: false });
+    await insertSuperAdmin({ account: false }); // an invitation nobody accepted: not one who can sign in
+    await insertSuperAdmin({ deactivated: true });
     expect(await env.DB.prepare(inspectSql(email)).first()).toEqual({ signable: 1, same_email: 1 });
   });
 

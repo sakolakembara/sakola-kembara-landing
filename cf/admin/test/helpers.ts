@@ -206,7 +206,7 @@ export async function revokeArea(userId: string, area: GrantableArea) {
 
 /**
  * Changes a role straight in the table. The database refuses to leave the
- * system without a super_admin who can sign in (migrations 0006 and 0010), so
+ * system without a super_admin who can sign in (migrations 0006, 0010 and 0011), so
  * demoting the only one first creates a stand-in, as a real deployment would
  * have a second one.
  */
@@ -217,8 +217,8 @@ export async function setRole(email: string, role: UserRole) {
 }
 
 /**
- * A second super_admin who can sign in (verified, with an account), so the first can be demoted or deactivated in
- * a test. An invitation that was never accepted would not do: it does not count (migration 0010).
+ * A second super_admin who can sign in (not deactivated, with an account), so the first can be demoted or deactivated
+ * in a test. An invitation that was never accepted would not do: it does not count (migrations 0010 and 0011).
  */
 export async function ensureAnotherSuperAdmin(exceptId: string) {
   const other = await env.DB.prepare("SELECT 1 AS found FROM signable_super_admins WHERE id <> ?").bind(exceptId).first();
@@ -228,8 +228,10 @@ export async function ensureAnotherSuperAdmin(exceptId: string) {
 
 /**
  * A super_admin straight into the tables, in whichever state a test needs. The defaults are the one who can sign
- * in; `verified: false`, `account: false` (an invitation nobody opened) and `deactivated` each take a way of it away.
- * `account: "google"` links a Google account instead of a password. Returns the id.
+ * in; `account: false` (an invitation nobody opened) and `deactivated` each take a way of it away. `verified: false`
+ * only sets the column: an admin does not need it to sign in (SAKEM-089), and the rule does not ask for it, but the
+ * sign-in route would still refuse that row, which is why the Worker never makes one. `account: "google"` links a
+ * Google account instead of a password. Returns the id.
  */
 export async function insertSuperAdmin(
   options: { email?: string; name?: string; role?: UserRole; verified?: boolean; account?: boolean | "google"; deactivated?: boolean } = {},

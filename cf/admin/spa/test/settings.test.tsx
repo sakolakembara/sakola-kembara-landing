@@ -370,17 +370,28 @@ describe("the form: create", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull(); // the unsaved guard let the navigation pass
   });
 
-  test("with a password the body carries it, and the notice says a verification email went out", async () => {
+  // SAKEM-089: with a password nothing is mailed and the admin can sign in at once, so the notice says that and not "email".
+  test("with a password the body carries it, and the notice says the admin can sign in at once (no email went out)", async () => {
     const user = userEvent.setup();
-    const created = admin({ id: "new-id", email: "guru@contoh.test", status: "invited" });
-    const { api } = await openForm("/settings/new", { [`POST ${LIST}`]: respond({ item: created, user: created, email: { sent: true, kind: "verification" } }, 201), [`GET ${LIST}/new-id`]: respond({ item: created }) });
+    const created = admin({ id: "new-id", email: "guru@contoh.test", status: "active", emailVerified: true });
+    const { api } = await openForm("/settings/new", { [`POST ${LIST}`]: respond({ item: created, user: created }, 201), [`GET ${LIST}/new-id`]: respond({ item: created }) });
     await user.type(screen.getByLabelText(/Email/), "guru@contoh.test");
     await user.click(screen.getByRole("radio", { name: /Viewer/ }));
     await user.type(screen.getByLabelText(/Password/), "kata sandi awal");
     await user.click(screen.getByRole("button", { name: "Buat Admin" }));
     await waitFor(() => expect(location()).toBe("/settings/new-id/edit"));
     expect(api.last(`POST ${LIST}`)?.body).toEqual({ email: "guru@contoh.test", name: "", role: "viewer", password: "kata sandi awal" });
-    expect((await screen.findByText(/Email verifikasi dikirim ke/)).textContent).toContain("Email verifikasi dikirim ke guru@contoh.test.");
+    const notice = (await screen.findByText(/Admin berhasil dibuat\./)).textContent;
+    expect(notice).toContain("Admin berhasil dibuat. Admin bisa langsung masuk dengan password yang kamu isi.");
+    expect(notice).not.toMatch(/verifikasi|dikirim/i);
+  });
+
+  test("the password field says what a password means: the admin signs in at once, with no email verification, so the address must be right", async () => {
+    await openForm("/settings/new");
+    const hint = screen.getByText(/^Opsional\. Kosongkan untuk mengundang lewat email/).textContent!;
+    expect(hint).toContain("admin langsung bisa masuk dengan password itu tanpa verifikasi email");
+    expect(hint).toContain("pastikan emailnya benar");
+    expect(hint).not.toContain("tetap harus");
   });
 
   test("a refused form: each field says it, the summary links to it, and nothing was navigated", async () => {

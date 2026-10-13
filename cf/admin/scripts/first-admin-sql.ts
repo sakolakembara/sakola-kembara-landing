@@ -58,8 +58,9 @@ export interface FirstAdminInput {
 /**
  * Three INSERTs that each carry their own condition, so the file does nothing when it should not:
  *
- *   1. the user, only while no super_admin who can sign in exists (the view of migration 0010). Verified, because
- *      nobody can open an email link on a database that has no admin yet; the address was typed twice by its owner.
+ *   1. the user, only while no super_admin who can sign in exists (the view of migrations 0010 and 0011). Verified,
+ *      like every admin who has an account (SAKEM-089): nobody can open an email link on a database that has no
+ *      admin yet, and the owner is the one who typed the address.
  *   2. the credential account (the password), only when row 1 was written
  *   3. the audit row `admin.create` (the person is the actor, as for the other flows that run before anyone is
  *      signed in), only when row 1 was written

@@ -60,7 +60,8 @@ const checks = [
     file: "src/auth/factory.ts",
     from: "requireEmailVerification: true,",
     to: "requireEmailVerification: false,",
-    tests: "test/auth.test.ts",
+    // Students still verify (SAKEM-089 made admins verified at the source, and left this on).
+    tests: "test/auth.test.ts test/admin-no-verify.test.ts",
   },
   {
     name: "the auth gate (route table, rate limits, Turnstile) not mounted",

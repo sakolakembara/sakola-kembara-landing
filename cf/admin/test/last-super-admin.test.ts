@@ -1,13 +1,14 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
 import type { UserRole } from "../src/auth/roles";
-import { call, cookiesOf, createVerifiedUser, emailsTo, insertSuperAdmin, linkIn, PASSWORD, resetTokenIn, signedInCookie, signIn, uniqueEmail } from "./helpers";
+import { call, cookiesOf, createVerifiedUser, emailsTo, insertSuperAdmin, PASSWORD, resetTokenIn, signedInCookie, signIn, uniqueEmail } from "./helpers";
 import { instrumentD1 } from "./public-helpers";
 
-// "The last super_admin" is the last one who can sign in (SAKEM-087, migration 0010): not deactivated, email
-// verified, with an account. An invitation nobody has opened is not one. The definition is the view
-// `signable_super_admins`, read by the trigger and by the API alike, so these tests go through both: the HTTP layer
-// (the friendly 409 and the race where only the trigger can tell) and the database (a plain UPDATE).
+// "The last super_admin" is the last one who can sign in (SAKEM-087): not deactivated and with an account. An
+// invitation nobody has opened is not one. An admin never has to verify an address (SAKEM-089, migration 0011), so the
+// address is not part of it. The definition is the view `signable_super_admins`, read by the trigger and by the API
+// alike, so these tests go through both: the HTTP layer (the friendly 409 and the race where only the trigger can
+// tell) and the database (a plain UPDATE).
 
 const USERS = "/api/admin/users";
 const DEMOTE = "Tidak dapat menurunkan peran super admin terakhir. Tambah super admin lain terlebih dahulu.";
@@ -54,7 +55,10 @@ describe("who is a super_admin who can sign in", () => {
     { label: "only a linked Google account, address verified", make: () => insertSuperAdmin({ account: "google" }), counts: true },
     { label: "an invitation nobody opened (not verified, no account)", make: () => insertSuperAdmin({ verified: false, account: false }), counts: false },
     { label: "a verified address and no account", make: () => insertSuperAdmin({ account: false }), counts: false },
-    { label: "an account but the address is not verified yet (created with a password)", make: () => insertSuperAdmin({ verified: false }), counts: false },
+    // Negative check: the view asks for email_verified again (migration 0010's definition). An admin gets an account
+    // only by being created with a password or by accepting an invitation, and both verify the address (the rows from
+    // before 0011 were verified by its last statement), so the column is not a reason to refuse anyone.
+    { label: "an account and an address nobody verified (the column says so; an admin never has to)", make: () => insertSuperAdmin({ verified: false }), counts: true },
     { label: "deactivated", make: () => insertSuperAdmin({ deactivated: true }), counts: false },
     { label: "an editor with an account (another role)", make: () => insertSuperAdmin({ role: "editor" }), counts: false },
     { label: "a student with an account (another role)", make: () => insertSuperAdmin({ role: "student" }), counts: false },
@@ -66,7 +70,7 @@ describe("who is a super_admin who can sign in", () => {
     expect(row !== null).toBe(counts);
   });
 
-  // Negative check: the view counts invitations again (any of its three conditions removed), or the trigger ignores it.
+  // Negative check: the view counts invitations again (any of its conditions removed), or the trigger ignores it.
   test.each(states)("the database: with $label as the other one, the only signable super_admin can step down: $counts", async ({ make, counts }) => {
     const only = await insertSuperAdmin();
     await make();
@@ -129,10 +133,10 @@ describe("the only super_admin who can sign in, with an invitation waiting (the 
   test("cannot be deactivated: another super_admin whose own way in is gone is refused, with the legacy sentence", async () => {
     // Through HTTP the actor of a deactivation is itself a super_admin with a session, so there is normally
     // another one who can sign in. To reach the question, the actor loses their way in AFTER signing in (their
-    // address un-verified straight in the table; their session stays valid, Better Auth does not look again).
+    // account removed straight in the table; their session stays valid, Better Auth does not look again).
     const actor = await boss("actor");
     const sole = await boss("sole");
-    await env.DB.prepare("UPDATE users SET email_verified = 0 WHERE id = ?").bind(actor.id).run();
+    await env.DB.prepare("DELETE FROM account WHERE user_id = ?").bind(actor.id).run();
     await invite(sole.cookie); // an unopened invitation must not make the sole one removable
     expect(await signable()).toBe(1);
     const { db, stats } = instrumentD1(env.DB);
@@ -198,7 +202,7 @@ describe("the rule asks who the target is: someone who cannot sign in anyway tak
   test("through the API too, whoever asks: an actor with a session but no way in of their own demotes an invitation (200)", async () => {
     const actor = await boss();
     const pending = await invite(actor.cookie);
-    await env.DB.prepare("UPDATE users SET email_verified = 0 WHERE id = ?").bind(actor.id).run(); // nobody can sign in now
+    await env.DB.prepare("DELETE FROM account WHERE user_id = ?").bind(actor.id).run(); // nobody can sign in now
     expect(await signable()).toBe(0);
     expect((await patch(actor.cookie, pending.id, { role: "viewer" })).status).toBe(200);
     expect(await roleOf(pending.id)).toBe("viewer");
@@ -212,7 +216,7 @@ describe("when the other one can sign in, one may step down", () => {
     expect((await patch(me.cookie, me.id, { role: "viewer" })).status).toBe(409);
 
     const theirs = await acceptInvite(pending.email);
-    // Opening the link made the address verified and created the account: that is the whole definition.
+    // Opening the link created the account (and verified the address): having an account is what the rule asks.
     expect(await signable()).toBe(2);
 
     expect((await patch(me.cookie, me.id, { role: "viewer" })).status).toBe(200);
@@ -221,16 +225,13 @@ describe("when the other one can sign in, one may step down", () => {
     expect(await roleOf(pending.id)).toBe("super_admin");
   });
 
-  test("one created with a password counts once the verification link is opened, not at creation", async () => {
+  // Negative check: the view asks for email_verified again, or the create path leaves a password-made admin unverified.
+  test("one created with a password counts at once, and really can sign in (the rule and the sign-in route agree)", async () => {
     const me = await boss();
     const email = uniqueEmail("withpw");
     const created = await post(me.cookie, USERS, { email, name: "Dengan Password", role: "super_admin", password: "initial password 99" });
     expect(created.status).toBe(201);
-    expect(await signable()).toBe(1); // the account exists, but sign-in is refused until the address is verified
-    expect((await signIn(email, "initial password 99")).status).not.toBe(200);
-    expect((await patch(me.cookie, me.id, { role: "viewer" })).status).toBe(409);
-
-    await call(linkIn(emailsTo(email).find((message) => message.purpose === "verify-email")!));
+    expect(emailsTo(email)).toEqual([]); // no verification email to wait for
     expect(await signable()).toBe(2);
     expect((await signIn(email, "initial password 99")).status).toBe(200);
     expect((await patch(me.cookie, me.id, { role: "viewer" })).status).toBe(200);

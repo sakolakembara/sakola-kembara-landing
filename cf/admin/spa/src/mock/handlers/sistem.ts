@@ -17,8 +17,10 @@ import type { MockHandler, MockRequest } from "../handlers";
 // Made-up addresses in the invented rows are reserved example domains. A new admin's email can end in a name that
 // plays up: `email-gagal@...` is created but the invitation fails to send (502), `email-tidak-tersedia@...` has no
 // email service (503), and `sudah-masuk@...` is an admin who has already opened the invitation and chosen a password
-// (the mock has no email to open, and a super_admin only counts as another once they can sign in). Nothing leaves
-// memory; a reload starts again from the seed.
+// (the mock has no email to open, and a super_admin only counts as another once they can sign in). The two that
+// play up are about the invitation's email, so they only apply to an admin made WITHOUT a password: with one, no
+// email is involved and the admin can sign in at once (SAKEM-089: an admin made by a super_admin never has to verify
+// an address). Nothing leaves memory; a reload starts again from the seed.
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -175,10 +177,10 @@ export function createSistemMock(): MockHandler {
     audit!.unshift({ id: `z${String(counter).padStart(5, "0")}`, createdAt: Date.now(), action, actorEmail: request.self.email, actorName: request.self.name, resourceType: "admin_user", resourceId, metadata });
   }
 
-  // The Worker's rule (migration 0010, the view `signable_super_admins`): the last super_admin who can sign in is the
-  // last one. Someone who cannot (an invitation nobody opened, an address not verified yet) neither counts nor needs
-  // protecting.
-  const canSignIn = (row: AdminRow) => row.role === "super_admin" && !row.deactivated && row.emailVerified && row.hasAccount;
+  // The Worker's rule (the view `signable_super_admins`, migrations 0010 and 0011): the last super_admin who can sign in
+  // is the last one. Someone who cannot (an invitation nobody opened, a deactivated account) neither counts nor needs
+  // protecting. The address is not part of it: an admin never has to verify one (SAKEM-089).
+  const canSignIn = (row: AdminRow) => row.role === "super_admin" && !row.deactivated && row.hasAccount;
   const wouldLeaveNoSuperAdmin = (row: AdminRow) => canSignIn(row) && !admins!.some((other) => other.id !== row.id && canSignIn(other));
 
   // ---------------------------------------------------------------------------------------- GET /audit
@@ -292,10 +294,12 @@ export function createSistemMock(): MockHandler {
     if (!form.ok) return error(400, "invalid", INVALID, { fields: form.fields });
     if (admins!.some((row) => row.email === form.email)) return error(409, "email_taken", "Email ini sudah terdaftar.", { fields: { email: "Email sudah digunakan" } });
     const local = form.email.split("@")[0]!;
-    if (local === "email-tidak-tersedia") return error(503, "email_unavailable", "Layanan email sedang tidak tersedia. Silakan coba lagi nanti.");
+    // With a password there is no email at all: the admin is made verified and can sign in at once (the Worker's rule).
+    const invited = form.password === "";
+    if (invited && local === "email-tidak-tersedia") return error(503, "email_unavailable", "Layanan email sedang tidak tersedia. Silakan coba lagi nanti.");
 
     // `sudah-masuk@...`: has already opened the invitation (see the header).
-    const accepted = local === "sudah-masuk";
+    const accepted = invited && local === "sudah-masuk";
     const now = Date.now();
     counter += 1;
     const row: AdminRow = {
@@ -304,18 +308,18 @@ export function createSistemMock(): MockHandler {
       email: form.email,
       role: form.role,
       areas: form.areas,
-      hasAccount: form.password !== "" || accepted,
+      hasAccount: !invited || accepted,
       deactivated: false,
-      emailVerified: accepted,
+      emailVerified: !invited || accepted,
       lastSessionAt: null,
       createdAt: now,
       updatedAt: now,
     };
     admins!.push(row);
-    record(request, "admin.create", row.id, { email: row.email, role: row.role, mode: form.password !== "" ? "password" : "invite", ...(row.areas.length > 0 ? { areasAfter: row.areas } : {}) });
-    // The account exists either way; only the email can fail.
-    if (local === "email-gagal") return error(502, "email_failed", "Email belum terkirim. Akun sudah dibuat; kirim ulang undangannya nanti.", { user: presentAdmin(row) });
-    return json({ item: presentAdmin(row), user: presentAdmin(row), email: { sent: true, kind: form.password !== "" ? "verification" : "invite" } }, 201, { ETag: ifMatch(new Date(row.updatedAt).toISOString()) });
+    record(request, "admin.create", row.id, { email: row.email, role: row.role, mode: invited ? "invite" : "password", ...(row.areas.length > 0 ? { areasAfter: row.areas } : {}) });
+    // The account exists either way; only the invitation's email can fail.
+    if (invited && local === "email-gagal") return error(502, "email_failed", "Email belum terkirim. Akun sudah dibuat; kirim ulang undangannya nanti.", { user: presentAdmin(row) });
+    return json({ item: presentAdmin(row), user: presentAdmin(row), ...(invited ? { email: { sent: true, kind: "invite" } } : {}) }, 201, { ETag: ifMatch(new Date(row.updatedAt).toISOString()) });
   }
 
   function update(request: MockRequest, row: AdminRow | undefined): Response {

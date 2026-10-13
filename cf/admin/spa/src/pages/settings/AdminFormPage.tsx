@@ -98,7 +98,8 @@ function AdminForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
         onSaved(result.data.item);
         notice.show({ tone: "success", text: "Perubahan berhasil disimpan." });
       } else {
-        const sent = values.password !== "" ? `Email verifikasi dikirim ke ${values.email.trim()}.` : `Undangan dikirim ke ${values.email.trim()}.`;
+        // With a password nothing is mailed: the admin can sign in at once, so the notice says that instead.
+        const sent = values.password !== "" ? "Admin bisa langsung masuk dengan password yang kamu isi." : `Undangan dikirim ke ${values.email.trim()}.`;
         navigate(`${ROUTE}/${encodeURIComponent(result.data.item.id)}/edit`, { state: flashState({ tone: "success", text: `Admin berhasil dibuat. ${sent}` }) });
       }
       return;
@@ -141,7 +142,7 @@ function AdminForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
             label="Password"
             id="password"
             error={fields.password}
-            hint="Opsional. Kosongkan untuk mengundang lewat email: admin memilih sendiri password-nya lewat tautan di email (berlaku 7 hari). Jika diisi, admin tetap harus membuka email verifikasi dulu sebelum bisa masuk."
+            hint="Opsional. Kosongkan untuk mengundang lewat email: admin memilih sendiri password-nya lewat tautan di email (berlaku 7 hari). Jika diisi, admin langsung bisa masuk dengan password itu tanpa verifikasi email, jadi pastikan emailnya benar dan sampaikan password-nya langsung ke admin."
           >
             <Input type="password" {...form.field("password")} autoComplete="new-password" placeholder="Password awal (opsional)" />
           </Field>
