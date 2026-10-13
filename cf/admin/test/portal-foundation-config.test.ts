@@ -101,15 +101,24 @@ describe("the portal's configuration", () => {
     expect(Number.isInteger(budget)).toBe(true);
     expect(budget).toBeGreaterThan(0);
     expect(budget).toBeLessThan(10_000_000_000); // under the 10 GB-month of R2 Free
-    // Dzul, 2026-10-13: no automatic deletion. Empty means keep; a retention value is a decision, made in this file.
+    // Dzul, 2026-10-13: no automatic deletion. 0 means never delete; a retention value above 0 is a decision, made in this file.
     for (const name of ["DRAFT_RETENTION_DAYS", "REJECTED_FILES_RETENTION_DAYS", "ACCEPTED_FILES_RETENTION_DAYS"]) {
-      expect(admin.vars[name], name).toBe("");
-      expect(portal.vars[name], name).toBeUndefined(); // the cron lives on the admin Worker
+      expect(admin.vars[name], name).toBe("0");
+      expect(portal.vars[name], name).toBeUndefined(); // no cron reads them; if one ever does it is the admin Worker's
     }
     // Nothing secret is a variable: these are names that wrangler secrets carry.
     for (const config of [admin, portal]) {
       for (const secret of ["BETTER_AUTH_SECRET", "RESEND_API_KEY", "TURNSTILE_SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "PRIVATE_FILES_KEY"]) expect(config.vars, secret).not.toHaveProperty(secret);
     }
+  });
+
+  test("no SSE-C (Dzul, 2026-10-13): no key is declared, and nothing in the source passes one to R2", () => {
+    expect(envSources["../src/env.ts"]).toBeDefined();
+    expect(envSources["../src/env.ts"]).not.toMatch(/PRIVATE_FILES_KEY\??\s*:/); // not a binding or a variable of the Worker
+    for (const [file, source] of Object.entries(allSources)) expect(source, file).not.toMatch(/ssecKey|\bPRIVATE_FILES_KEY\b|\bssec\b/i);
+    for (const config of [admin, portal]) expect(config.vars).not.toHaveProperty("PRIVATE_FILES_KEY");
+    expect(devVarsExample.length).toBeGreaterThan(0);
+    expect(devVarsExample).not.toMatch(/^\s*PRIVATE_FILES_KEY\s*=/m);
   });
 
   describe("rate limit bindings", () => {
@@ -189,6 +198,10 @@ describe("the package and the migrations", () => {
 const portalSources = import.meta.glob<string>("../src/portal/**/*.ts", { query: "?raw", import: "default", eager: true });
 const privateFileSources = import.meta.glob<string>("../src/private-files/**/*.ts", { query: "?raw", import: "default", eager: true });
 const uploadSources = import.meta.glob<string>("../src/uploads/**/*.ts", { query: "?raw", import: "default", eager: true });
+const envSources = import.meta.glob<string>("../src/env.ts", { query: "?raw", import: "default", eager: true });
+const allSources = import.meta.glob<string>("../src/**/*.ts", { query: "?raw", import: "default", eager: true });
+const devVarsFiles = import.meta.glob<string>("../dev.vars.example", { query: "?raw", import: "default", eager: true });
+const devVarsExample = Object.values(devVarsFiles)[0] ?? "";
 const adminEntry = import.meta.glob<string>("../src/worker.ts", { query: "?raw", import: "default", eager: true });
 const authSources = import.meta.glob<string>("../src/auth/**/*.ts", { query: "?raw", import: "default", eager: true });
 

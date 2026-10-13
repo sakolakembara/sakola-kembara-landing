@@ -31,20 +31,21 @@
   //                               past it). 8,000,000,000 is under the 10 GB-month of R2 Free. A test keeps the two
   //                               configs equal.
   //   DRAFT_RETENTION_DAYS, REJECTED_FILES_RETENTION_DAYS, ACCEPTED_FILES_RETENTION_DAYS
-  //                               days to keep applicants' files before the daily cleanup deletes them. EMPTY = keep
-  //                               (so is 0, a negative or an unreadable value: an unreadable setting never deletes).
-  //                               Dzul decided on 2026-10-13 that nothing is deleted automatically, so all three are
-  //                               empty. The architecture's proposal, if it is ever turned on: 30 (a draft, after its
-  //                               batch closed), 90 (a rejected application, after the results), 365 (an accepted one).
+  //                               days to keep applicants' files. Dzul decided on 2026-10-13 that NOTHING is deleted
+  //                               automatically, so all three are 0, which means "never delete" (so do an empty, a
+  //                               negative or an unreadable value). No code reads them: the retention cron of the first
+  //                               design became a manual purge action (an editor with the Pendaftaran grant, or a
+  //                               super_admin; audited). They stay declared so that an automatic rule, if one is ever
+  //                               wanted, is one visible decision in this file.
   // Not here, set per deploy (portal Worker): ADMIN_URL (the admin host's origin, for the "this is an admin account"
-  // screen). Secrets: PRIVATE_FILES_KEY is an OPTIONAL SSE-C key, undecided (the code must not require it).
+  // screen). There is no secret for the private bucket: no SSE-C (decided 2026-10-13), so no PRIVATE_FILES_KEY.
   "vars": {
     "ENVIRONMENT": "production",
     "AUDIT_RETENTION_DAYS": "365",
     "PRIVATE_FILES_BUDGET_BYTES": "8000000000",
-    "DRAFT_RETENTION_DAYS": "",
-    "REJECTED_FILES_RETENTION_DAYS": "",
-    "ACCEPTED_FILES_RETENTION_DAYS": ""
+    "DRAFT_RETENTION_DAYS": "0",
+    "REJECTED_FILES_RETENTION_DAYS": "0",
+    "ACCEPTED_FILES_RETENTION_DAYS": "0"
   },
 
   "assets": {

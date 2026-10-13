@@ -81,19 +81,18 @@ export interface Bindings {
    * Empty, unset or not a plain http(s) origin = no link.
    */
   ADMIN_URL?: string;
-  /**
-   * OPTIONAL secret, SSE-C key of the private bucket (32 bytes). Undecided (Dzul chose "not used" on 2026-10-13; the
-   * architecture's open decision 3): declared so the code can start to use it without a new binding, and NOTHING may
-   * require it. Absent = the bucket's own encryption at rest only. Losing the key loses every object written with it.
-   */
-  PRIVATE_FILES_KEY?: string;
+  // There is no secret for the private bucket: Dzul decided on 2026-10-13 against SSE-C (customer-provided keys), so no
+  // key is declared and nothing may depend on one. The bucket's protection is that it stays private, R2's encryption
+  // at rest, and the Worker as the only reader.
   /** The hard storage budget of the private bucket, in bytes (public variable). Proposed 8,000,000,000, under the 10 GB-month free. Empty or unreadable = the code's default. */
   PRIVATE_FILES_BUDGET_BYTES?: string;
   /**
-   * Retention of applicants' files, in days (variables of the admin Worker, whose daily cron applies them). Empty, 0,
-   * negative or unreadable = KEEP (an unreadable setting never deletes), as `AUDIT_RETENTION_DAYS` does. Dzul decided
-   * on 2026-10-13 that nothing is deleted automatically, so all three ship empty; the architecture's proposal is
-   * 30 (a draft, after its batch closed), 90 (a rejected application, after the results) and 365 (an accepted one).
+   * Retention of applicants' files, in days. Dzul decided on 2026-10-13 that NOTHING is deleted automatically, so all
+   * three ship as `0`, which means "never delete" (so do empty, negative and unreadable values: an unreadable setting
+   * never deletes, as `AUDIT_RETENTION_DAYS` does). No code reads them: the retention cron of the first design was
+   * replaced by a manual purge action (an editor with the Pendaftaran grant, or a super_admin; audited). They stay
+   * declared, at `0`, so that turning an automatic rule on later is a decision made in one visible place; a task that
+   * finds it never needs them may delete them.
    */
   DRAFT_RETENTION_DAYS?: string;
   REJECTED_FILES_RETENTION_DAYS?: string;

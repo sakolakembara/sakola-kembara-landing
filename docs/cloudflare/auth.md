@@ -317,7 +317,7 @@ Names only. Secrets are set with `wrangler secret put` (deploy ticket); nothing 
 | `DB`, `ASSETS` | bindings | | |
 | `RL_LOGIN`, `RL_LOGIN_ACCOUNT`, `RL_REGISTER`, `RL_RESET`, `RL_VERIFY_RESEND`, `RL_MAIL_TARGET`, `RL_TOKEN`, `RL_CONTACT` | rate limit bindings | declared in `wrangler.jsonc` | [Table](#rate-limits). |
 
-The portal Worker has its own configuration (`wrangler.portal.jsonc`) with its own `BETTER_AUTH_SECRET` (a different value), its own copies of the seven auth limiters and the four `RL_PORTAL_*` ones, and the variables and secrets of the student portal (`ADMIN_URL`, `PRIVATE_FILES_BUDGET_BYTES`, the optional `PRIVATE_FILES_KEY`): [Base path and audience](#base-path-and-audience) and [`portal-architecture.md`](portal-architecture.md#35-what-must-be-configured-at-deploy).
+The portal Worker has its own configuration (`wrangler.portal.jsonc`) with its own `BETTER_AUTH_SECRET` (a different value), its own copies of the seven auth limiters and the four `RL_PORTAL_*` ones, and the variables and secrets of the student portal (`ADMIN_URL`, `PRIVATE_FILES_BUDGET_BYTES`; no key for the private bucket: SSE-C was decided against on 2026-10-13): [Base path and audience](#base-path-and-audience) and [`portal-architecture.md`](portal-architecture.md#35-what-must-be-configured-at-deploy).
 
 ## Run it locally
 

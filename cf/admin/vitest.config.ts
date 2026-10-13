@@ -43,13 +43,12 @@ export default defineConfig(async () => ({
           TURNSTILE_SITE_KEY: "",
           AUDIT_RETENTION_DAYS: "365",
           UPLOADS_BASE_URL: "",
-          // The student portal (SAKEM-083): no SSE-C key, no admin host, the proposed budget, nothing deleted by retention.
-          PRIVATE_FILES_KEY: "",
+          // The student portal (SAKEM-083): no admin host, the proposed budget, nothing deleted by retention (0 = never).
           PRIVATE_FILES_BUDGET_BYTES: "8000000000",
           ADMIN_URL: "",
-          DRAFT_RETENTION_DAYS: "",
-          REJECTED_FILES_RETENTION_DAYS: "",
-          ACCEPTED_FILES_RETENTION_DAYS: "",
+          DRAFT_RETENTION_DAYS: "0",
+          REJECTED_FILES_RETENTION_DAYS: "0",
+          ACCEPTED_FILES_RETENTION_DAYS: "0",
           TEST_MIGRATIONS: await readD1Migrations(path.join(here, "migrations")),
         },
       },

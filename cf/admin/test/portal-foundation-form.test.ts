@@ -1,5 +1,15 @@
 import { describe, expect, test } from "vitest";
 import portalApi from "../../../docs/cloudflare/portal-api.md?raw";
+import {
+  isLocalDraft,
+  isLocalDraftExpired,
+  LOCAL_DRAFT_MAX_AGE_MS,
+  LOCAL_DRAFT_VERSION,
+  localDraftKey,
+  readLocalDraft,
+  writeLocalDraft,
+  type LocalDraft,
+} from "../shared/application-form/draft";
 import { buildFormData, FORM_DATA_VERSION, identityColumns } from "../shared/application-form/form-data";
 import {
   JSON_BODY_MAX_BYTES,
@@ -966,5 +976,77 @@ describe("buildFormData and identityColumns", () => {
       graduationYear: "2027 (Kelas 12)",
       branchPreference: "Cililin",
     });
+  });
+});
+
+// ─── The draft the browser keeps ───────────────────────────────────────
+
+describe("the local draft (localStorage)", () => {
+  const NOW = Date.UTC(2026, 9, 13, 5, 0, 0);
+  const draft = (patch: Partial<LocalDraft> = {}): LocalDraft => ({
+    version: LOCAL_DRAFT_VERSION,
+    savedAt: NOW - 1000,
+    stepIndex: 2,
+    visited: ["intro", "identity", "household"],
+    values: { identity: { fullName: "Sari Dew" }, household: { fatherName: "" } },
+    ...patch,
+  });
+
+  test("the key carries the version, the user id and the batch id, and nothing personal", () => {
+    const user = "5f1d2c3b-0000-4000-8000-000000000001";
+    const batch = "8b7e0c1a-0000-4000-8000-000000000002";
+    expect(localDraftKey(user, batch)).toBe(`sakem-portal:v1:${user}:${batch}`);
+    expect(LOCAL_DRAFT_VERSION).toBe(1);
+  });
+
+  test("savedAt is part of the type and is a finite, positive number of epoch milliseconds", () => {
+    expect(isLocalDraft(draft())).toBe(true);
+    for (const savedAt of [undefined, null, "1760331600000", "", 0, -5, Number.NaN, Number.POSITIVE_INFINITY, true, [], {}]) {
+      expect(isLocalDraft({ ...draft(), savedAt }), String(savedAt)).toBe(false);
+    }
+    const { savedAt: _omitted, ...without } = draft();
+    expect(isLocalDraft(without)).toBe(false);
+  });
+
+  test("the rest of the shape: version, step index inside the eight screens, known screens, known buckets that are objects", () => {
+    expect(isLocalDraft(draft({ stepIndex: 0 }))).toBe(true);
+    expect(isLocalDraft(draft({ stepIndex: UI_STEP_ORDER.length - 1 }))).toBe(true);
+    for (const stepIndex of [-1, UI_STEP_ORDER.length, 1.5, "2" as never, Number.NaN]) expect(isLocalDraft(draft({ stepIndex })), String(stepIndex)).toBe(false);
+    expect(isLocalDraft({ ...draft(), version: 2 })).toBe(false);
+    expect(isLocalDraft(draft({ visited: ["intro", "marketing" as never] }))).toBe(false); // marketing has no screen of its own
+    expect(isLocalDraft(draft({ visited: "intro" as never }))).toBe(false);
+    expect(isLocalDraft(draft({ values: { review: {} } as never }))).toBe(false);
+    expect(isLocalDraft(draft({ values: { identity: "x" } as never }))).toBe(false);
+    expect(isLocalDraft(draft({ values: [] as never }))).toBe(false);
+    expect(isLocalDraft(draft({ values: {} }))).toBe(true);
+    for (const junk of [null, undefined, "draft", 5, [], true]) expect(isLocalDraft(junk)).toBe(false);
+  });
+
+  test("a copy is too old at 30 days, not before; a clock that was wrong (savedAt in the future) is not old", () => {
+    expect(LOCAL_DRAFT_MAX_AGE_MS).toBe(30 * 24 * 60 * 60 * 1000);
+    expect(isLocalDraftExpired({ savedAt: NOW - LOCAL_DRAFT_MAX_AGE_MS + 1 }, NOW)).toBe(false);
+    expect(isLocalDraftExpired({ savedAt: NOW - LOCAL_DRAFT_MAX_AGE_MS }, NOW)).toBe(true);
+    expect(isLocalDraftExpired({ savedAt: NOW + 86_400_000 }, NOW)).toBe(false);
+  });
+
+  test("readLocalDraft: the draft, or null for everything that is not worth keeping", () => {
+    expect(readLocalDraft(JSON.stringify(draft()), NOW)).toEqual(draft());
+    expect(readLocalDraft(null, NOW)).toBeNull();
+    expect(readLocalDraft(undefined, NOW)).toBeNull();
+    expect(readLocalDraft("", NOW)).toBeNull();
+    expect(readLocalDraft("{not json", NOW)).toBeNull();
+    expect(readLocalDraft("null", NOW)).toBeNull();
+    expect(readLocalDraft(JSON.stringify({ ...draft(), savedAt: "1760331600000" }), NOW)).toBeNull(); // the shell purges a draft without a numeric savedAt
+    expect(readLocalDraft(JSON.stringify({ ...draft(), savedAt: undefined }), NOW)).toBeNull();
+    expect(readLocalDraft(JSON.stringify(draft({ savedAt: NOW - LOCAL_DRAFT_MAX_AGE_MS - 1 })), NOW)).toBeNull();
+  });
+
+  test("writeLocalDraft stamps the time and reads back", () => {
+    const { savedAt: _savedAt, version: _version, ...typed } = draft();
+    const text = writeLocalDraft(typed, NOW);
+    expect(JSON.parse(text)).toMatchObject({ version: 1, savedAt: NOW });
+    expect(readLocalDraft(text, NOW + 1)).toEqual({ ...typed, version: 1, savedAt: NOW });
+    // A caller cannot smuggle another time in.
+    expect(JSON.parse(writeLocalDraft({ ...typed, savedAt: 1 } as never, NOW)).savedAt).toBe(NOW);
   });
 });

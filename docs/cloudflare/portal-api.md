@@ -386,6 +386,8 @@ The SPA chooses the words (the legacy `statusView` in `app/(portal)/portal/statu
 
 ## 11. File routes (student)
 
+> **Decided 2026-10-13: no SSE-C.** Every clause of this section about `PRIVATE_FILES_KEY`, an SSE-C key passed to `put` or `get`, or a read that fails for the key (the `storage_unavailable` row of 11.2, "SSE-C when the key is configured" below it, and the last sentence of 11.4) is void: no key is declared and the routes pass none. `503 storage_unavailable` means a missing `PRIVATE_FILES` binding only. P4 removes the clauses when it builds the routes.
+
 ### 11.1 The slots (authoritative)
 
 Sixteen slots; the identifier is what the URL, the table and the admin screen use. Types: `png`, `jpeg`, `webp`, `pdf` (sniffed from the bytes) unless noted. The code is `shared/application-form/slots.ts`; this table is the contract it is written from.
@@ -486,6 +488,8 @@ Guard `requireArea("pendaftaran", "write")`. `RL_ADMIN_FILE` (120 per 60 s per a
 
 ### 12.3 The retention job (not a route)
 
+> **Superseded, decided 2026-10-13 (the PM relayed Dzul):** nothing is deleted automatically, so this job is **not built**. It is replaced by a **manual purge action** (an admin editor with the `pendaftaran` grant, or a super_admin, deletes an applicant's files, with a confirmation and an audit row). The contract of that action (route, answers, audit row) is written by P4, which also removes this subsection. The foundation declares the three retention variables at `0` (never delete) and no code reads them; there is no retention table. What follows is kept as the record of the proposal.
+
 The daily Cron Trigger of `sakem-admin` deletes as [`portal-architecture.md`](portal-architecture.md#89-retention-and-deletion-proposal) says, writes one `application_files.purge` audit row per application (resource type `application`, metadata `{ "reason": "draft_closed" | "rejected" | "accepted" | "orphan", "count": n }`, actor id null and actor email `system`), and logs one line with counts only.
 
 ## 13. Error codes
@@ -537,6 +541,7 @@ The daily Cron Trigger of `sakem-admin` deletes as [`portal-architecture.md`](po
 | `rules.ts` (no dependency; **not in the first draft of this table**) | The rules themselves as plain functions, so the wizard can validate per keystroke without paying for zod: `validateStep(step, body)`, `sanitizeStep(step, body)`, `parseRupiah(text)`, the stored shapes (`IdentityValue`, `HouseholdValue`, ..., `StepValues`), `INVALID_FORM_MESSAGE`, `RUPIAH_MESSAGES`, `WHATSAPP_MESSAGE`, `AGREEMENT_REFUSED_MESSAGE`, `type FieldIssue`, `type StepValidation`. `validateStep` answers `{ ok: true, value } \| { ok: false, fields, issues, message }` (`issues` in the order the rules ran, `message` is `issues[0].message`) |
 | `schemas.ts` (imports `zod`) | `STEP_SCHEMAS: Record<StepId, ZodType>` (each runs the function of `rules.ts` and turns its issues into zod issues with the same messages, paths and order: parsing gives the stored value), `schemaFor(step)`; and, re-exported from `rules.ts` under the names of this contract, `validateStep(step, body): { ok: true, value } \| { ok: false, fields: Record<string, string>, ... }`, `sanitizeStep(step, body)` (what is stored, or `null`), `parseRupiah(text): { ok: true, value: number } \| { ok: false, message }` |
 | `form-data.ts` | `type FormDataV3`, `buildFormData(buckets): FormDataV3`, `identityColumns(identity)` (the five top-level columns), `FORM_DATA_VERSION` (3) |
+| `draft.ts` (no dependency; added at the request of the SPA shell) | The draft the **browser** keeps (`localStorage`): `type LocalDraft` (`{ version, savedAt, stepIndex, visited, values }`, with `savedAt` a required finite positive number of epoch milliseconds), `localDraftKey(userId, batchId)` (`sakem-portal:v1:<user id>:<batch id>`), `isLocalDraft(value)`, `isLocalDraftExpired(draft, now)` (30 days, `LOCAL_DRAFT_MAX_AGE_MS`), `readLocalDraft(text, now)` (the draft, or `null` for a text that is not worth keeping: not JSON, an unreadable shape, no numeric `savedAt`, expired), `writeLocalDraft(draft, now)`, `LOCAL_DRAFT_VERSION` (1). This is not the server's draft of section 5.1 |
 
 The legacy zod schemas use the zod 3 API (`errorMap`, `z.ZodIssueCode`, `invalid_type_error`); `cf/admin` is on zod 4, so the port re-expresses the same rules with the same messages, as plain functions (`rules.ts`) that `schemas.ts` wraps. `test/portal-foundation-form.test.ts` pins every message and boundary, the example of section 15, the table of 11.1 against `slots.ts`, and the transformation of 9.3. Section 7.9 lists what the build settled where the contract left a choice.
 

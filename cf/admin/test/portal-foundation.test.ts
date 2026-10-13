@@ -135,11 +135,11 @@ describe("GET /portal/api/config", () => {
 
   test("a secret never leaves: nothing but the four public fields is answered", async () => {
     const res = await portalCall("/portal/api/config", {
-      env: { GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "client-secret-value", TURNSTILE_SECRET_KEY: "turnstile-secret-value", RESEND_API_KEY: "re_secret_value", PRIVATE_FILES_KEY: "files-key-value" },
+      env: { GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "client-secret-value", TURNSTILE_SECRET_KEY: "turnstile-secret-value", RESEND_API_KEY: "re_secret_value", BETTER_AUTH_SECRET: "auth-secret-value" },
     });
     expect(Object.keys((await res.clone().json()) as object).sort()).toEqual(["adminUrl", "google", "siteUrl", "turnstileSiteKey"]);
     const text = await res.text();
-    for (const secret of ["client-secret-value", "turnstile-secret-value", "re_secret_value", "files-key-value"]) expect(text).not.toContain(secret);
+    for (const secret of ["client-secret-value", "turnstile-secret-value", "re_secret_value", "auth-secret-value"]) expect(text).not.toContain(secret);
   });
 
   test("an origin that is not a plain http(s) origin is treated as unset (a typo can break a link, never put a script in an attribute)", async () => {

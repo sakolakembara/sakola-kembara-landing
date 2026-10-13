@@ -186,10 +186,18 @@ export const portalFoundationChecks = [
     tests: CONFIG,
   },
   {
-    name: "portal foundation: a retention period is set by default (the decision is that nothing is deleted automatically)",
+    name: "portal foundation: a retention period above 0 is set by default (the decision is that nothing is deleted automatically)",
     file: "wrangler.jsonc",
-    from: '"REJECTED_FILES_RETENTION_DAYS": "",',
+    from: '"REJECTED_FILES_RETENTION_DAYS": "0",',
     to: '"REJECTED_FILES_RETENTION_DAYS": "90",',
+    tests: CONFIG,
+  },
+
+  {
+    name: "portal foundation: an SSE-C key is declared as a variable of the Worker again (it was decided against)",
+    file: "src/env.ts",
+    from: "  PRIVATE_FILES_BUDGET_BYTES?: string;",
+    to: "  PRIVATE_FILES_KEY?: string;\n  PRIVATE_FILES_BUDGET_BYTES?: string;",
     tests: CONFIG,
   },
 

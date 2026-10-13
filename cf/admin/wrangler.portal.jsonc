@@ -26,8 +26,8 @@
   // Secrets, set with `wrangler secret put`: BETTER_AUTH_SECRET (a DIFFERENT value from the admin Worker's: a token of
   // one audience must not be valid for the other), RESEND_API_KEY, TURNSTILE_SECRET_KEY, GOOGLE_CLIENT_ID and
   // GOOGLE_CLIENT_SECRET (optional; a separate OAuth client from the admin's, whose redirect URI is
-  // https://<apex>/portal/api/auth/callback/google), and PRIVATE_FILES_KEY (OPTIONAL SSE-C key, undecided: nothing may
-  // require it).
+  // https://<apex>/portal/api/auth/callback/google). There is no secret for the private bucket: no SSE-C (decided
+  // 2026-10-13), so no PRIVATE_FILES_KEY.
   "vars": {
     "ENVIRONMENT": "production",
     // Hard budget of the private bucket, in bytes: under the 10 GB-month of R2 Free.
