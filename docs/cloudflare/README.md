@@ -5,7 +5,7 @@ Why the site is moving to Cloudflare Workers, what the target looks like, and in
 ## Constraints
 
 - **$0.** The hosting bill must stay at zero, so everything runs on the **Workers Free** plan and the Free tiers of D1, R2 and KV.
-- Workers Free limits that shape the design: **10 ms CPU per request**, **100,000 requests per day** (the Worker counts every request it handles, pass-through included), 3 MB compressed Worker size, 50 subrequests per request. Static assets served by the assets layer do not invoke the Worker and do not count as requests.
+- Workers Free limits that shape the design: **10 ms CPU per request**, **100,000 requests per day** (the Worker counts every request it handles, pass-through included), a Worker size of 64 MiB uncompressed with no compressed limit (the older "3 MB compressed" rule is gone: [`free-plan-audit.md`](free-plan-audit.md#21-worker-size)), 50 subrequests per request. Static assets served by the assets layer do not invoke the Worker and do not count as requests.
 - Next.js SSR does not fit those limits, so the public site cannot move as it is.
 - **SEO parity is a requirement.** URLs, titles, canonical, Open Graph, JSON-LD, sitemap, robots, status codes and the WordPress redirects must match what the Next app serves today.
 - **Visual style and Indonesian copy are fixed** (`DESIGN.md`, `docs/context/tone-of-voice.md`). The port moves markup to Astro; it does not redesign or reword.

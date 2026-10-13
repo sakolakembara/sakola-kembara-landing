@@ -11,6 +11,14 @@ The exact, ordered steps to put the site on **staging**: two Workers on `*.worke
 - The login sees **four accounts**: pin the organisation account every time and never touch the others.
 - No ids, hostnames or secrets in the public repo; nothing secret through chat. Say "done" or "failed", never the value.
 
+**Decisions taken on the open points of the audit (PM, 2026-10-13):**
+
+- The location hint of the D1 database and the R2 bucket is **`apac`** (Dzul is in Indonesia). It cannot be changed later.
+- Workers Logs: **`invocation_logs` stays ON during M5**, because the CPU record of step 13 lives in it. Log retention and the exposure of URL tokens (the invocation log holds the full URL, `?token=` included) are decided before cutover: go-live precondition P-23 of [`cutover-runbook.md`](cutover-runbook.md#3-preconditions).
+- If the Rate Limiting binding is **refused on Free** (the checkpoint of step 6): the fallback to build is the **SQLite-backed Durable Object limiter**, as a separate task. Do not build it now; report the refusal and stop.
+- If sign-in CPU fails (step 13): the fallback order is **fewer iterations first, then Google sign-in, then the Paid plan**.
+- The public production route **fails OPEN** to the old origin (WordPress, behind the same hostname) when the 100,000-request day is spent, and the admin host **fails CLOSED**. This is a production-route setting (recorded in [`cutover-runbook.md`](cutover-runbook.md), D-06 and step S-33); staging on `workers.dev` has no route to set it on.
+
 ## What staging is made of
 
 | Thing | Name (placeholder in git, created by you) |
@@ -171,7 +179,7 @@ Run it in a normal terminal, not with `CI=1`: it may ask you to register the `wo
 
 - **Creates:** the Worker `sakem-admin-staging` (its bindings: the D1 database and the R2 bucket, found by their names, the ten rate limit bindings, the assets), its cron trigger (`17 3 * * *`, daily cleanup), and the `workers.dev` address. No ids are written (the resources exist already).
 - **Your OK:** yes.
-- **CHECKPOINT, read the output.** The question of this step is **whether the Free plan accepts the `ratelimits` bindings** ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)). The listing in the output must show `env.RL_LOGIN (5 requests/60s)` and the nine others, and the deploy must end with the address and a version id. **If the deploy is refused because of a rate limit binding, stop here**: tell the PM the exact message (no ids), and do not build anything on it; the fallback design is in the audit.
+- **CHECKPOINT, read the output.** The question of this step is **whether the Free plan accepts the `ratelimits` bindings** ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)). The listing in the output must show `env.RL_LOGIN (5 requests/60s)` and the nine others, and the deploy must end with the address and a version id. **If the deploy is refused because of a rate limit binding, stop here**: tell the PM the exact message (no ids), and do not build anything on it. The decided fallback is the SQLite-backed Durable Object limiter, built as a separate task ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)).
 - **Verify** (replace the address):
 
   ```bash
@@ -350,7 +358,7 @@ node scripts/measure-staging.mjs collect --file .measure/web-tail.jsonl --file .
 node scripts/measure-staging.mjs collect --file .measure/web-tail.jsonl --only-measure          # only the probe's own requests
 ```
 
-Per Worker, method and route: count, p50, p95, p99, max CPU, wall time, the outcomes (`exceededCpu` is error 1102; a 200 with `exceededCpu` is a `waitUntil` job that ran over), the statuses, and the first invocation after an idle gap with its own maximum. Thresholds, against the 10 ms of Free: **OK** p99 under 5 ms (2x margin); **RISK** p99 5 to 8 ms or a maximum 8 to 10; **FAIL** any `exceededCpu`, p99 over 8 ms, or a maximum of 10 ms or more. The gate of the ticket is "no FAIL"; every RISK is listed with its margin. Exit codes: 0 fine, 1 a route failed, 3 no data or no CPU field. Cloudflare records CPU in whole milliseconds, so p50 of 0 or 1 is normal; with few samples p99 is the maximum (the report says "only n samples"). On a FAIL, the fallbacks are in the audit, section 2.3. Write the table (route, n, p50, p99, max, verdict, margin) in SAKEM-084: **no ids, no addresses, no IPs**.
+Per Worker, method and route: count, p50, p95, p99, max CPU, wall time, the outcomes (`exceededCpu` is error 1102; a 200 with `exceededCpu` is a `waitUntil` job that ran over), the statuses, and the first invocation after an idle gap with its own maximum. Thresholds, against the 10 ms of Free: **OK** p99 under 5 ms (2x margin); **RISK** p99 5 to 8 ms or a maximum 8 to 10; **FAIL** any `exceededCpu`, p99 over 8 ms, or a maximum of 10 ms or more. The gate of the ticket is "no FAIL"; every RISK is listed with its margin. Exit codes: 0 fine, 1 a route failed, 3 no data or no CPU field. Cloudflare records CPU in whole milliseconds, so p50 of 0 or 1 is normal; with few samples p99 is the maximum (the report says "only n samples"). On a FAIL, the fallbacks are in the audit, section 2.3; for sign-in the decided order is fewer iterations, then Google sign-in, then the Paid plan. Write the table (route, n, p50, p99, max, verdict, margin) in SAKEM-084: **no ids, no addresses, no IPs**.
 
 **e. The same numbers in the dashboard** (the account-level cross-check, and the route when the stream has no CPU field):
 
