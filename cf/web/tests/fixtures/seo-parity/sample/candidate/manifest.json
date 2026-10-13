@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "base": "https://staging.example.test",
+  "entries": {
+    "/robots.txt": { "status": 200, "contentType": "text/plain; charset=utf-8", "file": "bodies/robots.txt" },
+    "/sitemap.xml": { "status": 200, "contentType": "application/xml; charset=utf-8", "file": "bodies/sitemap.xml" },
+    "/cerita/sample-post/": { "status": 308, "headers": { "location": "/blog/sample-post" } },
+    "/blog/sample-post": { "status": 200, "contentType": "text/html; charset=utf-8", "file": "bodies/sample-post.html" },
+    "/tim/": { "status": 308, "headers": { "location": "/tim" } },
+    "/tim": { "status": 200, "contentType": "text/html; charset=utf-8", "file": "bodies/tim.html" }
+  }
+}
