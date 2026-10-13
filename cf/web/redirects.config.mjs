@@ -172,13 +172,19 @@ export function matchRedirect(pathname, search = '') {
  * segment, a splat (*) the rest, and the query string is forwarded. Each rule
  * is written twice, with and without a trailing slash, because the WordPress
  * URLs end in "/".
+ *
+ * @param {typeof REDIRECTS} [table]
+ * @param {{ slashFolds?: string[] }} [options]  slashFolds: paths of prerendered pages (see slashFoldPaths), each also
+ *   written as `<path>/  <path>  308`, before every other rule
  */
-export function toUnderscoreRedirects(table = REDIRECTS) {
+export function toUnderscoreRedirects(table = REDIRECTS, { slashFolds = [] } = {}) {
   const isDynamic = (pattern) => pattern.includes('[');
   // Static rules first: Cloudflare evaluates them before placeholder/splat
   // rules anyway, and wrangler warns when the file is ordered otherwise.
   const entries = Object.entries(table).sort(([a], [b]) => Number(isDynamic(a)) - Number(isDynamic(b)));
   const lines = [];
+  // The trailing-slash twin of every prerendered page, folded with a 308 (see slashFoldPaths): static rules, so they come first.
+  for (const path of slashFolds) lines.push(`${path}/  ${path}  ${PERMANENT}`);
   for (const [pattern, { status, destination }] of entries) {
     const source = pattern.replace(/\[\.\.\.(\w+)\]/g, '*').replace(/\[(\w+)\]/g, ':$1');
     const target = destination.replace(/\[\.\.\.(\w+)\]/g, ':splat').replace(/\[(\w+)\]/g, ':$1');
@@ -187,4 +193,24 @@ export function toUnderscoreRedirects(table = REDIRECTS) {
     if (!splat) lines.push(`${source}/  ${target}  ${status}`);
   }
   return `${lines.join('\n')}\n`;
+}
+
+/**
+ * The paths of the pages the build prerenders (`dist/client/<name>.html`, served at `/<name>` by the assets layer), from the
+ * list of the .html files of the client folder: ["donasi.html", "program/pembinaan.html", "index.html", "404.html"] gives
+ * ["/donasi", "/program/pembinaan"]. The home page has no twin, and a 404.html is not a page.
+ *
+ * Why: a request for `/donasi/` is answered by the assets layer's own `html_handling` redirect, a **307** (temporary) that
+ * cannot be configured to a 308, and WordPress addresses end in a slash, so those are the likely incoming spellings.
+ * `slashFolds` of toUnderscoreRedirects writes `/donasi/  /donasi  308` for each, so the permanent redirect is the one that
+ * answers (whether the `_redirects` rule wins over the layer's own redirect is settled by the e2e locally and, on a real
+ * zone, by the runbook's T-19).
+ *
+ * @param {string[]} htmlFiles  paths relative to the client folder, with forward slashes
+ */
+export function slashFoldPaths(htmlFiles) {
+  return htmlFiles
+    .filter((file) => file.endsWith('.html') && file !== 'index.html' && file !== '404.html' && !file.endsWith('/index.html'))
+    .map((file) => `/${file.slice(0, -'.html'.length)}`)
+    .sort();
 }

@@ -244,6 +244,21 @@ for (const [from, to] of [['/tim/', '/tim'], ['/blog/', '/blog'], ['/blog/?page=
     assert.equal(stubHits().length, 0);
   });
 }
+// F-03 of the cutover runbook: the assets layer answers a trailing-slash request for a PRERENDERED page with its own 307; since
+// SAKEM-090 `_redirects` carries `/<page>/  /<page>  308` for each, and (here, in the local emulation of the layer) it wins.
+for (const page of ['/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan']) {
+  await check('canonical-url', `${page}/ -> 308 ${page} (not the layer's 307), the query kept, no Worker request to the origin; ${page} itself is a 200`, async () => {
+    clearStub();
+    const res = await get(`${page}/`);
+    assert.equal(res.status, 308);
+    assert.equal(res.headers.get('location'), page);
+    const withQuery = await get(`${page}/?utm_source=ig`);
+    assert.equal(withQuery.status, 308);
+    assert.equal(withQuery.headers.get('location'), `${page}?utm_source=ig`);
+    assert.equal(stubHits().length, 0);
+    assert.equal((await get(page)).status, 200);
+  });
+}
 await check('canonical-url', 'a legacy path with a trailing slash is not touched: the origin decides (Next redirects it itself)', async () => {
   clearStub();
   const res = await get('/files/a/');
@@ -651,11 +666,11 @@ for (const p of ['/program/unknown', '/program/PRAPEMBINAAN', '/program/prapembi
     assert.equal(stubHits().length, 0);
   });
 }
-await check('program', 'one URL per stage: the assets layer redirects /program/<id>.html and /program/<id>/ to /program/<id> (307)', async () => {
-  for (const [from, to] of [['/program/prapembinaan.html', '/program/prapembinaan'], ['/program/pembinaan/', '/program/pembinaan']]) {
+await check('program', 'one URL per stage: /program/<id>.html is redirected by the assets layer (its own 307, nothing links to it), /program/<id>/ by `_redirects` with a 308 (SAKEM-090)', async () => {
+  for (const [from, to, status] of [['/program/prapembinaan.html', '/program/prapembinaan', 307], ['/program/pembinaan/', '/program/pembinaan', 308]]) {
     clearStub();
     const res = await get(from);
-    assert.equal(res.status, 307, from);
+    assert.equal(res.status, status, from);
     assert.equal(res.headers.get('location'), to, from);
     assert.equal(stubHits().length, 0);
   }

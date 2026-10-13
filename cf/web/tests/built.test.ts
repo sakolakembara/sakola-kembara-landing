@@ -25,6 +25,25 @@ describe.skipIf(!built)('build output', () => {
     expect(existsSync(path.join(dist, 'client/sitemap.xml'))).toBe(false);
   });
 
+  it('_redirects folds the trailing slash of every prerendered page with a 308 (the assets layer answers 307 otherwise, F-03 of the runbook), and of nothing else', () => {
+    const client = path.join(dist, 'client');
+    const pages = walk(client)
+      .map((f) => path.relative(client, f).split(path.sep).join('/'))
+      .filter((f) => f.endsWith('.html') && f !== 'index.html' && f !== '404.html')
+      .map((f) => `/${f.slice(0, -'.html'.length)}`)
+      .sort();
+    expect(pages, 'the build prerenders exactly the pages the guide says it does').toEqual(['/donasi', '/gabung-siswa', '/program/pasca-pembinaan', '/program/pembinaan', '/program/prapembinaan']);
+    const lines = read('client/_redirects').trim().split('\n');
+    // a fold is a rule whose destination is its own source without the slash
+    const folds = lines.filter((l) => {
+      const [source, destination, status] = l.split(/\s+/);
+      return source.endsWith('/') && destination === source.slice(0, -1) && status === '308';
+    });
+    expect(folds.map((l) => l.split(/\s+/)[0]).sort()).toEqual(pages.map((p) => `${p}/`));
+    // static rules come first, so wrangler does not warn about the order: the folds open the file
+    expect(lines.slice(0, pages.length).sort()).toEqual([...folds].sort());
+  });
+
   it('does NOT prerender the pages that must be dynamic: /blog, /blog/<slug>, /kontak, /tim, /sitemap.xml, the 404', () => {
     for (const f of ['blog.html', 'blog/index.html', 'kontak.html', 'tim.html', 'sitemap.xml', '404.html']) {
       expect(existsSync(path.join(dist, 'client', f)), f).toBe(false); // a static 404 would be served with status 200

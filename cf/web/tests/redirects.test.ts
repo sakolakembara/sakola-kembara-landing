@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, toUnderscoreRedirects } from '../redirects.config.mjs';
+import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, slashFoldPaths, toUnderscoreRedirects } from '../redirects.config.mjs';
 import { ARTICLE_COUNT, IMPORTED_2026_10_13, blogPosts, readRoot, repoRoot, webRoot } from './helpers';
 
 /** The article files of the repo root (README.md is not one). */
@@ -281,6 +281,39 @@ describe('SAKEM-090: no redirect loops, no needless chains', () => {
       const path = sample(pattern);
       expect(evalUnderscoreRedirects(file, path), pattern).toEqual(matchRedirect(path));
     }
+  });
+});
+
+describe('the trailing-slash fold of the prerendered pages (F-03 of the cutover runbook)', () => {
+  it('the paths come from the .html files of the client folder: the home page and the 404 are not pages to fold', () => {
+    expect(slashFoldPaths(['index.html', '404.html', 'donasi.html', 'program/pembinaan.html', 'program/prapembinaan.html', 'robots.txt', '_astro/x.css', 'blog/images/a.png'])).toEqual([
+      '/donasi',
+      '/program/pembinaan',
+      '/program/prapembinaan',
+    ]);
+    expect(slashFoldPaths([])).toEqual([]);
+    expect(slashFoldPaths(['x/index.html'])).toEqual([]); // a folder index is served WITH a slash: nothing to fold
+  });
+
+  const folded = toUnderscoreRedirects(REDIRECTS, { slashFolds: ['/donasi', '/program/pembinaan'] });
+
+  it('writes `/<page>/  /<page>  308` for each, before every other rule', () => {
+    const lines = folded.trim().split('\n');
+    expect(lines.slice(0, 2)).toEqual(['/donasi/  /donasi  308', '/program/pembinaan/  /program/pembinaan  308']);
+    expect(evalUnderscoreRedirects(folded, '/donasi/')).toEqual({ status: 308, location: '/donasi' });
+    expect(evalUnderscoreRedirects(folded, '/donasi/', '?utm_source=x')).toEqual({ status: 308, location: '/donasi?utm_source=x' });
+    // the page itself is never redirected (that would be a loop)
+    expect(evalUnderscoreRedirects(folded, '/donasi')).toBeNull();
+    expect(evalUnderscoreRedirects(folded, '/program/pembinaan')).toBeNull();
+  });
+
+  it('adds nothing but those lines to the default table, and keeps the Cloudflare limits and the file shape', () => {
+    expect(toUnderscoreRedirects().trim().split('\n')).toEqual(folded.trim().split('\n').slice(2));
+    const lines = folded.trim().split('\n');
+    const dynamic = lines.filter((l) => /[:*]/.test(l.split(/\s+/)[0])).length;
+    expect(dynamic).toBeLessThanOrEqual(100);
+    expect(lines.length - dynamic).toBeLessThanOrEqual(2000);
+    for (const line of lines) expect(line).toMatch(/^\/\S*\s+\/\S*\s+30[78]$/);
   });
 });
 
