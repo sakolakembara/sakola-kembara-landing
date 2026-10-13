@@ -6,7 +6,7 @@ Decided by Dzul, not reopened here: passwords stay for students and admins; Goog
 
 ## Contents
 
-[Flows](#flows) · [Endpoints](#endpoints) · [Registration contract](#registration-contract) · [Turnstile](#turnstile) · [Rate limits](#rate-limits) · [Email](#email) · [Cookies and CSRF](#cookies-and-csrf) · [Account linking](#account-linking) · [Sessions](#sessions) · [Admin users](#admin-users) · [Audit](#audit) · [Retention](#retention) · [Variables, secrets, bindings](#variables-secrets-bindings) · [Run it locally](#run-it-locally) · [Tests](#tests) · [Not built, and what only a real account can settle](#not-built)
+[Flows](#flows) · [Endpoints](#endpoints) · [Registration contract](#registration-contract) · [Turnstile](#turnstile) · [Rate limits](#rate-limits) · [Email](#email) · [Cookies and CSRF](#cookies-and-csrf) · [Base path and audience](#base-path-and-audience) · [Account linking](#account-linking) · [Sessions](#sessions) · [Admin users](#admin-users) · [Audit](#audit) · [Retention](#retention) · [Variables, secrets, bindings](#variables-secrets-bindings) · [Run it locally](#run-it-locally) · [Tests](#tests) · [Not built, and what only a real account can settle](#not-built)
 
 ## Flows
 
@@ -166,6 +166,31 @@ The earlier skeleton note said production would set `COOKIE_DOMAIN=.sakolakembar
 
 A refusal is 403 `{ error: "forbidden", reason }` and nothing else runs. `GET`s are exempt because the emailed links open from a mail client, which is a cross-site navigation. Better Auth's own origin check still runs on its routes for cookie-bearing requests; ours is the one for everything else and for the cookie-less sign-in (login CSRF). Mutations also keep requiring a JSON content type, which a cross-site form cannot send.
 
+## Base path and audience
+
+One Better Auth, **two audiences**, two Workers (SAKEM-083, P1a; the portal's design is [`portal-architecture.md`](portal-architecture.md), its contract [`portal-api.md`](portal-api.md)). The admin Worker `sakem-admin` serves the `admin` audience on the admin host; the portal Worker `sakem-portal` ([`wrangler.portal.jsonc`](../../cf/admin/wrangler.portal.jsonc), entry `src/portal/worker.ts`) serves the `student` audience on the apex, under `/portal`. They share the `users`, `session` and `account` tables, so what keeps a student's session out of the admin and an admin's out of the portal is not the database but the three things in the table: the mount point, the cookie name and the signing secret.
+
+| | Admin (`admin.` host) | Portal (apex) |
+| --- | --- | --- |
+| Worker | `sakem-admin` | `sakem-portal` |
+| Better Auth's mount point (`basePath`) | `/api/auth` | `/portal/api/auth` |
+| Where a failed auth call lands (`errorPath`) | `/auth/error` | `/portal/auth/error` |
+| Cookie, development and tests | `better-auth.session_token` | `sakem-student.session_token` |
+| Cookie, production | `__Host-better-auth.session_token` | `__Host-sakem-student.session_token` |
+| Cookie with `COOKIE_DOMAIN` set (opt-in, leave unset) | `__Secure-better-auth.session_token` | `__Secure-sakem-student.session_token` |
+| Signing secret | `BETTER_AUTH_SECRET` of `sakem-admin` | `BETTER_AUTH_SECRET` of `sakem-portal`, **a different value** |
+| Google redirect URI | `https://<admin host>/api/auth/callback/google` | `https://<apex>/portal/api/auth/callback/google` (the host of the request: nothing is configured) |
+| Rate limit bindings | `wrangler.jsonc`, namespaces `78xx` | `wrangler.portal.jsonc`, its own copies, namespaces `79xx` |
+| Who may use the data routes | by role and area (`requireArea`, `src/auth/guard.ts`) | role `student` only (`requireStudent`, `src/portal/guard.ts`): any other role is `403 student_only` |
+
+* **The route table is the same.** The table of [public auth routes](#public-auth-routes) is `AUTH_POLICIES`, one list for both Workers: read every `/api/auth/` in it as `/portal/api/auth/` for the portal. The same limits, the same Turnstile actions, the same error codes, the same cookie attributes. Registration is `POST /portal/api/auth/register`; its `callbackURL` should be `/portal/login?verified=1`, the reset link's `redirectTo` is `/portal/reset-password`, and Better Auth's error page is `/portal/auth/error`.
+* **Why the secret must differ, not only the cookie name.** A session token is a row of the shared `session` table, and the cookie's *name* is not part of its signature: a portal cookie renamed to `better-auth.session_token` is valid on the admin if both Workers sign with the same secret (`test/portal-auth.test.ts`, "WHY the secrets must differ", does exactly that on purpose). With two secrets the renamed cookie is refused, and a verification link minted by one Worker verifies nothing on the other. The deployed secrets are a deploy step that no test can see: the deploy ticket must set two different values and the runbook must say so ([`portal-architecture.md`](portal-architecture.md#12-before-go-live), item 3). Locally both Workers read the same `.dev.vars`, so they share one secret there; the cookie names still differ, which is what keeps the two dev servers (same `localhost`, cookies ignore the port) from signing each other out.
+* **Any account can sign in on the apex.** The portal does not turn an admin account away at sign-in: `GET /portal/api/me` answers its role and the SPA shows the "this is an admin account" screen that links to the admin host; every data route answers `403 student_only`. The reverse is the admin's existing behaviour (a student can sign in on the admin host and every admin route refuses them).
+* **Two Google OAuth clients**, one per Worker (a leaked portal secret stays away from admin sign-in); Google stays optional and off until both variables exist, and the [account-linking rules](#account-linking) apply unchanged.
+* **What changed in the code**, so the admin stays byte for byte what it was: `src/auth/factory.ts` exports `ADMIN_AUDIENCE` and `STUDENT_AUDIENCE` (`{ name, basePath, errorPath, cookiePrefix }`) and `createAuth(env, { baseURL, waitUntil, audience })` defaults to the admin's; `src/auth/session.ts` has `createAuthContext(audience)` (and `authContext` is the admin's); `src/auth/gate.ts` has `createAuthGate(basePath)` and `findPolicy(method, path, basePath)` (`authGate` and the one-argument `findPolicy` are the admin's); `src/auth/register.ts` has `createRegisterStudent(basePath)` (`registerStudent` is the admin's). `src/worker.ts` is untouched. `src/portal/worker.ts` mounts `createAuthContext(STUDENT_AUDIENCE)`, `createAuthGate(STUDENT_AUDIENCE.basePath)` and the registration route under `/portal/api/auth`.
+* **Tests.** `test/portal-auth.test.ts` runs the whole table under the portal's base path (an unlisted route does not exist, JSON only and the body cap, Turnstile on the four routes, email required where it is sent, the rate limits, the address from `CF-Connecting-IP` only), the registration, verification, sign-in, `me` and sign-out flow, forgot password, the cookies in development and production, the Google redirect URI of each host and the whole Google flow, and the separation of the two audiences (a cookie of one is nobody on the other, with and without a renamed cookie). `test/portal-foundation.test.ts` covers the guard of a student route (session, role, verified address, limiter by user id), the headers of every answer, `config` and `me`. The existing admin suites run unchanged.
+* **Not decided here:** the daily email counter and the `503 email_quota` answer of register, resend and forgot ([`portal-architecture.md`](portal-architecture.md#92-the-resend-quota-at-the-season-peak)) belong to the application API task; the table above does not have them yet.
+
 ## Account linking
 
 Better Auth's defaults, on purpose (no `trustedProviders`, no `requireLocalEmailVerified: false`):
@@ -291,6 +316,8 @@ Names only. Secrets are set with `wrangler secret put` (deploy ticket); nothing 
 | `AUDIT_RETENTION_DAYS` | var | `365` | |
 | `DB`, `ASSETS` | bindings | | |
 | `RL_LOGIN`, `RL_LOGIN_ACCOUNT`, `RL_REGISTER`, `RL_RESET`, `RL_VERIFY_RESEND`, `RL_MAIL_TARGET`, `RL_TOKEN`, `RL_CONTACT` | rate limit bindings | declared in `wrangler.jsonc` | [Table](#rate-limits). |
+
+The portal Worker has its own configuration (`wrangler.portal.jsonc`) with its own `BETTER_AUTH_SECRET` (a different value), its own copies of the seven auth limiters and the four `RL_PORTAL_*` ones, and the variables and secrets of the student portal (`ADMIN_URL`, `PRIVATE_FILES_BUDGET_BYTES`, the optional `PRIVATE_FILES_KEY`): [Base path and audience](#base-path-and-audience) and [`portal-architecture.md`](portal-architecture.md#35-what-must-be-configured-at-deploy).
 
 ## Run it locally
 
