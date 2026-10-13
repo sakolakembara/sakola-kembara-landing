@@ -157,6 +157,18 @@ const other = [
   ['/program', 307, '/program/prapembinaan'],
   ['/cerita/some-slug?utm_source=x', 308, '/blog/some-slug?utm_source=x'],
   ['/blog/page/2?utm_source=x', 308, '/blog?page=2'], // the destination has its own query: the incoming one is dropped
+  // SAKEM-090: the WordPress pages and archives of the live sitemap, with the trailing slash WordPress used and without it.
+  ...[
+    ['/home', '/'], ['/sample-page', '/'], ['/who-we-are', '/tim'], ['/our-partners', '/tim'], ['/contact-us', '/kontak'],
+    ['/donate', '/donasi'], ['/donation-confirmation', '/donasi'], ['/donation-confirmation-2', '/donasi'],
+    ['/donation-failed', '/donasi'], ['/donation-failed-2', '/donasi'], ['/donor-dashboard', '/donasi'],
+    ['/donor-dashboard-2', '/donasi'], ['/work-with-us', '/gabung-siswa'],
+  ].flatMap(([from, to]) => [[from, 308, to], [`${from}/`, 308, to]]),
+  ...['/category/cerita', '/category/kiat-kiat', '/category/news', '/category/education', '/category/tips', '/category/testimonials', '/category/career',
+    '/tag/ekonomi', '/tag/sakola-kembara', '/tag/snbt', '/tag/pendidkan'].flatMap((from) => [[from, 308, '/blog'], [`${from}/`, 308, '/blog']]),
+  ['/category/news/feed/', 308, '/blog'], ['/tag/ekonomi/page/2/', 308, '/blog'], ['/tag/ekonomi/?utm_source=ig', 308, '/blog?utm_source=ig'],
+  ['/donate/?utm_source=ig', 308, '/donasi?utm_source=ig'],
+  ['/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif', 308, '/blog/perjalanan-seorang-founder'],
 ];
 for (const [from, status, to] of other) {
   await check('redirects', `${from} -> ${to} (${status})`, async () => {
@@ -167,6 +179,29 @@ for (const [from, status, to] of other) {
     assert.equal(stubHits().length, 0);
   });
 }
+await check('redirects', 'SAKEM-090: every WordPress page and archive of the live sitemap reaches a 200 in exactly one permanent hop, no loop (the real server, hop by hop)', async () => {
+  const sources = [
+    '/home/', '/sample-page/', '/who-we-are/', '/our-partners/', '/contact-us/', '/donate/', '/donation-confirmation/', '/donation-confirmation-2/',
+    '/donation-failed/', '/donation-failed-2/', '/donor-dashboard/', '/donor-dashboard-2/', '/work-with-us/', '/tentang-kami/',
+    '/category/news/', '/category/cerita/', '/tag/ekonomi/', '/tag/sakola-kembara/',
+  ];
+  for (const from of sources) {
+    let at = from;
+    const trail = [at];
+    for (let hop = 0; hop < 10; hop++) {
+      const res = await get(at);
+      if (res.status === 200) break;
+      assert.equal(res.status, 308, `${trail.join(' -> ')}: ${res.status}`);
+      at = res.headers.get('location');
+      assert.ok(!trail.includes(at), `redirect loop: ${trail.join(' -> ')} -> ${at}`);
+      trail.push(at);
+    }
+    const last = await get(at);
+    assert.equal(last.status, 200, `${from} ends on ${at}, which answers ${last.status}`);
+    // /tentang-kami is itself a rule (to /tim), so it is one hop; every other source is one hop as well
+    assert.equal(trail.length, 2, `${from}: ${trail.join(' -> ')}`);
+  }
+});
 await check('redirects', 'middleware table agrees with the served redirects (every rule, one sample each)', async () => {
   for (const pattern of Object.keys(REDIRECTS)) {
     const sample = pattern.replace(/\[\.\.\.(\w+)\]/g, 'a/b').replace(/\[(\w+)\]/g, 'x');

@@ -1,6 +1,10 @@
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, toUnderscoreRedirects } from '../redirects.config.mjs';
-import { blogPosts, readRoot } from './helpers';
+import { blogPosts, readRoot, repoRoot, webRoot } from './helpers';
+
+/** The article files of the repo root (README.md is not one). */
+const articleFiles = () => readdirSync(`${repoRoot}content/blog`).filter((f) => f.endsWith('.md') && f !== 'README.md');
 
 /**
  * A small evaluator for Cloudflare `_redirects` syntax (placeholders `:name`
@@ -109,6 +113,168 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
   );
 });
 
+/**
+ * SAKEM-090: the WordPress pages and archives that the live sitemap lists and the new site has no page for (the SEO parity
+ * run of 2026-10-13: 103 blockers, 97 of them "url-missing"). Destinations approved by Dzul; all permanent.
+ * 13 pages + 2 archive splats + 1 renamed article slug = 16 rules.
+ */
+const SAKEM_090_RULES = 16;
+
+/** [WordPress path as the live sitemap lists it (trailing slash), destination]. */
+const WORDPRESS_PAGES: [string, string][] = [
+  ['/home/', '/'],
+  ['/sample-page/', '/'],
+  // The approved mapping says "/tentang-kami", which is itself a rule of the table (to /tim): the pages go straight to /tim
+  // so that nobody pays two hops. /tentang-kami stays a redirect, as before (see the `cases` above).
+  ['/who-we-are/', '/tim'],
+  ['/our-partners/', '/tim'],
+  ['/contact-us/', '/kontak'],
+  ['/donate/', '/donasi'],
+  ['/donation-confirmation/', '/donasi'],
+  ['/donation-confirmation-2/', '/donasi'],
+  ['/donation-failed/', '/donasi'],
+  ['/donation-failed-2/', '/donasi'],
+  ['/donor-dashboard/', '/donasi'],
+  ['/donor-dashboard-2/', '/donasi'],
+  ['/work-with-us/', '/gabung-siswa'],
+];
+
+const OLD_FOUNDER_SLUG = 'perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif';
+
+describe('SAKEM-090: the WordPress pages of the live sitemap', () => {
+  it.each(WORDPRESS_PAGES)('%s -> 308 %s, with and without the trailing slash, in the table and in the shipped file', (live, destination) => {
+    for (const path of [live, live.replace(/\/$/, '')]) {
+      expect(matchRedirect(path), path).toEqual({ status: 308, location: destination });
+      expect(evalUnderscoreRedirects(file, path), path).toEqual({ status: 308, location: destination });
+    }
+  });
+
+  it('the destination of every one is a real page of this site (a file of src/pages), so none of them ends in a 404', () => {
+    for (const [, destination] of WORDPRESS_PAGES) {
+      const rel = destination === '/' ? 'index' : destination.slice(1);
+      const candidates = [`src/pages/${rel}.astro`, `src/pages/${rel}/index.astro`];
+      expect(
+        candidates.some((c) => existsSync(`${webRoot}${c}`)),
+        `${destination}: none of ${candidates.join(', ')}`,
+      ).toBe(true);
+    }
+  });
+
+  it('the pages the approved mapping names are real pages, not redirects: /kontak, /donasi, /gabung-siswa (and /tim, where /tentang-kami ends)', () => {
+    for (const path of ['/kontak', '/donasi', '/gabung-siswa', '/tim', '/blog', '/']) {
+      expect(matchRedirect(path), path).toBeNull();
+      expect(evalUnderscoreRedirects(file, path), path).toBeNull();
+    }
+    expect(matchRedirect('/tentang-kami')).toEqual({ status: 308, location: '/tim' });
+  });
+
+  it('the query string is carried (a campaign link such as /donate/?utm_source=ig keeps it)', () => {
+    expect(matchRedirect('/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi?utm_source=ig' });
+    expect(evalUnderscoreRedirects(file, '/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi?utm_source=ig' });
+  });
+});
+
+describe('SAKEM-090: category and tag archives go to the blog index', () => {
+  // A sample of the 7 categories and 77 tags of the live sitemap (the whole list is in the report of 2026-10-13).
+  const archives = [
+    '/category/cerita/', '/category/kiat-kiat/', '/category/news/', '/category/education/', '/category/tips/', '/category/testimonials/', '/category/career/',
+    '/tag/ekonomi/', '/tag/sakola-kembara/', '/tag/snbt/', '/tag/pendidkan/', '/tag/talents-mapping/',
+  ];
+
+  it.each(archives)('%s -> 308 /blog (the table and the shipped file; with and without the trailing slash)', (live) => {
+    for (const path of [live, live.replace(/\/$/, '')]) {
+      expect(matchRedirect(path), path).toEqual({ status: 308, location: '/blog' });
+      expect(evalUnderscoreRedirects(file, path), path).toEqual({ status: 308, location: '/blog' });
+    }
+  });
+
+  it('a splat: anything below an archive goes too (a feed, a page of the archive, a tag added after the audit)', () => {
+    for (const path of ['/category/news/feed/', '/category/news/page/2/', '/tag/baru-dibuat/', '/tag/a/b/c']) {
+      expect(matchRedirect(path), path).toEqual({ status: 308, location: '/blog' });
+      expect(evalUnderscoreRedirects(file, path), path).toEqual({ status: 308, location: '/blog' });
+    }
+  });
+
+  it('the archive roots without a slash are not redirected (WordPress has no /category page), nor are look-alikes', () => {
+    // (`/category/` with the slash: the shipped file's splat may take an empty rest, which would send it to /blog too; harmless.)
+    for (const path of ['/category', '/tag', '/categories/news', '/tags/x', '/tagline', '/category-news']) {
+      expect(matchRedirect(path), path).toBeNull();
+      expect(evalUnderscoreRedirects(file, path), path).toBeNull();
+    }
+  });
+
+  it('the query string is carried', () => {
+    expect(matchRedirect('/tag/ekonomi/', '?utm_source=x')).toEqual({ status: 308, location: '/blog?utm_source=x' });
+  });
+});
+
+describe('SAKEM-090: the renamed founder article', () => {
+  it('/blog/<old slug> -> /blog/perjalanan-seorang-founder, the link that 8 article bodies still carry', () => {
+    const expected = { status: 308, location: '/blog/perjalanan-seorang-founder' };
+    for (const path of [`/blog/${OLD_FOUNDER_SLUG}`, `/blog/${OLD_FOUNDER_SLUG}/`]) {
+      expect(matchRedirect(path), path).toEqual(expected);
+      expect(evalUnderscoreRedirects(file, path), path).toEqual(expected);
+    }
+  });
+
+  it('every internal /blog/<slug> link of every article body is an article, or is redirected to one (no broken internal link ships)', () => {
+    const slugs = new Set(articleFiles().map((f) => f.replace(/\.md$/, '')));
+    const broken: string[] = [];
+    for (const f of articleFiles()) {
+      for (const m of readFileSync(`${repoRoot}content/blog/${f}`, 'utf8').matchAll(/\]\(\/blog\/([^)\s#?/]+)/g)) {
+        const slug = m[1];
+        if (slug === 'images' || slugs.has(slug)) continue;
+        const hit = matchRedirect(`/blog/${slug}`);
+        if (!hit || !slugs.has(hit.location.replace('/blog/', ''))) broken.push(`${f} -> /blog/${slug}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});
+
+describe('SAKEM-090: no redirect loops, no needless chains', () => {
+  /** A request path that a pattern matches: [slug] and [...path] filled with plausible values. */
+  const sample = (pattern: string) => pattern.replace(/\[\.\.\.(\w+)\]/g, 'a/b').replace(/\[(\w+)\]/g, 'x');
+
+  /** Follow the table the way a client follows 308s; returns the visited paths, or throws on a loop. */
+  function follow(start: string): string[] {
+    const seen = [start];
+    for (let hops = 0; hops < 10; hops++) {
+      const hit = matchRedirect(seen[seen.length - 1].split('?')[0]);
+      if (!hit) return seen;
+      const next = hit.location.split('?')[0];
+      if (seen.includes(next)) throw new Error(`redirect loop: ${[...seen, next].join(' -> ')}`);
+      seen.push(next);
+    }
+    throw new Error(`more than 10 hops from ${start}: ${seen.join(' -> ')}`);
+  }
+
+  it('from the sample path of every rule the chain ends (no loop) and no destination is itself redirected again', () => {
+    const chains: string[] = [];
+    for (const pattern of Object.keys(REDIRECTS)) {
+      const path = follow(sample(pattern));
+      if (path.length > 2) chains.push(path.join(' -> '));
+    }
+    expect(chains).toEqual([]);
+  });
+
+  it('the one two-hop address is the old category address of the renamed founder article (/<category>/<old slug>), and it ends on the article', () => {
+    expect(follow(`/cerita/${OLD_FOUNDER_SLUG}`)).toEqual([`/cerita/${OLD_FOUNDER_SLUG}`, `/blog/${OLD_FOUNDER_SLUG}`, '/blog/perjalanan-seorang-founder']);
+  });
+
+  it('every WordPress page and archive of SAKEM-090 is exactly one hop', () => {
+    for (const [live] of WORDPRESS_PAGES) expect(follow(live.replace(/\/$/, '')), live).toHaveLength(2);
+    for (const archive of ['/category/news/', '/tag/ekonomi/']) expect(follow(archive.replace(/\/$/, '')), archive).toHaveLength(2);
+  });
+
+  it('the shipped file and the table give the same answer for the sample path of every rule', () => {
+    for (const pattern of Object.keys(REDIRECTS)) {
+      const path = sample(pattern);
+      expect(evalUnderscoreRedirects(file, path), pattern).toEqual(matchRedirect(path));
+    }
+  });
+});
+
 describe('parity with the root next.config.ts', () => {
   const next = readRoot('next.config.ts');
 
@@ -130,10 +296,10 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules + the two SAKEM-075 additions + the five auth pages of M4 + 2 x 7 category rules', () => {
+  it('table = next.config.ts rules + the two SAKEM-075 additions + the five auth pages of M4 + 2 x 7 category rules + the SAKEM-090 additions', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
     // next.config.ts: 11 literal rules; the 14 category rules are generated from the list.
-    expect(Object.keys(REDIRECTS)).toHaveLength(explicit + WP_BLOG_CATEGORIES.length * 2 + 2 + 5);
+    expect(Object.keys(REDIRECTS)).toHaveLength(explicit + WP_BLOG_CATEGORIES.length * 2 + 2 + 5 + SAKEM_090_RULES);
   });
 
   it('the auth pages that moved into the portal are exactly the five names, each to the same name under /portal', () => {

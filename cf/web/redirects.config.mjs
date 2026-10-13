@@ -1,6 +1,7 @@
 // Redirect rules, ported from the root next.config.ts (`redirects()`) plus two
-// rules added by SAKEM-075 and the five auth pages that moved into the portal
-// (SAKEM-083). One table, four consumers:
+// rules added by SAKEM-075, the five auth pages that moved into the portal
+// (SAKEM-083) and the WordPress pages and archives found by the SEO parity run
+// (SAKEM-090). One table, four consumers:
 //
 //   - astro.config.mjs → an integration writes it to dist/client/_redirects
 //     (toUnderscoreRedirects below). The Workers assets layer answers those
@@ -82,6 +83,35 @@ export const REDIRECTS = {
   // There is no /program index; send it to the first stage. Temporary on
   // purpose: an overview page may replace it.
   '/program': to('/program/prapembinaan', TEMPORARY),
+
+  // Added by SAKEM-090, from the SEO parity run against the live WordPress site (2026-10-13, docs/cloudflare/seo-audit.md):
+  // every URL the live sitemap lists that the new site has no page for. Permanent, one hop, destinations approved by Dzul.
+  // The pages are Elementor templates and WordPress defaults (the live titles are "Home", "What We Do", "Donate",
+  // "Sample Page"...), so each goes to the page of the new site that does the same job. Plain `to()` rules, written twice
+  // (with and without the trailing slash WordPress used) by toUnderscoreRedirects().
+  '/home': to('/'),
+  '/sample-page': to('/'),
+  // /tentang-kami is itself a rule of this table (to /tim, above), so pointing at it would be a two-hop chain: these go to
+  // the page it ends on. (The approved wording says "/tentang-kami"; the page the visitor reaches is the same.)
+  '/who-we-are': to('/tim'),
+  '/our-partners': to('/tim'),
+  '/contact-us': to('/kontak'),
+  '/donate': to('/donasi'),
+  '/donation-confirmation': to('/donasi'),
+  '/donation-confirmation-2': to('/donasi'),
+  '/donation-failed': to('/donasi'),
+  '/donation-failed-2': to('/donasi'),
+  '/donor-dashboard': to('/donasi'),
+  '/donor-dashboard-2': to('/donasi'),
+  '/work-with-us': to('/gabung-siswa'),
+  // The 7 category archives and 77 tag archives of the live sitemap, and anything below them (/category/news/feed/,
+  // /tag/x/page/2/): the blog index is the only listing the new site has. A splat, so a tag added later is covered too.
+  '/category/[...path]': to('/blog'),
+  '/tag/[...path]': to('/blog'),
+  // The one slug that articles still link to and that is not an article: the founder story was published as
+  // "...-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif" and later renamed; WordPress redirected the old
+  // address, and 8 article bodies (content/blog) still carry the old link. Listed by the SEO audit's broken-link check.
+  '/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif': to('/blog/perjalanan-seorang-founder'),
 };
 
 /** Pattern with [slug] / [...path] -> { regex, keys }. A trailing slash on the request is tolerated. */

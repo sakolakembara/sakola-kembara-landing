@@ -68,8 +68,13 @@ describe("the reserved list", () => {
   ];
   // What the Cloudflare site added: the 404 page, and the sources of cf/web/redirects.config.mjs that are one segment.
   const NEW = ["404", "cerita", "education", "news", "tips", "testimonials", "career", "kiat-kiat", "daftar", "apply", "tentang-kami", "about", "impact-reports", "feed", "wp-content"];
+  // SAKEM-090: the WordPress pages and archives the table now redirects.
+  const WORDPRESS_PAGES = [
+    "home", "sample-page", "who-we-are", "our-partners", "contact-us", "donate", "donation-confirmation", "donation-confirmation-2",
+    "donation-failed", "donation-failed-2", "donor-dashboard", "donor-dashboard-2", "work-with-us", "category", "tag",
+  ];
 
-  test.each([...LEGACY, ...NEW])("%s is reserved", (slug) => {
+  test.each([...LEGACY, ...NEW, ...WORDPRESS_PAGES])("%s is reserved", (slug) => {
     expect(RESERVED_SLUGS.has(slug)).toBe(true);
   });
 
