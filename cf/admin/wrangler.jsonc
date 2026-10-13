@@ -100,5 +100,52 @@
   // Daily cleanup (src/cron/cleanup.ts): expired sessions and verification
   // tokens, and audit rows older than AUDIT_RETENTION_DAYS. 03:17 UTC is 10:17
   // in Jakarta, outside school hours; the minute is off the hour on purpose.
-  "triggers": { "crons": ["17 3 * * *"] }
+  "triggers": { "crons": ["17 3 * * *"] },
+
+  // STAGING (SAKEM-084, docs/cloudflare/staging-runbook.md): the same code as another Worker, on
+  // `*.workers.dev` in the organisation account. `wrangler ... --env staging` selects this block; every
+  // command of the runbook passes it, and `pnpm deploy:staging:dry` is the only script that touches it.
+  // A command WITHOUT `--env staging` is the production Worker: never type one against the account
+  // before the cutover.
+  //   - Bindings and vars are not inherited by an environment, so each is written out again. A test
+  //     (test/staging-config.test.ts here, tests/staging-config.test.ts in cf/web) keeps this block and the
+  //     top level the same shape: same bindings, same limiter names, limits and periods.
+  //   - Still no ids and no secrets. The D1 database and the R2 bucket are named; wrangler finds them by
+  //     NAME (`wrangler d1 ... --remote` looks the database up through the API; `wrangler deploy` connects
+  //     to an existing resource of that name, or creates one when it is missing, without writing an id
+  //     into this file when it runs non-interactively with CI=1). Public per-deploy values (TURNSTILE_SITE_KEY,
+  //     UPLOADS_BASE_URL, SITE_URL) are passed with `--var`, see cf/scripts/staging-vars.mjs.
+  //   - Rate limit namespaces: the ones of the top level plus 100, so staging never shares a counter with
+  //     production inside one account.
+  "env": {
+    "staging": {
+      "name": "sakem-admin-staging",
+      // Only the `*.workers.dev` address, and no per-version preview addresses: fewer public hosts.
+      "workers_dev": true,
+      "preview_urls": false,
+      // Not "development": every fail-closed rule of production applies (email, Turnstile, rate limiting).
+      "vars": { "ENVIRONMENT": "staging", "AUDIT_RETENTION_DAYS": "365" },
+      "assets": {
+        "directory": "./dist/spa",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/api/*", "/uploads/*"]
+      },
+      "d1_databases": [{ "binding": "DB", "database_name": "sakem-staging", "migrations_dir": "migrations" }],
+      "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "sakem-files-staging" }],
+      "ratelimits": [
+        { "name": "RL_LOGIN", "namespace_id": "7901", "simple": { "limit": 5, "period": 60 } },
+        { "name": "RL_LOGIN_ACCOUNT", "namespace_id": "7902", "simple": { "limit": 20, "period": 60 } },
+        { "name": "RL_REGISTER", "namespace_id": "7903", "simple": { "limit": 10, "period": 60 } },
+        { "name": "RL_RESET", "namespace_id": "7904", "simple": { "limit": 5, "period": 60 } },
+        { "name": "RL_VERIFY_RESEND", "namespace_id": "7905", "simple": { "limit": 2, "period": 60 } },
+        { "name": "RL_MAIL_TARGET", "namespace_id": "7906", "simple": { "limit": 3, "period": 60 } },
+        { "name": "RL_TOKEN", "namespace_id": "7907", "simple": { "limit": 20, "period": 60 } },
+        { "name": "RL_CONTACT", "namespace_id": "7908", "simple": { "limit": 5, "period": 60 } },
+        { "name": "RL_UPLOAD", "namespace_id": "7921", "simple": { "limit": 20, "period": 60 } },
+        { "name": "RL_BLOG_PREVIEW", "namespace_id": "7922", "simple": { "limit": 60, "period": 60 } }
+      ],
+      "triggers": { "crons": ["17 3 * * *"] }
+    }
+  }
 }

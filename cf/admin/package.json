@@ -13,6 +13,8 @@
     "build:spa": "vite build --config spa/vite.config.ts",
     "build:portal-spa": "vite build --config portal-spa/vite.config.ts && node scripts/finish-portal-spa.mjs",
     "build:worker": "pnpm build:spa && wrangler deploy --dry-run --outdir dist/worker",
+    "deploy:staging:dry": "pnpm build:spa && node ../scripts/staging-dry-run.mjs admin",
+    "deploy:staging:command": "node ../scripts/staging-deploy-command.mjs admin",
     "typecheck": "tsc --noEmit && tsc --noEmit -p spa/tsconfig.json && tsc --noEmit -p portal-spa/tsconfig.json",
     "test": "vitest run && pnpm test:spa && pnpm test:portal-spa",
     "test:worker": "vitest run",

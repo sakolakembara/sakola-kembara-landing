@@ -1,0 +1,20 @@
+# Copy to .staging.vars (untracked: `cf/**/.staging.vars*` is git-ignored) and fill in the PUBLIC values of
+# the staging Worker `sakem-admin-staging`. `pnpm deploy:staging:command` reads it and PRINTS the deploy
+# command with every value passed as --var; it does not deploy. See docs/cloudflare/staging-runbook.md.
+#
+# Public values only. Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, TURNSTILE_SECRET_KEY, ...) are never
+# written here: they go in with `pnpm exec wrangler secret put <NAME> --env staging`, typed at its prompt.
+
+# The PUBLIC site key of the Turnstile widget you create for the workers.dev hostnames (dashboard, Turnstile).
+TURNSTILE_SITE_KEY=<site key of the staging widget>
+
+# The public origin of the staging R2 bucket (its r2.dev address, no trailing slash), so the admin and the
+# public site can show uploaded images and files. Leave the line out until the bucket's public URL is on.
+UPLOADS_BASE_URL=https://pub-<hash>.r2.dev
+
+# The origin of the staging public site, for the "Lihat di publik" link of a published article.
+SITE_URL=https://sakem-web-staging.<account-subdomain>.workers.dev
+
+# The From of the emails. Without a verified domain Resend only delivers `onboarding@resend.dev` mail to the
+# address of the Resend account itself: fine for staging (invite yourself).
+EMAIL_FROM=Sakola Kembara Staging <onboarding@resend.dev>
