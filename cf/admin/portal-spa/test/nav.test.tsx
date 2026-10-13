@@ -71,7 +71,7 @@ describe("the nav with the keyboard and a screen reader", () => {
       screen.getByRole("link", { name: "Status Pendaftaran" }),
       screen.getByRole("button", { name: "Keluar" }),
     ];
-    screen.getByRole("link", { name: "Lewati ke konten" }).focus();
+    screen.getByRole("link", { name: "Lewat ke konten utama" }).focus();
     for (const element of order) {
       await user.tab();
       expect(document.activeElement).toBe(element);
@@ -93,9 +93,9 @@ describe("the nav with the keyboard and a screen reader", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  test("'Lewati ke konten' points at the main region", async () => {
+  test("'Lewat ke konten utama' points at the main region", async () => {
     await openPortal();
-    const skip = screen.getByRole("link", { name: "Lewati ke konten" });
+    const skip = screen.getByRole("link", { name: "Lewat ke konten utama" });
     expect(skip.getAttribute("href")).toBe("#isi");
     expect(screen.getByRole("main").id).toBe("isi");
   });

@@ -28,9 +28,16 @@ export const PORTAL_AUTH_PATHS = [...AUTH_PATHS, "/register"];
 /**
  * The path to go to after signing in, from the `from` query parameter, relative to the router's basename (`/daftar`,
  * not `/portal/daftar`). Only a same-origin path is accepted; anything else gives null (see shared/spa/safe-from.ts).
+ *
+ * An old link (the legacy `/login?from=/portal/status`, which the public site redirects here with its query) carries the
+ * ABSOLUTE path of the legacy portal. The router's paths have no `/portal`, so that prefix is taken off before the check:
+ * `/portal/status` is `/status`, `/portal` is `/`.
  */
 export function portalSafeFrom(raw: string | null | undefined): string | null {
-  return safeFrom(raw, PORTAL_AUTH_PATHS);
+  if (typeof raw !== "string") return null;
+  const rest = raw.replace(/^\/portal(?=$|[/?#])/, "");
+  const relative = raw.startsWith("/portal") && (rest === "" || /^[?#]/.test(rest)) ? `/${rest}` : rest;
+  return safeFrom(relative, PORTAL_AUTH_PATHS);
 }
 
 /** `/login`, carrying the page that was asked for unless it is the front page. */

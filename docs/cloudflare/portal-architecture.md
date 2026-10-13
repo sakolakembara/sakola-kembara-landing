@@ -2,7 +2,7 @@
 
 How the student portal of the new stack is built, where it lives, how it is routed, how its data and its private files are kept, and how the build splits into four tasks that do not collide. Ticket: SAKEM-083 (M4 of epic SAKEM-074). The request and response contract the build workers implement and test against is the companion file [`portal-api.md`](portal-api.md).
 
-**Status: design only.** Nothing here is built, no Cloudflare account was used (the Cloudflare documentation was read on 2026-10-13, nothing else), no resource exists, and no application code, migration or configuration changes with this document. Everything marked "paper estimate" is arithmetic, not a measurement; what only a real zone can settle is listed in [section 14](#14-what-is-not-verified).
+**Status: design only.** (P2, the SPA shell, the shared module and the `cf/web` side, is built: [`portal-spa.md`](portal-spa.md).) Nothing else here is built, no Cloudflare account was used (the Cloudflare documentation was read on 2026-10-13, nothing else), no resource exists, and no application code, migration or configuration changes with this document. Everything marked "paper estimate" is arithmetic, not a measurement; what only a real zone can settle is listed in [section 14](#14-what-is-not-verified).
 
 ## Contents
 
@@ -16,7 +16,7 @@ From the epic and its milestones (Saung SAKEM-074, 081, 082, 083; the PM's brief
 - All work lives on the long-lived branch `cloudflare`; the old Next app (`app/(portal)/**`, `app/(auth)/**`, `lib/application-status.ts`, `lib/admission*.ts`, `lib/db/schema/{student-applications,users}.ts`) is the reference for every rule and message. Visual style and Indonesian copy are fixed (`DESIGN.md`, `docs/context/tone-of-voice.md`). Production holds dummy data only, so no data is migrated.
 - **The portal lives at the path `/portal` of the apex** (`sakolakembara.org/portal/...`, Dzul: "pake path aja"); the admin lives on its own subdomain of the same domain (`admin.<domain>` below). The student session and the admin session are separate, host-only `__Host-` cookies (PR #49, [`auth.md`](auth.md#cookies-and-csrf)).
 - Students register themselves (`POST /api/auth/register`, Turnstile, no enumeration), **verify their email before the first sign-in**, can sign in with password or Google, reset their password. Admins never verify (SAKEM-089) and do not matter here.
-- The portal's login, register, forgot, reset and verify pages follow the admin login layout: one narrow column, no card, one heading ([`spa/src/pages/auth/AuthShell.tsx`](../../cf/admin/spa/src/pages/auth/AuthShell.tsx)); the Indonesian copy is the legacy copy.
+- The portal's login, register, forgot, reset and verify pages follow the admin login layout: one narrow column, no card, one heading ([`shared/spa/AuthShell.tsx`](../../cf/admin/shared/spa/AuthShell.tsx), moved there from `spa/src/pages/auth/` by P2); the Indonesian copy is the legacy copy.
 - SSO to the LMS is deferred. Nothing in this design depends on it and nothing in it prepares for it, except that the host-only cookie decision stands ([`auth.md`](auth.md#cookies-and-csrf)).
 - **New, 2026-10-13: applicants upload their documents to a private R2 bucket.** These are documents of children. Privacy is a first-class requirement, not a feature of the file code: section 8.
 

@@ -36,7 +36,7 @@ const MOCK_MARKERS = [
   "mock-batch-2026",
   "belum-verifikasi@",
   "createMockTransport",
-  // The stand-in for Cloudflare's widget (spa/src/mock/turnstile.ts).
+  // The stand-in for Cloudflare's widget (shared/spa/mock-turnstile.ts).
   "Pemeriksaan keamanan tiruan",
   "mock-turnstile-token-",
   "mock-site-key",

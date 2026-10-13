@@ -67,6 +67,21 @@ describe("the `from` of a sign-in link", () => {
     }
   });
 
+  test("an old link's absolute /portal path is taken to the router's own (the legacy `from=/portal/status`)", () => {
+    expect(portalSafeFrom("/portal")).toBe("/");
+    expect(portalSafeFrom("/portal/")).toBe("/");
+    expect(portalSafeFrom("/portal/status")).toBe("/status");
+    expect(portalSafeFrom("/portal/daftar?a=1#b")).toBe("/daftar?a=1#b");
+    expect(portalSafeFrom("/portal?a=1")).toBe("/?a=1");
+    // ...and the checks still apply to what is left.
+    expect(portalSafeFrom("/portal/login")).toBeNull();
+    expect(portalSafeFrom("/portal//evil.example")).toBeNull();
+    expect(portalSafeFrom("/portal/\\evil.example")).toBeNull();
+    // A name that merely starts with it is not the prefix.
+    expect(portalSafeFrom("/portalx")).toBe("/portalx");
+    expect(portalSafeFrom("/portal-baru/status")).toBe("/portal-baru/status");
+  });
+
   test("loginPath carries a good `from` and drops a bad one", () => {
     expect(loginPath("/daftar")).toBe("/login?from=%2Fdaftar");
     expect(loginPath("/")).toBe("/login");
