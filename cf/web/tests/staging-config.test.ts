@@ -14,8 +14,26 @@ import { readRoot, repoRoot, webRoot } from './helpers';
 const adminFile = path.join(repoRoot, 'cf/admin/wrangler.jsonc');
 const webFile = path.join(webRoot, 'wrangler.jsonc');
 
-type Resolved = ReturnType<typeof unstable_readConfig>;
-const read = (file: string, env?: string): Resolved => unstable_readConfig({ config: file, env }, {});
+/** The part of wrangler's resolved configuration these tests read. */
+interface Resolved {
+  name: string;
+  main?: string;
+  targetEnvironment?: string;
+  workers_dev?: boolean;
+  preview_urls?: boolean;
+  routes?: unknown[];
+  vars: Record<string, string>;
+  services: { binding: string; service: string; entrypoint?: string }[];
+  d1_databases: { binding: string; database_name: string; migrations_dir: string }[];
+  r2_buckets: { binding: string; bucket_name: string }[];
+  ratelimits: { name: string; namespace_id: string; simple: { limit: number; period: number } }[];
+  assets?: unknown;
+  triggers?: unknown;
+  observability?: unknown;
+  compatibility_date?: string;
+  compatibility_flags?: string[];
+}
+const read = (file: string, env?: string) => unstable_readConfig({ config: file, env }, {}) as unknown as Resolved;
 
 const adminProduction = read(adminFile);
 const adminStaging = read(adminFile, 'staging');
