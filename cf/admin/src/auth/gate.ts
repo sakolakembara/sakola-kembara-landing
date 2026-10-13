@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler, Next } from "hono";
 import type { AppEnv } from "../context";
 import { emailAvailable } from "../email/send";
 import { clientIp, emailKey } from "../security/client";
@@ -82,8 +82,9 @@ export const AUTH_POLICIES: readonly Policy[] = [
   { method: "GET", path: "/get-session", limits: none },
 ];
 
-export function findPolicy(method: string, path: string): Policy | undefined {
-  const below = path.startsWith(AUTH_BASE_PATH) ? path.slice(AUTH_BASE_PATH.length) : path;
+/** The policy of a request, looked up below the audience's mount point (`/api/auth` for the admin, `/portal/api/auth` for the portal). */
+export function findPolicy(method: string, path: string, basePath: string = AUTH_BASE_PATH): Policy | undefined {
+  const below = path.startsWith(basePath) ? path.slice(basePath.length) : path;
   return AUTH_POLICIES.find(
     (policy) => policy.method === method && (policy.path.endsWith("/") ? below.startsWith(policy.path) && below.length > policy.path.length : below === policy.path),
   );
@@ -124,9 +125,17 @@ async function readSmallJson(request: Request): Promise<{ tooBig: boolean; value
   }
 }
 
-export const authGate: MiddlewareHandler<AppEnv> = async (c, next) => {
+/** The gate for one audience's mount point. The route table and the order of checks are the same for both. */
+export function createAuthGate(basePath: string): MiddlewareHandler<AppEnv> {
+  return (c, next) => runGate(basePath, c, next);
+}
+
+/** The admin Worker's gate: `/api/auth/*`. */
+export const authGate: MiddlewareHandler<AppEnv> = createAuthGate(AUTH_BASE_PATH);
+
+async function runGate(basePath: string, c: Context<AppEnv>, next: Next): Promise<Response | void> {
   const path = c.req.path.replace(/\/+$/, "");
-  const policy = findPolicy(c.req.method, path);
+  const policy = findPolicy(c.req.method, path, basePath);
   if (!policy) return c.json({ error: "not_found" }, 404);
 
   let email: string | null = null;
@@ -154,4 +163,4 @@ export const authGate: MiddlewareHandler<AppEnv> = async (c, next) => {
     if (refused) return refused;
   }
   return next();
-};
+}

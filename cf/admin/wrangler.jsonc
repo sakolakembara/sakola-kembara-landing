@@ -24,7 +24,28 @@
   // http(s) origin = no link), EMAIL_FROM, TRUSTED_ORIGINS, COOKIE_DOMAIN (normally unset).
   // Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, TURNSTILE_SECRET_KEY,
   // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) are set with `wrangler secret put`.
-  "vars": { "ENVIRONMENT": "production", "AUDIT_RETENTION_DAYS": "365" },
+  //
+  // The student portal (SAKEM-083, docs/cloudflare/portal-architecture.md) adds, declared once here and in
+  // wrangler.portal.jsonc for every task of the milestone:
+  //   PRIVATE_FILES_BUDGET_BYTES  hard budget of the private bucket (the `private_storage` counter refuses an upload
+  //                               past it). 8,000,000,000 is under the 10 GB-month of R2 Free. A test keeps the two
+  //                               configs equal.
+  //   DRAFT_RETENTION_DAYS, REJECTED_FILES_RETENTION_DAYS, ACCEPTED_FILES_RETENTION_DAYS
+  //                               days to keep applicants' files before the daily cleanup deletes them. EMPTY = keep
+  //                               (so is 0, a negative or an unreadable value: an unreadable setting never deletes).
+  //                               Dzul decided on 2026-10-13 that nothing is deleted automatically, so all three are
+  //                               empty. The architecture's proposal, if it is ever turned on: 30 (a draft, after its
+  //                               batch closed), 90 (a rejected application, after the results), 365 (an accepted one).
+  // Not here, set per deploy (portal Worker): ADMIN_URL (the admin host's origin, for the "this is an admin account"
+  // screen). Secrets: PRIVATE_FILES_KEY is an OPTIONAL SSE-C key, undecided (the code must not require it).
+  "vars": {
+    "ENVIRONMENT": "production",
+    "AUDIT_RETENTION_DAYS": "365",
+    "PRIVATE_FILES_BUDGET_BYTES": "8000000000",
+    "DRAFT_RETENTION_DAYS": "",
+    "REJECTED_FILES_RETENTION_DAYS": "",
+    "ACCEPTED_FILES_RETENTION_DAYS": ""
+  },
 
   "assets": {
     "directory": "./dist/spa",
@@ -56,7 +77,14 @@
   // .wrangler/state, so it works without an account. Visitors get the files from the
   // bucket's own public domain, not from this Worker; the owner's steps (bucket, custom
   // domain, UPLOADS_BASE_URL on the public site) are in docs/cloudflare/uploads.md.
-  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "sakem-files" }],
+  "r2_buckets": [
+    { "binding": "UPLOADS", "bucket_name": "sakem-files" },
+    // The applicants' files (SAKEM-083, docs/cloudflare/portal-architecture.md, section 8): documents of children. A
+    // bucket of its own, PRIVATE: never a public domain, never r2.dev, never the bucket above. This Worker reads them
+    // for an admin who may (src/api/application-files.ts, a later task of the milestone) and deletes them for the
+    // retention job. The name is a PLACEHOLDER and there is no id, like the one above.
+    { "binding": "PRIVATE_FILES", "bucket_name": "sakem-private" }
+  ],
 
   // Cloudflare rate limit bindings, one per concern (SAKEM-081, auth). Counted
   // per Cloudflare location and eventually consistent, period 10 or 60 seconds
@@ -94,7 +122,21 @@
     // The blog editor's preview (POST /api/admin/blog/preview, src/api/blog.ts): 60 per minute per
     // signed-in user. Key: "blog-preview:<user id>". Every request is a markdown render on the
     // Worker, so a stuck client or a stolen session must not be able to spend its CPU.
-    { "name": "RL_BLOG_PREVIEW", "namespace_id": "7822", "simple": { "limit": 60, "period": 60 } }
+    { "name": "RL_BLOG_PREVIEW", "namespace_id": "7822", "simple": { "limit": 60, "period": 60 } },
+
+    // The student portal (SAKEM-083, docs/cloudflare/portal-architecture.md, 6.3). The portal Worker declares its own
+    // copies of the auth limiters above and of the four RL_PORTAL_* below, with namespaces of its own
+    // (wrangler.portal.jsonc, 79xx), so a flood of students never spends an admin's bucket. They are declared here too
+    // because the Worker test suite runs every limiter against Miniflare's real binding (test/rate-limit.test.ts) in
+    // this config; on the deployed admin Worker the four RL_PORTAL_* are unused.
+    // Signed-in student routes, key "<name>:<user id>" (src/portal/guard.ts): reads, step saves, file uploads and
+    // deletes, and the submit.
+    { "name": "RL_PORTAL_READ", "namespace_id": "7831", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RL_PORTAL_SAVE", "namespace_id": "7832", "simple": { "limit": 30, "period": 60 } },
+    { "name": "RL_PORTAL_UPLOAD", "namespace_id": "7833", "simple": { "limit": 20, "period": 60 } },
+    { "name": "RL_PORTAL_SUBMIT", "namespace_id": "7834", "simple": { "limit": 3, "period": 60 } },
+    // An admin opening an applicant's file (a later task of the milestone): 120 per minute per admin id.
+    { "name": "RL_ADMIN_FILE", "namespace_id": "7841", "simple": { "limit": 120, "period": 60 } }
   ],
 
   // Daily cleanup (src/cron/cleanup.ts): expired sessions and verification

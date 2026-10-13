@@ -1,23 +1,29 @@
 import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv, AuthUser } from "../context";
 import { isUserRole } from "./roles";
-import { createAuth, type Auth } from "./factory";
+import { ADMIN_AUDIENCE, createAuth, type Auth, type AuthAudience } from "./factory";
 
 /**
- * Makes `c.get("auth")()` available. Better Auth is created on first call, so
- * a request that never touches auth (a 404) pays nothing for it.
+ * Makes `c.get("auth")()` available for one audience. Better Auth is created on
+ * first call, so a request that never touches auth (a 404) pays nothing for it.
  */
-export const authContext: MiddlewareHandler<AppEnv> = async (c, next) => {
-  let auth: Auth | undefined;
-  c.set("auth", () => {
-    auth ??= createAuth(c.env, {
-      baseURL: new URL(c.req.url).origin,
-      waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+export function createAuthContext(audience: AuthAudience): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    let auth: Auth | undefined;
+    c.set("auth", () => {
+      auth ??= createAuth(c.env, {
+        baseURL: new URL(c.req.url).origin,
+        waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+        audience,
+      });
+      return auth;
     });
-    return auth;
-  });
-  await next();
-};
+    await next();
+  };
+}
+
+/** The admin Worker's (and the default): `/api/auth`, the `better-auth` cookie. The portal builds its own in src/portal/worker.ts. */
+export const authContext: MiddlewareHandler<AppEnv> = createAuthContext(ADMIN_AUDIENCE);
 
 /**
  * The signed-in user for this request, or null. Better Auth reads the session

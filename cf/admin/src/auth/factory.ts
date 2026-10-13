@@ -11,10 +11,37 @@ import * as schema from "../db/schema";
 import { parseOrigins } from "../security/csrf";
 import { hashPassword, verifyPassword } from "./password";
 
-/** Better Auth's mount point. The SPA and the email links use this prefix. */
-export const AUTH_BASE_PATH = "/api/auth";
-/** SPA route Better Auth sends the browser to when an auth call fails. */
-export const AUTH_ERROR_PATH = "/auth/error";
+/**
+ * One Better Auth, two audiences (docs/cloudflare/auth.md#base-path-and-audience). The admin Worker serves the
+ * `admin` audience on `admin.<domain>/api/auth`, the portal Worker serves the `student` audience on
+ * `<apex>/portal/api/auth`. They share the user, session and account tables, so what keeps a student's cookie out
+ * of the admin and an admin's out of the portal is not the database but these three things, per audience:
+ *   * the mount point (`basePath`) and the SPA page an auth failure lands on (`errorPath`),
+ *   * the cookie name (`cookiePrefix`): `better-auth` for the admin, `sakem-student` for the portal, because cookies
+ *     on `localhost` ignore the port and the two dev servers would otherwise sign each other out,
+ *   * the signing secret: each Worker has its own `BETTER_AUTH_SECRET` (a deploy step; a test cannot see it), so a
+ *     token that is valid for one audience is refused by the other even if a cookie is copied or planted.
+ * Who may use the DATA routes is decided elsewhere: by role and area on the admin (src/auth/guard.ts), by role
+ * `student` on the portal (src/portal/guard.ts). Any account may sign in at either: the portal answers an admin
+ * account with `403 student_only` on its data routes and shows a screen that links to the admin.
+ */
+export interface AuthAudience {
+  name: "admin" | "student";
+  /** Better Auth's mount point. The SPA and the email links use this prefix. */
+  basePath: string;
+  /** SPA route Better Auth sends the browser to when an auth call fails. */
+  errorPath: string;
+  /** Start of the session cookie's name (`<prefix>.session_token`). In production it gets `__Host-` in front. */
+  cookiePrefix: string;
+}
+
+export const ADMIN_AUDIENCE: AuthAudience = { name: "admin", basePath: "/api/auth", errorPath: "/auth/error", cookiePrefix: "better-auth" };
+export const STUDENT_AUDIENCE: AuthAudience = { name: "student", basePath: "/portal/api/auth", errorPath: "/portal/auth/error", cookiePrefix: "sakem-student" };
+
+/** The admin's mount point. The SPA and the email links use this prefix. */
+export const AUTH_BASE_PATH = ADMIN_AUDIENCE.basePath;
+/** SPA route Better Auth sends the browser to when an auth call fails (admin). */
+export const AUTH_ERROR_PATH = ADMIN_AUDIENCE.errorPath;
 
 /** The verification link in an email lives 24 hours (legacy). */
 export const VERIFICATION_LINK_SECONDS = 24 * 60 * 60;
@@ -39,6 +66,8 @@ export interface AuthRequestContext {
   baseURL: string;
   /** `ctx.waitUntil` of the current request. Email is sent after the response. */
   waitUntil: (promise: Promise<unknown>) => void;
+  /** Who this instance serves. Default: the admin, so every existing caller is unchanged. */
+  audience?: AuthAudience;
 }
 
 /** The `callbackURL` a registration came with, so the "you already have an account" email can link to the page the form wants. */
@@ -56,25 +85,26 @@ async function callbackOf(request: Request | undefined): Promise<string | undefi
  * docs/cloudflare/auth.md#cookies:
  *
  *   production, COOKIE_DOMAIN empty (the default)
- *     `__Host-better-auth.session_token`: Secure, Path=/, NO Domain, HttpOnly,
- *     SameSite=Lax. The browser keeps it host-only and refuses a Domain
- *     attribute with this prefix, so the admin host and the apex each have their
- *     own session and no sibling subdomain can read it, overwrite it, or plant
- *     a cookie of that name for us ("cookie tossing").
+ *     `__Host-better-auth.session_token` (the admin) or `__Host-sakem-student.session_token` (the
+ *     portal): Secure, Path=/, NO Domain, HttpOnly, SameSite=Lax. The browser keeps it host-only and refuses a
+ *     Domain attribute with this prefix, so the admin host and the apex each have their own session and no
+ *     sibling subdomain can read it, overwrite it, or plant a cookie of that name for us ("cookie tossing").
  *   production, COOKIE_DOMAIN set (opt-in, e.g. when the LMS must read it)
- *     `__Secure-better-auth.session_token`, Secure, Domain=<value>.
+ *     `__Secure-<prefix>.session_token`, Secure, Domain=<value>.
  *   development and test (plain http)
- *     `better-auth.session_token`, not Secure, host-only.
+ *     `better-auth.session_token` or `sakem-student.session_token`, not Secure, host-only.
+ * Better Auth's own default prefix is `better-auth`, so the admin's names are exactly what they were before the
+ * audience existed.
  */
-function cookieSettings(env: Bindings) {
-  if (!isProduction(env)) return { useSecureCookies: false };
+function cookieSettings(env: Bindings, audience: AuthAudience) {
+  if (!isProduction(env)) return { useSecureCookies: false, cookiePrefix: audience.cookiePrefix };
   if (env.COOKIE_DOMAIN) {
-    return { useSecureCookies: true, crossSubDomainCookies: { enabled: true, domain: env.COOKIE_DOMAIN } };
+    return { useSecureCookies: true, cookiePrefix: audience.cookiePrefix, crossSubDomainCookies: { enabled: true, domain: env.COOKIE_DOMAIN } };
   }
   return {
     // Better Auth only knows the __Secure- prefix; the __Host- one is built from the cookie prefix.
     useSecureCookies: false,
-    cookiePrefix: "__Host-better-auth",
+    cookiePrefix: `__Host-${audience.cookiePrefix}`,
     defaultCookieAttributes: { secure: true, httpOnly: true, sameSite: "lax" as const, path: "/" },
   };
 }
@@ -85,7 +115,7 @@ function cookieSettings(env: Bindings) {
  * Ruang Bakat worker). Its cost per request is measured in
  * docs/cloudflare/admin-skeleton.md.
  */
-export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestContext) {
+export function createAuth(env: Bindings, { baseURL, waitUntil, audience = ADMIN_AUDIENCE }: AuthRequestContext) {
   if (!env.BETTER_AUTH_SECRET) {
     // Never fall back to a built-in secret: sessions would be forgeable.
     throw new Error("BETTER_AUTH_SECRET is not set");
@@ -100,14 +130,14 @@ export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestCon
 
   return betterAuth({
     baseURL,
-    basePath: AUTH_BASE_PATH,
+    basePath: audience.basePath,
     secret: env.BETTER_AUTH_SECRET,
     // The request origin is always trusted by Better Auth. These are extra
     // browser origins (e.g. a Vite dev server, or a sibling subdomain).
     trustedOrigins: parseOrigins(env.TRUSTED_ORIGINS),
     // Failed OAuth/verification links land on a SPA route, not Better Auth's
     // built-in error page.
-    onAPIError: { errorURL: AUTH_ERROR_PATH },
+    onAPIError: { errorURL: audience.errorPath },
 
     database: drizzleAdapter(db, {
       provider: "sqlite",
@@ -247,7 +277,7 @@ export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestCon
 
     advanced: {
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
-      ...cookieSettings(env),
+      ...cookieSettings(env, audience),
       backgroundTasks: { handler: waitUntil },
     },
   });
