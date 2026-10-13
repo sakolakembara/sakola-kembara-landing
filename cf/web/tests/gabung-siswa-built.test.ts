@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { isLegacyPath, isPortalOwnedPath } from '~/lib/legacy-paths';
 import { absoluteUrl } from '~/lib/seo';
 import { STATIC_ROUTES } from '~/lib/sitemap';
-import { importRoot, readRoot, webRoot } from './helpers';
+import { graphTypes, importRoot, ldBlocks, liveTitle, readRoot, webRoot } from './helpers';
 
 // Checks on the page `pnpm build` generates for /gabung-siswa (dist/client/gabung-siswa.html) and on
 // the files it must NOT generate (the SSR pages). Skipped, not failed, when dist/ is missing, like
@@ -49,9 +49,9 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('head: lang id, the legacy title, description, canonical, robots, Open Graph and Twitter data', () => {
-    expect(html).toContain('<html lang="id"');
-    expect(decode(html.match(/<title>([^<]*)<\/title>/)![1])).toBe(legacyMeta.title.absolute);
+  it('head: lang id-ID, the legacy title in the live pattern, description, canonical, robots, Open Graph and Twitter data', () => {
+    expect(html).toContain('<html lang="id-ID"');
+    expect(decode(html.match(/<title>([^<]*)<\/title>/)![1])).toBe(liveTitle(legacyMeta.title.absolute));
     expect(meta(html, 'name', 'description')).toBe(legacyMeta.description);
     expect(html.match(/<link rel="canonical" href="([^"]*)"/)?.[1]).toBe(absoluteUrl(legacyMeta.alternates.canonical));
     expect(meta(html, 'name', 'robots')).toBe('index, follow');
@@ -66,8 +66,9 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     expect(meta(html, 'name', 'twitter:description')).toBe(legacyMeta.twitter.description);
   });
 
-  it('no JSON-LD (the legacy page has none), exactly one h1, the hero text', () => {
-    expect(html).not.toContain('application/ld+json');
+  it('no structured data of its own (the legacy page had none): only the site graph; exactly one h1, the hero text', () => {
+    expect(ldBlocks(html)).toHaveLength(1);
+    expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList']);
     const h1 = [...html.matchAll(/<h1[\s>][\s\S]*?<\/h1>/g)];
     expect(h1).toHaveLength(1);
     expect(decode(h1[0][0].replace(/<[^>]+>/g, ''))).toBe('Wujudkan Mimpimu Bersama Sakola Kembara');

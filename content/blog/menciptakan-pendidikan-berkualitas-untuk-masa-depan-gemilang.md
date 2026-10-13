@@ -12,6 +12,13 @@ excerpt: >-
   tidak peduli, maka negara tersebut niscaya akan hancur secara perlahan. ARTI
   sEBUAH pENDIDIKAN Pendidikan merupakan salah satu aspek yang sangat penting
   dalam kehidupan setiap individu dan [&hellip;]
+description: >-
+  Pendidikan adalah pondasi terpenting dalam membangun bangsa, dengan pendidikan
+  yang berkualitas, sebuah bangsa akan maju dan mampu mengembangkan segala
+  potensi yang dimiliki, namun sebaliknya apabila sebuah bangsa atau negara
+  tidak peduli, maka negara tersebut niscaya akan hancur secara perlahan. ARTI
+  sEBUAH pENDIDIKAN Pendidikan merupakan salah satu aspek yang sangat penting
+  dalam kehidupan setiap individu dan
 featured: false
 image: /blog/images/2025/12/UmokCt4xZm.webp
 author: Muttaqin Hidayahtullah

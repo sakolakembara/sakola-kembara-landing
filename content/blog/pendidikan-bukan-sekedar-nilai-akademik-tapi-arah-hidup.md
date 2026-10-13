@@ -12,6 +12,10 @@ excerpt: >-
   pendidikan harus berkontribusi pada pengembangan potensi manusia secara penuh,
   bukan hanya pencapaian akademik. Di Indonesia sendiri, Undang-Undang Nomor 20
   Tahun 2003 tentang Sistem Pendidikan [&hellip;]
+description: >-
+  Aqiela Azhura Pendidikan dan arah hidup saling berkaitan dalam membantu
+  generasi muda menentukan jurusan, mengenali potensi diri, dan merancang masa
+  depan.
 featured: false
 image: /blog/images/2026/03/Mengenal-Talents-Mapping.png
 author: Aqiela Azhura

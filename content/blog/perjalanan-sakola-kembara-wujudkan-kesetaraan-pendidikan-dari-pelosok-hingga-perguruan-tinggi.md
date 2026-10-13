@@ -15,6 +15,9 @@ excerpt: >-
   Kembara, kini pendidikan inklusif itu ada. Pendidikan adalah hak dasar bagi
   setiap anak, tetapi realitanya, garis start bagi anak-anak di Indonesia tidak
   selalu sama. Menyadari adanya jurang yang [&hellip;]
+description: >-
+  Perjalanan Sakola Kembara setiap tahunnya, selalu memberikan perkembangan yang
+  nyata bagi pendidikan inklusif di masa depan.
 featured: false
 image: /blog/images/2026/05/IMG_4189-1-2-scaled.jpg
 author: athalia

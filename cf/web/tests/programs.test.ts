@@ -4,7 +4,7 @@ import { programCards } from '~/lib/site';
 import { PROGRAM_IDS } from '~/lib/sitemap';
 import { SITE_URL, buildSeo, jsonLdScript } from '~/lib/seo';
 import { programSeo, programs } from '~/lib/programs';
-import { importRoot, readRoot, repoRoot } from './helpers';
+import { importRoot, liveTitle, readRoot, repoRoot } from './helpers';
 
 // lib/programs.ts is a port of `programs` in the root lib/data.ts, and programSeo()
 // a port of app/(public)/program/[id]/layout.tsx. Copy and head data must not drift.
@@ -102,8 +102,8 @@ describe('SEO of /program/<id> equals what the legacy layout builds', async () =
     const ours = buildSeo(programSeo(p, image).seo);
     const theirs = rootSeo.buildPageMetadata({ title: `Program ${p.title}`, description: p.description, path: `/program/${id}`, ogImage: image });
 
-    expect(ours.title).toBe(theirs.title.absolute);
-    expect(ours.title).toBe(`Program ${p.title} | Sakola Kembara`);
+    expect(ours.title).toBe(liveTitle(theirs.title.absolute)); // the suffix is the live pattern since SAKEM-090
+    expect(ours.title).toBe(`Program ${p.title} - Yayasan Sakola Kembara Indonesia`);
     expect(ours.description).toBe(theirs.description);
     expect(ours.canonical).toBe(`${SITE_URL}${theirs.alternates.canonical}`);
     expect(ours.og).toMatchObject({

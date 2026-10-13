@@ -12,6 +12,13 @@ excerpt: >-
   anak-anak di Indonesia dalam mendapatkan pendidikan. Gerakan ini sendiri
   beliau bangun dari nol, sampai bisa mendirikan cabang dengan jumlah sebanyak
   8. Tentang Sakola [&hellip;]
+description: >-
+  FX Sudirman - Founder Sakola Kembara kembali menorehkan prestasi gemilang.
+  Rommy, beliau adalah alumni Institut Teknologi Bandung ( ITB ), sekaligus
+  pendiri dari Sakola Kembara yang telah membuat suatu gerakan untuk membantu
+  anak-anak di Indonesia dalam mendapatkan pendidikan. Gerakan ini sendiri
+  beliau bangun dari nol, sampai bisa mendirikan cabang dengan jumlah sebanyak
+  8. Tentang Sakola
 featured: false
 image: /blog/images/2025/12/WhatsApp-Image-2025-12-11-at-23.06.45_878e4bc4.jpg
 author: Muttaqin Hidayahtullah

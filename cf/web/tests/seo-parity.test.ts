@@ -9,7 +9,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import * as core from '../scripts/lib/seo-parity-core.mjs';
 import * as sources from '../scripts/lib/seo-parity-sources.mjs';
 import { HELP, MAIN_PATHS, UsageError, main, parseCli, planRun, readSitemaps, runFromOptions } from '../scripts/seo-parity.mjs';
-import { blogPosts, readRoot, webRoot } from './helpers';
+import { ARTICLE_COUNT, blogPosts, readRoot, webRoot } from './helpers';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'sakem-seo-parity-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -160,6 +160,11 @@ const CASES: Case[] = [
   { path: '/nofollow/', cand: page('/nofollow/', { robots: 'index, nofollow' }), expect: ['nofollow-introduced'], verdict: 'warn' },
   { path: '/title-changed/', live: page('/title-changed/', { title: 'Tim - Sakola Kembara' }), cand: page('/title-changed/', { title: 'Tim Kami | Sakola Kembara' }), expect: ['title-changed'], absent: ['title-suffix-changed'], verdict: 'warn' },
   { path: '/title-entities/', live: page('/title-entities/', { title: 'Beasiswa &amp; Bimbel &#8211; Sakola Kembara' }), cand: page('/title-entities/', { title: 'Beasiswa & Bimbel | Sakola Kembara' }), expect: ['title-suffix-changed'], absent: ['title-changed'], verdict: 'info' },
+  // SAKEM-090: the live WordPress pages end in the foundation's full name; a page without that suffix against the same page with it
+  // is a suffix difference (info), the same suffix on both sides is no difference at all, and a real difference still warns.
+  { path: '/title-legal-name/', live: page('/title-legal-name/', { title: 'Tim Kami' }), cand: page('/title-legal-name/', { title: 'Tim Kami - Yayasan Sakola Kembara Indonesia' }), expect: ['title-suffix-changed'], absent: ['title-changed'], verdict: 'info' },
+  { path: '/title-legal-name-same/', live: page('/title-legal-name-same/', { title: 'Tim Kami - Yayasan Sakola Kembara Indonesia' }), cand: page('/title-legal-name-same/', { title: 'Tim Kami - Yayasan Sakola Kembara Indonesia' }), expect: [], absent: ['title-changed', 'title-suffix-changed'], verdict: 'ok' },
+  { path: '/title-legal-name-other/', live: page('/title-legal-name-other/', { title: 'Pengurus - Yayasan Sakola Kembara Indonesia' }), cand: page('/title-legal-name-other/', { title: 'Tim Kami - Yayasan Sakola Kembara Indonesia' }), expect: ['title-changed'], verdict: 'warn' },
   { path: '/desc-changed/', cand: page('/desc-changed/', { description: 'Lain' }), expect: ['description-changed'], verdict: 'warn' },
   { path: '/desc-missing/', cand: page('/desc-missing/', { description: null }), expect: ['description-missing'], verdict: 'warn' },
   { path: '/desc-added/', live: page('/desc-added/', { description: null }), cand: page('/desc-added/'), expect: ['description-added'], verdict: 'info' },
@@ -866,9 +871,9 @@ describe('the command line refuses what it should refuse', () => {
     expect(code).toBe(0);
     expect(f.calls).toHaveLength(0);
     const plan = JSON.parse(out[0]);
-    expect(plan.sources.articles).toBe(80);
+    expect(plan.sources.articles).toBe(ARTICLE_COUNT);
     expect(plan.sources.main).toBe(MAIN_PATHS.length);
-    expect(plan.urlsBeforeSitemap).toBeGreaterThanOrEqual(80);
+    expect(plan.urlsBeforeSitemap).toBeGreaterThanOrEqual(ARTICLE_COUNT);
     expect(out.at(-1)).toContain('no request was sent');
   });
 
@@ -883,7 +888,7 @@ describe('the command line refuses what it should refuse', () => {
 });
 
 describe('what the run asks the network for', () => {
-  it('only the two bases, GET only, through a fake fetch: a full run with the 80 article URLs', async () => {
+  it('only the two bases, GET only, through a fake fetch: a full run with every article URL', async () => {
     const live = new Set<string>();
     const f = fakeFetch((url) => {
       const u = new URL(url);
@@ -898,7 +903,7 @@ describe('what the run asks the network for', () => {
     expect(f.calls.every((c) => c.init.method === 'GET')).toBe(true);
     expect(f.calls.every((c) => !('cookie' in (c.init.headers as object)) && !('authorization' in (c.init.headers as object)))).toBe(true);
     expect(result.summary.compared).toBeLessThanOrEqual(120);
-    // the article URLs come from the WordPress source URLs of the 80 articles
+    // the article URLs come from the WordPress source URLs of the articles (ARTICLE_COUNT)
     const paths = f.calls.map((c) => new URL(c.url).pathname);
     expect(paths).toContain(new URL(blogPosts().articles[0].sourceUrl).pathname);
     // robots.txt was asked once per side, and it was read before the pages
@@ -938,16 +943,16 @@ describe('what the run asks the network for', () => {
 // ---------------------------------------------------------------- the repository around it
 
 describe('the tool and the repository agree', () => {
-  it('the 80 WordPress article URLs it checks are the ones of lib/blog-posts.json, which redirects.test.ts proves are redirected', () => {
+  it('the WordPress article URLs (80 migrated + 6 imported) it checks are the ones of lib/blog-posts.json, which redirects.test.ts proves are redirected', () => {
     const plan = planRun(parseCli(['--live-dir', 'a', '--candidate-dir', 'b', '--no-main', '--no-wp-ids']) as never);
-    expect(plan.sources.articles).toBe(80);
-    expect(plan.urlsBeforeSitemap).toBe(80);
+    expect(plan.sources.articles).toBe(ARTICLE_COUNT);
+    expect(plan.urlsBeforeSitemap).toBe(ARTICLE_COUNT);
   });
 
-  it('and the 80 WordPress shortlinks /?p=<id>, one per article, are checked too unless --no-wp-ids', () => {
+  it('and the WordPress shortlinks /?p=<id>, one per article, are checked too unless --no-wp-ids', () => {
     const plan = planRun(parseCli(['--live-dir', 'a', '--candidate-dir', 'b', '--no-main', '--no-articles']) as never);
-    expect(plan.sources.wpIds).toBe(80);
-    expect(plan.urlsBeforeSitemap).toBe(80);
+    expect(plan.sources.wpIds).toBe(ARTICLE_COUNT);
+    expect(plan.urlsBeforeSitemap).toBe(ARTICLE_COUNT);
     expect(plan.first[0]).toMatch(/^\/\?p=\d+$/);
     expect(planRun(parseCli(['--live-dir', 'a', '--candidate-dir', 'b', '--no-main', '--no-articles', '--no-wp-ids']) as never).sources.wpIds).toBe(0);
   });

@@ -321,7 +321,8 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
           res,
           200,
           {
-            article: { ...summary, modifiedISO: entry.meta.modifiedISO, contentMarkdown: entry.markdown, contentHtml: entry.html },
+            // `description` as the real API serves it (SAKEM-090): the stored meta description, null when there is none
+            article: { ...summary, modifiedISO: entry.meta.modifiedISO, description: entry.meta.description || null, contentMarkdown: entry.markdown, contentHtml: entry.html },
             related: pickRelated(summary, data.summaries),
           },
           { 'cache-control': READ_CACHE },

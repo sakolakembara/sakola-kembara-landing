@@ -15,6 +15,9 @@ excerpt: >-
   kilometer untuk belajar setiap harinya. Perjalanan sejauh 10 kilometer yang
   harus ditempuh setiap hari tidak membuat Keyza menyerah. Justru perjalanan
   tersebut menjadi [&hellip;]
+description: >-
+  Kisah inspiratif Keyza, siswi asal Lembang yang berjuang menempuh 10 km demi
+  belajar dan mengejar mimpi menjadi dokter bersama Sakola Kembara
 featured: false
 image: /blog/images/2026/03/image-3.jpeg
 author: Nayla Nisreen

@@ -134,6 +134,8 @@ export function createBlogReader({ contentDir, manifestFile }) {
             dateISO: data.dateISO ?? '1970-01-01',
             title: data.title ?? '(untitled)',
             excerpt: data.excerpt ?? '',
+            // The meta description of the WordPress page, when the file has one (SAKEM-090); '' = use the excerpt.
+            description: typeof data.description === 'string' ? data.description.trim() : '',
             featured: Boolean(data.featured),
             image: entry ? assetUrl(image) : image,
             imageWidth: entry?.width ?? null,

@@ -12,6 +12,12 @@ excerpt: >-
   lain. Untuk lebih tahu lengkapnya, mari kita bahas bersama fungsi dan tujuan
   sekolah pada artikel dibawah ini. Sekolah dan Fungsinya Jikalau teman – teman
   [&hellip;]
+description: >-
+  mungkin sudah banyak orang yang mengerti mengenai definisi sekolah, namun
+  jarang orang tahu bahwa sekolah bukan hanya sebatas tempat yang diperuntukan
+  sebagai tempat pembelajaran saja, namun sekolah juga mempunyai banyak fungsi
+  lain. Untuk lebih tahu lengkapnya, mari kita bahas bersama fungsi dan tujuan
+  sekolah pada artikel dibawah ini. Sekolah dan Fungsinya Jikalau teman - teman
 featured: false
 image: /blog/images/2025/12/images-1.jpg
 author: Muttaqin Hidayahtullah

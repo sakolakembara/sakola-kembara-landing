@@ -180,17 +180,18 @@ A slug is the URL (`/blog/<slug>`). Decided: **editable while a draft, locked on
 - **A read-only role** (viewer) gets both parts on **one page** (no tabs: they sit inside the disabled fieldset), every field disabled, no Simpan, no "Terbitkan", no cover buttons, no "Sisipkan Gambar" and no Preview (the route is write-only). Another editor (without `konten`) gets the 403 page and the API answers 403.
 - **Mock** (`pnpm dev:spa:mock`, `?mock=viewer|editor|editor:konten,komunikasi|super_admin|student`): eight articles, the legacy rules, the slug lock, drafts and publish with `If-Match`, and a **stand-in** preview (headings, paragraphs, lists, bold, italic, links, images; escaped) so the screen can be seen without the Worker. The blog uses the generic mock store's `custom` hook for the routes the five of the contract do not cover (see [`admin-crud.md`](admin-crud.md#16-the-mock-build-a-screen-without-a-backend)).
 
-## 9. Import of the 80 migrated articles
+## 9. Import of the 80 migrated articles (and the 6 added on 2026-10-13)
 
-`scripts/import-legacy-blog.ts` reads `content/blog/*.md` at the repo root and writes, per article, one **idempotent upsert by slug**:
+`scripts/import-legacy-blog.ts` reads `content/blog/*.md` at the repo root and writes, per article, one **idempotent upsert by slug**. `content/blog` holds **86 articles**: the 80 of the migration and the 6 the live WordPress site had published since, read from it on 2026-10-13 (SAKEM-090, [`seo-audit.md`](seo-audit.md#parity-fixes-of-2026-10-13-sakem-090)); the script and its tests take them like the others (`ARTICLE_COUNT` in `test/helpers.ts`).
 
+- the front matter `description`, when the file has one, into `blog_posts.meta_description` (SAKEM-090, migration `0012`): the text of the article's WordPress meta description, which the public article answer sends as `description` and the site uses for `<meta name="description">`, `og:description` and the JSON-LD before the excerpt. 85 of the 86 files have one (the live description of `daffa-najwan` is "Manajemen, UGM": not a description, and equal to its excerpt, so it has none). **Deploy order: migration `0012` first** (an additive nullable column), then the API Worker, then this import. The admin form has no field for it yet, so an article written in the admin has none and the site falls back to the excerpt; an editor's save leaves the column alone (tested);
 - the markdown as it is (`content.trim()`), and the HTML rendered with **the same `renderArticle`** the admin uses, with each inline image's size, `srcset` and `@`-safe URL from the public site's image manifest;
 - `status = published`, `published_at` = 00:00 Jakarta of `dateISO`, `updated_at` = 00:00 Jakarta of `modifiedISO`, `featured` as in the file (one article), the cover path as it was with its size from the manifest, the WordPress id and source URL (internal, never exposed);
-- the files' `date` text must equal what `dateISO` gives (all 80 do; the script refuses a file that differs, since the site derives the text from the instant).
+- the files' `date` text must equal what `dateISO` gives (all 86 do; the script refuses a file that differs, since the site derives the text from the instant).
 
 Rows are inserted **oldest first and, within one day, by slug descending**: the public list orders by publication time and then by row order (newest row first), so that reproduces the build's order for articles of one day (slug ascending).
 
-**Idempotent and safe to repeat**: `ON CONFLICT(slug) DO UPDATE ... WHERE updated_by IS NULL AND wp_id IS excluded.wp_id`. A row is rewritten only while it still has the imported WordPress id and **has not been edited in the admin** (every admin save sets `updated_by`); an article an editor changed is never overwritten, and running it again changes nothing. Each statement is **one physical line** (a newline in a text is written with `replace(..., marker, char(10))`, not `||char(10)||`: D1 refuses an expression tree deeper than 100, and an article has hundreds of lines), under D1's 100 KB per statement (the largest is about 21 KB; the whole file is 969,042 characters, 80 lines).
+**Idempotent and safe to repeat**: `ON CONFLICT(slug) DO UPDATE ... WHERE updated_by IS NULL AND wp_id IS excluded.wp_id`. A row is rewritten only while it still has the imported WordPress id and **has not been edited in the admin** (every admin save sets `updated_by`); an article an editor changed is never overwritten, and running it again changes nothing. Each statement is **one physical line** (a newline in a text is written with `replace(..., marker, char(10))`, not `||char(10)||`: D1 refuses an expression tree deeper than 100, and an article has hundreds of lines), under D1's 100 KB per statement (the largest is about 21 KB; the whole file is 1,080,402 characters, 86 lines).
 
 ### Running it locally
 
@@ -198,7 +199,7 @@ Rows are inserted **oldest first and, within one day, by slug descending**: the 
 cd cf/admin
 pnpm install --frozen-lockfile           # and in cf/web: the script reads its image manifest
 pnpm db:migrate:local                    # the local D1 (the one wrangler dev uses)
-pnpm blog:import:local                   # 80 articles; run it again: nothing changes
+pnpm blog:import:local                   # 86 articles; run it again: nothing changes
 pnpm blog:import:local -- --out FILE     # write the SQL only, apply nothing
 ```
 
@@ -209,15 +210,15 @@ The script **refuses `--remote`** and only ever runs `wrangler d1 execute sakem-
 Not done and not scripted to run by itself. When the real database exists (SAKEM-084) and the owner agrees:
 
 1. In `cf/admin`: `pnpm blog:import:local -- --out /tmp/legacy-blog.sql` (the SQL does not depend on the database).
-2. Read the file (80 lines). Confirm the target is the right database and that the migrations are applied there.
+2. Read the file (86 lines). Confirm the target is the right database and that the migrations are applied there.
 3. The owner runs `wrangler d1 execute <database> --remote --file /tmp/legacy-blog.sql` (production: only after staging looked right).
-4. Check: `SELECT count(*) FROM blog_posts` is 80; `GET /api/public/blog` shows 15 on page 1 and the featured article; open two articles with images.
+4. Check: `SELECT count(*) FROM blog_posts` is 86; `GET /api/public/blog` shows 15 on page 1 and the featured article; open two articles with images.
 
 The same file can be applied again after an editor changed some articles: those are left alone.
 
 ### How it is tested
 
-`test/blog-import.test.ts` runs the script's SQL against the real local D1 of the test (through `exec`, which is why a statement must be one line), then compares the **public API through the `PublicApi` entrypoint** with cf/web's **fixture API** (`scripts/fixture-api.mjs`, which generates the 80 articles with the build's own reader and the contract's rules): the index at page sizes 15 and 50 page by page, and the payload of **every one of the 80 articles** with its `related`: titles, slugs, dates, excerpts, covers and sizes, `contentHtml`, `contentMarkdown`. Equal for all 80. It also runs the import again (same rows, same ids), proves an edited article survives it, and opens each of the 80 in the editor API and saves it unchanged.
+`test/blog-import.test.ts` runs the script's SQL against the real local D1 of the test (through `exec`, which is why a statement must be one line), then compares the **public API through the `PublicApi` entrypoint** with cf/web's **fixture API** (`scripts/fixture-api.mjs`, which generates the articles with the build's own reader and the contract's rules): the index at page sizes 15 and 50 page by page, and the payload of **every one of the 86 articles** with its `related`: titles, slugs, dates, excerpts, `description`, covers and sizes, `contentHtml`, `contentMarkdown`. Equal for all 86. It also runs the import again (same rows, same ids), proves an edited article survives it, and opens each of the 86 in the editor API and saves it unchanged. Three more tests cover the description: each file's value is stored (and NULL for the one without), the public answer carries it, and an editor's save does not erase it.
 
 **A finding from that last test:** one article cannot be saved again as it is: **`daffa-najwan`** (a WordPress testimonial) has an excerpt of 14 characters ("Manajemen, UGM"), and the rule since the legacy form is "Excerpt minimal 20 karakter". It was never editable in the legacy admin either. The rule is kept; whoever edits that article lengthens the excerpt first (open decision below). Every other article saves unchanged.
 

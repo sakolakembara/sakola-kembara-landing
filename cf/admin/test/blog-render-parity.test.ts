@@ -1,17 +1,18 @@
 import { describe, expect, inject, it } from "vitest";
 import { imageLookup, legacyEntry, legacyImage, legacyPaths, srcsetOf } from "../src/blog/images";
 import { renderArticle } from "../src/blog/render";
+import { ARTICLE_COUNT } from "./helpers";
 
 // The render pipeline of the Worker against the build plugin of cf/web (docs/cloudflare/admin-blog.md#the-render-pipeline).
 // `inject("blogOracle")` holds what cf/web/plugins/blog-content.mjs rendered from content/blog/*.md (see
-// test/global/blog-oracle.ts). The Worker's `renderArticle` must give the SAME STRING, byte for byte, for all 80:
+// test/global/blog-oracle.ts). The Worker's `renderArticle` must give the SAME STRING, byte for byte, for every article (the 80 migrated and the 6 imported on 2026-10-13):
 // no whitespace normalising, no attribute reordering, nothing.
 
 const oracle = inject("blogOracle");
 
-describe("renderArticle equals the build plugin on the 80 migrated articles", () => {
-  it("has the 80 articles to compare", () => {
-    expect(oracle.articles).toHaveLength(80);
+describe("renderArticle equals the build plugin on every article (80 migrated + 6 imported)", () => {
+  it("has the articles to compare", () => {
+    expect(oracle.articles).toHaveLength(ARTICLE_COUNT);
   });
 
   it("renders every article to exactly the plugin's HTML", () => {

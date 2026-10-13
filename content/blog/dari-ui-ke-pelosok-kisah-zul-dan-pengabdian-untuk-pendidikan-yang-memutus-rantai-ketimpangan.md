@@ -15,6 +15,15 @@ excerpt: >-
   18 tahun ini memutuskan untuk terjun langsung dalam pengabdian untuk
   pendidikan, ia menjadi mentor bagi anak-anak di daerah yang bermimpi menembus
   gerbang perguruan tinggi negeri. Kesadaran [&hellip;]
+description: >-
+  Di tengah hiruk-pikuk kehidupan kampus Universitas Indonesia, seorang
+  mahasiswa Teknik Industri bernama Zul KarZul memilih jalan yang berbeda.
+  Alih-alih hanya fokus pada nilai akademis dan persiapan karir pribadi, pemuda
+  18 tahun ini memutuskan untuk terjun langsung dalam pengabdian untuk
+  pendidikan, ia menjadi mentor bagi anak-anak di daerah yang bermimpi menembus
+  gerbang perguruan tinggi negeri. Kesadaran Dari UI ke pelosok, kisah Zul
+  tentang pengabdian untuk pendidikan yang memutus ketimpangan dan membangkitkan
+  mimpi anak daerah.
 featured: false
 image: /blog/images/2026/02/Foto-Zul-Zul-Karnail.png
 author: Sesilia

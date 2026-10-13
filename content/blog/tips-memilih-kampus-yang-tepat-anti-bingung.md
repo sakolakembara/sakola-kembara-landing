@@ -12,6 +12,9 @@ excerpt: >-
   Pengalaman pertama ini menjadi alasan kebingungan mereka. Kalau saat ini kamu
   sedang merasakan hal yang sama, yuk ikuti tips memilih kampus ini, agar tidak
   bingung [&hellip;]
+description: >-
+  Tips memilih kampus yang tepat sangat dibutuhkan para siswa SMA/SMK. Ikuti
+  tips memilih kampus ini agar tidak bingung setelah lulus!
 featured: false
 image: /blog/images/2026/01/Tips-Memilih-Kampus-yang-Tepat-Anti-Bingung.jpg
 author: Azkia Himayatu Dini

@@ -12,6 +12,9 @@ excerpt: >-
   melainkan realitas yang terjadi secara luas di dunia pendidikan Indonesia.
   Data mengejutkan dari Indonesia Career Center Network (ICCN) menunjukkan bahwa
   sekitar 87% mahasiswa di Indonesia merasa salah [&hellip;]
+description: >-
+  Temukan solusi atasi salah jurusan kuliah dan dapatkan kepastian arah karier
+  impianmu dengan Talents Mapping
 featured: false
 image: >-
   /blog/images/2026/01/Takut-Salah-Jurusan-Ini-Kunci-Rahasia-Temukan-Karier-Impian.jpeg

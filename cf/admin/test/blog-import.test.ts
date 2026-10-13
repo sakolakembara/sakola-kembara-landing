@@ -2,15 +2,15 @@ import { env } from "cloudflare:workers";
 import { describe, expect, inject, test } from "vitest";
 import { sqlText } from "../scripts/import-legacy-blog";
 import { renderArticle } from "../src/blog/render";
-import { call, signedInCookie, uniqueEmail } from "./helpers";
+import { ARTICLE_COUNT, call, signedInCookie, uniqueEmail } from "./helpers";
 import { internalFetch } from "./public-helpers";
 
-// The import of the 80 migrated articles (scripts/import-legacy-blog.ts, docs/cloudflare/admin-blog.md#import-of-the-80-migrated-articles).
+// The import of the migrated articles, 80 + the 6 imported on 2026-10-13 (scripts/import-legacy-blog.ts, docs/cloudflare/admin-blog.md#import-of-the-80-migrated-articles).
 //
 // The SQL the script writes is run against the real local D1 of the test, and then the PUBLIC API (through the
 // `PublicApi` entrypoint, the way the site reaches it) is compared with the answers of cf/web's fixture API for the
 // same articles (`inject("blogOracle")`, test/global/blog-oracle.ts): the index at two page sizes and every article
-// with its `related`, titles, slugs, dates, excerpts, covers, sizes, HTML and markdown, deep-equal, for all 80.
+// with its `related`, titles, slugs, dates, excerpts, covers, sizes, HTML and markdown, deep-equal, for every article.
 
 const oracle = inject("blogOracle");
 
@@ -37,7 +37,7 @@ describe("the SQL of the import", () => {
   const statements = oracle.importSql.trimEnd().split("\n");
 
   test("is one statement per line (what the importers and D1's exec read), each an upsert by slug, under D1's size limit", () => {
-    expect(statements).toHaveLength(80);
+    expect(statements).toHaveLength(ARTICLE_COUNT);
     for (const statement of statements) {
       expect(statement.startsWith("INSERT INTO blog_posts (")).toBe(true);
       expect(statement.endsWith(";")).toBe(true);
@@ -57,10 +57,10 @@ describe("the SQL of the import", () => {
 });
 
 describe("after the import, the public API answers exactly as the fixture API does", () => {
-  test("imports 80 articles, all published", async () => {
+  test("imports every article (80 migrated + 6 imported on 2026-10-13), all published", async () => {
     await runImport();
-    expect(await count()).toBe(80);
-    expect(await env.DB.prepare("SELECT count(*) AS n FROM blog_posts WHERE status = 'published'").first()).toEqual({ n: 80 });
+    expect(await count()).toBe(ARTICLE_COUNT);
+    expect(await env.DB.prepare("SELECT count(*) AS n FROM blog_posts WHERE status = 'published'").first()).toEqual({ n: ARTICLE_COUNT });
     expect(await env.DB.prepare("SELECT count(*) AS n FROM blog_posts WHERE featured = 1").first()).toEqual({ n: 1 });
   });
 
@@ -74,9 +74,9 @@ describe("after the import, the public API answers exactly as the fixture API do
     }
   });
 
-  test("every one of the 80 articles, with its related ones: titles, slugs, dates, cover, HTML, markdown", async () => {
+  test("every article, with its related ones: titles, slugs, dates, cover, HTML, markdown", async () => {
     await runImport();
-    expect(Object.keys(oracle.payloads)).toHaveLength(80);
+    expect(Object.keys(oracle.payloads)).toHaveLength(ARTICLE_COUNT);
     const wrong: string[] = [];
     for (const article of oracle.articles) {
       const live = await publicJson(`/api/public/blog/${article.slug}`);
@@ -103,6 +103,44 @@ describe("after the import, the public API answers exactly as the fixture API do
     expect((await internalFetch("/api/public/blog/tidak-ada")).status).toBe(404);
     await env.DB.prepare("UPDATE blog_posts SET status = 'draft' WHERE slug = ?").bind(oracle.articles[0]!.slug).run();
     expect((await internalFetch(`/api/public/blog/${oracle.articles[0]!.slug}`)).status).toBe(404);
+  });
+});
+
+describe("the meta description (SAKEM-090)", () => {
+  test("each article's front matter `description` is stored, and an article without one stores NULL", async () => {
+    await runImport();
+    const without: string[] = [];
+    for (const article of oracle.articles) {
+      const expected = String(article.meta.description ?? "") || null;
+      if (!expected) without.push(article.slug);
+      const row = await env.DB.prepare("SELECT meta_description AS d FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ d: string | null }>();
+      expect(row!.d, article.slug).toBe(expected);
+    }
+    expect(without).toEqual(["daffa-najwan"]); // its live description was not one ("Manajemen, UGM")
+  });
+
+  test("the public article answer carries it (the fixture answers, deep-equal, are in the test above), and null where there is none", async () => {
+    await runImport();
+    const withOne = oracle.articles.find((a) => a.meta.description)!;
+    const without = oracle.articles.find((a) => !a.meta.description)!;
+    expect(((await publicJson(`/api/public/blog/${withOne.slug}`)) as { article: { description: string } }).article.description).toBe(withOne.meta.description);
+    expect(((await publicJson(`/api/public/blog/${without.slug}`)) as { article: { description: unknown } }).article.description).toBeNull();
+  });
+
+  test("an editor's save in the admin does not erase it (the form has no field for it yet), and a second import does not put the file's back over an edited article", async () => {
+    await runImport();
+    const article = oracle.articles.find((a) => a.meta.description)!;
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
+    const item = (await env.DB.prepare("SELECT id FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ id: string }>())!;
+    const opened = ((await (await call(`/api/admin/blog/${item.id}`, { cookie })).json()) as { item: Record<string, unknown> }).item;
+    const put = await call(`/api/admin/blog/${item.id}`, { method: "PUT", cookie, headers: { "if-match": `"${String(opened.updatedAt)}"` }, json: { ...opened, title: "Judul baru" } });
+    expect(put.status).toBe(200);
+    const description = () => env.DB.prepare("SELECT meta_description AS d FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ d: string | null }>();
+    expect((await description())!.d).toBe(article.meta.description);
+    // an operator who changed the text by hand: the edited article is not touched by another import
+    await env.DB.prepare("UPDATE blog_posts SET meta_description = 'Diubah tangan' WHERE slug = ?").bind(article.slug).run();
+    await runImport();
+    expect((await description())!.d).toBe("Diubah tangan");
   });
 });
 
@@ -138,16 +176,16 @@ describe("running the import again", () => {
     await runImport();
     expect((await env.DB.prepare("SELECT title FROM blog_posts WHERE slug = ?").bind(first!.slug).first<{ title: string }>())!.title).toBe(String(first!.meta.title));
     expect((await env.DB.prepare("SELECT title FROM blog_posts WHERE slug = ?").bind(second!.slug).first<{ title: string }>())!.title).toBe("Judul yang diubah editor");
-    expect(await count()).toBe(80);
+    expect(await count()).toBe(ARTICLE_COUNT);
   });
 });
 
 describe("an imported article opens in the editor and can be saved again", () => {
-  test("every one of the 80, opened and saved with the form's own values, is accepted and changes nothing (one needs a longer excerpt, as it did in the legacy form)", async () => {
+  test("every article, opened and saved with the form's own values, is accepted and changes nothing (one needs a longer excerpt, as it did in the legacy form)", async () => {
     await runImport();
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
     const list = (await (await call("/api/admin/blog?pageSize=100", { cookie })).json()) as { items: { id: string; slug: string }[]; total: number };
-    expect(list.total).toBe(80);
+    expect(list.total).toBe(ARTICLE_COUNT);
 
     const refused: Record<string, unknown> = {};
     const changed: string[] = [];

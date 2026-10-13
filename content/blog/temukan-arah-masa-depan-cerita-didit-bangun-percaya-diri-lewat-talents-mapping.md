@@ -14,6 +14,9 @@ excerpt: >-
   Sakola Kembara, sebelum akhirnya dia menemukan rasa percaya diri melalui
   program kolaborasi Talents Mapping bersama Sakola Kembara sebagai wujud nyata
   misi #PendidikanUntukSemua. [&hellip;]
+description: >-
+  Cerita didit memantapkan hati dan bangun percaya diri dengan mengikuti asesmen
+  Talents Mapping untuk menentukan jurusan kuliah.
 featured: false
 image: >-
   /blog/images/2026/01/Temukan-Arah-Masa-Depan-Cerita-Didit-Bangun-Percaya-Diri-Lewat-Talents-Mapping.jpeg

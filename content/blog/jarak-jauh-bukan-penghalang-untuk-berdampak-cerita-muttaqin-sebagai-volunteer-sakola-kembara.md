@@ -15,6 +15,13 @@ excerpt: >-
   ketika jarak bukan menjadi penghalang untuk berkarya. Banyak hal bisa
   dilakukan dari mana saja, selama ada kemauan dan komitmen. Begitu juga dengan
   cerita Muttaqin [&hellip;]
+description: >-
+  Jarak jauh tidak lagi jadi penghalang untuk Muttaqin Hidayahtullah bisa
+  berdampak pada inklusivitas pendidikan di Indonesia, terutama bagi yang belum
+  merasakan akses pendidikan yang layak. Sahabat Kembara, kita hidup di era
+  ketika jarak bukan menjadi penghalang untuk berkarya. Banyak hal bisa
+  dilakukan dari mana saja, selama ada kemauan dan komitmen. Begitu juga dengan
+  cerita Muttaqin
 featured: false
 image: /blog/images/2025/12/IMG_20241230_152337-scaled.jpg
 author: salwa

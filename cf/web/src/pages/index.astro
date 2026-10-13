@@ -8,7 +8,6 @@ import PartnersSection from '~/components/sections/PartnersSection.astro';
 import ProblemSection from '~/components/sections/ProblemSection.astro';
 import Base from '~/layouts/Base.astro';
 import { getAllArticles } from '~/lib/blog';
-import { organizationJsonLd } from '~/lib/seo';
 import '~/styles/reveal.css';
 
 // Static at build time: served by the Workers assets layer, no Worker invocation.
@@ -19,7 +18,7 @@ export const prerender = true;
 const latestArticles = getAllArticles().slice(0, 3);
 ---
 
-<Base seo={{ kind: 'home' }} jsonLd={[organizationJsonLd()]}>
+<Base seo={{ kind: 'home' }}>
   <main>
     <HeroSection />
     <ProblemSection />

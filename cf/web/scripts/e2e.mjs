@@ -61,6 +61,15 @@ async function check(group, name, fn) {
 
 const text = async (res) => (await res.text());
 const tag = (html, re) => html.match(re)?.[1];
+// The JSON-LD of a page (SAKEM-090): ONE site graph per indexable page (Organization, WebSite, WebPage, usually a
+// BreadcrumbList; an article adds BlogPosting and Person), then a block of its own where a page has one (a program's).
+const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+const graphNodes = (html) => ldBlocks(html)[0]?.['@graph'] ?? [];
+const nodeOf = (html, type) => graphNodes(html).find((n) => [].concat(n['@type']).includes(type));
+const onlySiteGraph = (html) => {
+  assert.equal(ldBlocks(html).length, 1, "only the site graph, no block of the page's own");
+  assert.ok(nodeOf(html, 'WebPage') || nodeOf(html, 'CollectionPage'), 'the graph has the page');
+};
 
 // ---------------------------------------------------------------- pages
 const slugs = articles.map((a) => a.id);
@@ -100,17 +109,29 @@ for (const slug of slugs) {
     const html = await text(res);
     const { article } = await apiJson(`/api/public/blog/${slug}`);
     assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-    assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), `${article.title} | Sakola Kembara`);
+    assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), `${article.title} - Yayasan Sakola Kembara Indonesia`);
     assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), `https://sakolakembara.org/blog/${slug}`);
-    assert.equal(decodeEntities(tag(html, /<meta name="description" content="([^"]*)"/)), article.excerpt);
+    // SAKEM-090: the page's own meta description first (the migrated articles carry the one their WordPress page had), then the excerpt
+    const description = article.description ?? article.excerpt;
+    assert.equal(decodeEntities(tag(html, /<meta name="description" content="([^"]*)"/)), description);
+    assert.equal(decodeEntities(tag(html, /<meta property="og:description" content="([^"]*)"/)), description);
+    assert.equal(decodeEntities(tag(html, /<meta name="twitter:description" content="([^"]*)"/)), description);
     assert.match(tag(html, /<meta property="og:image" content="([^"]*)"/), /^https:\/\/sakolakembara\.org\//);
-    const ld = JSON.parse(tag(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/));
-    assert.equal(ld['@type'], 'Article');
-    assert.equal(ld.headline, article.title);
-    assert.equal(ld.datePublished, article.dateISO);
-    assert.equal(ld.dateModified, article.modifiedISO);
-    assert.equal(ld.mainEntityOfPage, `https://sakolakembara.org/blog/${slug}`);
-    assert.equal(ld.image[0], tag(html, /<meta property="og:image" content="([^"]*)"/));
+    // SAKEM-090: one @graph; the BlogPosting is the live site's type
+    assert.equal(ldBlocks(html).length, 1);
+    const post = nodeOf(html, 'BlogPosting');
+    assert.equal(post.headline, article.title);
+    assert.equal(post.description, description);
+    assert.equal(nodeOf(html, 'WebPage').description, description);
+    assert.equal(post.datePublished, article.dateISO);
+    assert.equal(post.dateModified, article.modifiedISO);
+    assert.equal(post.mainEntityOfPage['@id'], `https://sakolakembara.org/blog/${slug}#webpage`);
+    assert.equal(post.image.url, tag(html, /<meta property="og:image" content="([^"]*)"/));
+    assert.equal(post.inLanguage, 'id-ID');
+    assert.deepEqual(nodeOf(html, 'BreadcrumbList').itemListElement.map((i) => i.name), ['Beranda', 'Blog', article.title]);
+    assert.equal(tag(html, /<meta property="og:type" content="([^"]*)"/), 'article');
+    assert.equal(tag(html, /<meta property="article:published_time" content="([^"]*)"/), article.dateISO);
+    assert.equal(tag(html, /<meta property="article:modified_time" content="([^"]*)"/), article.modifiedISO);
     // the stored HTML is injected as it is (unescaped): the page holds it verbatim
     assert.ok(html.includes(`<div class="blog-content">${article.contentHtml}</div>`), 'contentHtml was changed on the way');
   });
@@ -157,6 +178,18 @@ const other = [
   ['/program', 307, '/program/prapembinaan'],
   ['/cerita/some-slug?utm_source=x', 308, '/blog/some-slug?utm_source=x'],
   ['/blog/page/2?utm_source=x', 308, '/blog?page=2'], // the destination has its own query: the incoming one is dropped
+  // SAKEM-090: the WordPress pages and archives of the live sitemap, with the trailing slash WordPress used and without it.
+  ...[
+    ['/home', '/'], ['/sample-page', '/'], ['/who-we-are', '/tim'], ['/our-partners', '/tim'], ['/contact-us', '/kontak'],
+    ['/donate', '/donasi'], ['/donation-confirmation', '/donasi'], ['/donation-confirmation-2', '/donasi'],
+    ['/donation-failed', '/donasi'], ['/donation-failed-2', '/donasi'], ['/donor-dashboard', '/donasi'],
+    ['/donor-dashboard-2', '/donasi'], ['/work-with-us', '/gabung-siswa'],
+  ].flatMap(([from, to]) => [[from, 308, to], [`${from}/`, 308, to]]),
+  ...['/category/cerita', '/category/kiat-kiat', '/category/news', '/category/education', '/category/tips', '/category/testimonials', '/category/career',
+    '/tag/ekonomi', '/tag/sakola-kembara', '/tag/snbt', '/tag/pendidkan'].flatMap((from) => [[from, 308, '/blog'], [`${from}/`, 308, '/blog']]),
+  ['/category/news/feed/', 308, '/blog'], ['/tag/ekonomi/page/2/', 308, '/blog'], ['/tag/ekonomi/?utm_source=ig', 308, '/blog?utm_source=ig'],
+  ['/donate/?utm_source=ig', 308, '/donasi?utm_source=ig'],
+  ['/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif', 308, '/blog/perjalanan-seorang-founder'],
 ];
 for (const [from, status, to] of other) {
   await check('redirects', `${from} -> ${to} (${status})`, async () => {
@@ -167,6 +200,29 @@ for (const [from, status, to] of other) {
     assert.equal(stubHits().length, 0);
   });
 }
+await check('redirects', 'SAKEM-090: every WordPress page and archive of the live sitemap reaches a 200 in exactly one permanent hop, no loop (the real server, hop by hop)', async () => {
+  const sources = [
+    '/home/', '/sample-page/', '/who-we-are/', '/our-partners/', '/contact-us/', '/donate/', '/donation-confirmation/', '/donation-confirmation-2/',
+    '/donation-failed/', '/donation-failed-2/', '/donor-dashboard/', '/donor-dashboard-2/', '/work-with-us/', '/tentang-kami/',
+    '/category/news/', '/category/cerita/', '/tag/ekonomi/', '/tag/sakola-kembara/',
+  ];
+  for (const from of sources) {
+    let at = from;
+    const trail = [at];
+    for (let hop = 0; hop < 10; hop++) {
+      const res = await get(at);
+      if (res.status === 200) break;
+      assert.equal(res.status, 308, `${trail.join(' -> ')}: ${res.status}`);
+      at = res.headers.get('location');
+      assert.ok(!trail.includes(at), `redirect loop: ${trail.join(' -> ')} -> ${at}`);
+      trail.push(at);
+    }
+    const last = await get(at);
+    assert.equal(last.status, 200, `${from} ends on ${at}, which answers ${last.status}`);
+    // /tentang-kami is itself a rule (to /tim), so it is one hop; every other source is one hop as well
+    assert.equal(trail.length, 2, `${from}: ${trail.join(' -> ')}`);
+  }
+});
 await check('redirects', 'middleware table agrees with the served redirects (every rule, one sample each)', async () => {
   for (const pattern of Object.keys(REDIRECTS)) {
     const sample = pattern.replace(/\[\.\.\.(\w+)\]/g, 'a/b').replace(/\[(\w+)\]/g, 'x');
@@ -186,6 +242,21 @@ for (const [from, to] of [['/tim/', '/tim'], ['/blog/', '/blog'], ['/blog/?page=
     assert.equal(res.status, 308);
     assert.equal(res.headers.get('location'), to);
     assert.equal(stubHits().length, 0);
+  });
+}
+// F-03 of the cutover runbook: the assets layer answers a trailing-slash request for a PRERENDERED page with its own 307; since
+// SAKEM-090 `_redirects` carries `/<page>/  /<page>  308` for each, and (here, in the local emulation of the layer) it wins.
+for (const page of ['/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan']) {
+  await check('canonical-url', `${page}/ -> 308 ${page} (not the layer's 307), the query kept, no Worker request to the origin; ${page} itself is a 200`, async () => {
+    clearStub();
+    const res = await get(`${page}/`);
+    assert.equal(res.status, 308);
+    assert.equal(res.headers.get('location'), page);
+    const withQuery = await get(`${page}/?utm_source=ig`);
+    assert.equal(withQuery.status, 308);
+    assert.equal(withQuery.headers.get('location'), `${page}?utm_source=ig`);
+    assert.equal(stubHits().length, 0);
+    assert.equal((await get(page)).status, 200);
   });
 }
 await check('canonical-url', 'a legacy path with a trailing slash is not touched: the origin decides (Next redirects it itself)', async () => {
@@ -541,12 +612,14 @@ for (const id of PROGRAM_IDS) {
     assert.equal(stubHits().length, 0, 'must not reach the origin');
     const html = await text(res);
     assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-    assert.match(tag(html, /<title>([^<]*)<\/title>/), /^Program .+ \| Sakola Kembara$/);
+    assert.match(tag(html, /<title>([^<]*)<\/title>/), /^Program .+ - Yayasan Sakola Kembara Indonesia$/);
     assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), `https://sakolakembara.org/program/${id}`);
     assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), `https://sakolakembara.org/program/${id}`);
     assert.match(html, /<meta name="robots" content="index, follow">/);
     assert.match(tag(html, /<meta property="og:image" content="([^"]*)"/), /^https:\/\/sakolakembara\.org\/_astro\/.+\.jpe?g$/);
-    const ld = JSON.parse(tag(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/));
+    assert.equal(ldBlocks(html).length, 2, 'the site graph, then the program block');
+    assert.ok(nodeOf(html, 'WebPage') && nodeOf(html, 'BreadcrumbList'));
+    const ld = ldBlocks(html)[1];
     assert.equal(ld['@type'], 'EducationalOccupationalProgram');
     assert.equal(ld.url, `https://sakolakembara.org/program/${id}`);
     assert.match(html, /aria-current="page"/);
@@ -593,11 +666,11 @@ for (const p of ['/program/unknown', '/program/PRAPEMBINAAN', '/program/prapembi
     assert.equal(stubHits().length, 0);
   });
 }
-await check('program', 'one URL per stage: the assets layer redirects /program/<id>.html and /program/<id>/ to /program/<id> (307)', async () => {
-  for (const [from, to] of [['/program/prapembinaan.html', '/program/prapembinaan'], ['/program/pembinaan/', '/program/pembinaan']]) {
+await check('program', 'one URL per stage: /program/<id>.html is redirected by the assets layer (its own 307, nothing links to it), /program/<id>/ by `_redirects` with a 308 (SAKEM-090)', async () => {
+  for (const [from, to, status] of [['/program/prapembinaan.html', '/program/prapembinaan', 307], ['/program/pembinaan/', '/program/pembinaan', 308]]) {
     clearStub();
     const res = await get(from);
-    assert.equal(res.status, 307, from);
+    assert.equal(res.status, status, from);
     assert.equal(res.headers.get('location'), to, from);
     assert.equal(stubHits().length, 0);
   }
@@ -624,10 +697,10 @@ await check('donasi', '/donasi: 200 html from the assets layer, one h1, SEO tags
   assert.equal(stubHits().length, 0, 'must not reach the origin');
   const html = await text(res);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.match(html, /<title>Donasi \| Sakola Kembara<\/title>/);
+  assert.match(html, /<title>Donasi - Yayasan Sakola Kembara Indonesia<\/title>/);
   assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/donasi');
   assert.match(html, /<meta name="description" content="Dukung pendidikan setara untuk anak Indonesia\./);
-  assert.ok(!html.includes('application/ld+json'));
+  onlySiteGraph(html);
   assert.match(html, /Bank Muamalat/);
   assert.match(html, /1010 141 940/);
   assert.match(html, /data-copy-account="1010141940"/);
@@ -781,7 +854,7 @@ await check('reports', '/laporan: SSR 200 from the API, one h1, years newest fir
   assert.ok(t.includes('Komitmen kami untuk transparansi.'));
   assert.ok(t.includes('Punya pertanyaan tentang laporan kami?'));
   assert.ok(html.includes('href="/kontak"'));
-  assert.ok(!html.includes('application/ld+json'));
+  onlySiteGraph(html);
 });
 await check('reports', '/laporan: a second request inside the fresh window comes from caches.default (the API is not asked again)', async () => {
   const before = (await fixtureStats()).byEndpoint.reports;
@@ -812,7 +885,7 @@ await check('resources', '/gabung-siswa/docs: SSR 200, five categories in order,
   assert.deepEqual([...at].sort((a, b) => a - b), at, 'sections out of order');
   const counts = order.map((_, i) => (html.slice(at[i], at[i + 1] ?? html.length).match(/<article\b/g) ?? []).length);
   assert.deepEqual(counts, order.map((id) => SAMPLE_RESOURCES.filter((r) => r.category === id).length));
-  assert.ok(!html.includes('application/ld+json'));
+  onlySiteGraph(html);
   const t = mainText(html);
   assert.ok(t.includes('Panduan lengkap, poin-poin penting, dan alur pendaftaran Sakola Kembara.'));
   assert.ok(t.includes('Dokumen tambahan yang tidak masuk kategori di atas.'));
@@ -917,10 +990,10 @@ await check('gabung-siswa', '/gabung-siswa: 200 html from the assets layer, one 
   assert.equal(stubHits().length, 0, 'must not reach the origin');
   const html = await text(res);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.match(html, /<title>Daftar Siswa \| Sakola Kembara<\/title>/);
+  assert.match(html, /<title>Daftar Siswa - Yayasan Sakola Kembara Indonesia<\/title>/);
   assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/gabung-siswa');
   assert.match(html, /<meta name="description" content="Daftarkan diri sebagai siswa Sakola Kembara\./);
-  assert.ok(!html.includes('application/ld+json'));
+  onlySiteGraph(html);
   const t = mainText(html);
   for (const phrase of ['Open Recruitment Gen 6', 'Wujudkan Mimpimu Bersama Sakola Kembara', 'Manfaat Bergabung dengan Sakola Kembara', 'Alur Pendaftaran', 'Siap Bergabung dengan Sakola Kembara?', 'Pusat Dokumen']) {
     assert.ok(t.includes(phrase), phrase);
@@ -1077,19 +1150,21 @@ await check('gabung-siswa', 'the Worker logged no error while serving /laporan, 
 
 // ---------------------------------------------------------------- SEO in served HTML
 const SEO_PAGES = [
-  { path: '/', title: 'Sakola Kembara - Pendidikan Untuk Semua', canonical: 'https://sakolakembara.org/', ld: 'NGO' },
-  { path: '/blog', title: 'Blog &amp; Cerita | Sakola Kembara', canonical: 'https://sakolakembara.org/blog' },
-  { path: '/tim', title: 'Tim Kami | Sakola Kembara', canonical: 'https://sakolakembara.org/tim' },
-  { path: '/laporan', title: 'Laporan | Sakola Kembara', canonical: 'https://sakolakembara.org/laporan' },
-  { path: '/gabung-siswa', title: 'Daftar Siswa | Sakola Kembara', canonical: 'https://sakolakembara.org/gabung-siswa' },
-  { path: '/gabung-siswa/docs', title: 'Pusat Dokumen &amp; Berkas | Sakola Kembara', canonical: 'https://sakolakembara.org/gabung-siswa/docs' },
-  { path: `/blog/${slugs[0]}`, title: ` | Sakola Kembara`, canonical: `https://sakolakembara.org/blog/${slugs[0]}`, ld: 'Article' },
+  // The suffix is the live WordPress pattern (SAKEM-090); the home title has the live site's comma.
+  { path: '/', title: 'Sakola Kembara, Pendidikan Untuk Semua', exact: true, canonical: 'https://sakolakembara.org/', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage'] },
+  { path: '/blog', title: 'Blog &amp; Cerita - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/blog', graph: ['NGO+EducationalOrganization', 'WebSite', 'CollectionPage', 'BreadcrumbList'] },
+  { path: '/tim', title: 'Tim Kami - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/tim', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
+  { path: '/laporan', title: 'Laporan - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/laporan', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
+  { path: '/gabung-siswa', title: 'Daftar Siswa - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/gabung-siswa', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
+  { path: '/gabung-siswa/docs', title: 'Pusat Dokumen &amp; Berkas - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/gabung-siswa/docs', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
+  { path: `/blog/${slugs[0]}`, title: ` - Yayasan Sakola Kembara Indonesia`, canonical: `https://sakolakembara.org/blog/${slugs[0]}`, graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList', 'BlogPosting', 'Person'] },
 ];
 for (const page of SEO_PAGES) {
-  await check('seo', `${page.path}: lang, title, canonical, og, twitter, robots${page.ld ? ', JSON-LD ' + page.ld : ''}`, async () => {
+  await check('seo', `${page.path}: lang, title, canonical, og, twitter, robots, the JSON-LD graph (${page.graph.join(', ')})`, async () => {
     const html = await text(await get(page.path));
-    assert.match(html, /<html lang="id"/);
-    assert.ok(html.includes(`<title>`) && tag(html, /<title>([^<]*)<\/title>/).endsWith(page.title.replace(/^ /, '')), `title: ${tag(html, /<title>([^<]*)<\/title>/)}`);
+    assert.match(html, /<html lang="id-ID"/);
+    const title = tag(html, /<title>([^<]*)<\/title>/);
+    assert.ok(page.exact ? title === page.title : title.endsWith(page.title.replace(/^ /, '')), `title: ${title}`);
     assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), page.canonical);
     assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), page.canonical);
     assert.match(html, /<meta property="og:site_name" content="Sakola Kembara">/);
@@ -1098,17 +1173,36 @@ for (const page of SEO_PAGES) {
     assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
     assert.match(html, /<meta name="robots" content="index, follow">/);
     assert.match(html, /<meta name="description" content="[^"]{20,}/);
-    if (page.ld) assert.ok(html.includes(`"${page.ld === 'NGO' ? '@type":["NGO"' : '@type":"Article"'}`), 'json-ld');
+    assert.deepEqual(graphNodes(html).map((n) => [].concat(n['@type']).join('+')), page.graph);
+    assert.equal(ldBlocks(html).length, 1);
   });
 }
-await check('seo', 'article JSON-LD parses and carries real dates', async () => {
+await check('seo', 'article JSON-LD parses and carries real dates, the author as a Person, the organization as publisher; every reference resolves', async () => {
   const a = articles[0];
   const html = await text(await get(`/blog/${a.id}`));
-  const ld = JSON.parse(tag(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/));
-  assert.equal(ld['@type'], 'Article');
-  assert.equal(ld.datePublished, a.dateISO);
-  assert.equal(ld.mainEntityOfPage, `https://sakolakembara.org/blog/${a.id}`);
-  assert.equal(ld.inLanguage, 'id-ID');
+  const post = nodeOf(html, 'BlogPosting');
+  assert.equal(post.datePublished, a.dateISO);
+  assert.equal(post.mainEntityOfPage['@id'], `https://sakolakembara.org/blog/${a.id}#webpage`);
+  assert.equal(post.inLanguage, 'id-ID');
+  assert.equal(post.publisher['@id'], 'https://sakolakembara.org/#organization');
+  assert.equal(nodeOf(html, 'Person')['@id'], post.author['@id']);
+  assert.equal(nodeOf(html, 'WebSite').inLanguage, 'id-ID');
+  // every reference ({"@id": ...} alone) points at a node that is defined in the graph (at the top or nested)
+  const defined = new Set();
+  const refs = [];
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (v && typeof v === 'object') {
+      if (typeof v['@id'] === 'string') {
+        if (Object.keys(v).length === 1) refs.push(v['@id']);
+        else defined.add(v['@id']);
+      }
+      Object.values(v).forEach(walk);
+    }
+  };
+  graphNodes(html).forEach(walk);
+  assert.ok(refs.length > 0);
+  for (const ref of refs) assert.ok(defined.has(ref), `${ref} is not defined in the graph`);
 });
 await check('seo', 'skip link is the first focusable element and #konten-utama exists', async () => {
   const html = await text(await get('/'));
@@ -1119,14 +1213,22 @@ await check('seo', 'robots.txt: the rules of the Next app, plus /portal (the stu
   const body = await text(await get('/robots.txt'));
   assert.equal(body, 'User-Agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nDisallow: /login\nDisallow: /portal\n\nHost: https://sakolakembara.org\nSitemap: https://sakolakembara.org/sitemap.xml\n');
 });
-await check('seo', 'sitemap.xml: 80 articles with real lastmod, static routes without lastmod', async () => {
+// The articles: the 80 migrated + the 6 imported on 2026-10-13 (SAKEM-090). Counted from lib/blog-posts.json (the sync of
+// content/blog) and pinned here, so that an article added without its redirect, sitemap entry and checks fails loudly.
+const ARTICLE_COUNT = 86;
+await check('seo', `lib/blog-posts.json lists the ${ARTICLE_COUNT} articles of content/blog, the fixture API serves all of them`, async () => {
+  assert.equal(articles.length, ARTICLE_COUNT);
+  const list = await apiJson('/api/public/blog?page=1&pageSize=50');
+  assert.equal(list.total + 1, ARTICLE_COUNT, 'the list counts the articles without the featured one');
+});
+await check('seo', 'sitemap.xml: every article with real lastmod, static routes without lastmod', async () => {
   const res = await get('/sitemap.xml');
   assert.match(res.headers.get('content-type'), /xml/);
   const xml = await text(res);
   const urls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
-  assert.equal(urls.length, 7 + 3 + 80);
+  assert.equal(urls.length, 7 + 3 + ARTICLE_COUNT);
   const blogUrls = urls.filter((u) => /<loc>https:\/\/sakolakembara\.org\/blog\/[^<]+<\/loc>/.test(u));
-  assert.equal(blogUrls.length, 80);
+  assert.equal(blogUrls.length, ARTICLE_COUNT);
   for (const u of blogUrls) assert.match(u, /<lastmod>\d{4}-\d{2}-\d{2}/);
   const staticUrls = urls.filter((u) => !/\/blog\/[^<]+<\/loc>/.test(u));
   assert.equal(staticUrls.length, 10);
@@ -1349,7 +1451,7 @@ await check('home', "the news covers are the blog's own /blog/images files (the 
 
 // ---------------------------------------------------------------- blog from the content API (SAKEM-080, part E)
 // The articles and the list are rendered by the Worker from GET /api/public/blog and /blog/<slug> (the fixture server),
-// through caches.default with stale-if-error. The per-article SEO checks for all 80 are in the "articles" group above.
+// through caches.default with stale-if-error. The per-article SEO checks for every article are in the "articles" group above.
 const blogRequests = async (f = fixtureBase) => (await (await fetch(`${f}/__requests?for=blog`)).json());
 const blogHits = async (f = fixtureBase) => (await (await fetch(`${f}/__hits`)).json()).byEndpoint.blog;
 const setFixtureMode = (f, group, m) => fetch(`${f}/__mode?for=${group}&m=${m}`, { method: 'POST' });
@@ -1489,7 +1591,7 @@ await check('blog', 'API down on a cold cache: /blog, an article and the sitemap
       assert.match(res.headers.get('content-type'), /text\/html/);
       const html = await res.text();
       assert.match(html, /Artikel belum dapat dimuat saat ini\. Silakan coba lagi beberapa saat lagi\./);
-      assert.match(html, /<html lang="id"/);
+      assert.match(html, /<html lang="id-ID"/);
       assert.match(html, />Coba Lagi</);
       assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
     }
@@ -1555,12 +1657,12 @@ await check('contact', 'GET /kontak: 200 html from the Worker, one h1, SEO tags,
   const html = await text(res);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.match(html, />Mari Bergerak Bersama</);
-  assert.match(html, /<title>Kontak \| Sakola Kembara<\/title>/);
+  assert.match(html, /<title>Kontak - Yayasan Sakola Kembara Indonesia<\/title>/);
   assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/kontak');
   assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), 'https://sakolakembara.org/kontak');
   assert.match(html, /<meta name="description" content="Hubungi tim Sakola Kembara untuk pertanyaan, kerjasama, atau peluang relawan\. Berbasis di Bandung, melayani siswa di seluruh Indonesia\.">/);
   assert.match(html, /<meta name="robots" content="index, follow">/);
-  assert.ok(!html.includes('application/ld+json'));
+  onlySiteGraph(html);
   // the form: a real POST, every field with its label, the honeypot, no native validation
   assert.match(html, /<form id="kontak-form" method="post" action="\/kontak" class="space-y-5" novalidate>/);
   for (const [id, name] of [['fullName', 'Nama Lengkap'], ['email', 'Email'], ['subject', 'Subjek'], ['message', 'Pesan']]) {
@@ -1856,7 +1958,7 @@ await check('turnstile', 'GET /kontak: the slot with the site key (from the Work
   const at = (s) => html.indexOf(s);
   assert.ok(at('name="message"') < at('data-turnstile ') && at('data-turnstile ') < at('type="submit"') && at('type="submit"') < at('</form>'));
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  assert.match(html, /<title>Kontak \| Sakola Kembara<\/title>/, 'the SEO tags are unchanged');
+  assert.match(html, /<title>Kontak - Yayasan Sakola Kembara Indonesia<\/title>/, 'the SEO tags are unchanged');
   assert.equal(res.headers.get('x-frame-options'), 'DENY');
   // size of the widget's script (the one this change added to the page), for the report
   const widget = inlineScripts(html).find((c) => c.includes('data-turnstile'));

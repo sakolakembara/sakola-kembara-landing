@@ -12,6 +12,9 @@ excerpt: >-
   jenjang yang perlu dilalui. Untuk bisa sampai pada tingkat Sarjana, kamu tentu
   harus melewati jenjang SD, SMP, dan SMA. Tiap jenjang memiliki pengalaman dan
   [&hellip;]
+description: >-
+  Perubahan terbesar Jeje di bidang pendidikan bisa menggugah siswa lainnya
+  untuk mengikuti jejaknya. Yuk, simak cerita lengkapnya!
 featured: false
 image: /blog/images/2026/02/image.png
 author: Azkia Himayatu Dini

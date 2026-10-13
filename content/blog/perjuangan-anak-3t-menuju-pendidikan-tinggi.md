@@ -12,6 +12,9 @@ excerpt: >-
   merasakan langsung keterbatasan pendidikan di wilayah yang jauh dari pusat
   sumber daya. Sejak kecil, ia melihat banyak teman sebaya yang cerdas,
   [&hellip;]
+description: >-
+  Aqiela Azhura Kisah Nur Ainah, anak daerah 3T dari Berau, yang sukses meraih
+  beasiswa dan kini menjadi mentor untuk pemerataan akses pendidikan.
 featured: false
 image: /blog/images/2026/02/Nur-Ainah-Foto-Nur-Ainah.jpeg
 author: Aqiela Azhura

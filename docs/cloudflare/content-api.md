@@ -213,6 +213,7 @@ Exactly one of `filePath` (with `fileSize`), `externalUrl`, `bodyText` is set, m
     "date": "21 Mei 2026",
     "dateISO": "2026-05-21",
     "modifiedISO": "2026-05-21",
+    "description": "Ahdan sebagai pengajar matematika membantu murid percaya diri masuk perguruan tinggi.",
     "excerpt": "...",
     "image": "/blog/images/2026/05/IMG-20260102-WA0069-scaled.jpg",
     "imageWidth": 2560,
@@ -229,6 +230,7 @@ Exactly one of `filePath` (with `fileSize`), `externalUrl`, `bodyText` is set, m
 ```
 
 - **[L]** `image` is the hero image; `modifiedISO` and `author` feed the page's Article JSON-LD (`dateModified`, `author`).
+- **[N] `description`** (SAKEM-090, article answer only, not in list entries): the text for `<meta name="description">`, `og:description`, `twitter:description` and the JSON-LD description, when it is not the excerpt; **`null` when none is set** and the consumer then uses `excerpt`. The 80 migrated articles and the 6 imported on 2026-10-13 carry the description their WordPress page had (it is the text search results show today); an article written in the admin has none until the form gets a field for it. Column `blog_posts.meta_description` (migration `0012`), never rendered or cleaned on read, an empty string is `null`.
 - **[N] `related` holds summaries, not bare slugs.** Up to 3, never the article itself, each with the same fields as a list entry (so it carries its `slug`), which saves the consumer a request per card. **[L]** The rule: a candidate is related when it has the same category **or** is dated within 180 days of the article; take the first three in newest-first order; if none qualify, the three newest others. This is also `getRelated` in `cf/web/src/lib/blog.ts`; keep one implementation.
 
 **`contentHtml`: rendered at save time, stored, never rendered on read.** [N] The new admin renders the markdown to HTML **when an article is saved** and stores the result in D1 next to the markdown. The read path only returns it. Reason: Workers Free allows 10 ms CPU per request, and rendering on every read would spend it. Consequences:

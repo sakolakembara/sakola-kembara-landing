@@ -23,6 +23,7 @@
     "test:negative:shortlink": "node scripts/negative-checks-shortlink.mjs",
     "seo:parity": "node scripts/seo-parity.mjs",
     "seo:parity:local": "node scripts/seo-parity-local.mjs",
+    "serve:candidate": "node scripts/serve-candidate.mjs",
     "measure": "node scripts/measure.mjs",
     "measure:staging": "node scripts/measure-staging.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",

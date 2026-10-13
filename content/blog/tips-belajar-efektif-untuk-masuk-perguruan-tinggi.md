@@ -12,6 +12,10 @@ excerpt: >-
   juga mahasiswa, pekerja kantoran, maupun masyarakat yang perlu belajar dalam
   melakukan sesuatu, misalnya beberapa tes hingga persiapan masuk perguruan
   tinggi negeri. Strategi [&hellip;]
+description: >-
+  Menghadapi persiapan ujian masuk perguruan tinggi mempunyai penerapan dalam
+  strategi mental dan pengolahan waktu belajar yang berbeda dari penyesuaian
+  siswa.
 featured: false
 image: /blog/images/2025/12/2147666824.jpg
 author: Deanita

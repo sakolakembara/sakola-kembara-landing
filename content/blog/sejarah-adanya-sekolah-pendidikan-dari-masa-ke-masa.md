@@ -12,6 +12,9 @@ excerpt: >-
   secara sederhana dan alami. Pada masa prasejarah, pengetahuan diwariskan
   melalui keluarga dan komunitas. Orang tua mengajarkan anak-anaknya cara
   berburu, bertani, bertahan hidup, serta nilai-nilai adat dan [&hellip;]
+description: >-
+  Sekolah merupakan salah satu institusi terpenting dalam kehidupan manusia. Kuy
+  simak artikel berikut untuk mengetahui seluk-beluk adanya sekolah di dunia.
 featured: false
 image: /blog/images/2025/11/Untitled-design-2-1.png
 author: Muttaqin Hidayahtullah

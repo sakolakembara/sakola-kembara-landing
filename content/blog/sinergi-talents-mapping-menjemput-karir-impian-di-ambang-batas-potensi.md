@@ -12,6 +12,13 @@ excerpt: >-
   berkolaborasi dengan Pathfinder melalui program pengenalan potensi bernama
   Talents Mapping untuk mewujudkan karir impian siswa. Kolaborasi ini berangkat
   dari kebutuhan mendalam untuk tidak hanya fokus pada [&hellip;]
+description: >-
+  24 November 2025 - Sakola Kembara, yayasan pendidikan nonformal yang memiliki
+  komitmen memberikan kesempatan pendidikan setara bagi seluruh anak Indonesia,
+  kembali melakukan inovasi terbaru. Kali ini, Sakola Kembara resmi
+  berkolaborasi dengan Pathfinder melalui program pengenalan potensi bernama
+  Talents Mapping untuk mewujudkan karir impian siswa. Kolaborasi ini berangkat
+  dari kebutuhan mendalam untuk tidak hanya fokus pada
 featured: false
 image: /blog/images/2025/12/WhatsApp-Image-2025-12-06-at-10.42.23_e63bda08.jpg
 author: athalia

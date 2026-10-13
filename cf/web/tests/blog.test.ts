@@ -2,17 +2,56 @@ import { existsSync, readdirSync } from 'node:fs';
 import { bodies } from 'virtual:blog-bodies';
 import { describe, expect, it } from 'vitest';
 import { PAGE_SIZE, cleanExcerpt, getAllArticles, getArticleBySlug, getBlogPage, getRelated, pageNumbers } from '~/lib/blog';
-import { blogPosts, importRoot, repoRoot } from './helpers';
+import { ARTICLE_COUNT, IMPORTED_2026_10_13, blogPosts, importRoot, repoRoot } from './helpers';
 
 const articles = getAllArticles();
 
 describe('blog content (virtual modules built from the root content/blog)', () => {
-  it('has the 80 articles of lib/blog-posts.json and nothing else (README.md is not an article)', () => {
+  it('has the articles of lib/blog-posts.json and nothing else (README.md is not an article): 80 migrated + 6 imported on 2026-10-13', () => {
     const files = readdirSync(`${repoRoot}content/blog`).filter((f) => f.endsWith('.md'));
-    expect(files).toHaveLength(81); // 80 articles + README.md
-    expect(articles).toHaveLength(80);
+    expect(files).toHaveLength(ARTICLE_COUNT + 1); // the articles + README.md
+    expect(articles).toHaveLength(ARTICLE_COUNT);
     expect(articles.map((a) => a.id).sort()).toEqual(blogPosts().articles.map((a) => a.id).sort());
-    expect(new Set(articles.map((a) => a.id)).size).toBe(80);
+    expect(new Set(articles.map((a) => a.id)).size).toBe(ARTICLE_COUNT);
+    expect(blogPosts().meta.total).toBe(ARTICLE_COUNT);
+  });
+
+  it('the 6 articles imported on 2026-10-13 are all there, unfeatured, with the front matter shape of the first 80', () => {
+    for (const slug of IMPORTED_2026_10_13) {
+      const a = articles.find((x) => x.id === slug)!;
+      expect(a, slug).toBeDefined();
+      expect(a.featured, slug).toBe(false);
+      expect(a.wpId, slug).toBeGreaterThan(5000);
+      expect(a.sourceUrl, slug).toMatch(new RegExp(`^https://sakolakembara\\.org/(news|cerita|tips|education|testimonials|career|kiat-kiat)/${slug}/$`));
+      expect(a.image, slug).toMatch(/^\/blog\/images\/2026\/\d\d\/\S+\.(jpe?g|png)$/);
+      expect(a.date, slug).toMatch(/^\d{1,2} (Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember) 2026$/);
+      expect(a.dateISO, slug).toMatch(/^2026-\d\d-\d\d$/);
+      expect(a.author.length, slug).toBeGreaterThan(2);
+    }
+    // the featured article of the index did not change: only the newest flagged one is featured, and none of the 6 is
+    expect(articles.filter((a) => a.featured).map((a) => a.id)).toEqual(['tanpa-jasa-ahdan-mewujudkan-murid-masuk-perguruan-tinggi']);
+  });
+
+  // SAKEM-090: the meta description of each WordPress page, set from the recorded live pages of 2026-10-13 (front matter
+  // `description`; the site uses it before the excerpt). One live description is not a description.
+  const WITHOUT_DESCRIPTION = ['daffa-najwan']; // the live page says "Manajemen, UGM" (14 characters): the excerpt stays in use
+  it('every article carries a description, except the one whose live description was not one; it is clean text', () => {
+    expect(articles.filter((a) => !a.description).map((a) => a.id)).toEqual(WITHOUT_DESCRIPTION);
+    for (const a of articles.filter((x) => x.description)) {
+      expect(a.description, a.id).toBe(a.description.trim());
+      expect(a.description.length, a.id).toBeGreaterThanOrEqual(50);
+      expect(a.description.length, a.id).toBeLessThanOrEqual(600);
+      expect(a.description, a.id).not.toMatch(/\s{2,}/); // one line of single spaces
+      expect(a.description, a.id).not.toMatch(/#(?:post|site|separator|page)_\w+/); // an SEO-plugin variable that never resolved
+      expect(a.description, a.id).not.toMatch(/&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i); // entities were decoded
+      expect(a.description, a.id).not.toMatch(/\[&?hellip;?\]/); // not the WordPress excerpt trailer
+    }
+  });
+
+  it('a description is not the title and not a stored copy of the excerpt of another article', () => {
+    const descriptions = articles.map((a) => a.description).filter(Boolean);
+    expect(new Set(descriptions).size).toBe(descriptions.length); // no two articles share one
+    for (const a of articles) expect(a.description, a.id).not.toBe(a.title);
   });
 
   it('is sorted newest first, deterministic on ties', () => {
@@ -114,7 +153,7 @@ describe('blog helpers', () => {
       if (page.featured) seen.add(page.featured.id);
       page.items.forEach((i) => seen.add(i.id));
     }
-    expect(seen.size).toBe(80); // every article is reachable from the list
+    expect(seen.size).toBe(ARTICLE_COUNT); // every article is reachable from the list
   });
 
   it.each([['0', 1], ['-3', 1], ['abc', 1], ['', 1], [null, 1], ['999', 6], ['2.9', 2]])('page %j clamps to %i', (raw, expected) => {

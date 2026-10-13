@@ -12,6 +12,14 @@ excerpt: >-
   semester 5 yang kini mengabdikan diri sebagai Headmaster Sakola Kembara cabang
   Cililin. Keputusannya untuk bergabung bukan tanpa beban karena sebelumnya ia
   pernah memiliki [&hellip;]
+description: >-
+  Kemauan tidak selalu hadir dalam bentuk keyakinan yang utuh sejak awal.
+  Terkadang kemauan justru lahir dari keraguan pengalaman pahit dan proses
+  berdamai dengan masa lalu. Itulah yang dialami Angkasa mahasiswa kimia ITB
+  semester 5 yang kini mengabdikan diri sebagai Headmaster Sakola Kembara cabang
+  Cililin. Keputusannya untuk bergabung bukan tanpa beban karena sebelumnya ia
+  pernah memiliki Empati dan kemauan bisa mengubah hidup. Simak kisah Angkasa
+  yang menginspirasi anak-anak Cililin.
 featured: false
 image: /blog/images/2026/01/IMG-20250703-WA00122-430_Surya-Angkasa-lubis.jpg
 author: Sesilia

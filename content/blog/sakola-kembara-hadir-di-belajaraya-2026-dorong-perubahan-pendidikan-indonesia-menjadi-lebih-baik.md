@@ -15,6 +15,15 @@ excerpt: >-
   Pusat, pada tanggal 2 Mei bertepatan dengan Hari Pendidikan Nasional 2026.
   Acara ini dihadiri oleh para penggerak dan relawan pendidikan dan berbagai
   elemen yang memegang [&hellip;]
+description: >-
+  JAKARTA - Jaringan Semua Murid Semua Guru (SMSG) yang terdiri dari 1.193
+  komunitas dan organisasi pendidikan (KOP) di seluruh Indonesia sukses
+  menggelar Belajaraya yang diselenggarakan di Taman Ismail Marzuki, Jakarta
+  Pusat, pada tanggal 2 Mei bertepatan dengan Hari Pendidikan Nasional 2026.
+  Acara ini dihadiri oleh para penggerak dan relawan pendidikan dan berbagai
+  elemen yang memegang Dari desa ke perguruan tinggi, Sakola Kembara hadir di
+  Belajaraya 2026 untuk membuka akses pendidikan dan mendukung masa depan
+  pelajar Indonesia
 featured: false
 image: /blog/images/2026/05/Belajaraya-1-scaled.jpg
 author: Nayla Nisreen

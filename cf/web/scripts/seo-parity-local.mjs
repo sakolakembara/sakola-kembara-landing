@@ -50,7 +50,8 @@ try {
     const res = await fetch(`${stack.base}${p}`, { redirect: 'manual' });
     const page = extractPage(await res.text());
     const home = p === '/';
-    const core = home ? page.title : (page.title ?? '').replace(/\s*\|\s*Sakola Kembara$/, '');
+    // the candidate's suffix is the live WordPress pattern since SAKEM-090 (" - Yayasan Sakola Kembara Indonesia")
+    const core = home ? page.title : (page.title ?? '').replace(/\s+-\s+Yayasan Sakola Kembara Indonesia$/, '');
     const ogImage = page.og.image ? new URL(page.og.image).pathname : null;
     pages.push({ path: home ? '/' : `${p}/`, core, exactTitle: home, description: page.description ?? '', h1: page.h1[0], image: ogImage });
   }
@@ -73,7 +74,7 @@ try {
     assert.ok(stub.log.every((e) => e.cookie === null && e.authorization === null));
     assert.ok(stub.log.every((e) => e.userAgent === USER_AGENT));
   });
-  check('every one of the 80 WordPress article URLs: the candidate redirects once, permanently, to a 200; no blocker, no chain, no canonical problem', () => {
+  check(`every one of the ${articles.length} WordPress article URLs: the candidate redirects once, permanently, to a 200; no blocker, no chain, no canonical problem`, () => {
     for (const a of articles) {
       const p = new URL(a.sourceUrl).pathname;
       const r = byPath.get(p);
@@ -88,6 +89,12 @@ try {
   check('planted: the pages only the live site has are BLOCKERs (url-missing)', () => {
     for (const p of PLANTED.missingOnCandidate) assert.ok(codes(p).includes('url-missing'), `${p}: ${codes(p).join(', ')}`);
   });
+  check('category archives the candidate sends to the blog index are INFO (address-moved), never a blocker', () => {
+    for (const p of PLANTED.redirectedArchives) {
+      assert.ok(codes(p).includes('address-moved'), `${p}: ${codes(p).join(', ')}`);
+      assert.equal((byPath.get(p)?.findings ?? []).filter((f) => f.severity === 'BLOCKER').length, 0, p);
+    }
+  });
   check('planted: a changed title is a WARN, a dropped BreadcrumbList is a WARN, a feed that becomes HTML is a WARN, a moved page is INFO', () => {
     assert.ok(codes(PLANTED.titleChanged).includes('title-changed'), codes(PLANTED.titleChanged).join(', '));
     assert.ok(codes(PLANTED.breadcrumbDropped).includes('jsonld-type-dropped'), codes(PLANTED.breadcrumbDropped).join(', '));
@@ -97,7 +104,7 @@ try {
   check('real gap: every WordPress /?p=<id> shortlink is served by the candidate home page without a redirect (WARN live-redirect-dropped)', () => {
     for (const a of articles.filter((x) => x.wpId)) assert.ok(codes(`/?p=${a.wpId}`).includes('live-redirect-dropped'), `/?p=${a.wpId}: ${codes(`/?p=${a.wpId}`).join(', ')}`);
   });
-  check('the sitemap of the candidate lists the new address of every article (no not-in-candidate-sitemap on the 80)', () => {
+  check('the sitemap of the candidate lists the new address of every article (no not-in-candidate-sitemap on any of them)', () => {
     for (const a of articles) assert.ok(!codes(new URL(a.sourceUrl).pathname).includes('not-in-candidate-sitemap'), a.id);
   });
   check('the report says FAIL (the planted blockers) and the exit code of the tool run is 1', () => {

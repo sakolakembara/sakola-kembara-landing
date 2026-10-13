@@ -13,6 +13,9 @@ excerpt: >-
   guru. Peran Penting Penyediaan Fasilitas Sekolah Sarana dan prasarana
   mempunyai peran penting dalam mendukung dan menunjang proses kegiatan belajar
   [&hellip;]
+description: >-
+  Strategi dalam merawat fasilitas yang menunjang sekolah mempunyai peran
+  penting dalam proses pengajuan dari berbagai pihak yang berwenang.
 featured: false
 image: /blog/images/2025/12/ruang-kelas.jpg
 author: Deanita

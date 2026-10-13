@@ -15,6 +15,13 @@ excerpt: >-
   diselenggarakan oleh Ikatan Alumni ITB dan Ikatan Alumni Informatika ITB di
   Garuda Spark Innovation Hub, fX Sudirman, Jakarta. Dengan mengusung semangat
   “Pendidikan untuk Semua”, kehadiran [&hellip;]
+description: >-
+  Jakarta, 1 November 2025 — Sakola Kembara, yayasan pendidikan nirlaba yang
+  menyediakan bimbingan belajar gratis bagi anak-anak di pelosok Indonesia,
+  turut hadir membuka booth di Jambore Talenta Indonesia 2025, yang
+  diselenggarakan oleh Ikatan Alumni ITB dan Ikatan Alumni Informatika ITB di
+  Garuda Spark Innovation Hub, fX Sudirman, Jakarta. Dengan mengusung semangat
+  “Pendidikan untuk Semua”, kehadiran
 featured: false
 image: /blog/images/2025/11/WhatsApp-Image-2025-11-01-at-11.26.13.jpeg
 author: admin_sk

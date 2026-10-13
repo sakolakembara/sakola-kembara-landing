@@ -12,6 +12,8 @@ Setiap artikel punya file `.md` sendiri. **Markdown = sumber utama** untuk edit;
 pnpm blog:sync
 ```
 
+Frontmatter `description` (opsional): teks `<meta name="description">` untuk situs Cloudflare (`cf/web`), dipakai sebelum `excerpt`. Isinya deskripsi meta halaman WordPress-nya dulu; kosongkan jika tidak ada. Satu baris, 50 sampai 600 karakter.
+
 ## Scrape ulang dari website
 
 ```bash

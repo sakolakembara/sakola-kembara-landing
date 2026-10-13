@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { bodies } from 'virtual:blog-bodies';
 import { describe, expect, it } from 'vitest';
-import { blogPosts, webRoot } from './helpers';
+import { ARTICLE_COUNT, blogPosts, graphTypes, webRoot } from './helpers';
 
 // Checks on the build output (dist/). They need `pnpm build` first and are
 // skipped, not failed, when dist/ is missing, so `pnpm test` works on a fresh clone.
@@ -25,17 +25,37 @@ describe.skipIf(!built)('build output', () => {
     expect(existsSync(path.join(dist, 'client/sitemap.xml'))).toBe(false);
   });
 
+  it('_redirects folds the trailing slash of every prerendered page with a 308 (the assets layer answers 307 otherwise, F-03 of the runbook), and of nothing else', () => {
+    const client = path.join(dist, 'client');
+    const pages = walk(client)
+      .map((f) => path.relative(client, f).split(path.sep).join('/'))
+      .filter((f) => f.endsWith('.html') && f !== 'index.html' && f !== '404.html')
+      .map((f) => `/${f.slice(0, -'.html'.length)}`)
+      .sort();
+    expect(pages, 'the build prerenders exactly the pages the guide says it does').toEqual(['/donasi', '/gabung-siswa', '/program/pasca-pembinaan', '/program/pembinaan', '/program/prapembinaan']);
+    const lines = read('client/_redirects').trim().split('\n');
+    // a fold is a rule whose destination is its own source without the slash
+    const folds = lines.filter((l) => {
+      const [source, destination, status] = l.split(/\s+/);
+      return source.endsWith('/') && destination === source.slice(0, -1) && status === '308';
+    });
+    expect(folds.map((l) => l.split(/\s+/)[0]).sort()).toEqual(pages.map((p) => `${p}/`));
+    // static rules come first, so wrangler does not warn about the order: the folds open the file
+    expect(lines.slice(0, pages.length).sort()).toEqual([...folds].sort());
+  });
+
   it('does NOT prerender the pages that must be dynamic: /blog, /blog/<slug>, /kontak, /tim, /sitemap.xml, the 404', () => {
     for (const f of ['blog.html', 'blog/index.html', 'kontak.html', 'tim.html', 'sitemap.xml', '404.html']) {
       expect(existsSync(path.join(dist, 'client', f)), f).toBe(false); // a static 404 would be served with status 200
     }
-    expect(articles.length).toBe(80);
+    expect(articles.length).toBe(ARTICLE_COUNT);
   });
 
-  it('home page: Organization JSON-LD, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {
+  it('home page: the site graph with the Organization, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {
     const html = read('client/index.html');
     expect((html.match(/<h1[\s>]/g) ?? []).length).toBe(1);
     expect(html).toContain('"@type":["NGO","EducationalOrganization"]');
+    expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage']); // no breadcrumb on the home page: a trail of one step is not a trail
     const imgs = [...html.matchAll(/<img [^>]*>/g)].map((m) => m[0]);
     expect(imgs.length).toBeGreaterThanOrEqual(5);
     for (const img of imgs) {

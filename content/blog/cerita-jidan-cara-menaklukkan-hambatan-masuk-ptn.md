@@ -11,6 +11,9 @@ excerpt: >-
   yang berada di pelosok desa dan tak memiliki akses. Jiidan, salah satu siswa
   angkatan 2025 di Sakola Kembara berhasil menaklukkan faktor penghambat ia
   masuk PTN. Simak artikel ini untuk tahu caranya menaklukkan [&hellip;]
+description: >-
+  Hambatan masuk PTN itu nyata. Jidan, salah satu siswa Sakola Kembara berhasil
+  menaklukkan hambatan yang ada. Simak artikel ini untuk tahu caranya!
 featured: false
 image: /blog/images/2025/12/IMG-20251210-WA0006-e1765420569694.jpg
 author: Azkia Himayatu Dini

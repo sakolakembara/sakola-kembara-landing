@@ -12,6 +12,13 @@ excerpt: >-
   mewujudkan pendidikan yang merata. Ketika berbicara tentang pendidikan, banyak
   dari kita membayangkan bangunan sekolah yang bagus, guru yang ramah, dan ruang
   kelas yang layak. Namun kenyataannya, tidak semua [&hellip;]
+description: >-
+  Pemerataan akses pendidikan menjadi pondasi penting bagi terciptanya
+  kesempatan belajar yang adil bagi seluruh anak Indonesia, dengan menyoroti
+  tantangan nyata serta langkah-langkah yang dapat dilakukan bersama, untuk
+  mewujudkan pendidikan yang merata. Ketika berbicara tentang pendidikan, banyak
+  dari kita membayangkan bangunan sekolah yang bagus, guru yang ramah, dan ruang
+  kelas yang layak. Namun kenyataannya, tidak semua
 featured: false
 image: /blog/images/2025/11/temp_image-4072.webp
 author: Muttaqin Hidayahtullah

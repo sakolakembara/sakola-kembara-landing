@@ -12,6 +12,9 @@ excerpt: >-
   menuju tempat bimbel sangat jauh tetapi ia sangat senang, dengan adanya
   bimbingan belajar dari Sakola Kembara, Ia bisa mengisi waktu luang pada
   [&hellip;]
+description: >-
+  Menjadi volunteer membuat ambar dapat membantu memberikan semangat kepada para
+  murid dan teman - temannya untuk berjuang meraih mimpinya
 featured: false
 image: /blog/images/2026/01/IMG-20251217-WA0005-AMBAR-SITI-RUBAEAH-scaled.jpg
 author: Deanita

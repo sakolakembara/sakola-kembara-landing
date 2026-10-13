@@ -13,6 +13,13 @@ excerpt: >-
   Kembara, kondisi akses pendidikan di wilayah terpencil masih menunjukkan
   jurang yang lebar. Banyak anak harus menempuh jalan panjang setiap hari hanya
   [&hellip;]
+description: >-
+  Ketimpangan akses belajar di daerah terpencil di Indonesia masih menjadi
+  tantangan besar. Artikel ini membahas pentingnya pendidikan dalam mengurangi
+  kesenjangan akses serta mengajak masyarakat berkontribusi mewujudkan
+  pemerataan pendidikan. Hambatan Infrastruktur dan Jarak Tempuh Sahabat
+  Kembara, kondisi akses pendidikan di wilayah terpencil masih menunjukkan
+  jurang yang lebar. Banyak anak harus menempuh jalan panjang setiap hari hanya
 featured: false
 image: >-
   /blog/images/2025/12/ready-independece-day-ceremony-portait-600nw-2348469335.webp

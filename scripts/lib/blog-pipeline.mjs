@@ -302,6 +302,8 @@ export function writeMarkdownFile(article) {
     date: meta.date,
     dateISO: meta.dateISO,
     excerpt: meta.excerpt,
+    // The meta description of the WordPress page (SAKEM-090); only written when there is one, right after the excerpt.
+    ...(meta.description ? { description: meta.description } : {}),
     featured: meta.featured,
     image: meta.image,
     author: meta.author,
@@ -329,6 +331,8 @@ export function readMarkdownArticle(filePath) {
     date: data.date,
     dateISO: data.dateISO,
     excerpt: data.excerpt,
+    // Kept so that rewriting a file (writeMarkdownFile) does not drop it; not part of lib/blog-posts.json (writeBlogJson).
+    ...(data.description ? { description: String(data.description) } : {}),
     featured: Boolean(data.featured),
     image: data.image || "",
     author: data.author || "Sakola Kembara",
@@ -348,7 +352,8 @@ export function writeBlogJson(articles, metaExtra = {}) {
       contentFormat: "markdown",
       ...metaExtra,
     },
-    articles,
+    // `description` is a front matter field of the new site (SAKEM-090); the legacy data file never carried it.
+    articles: articles.map(({ description: _description, ...rest }) => rest),
   };
   fs.writeFileSync(BLOG_JSON, JSON.stringify(output, null, 2) + "\n", "utf8");
 }

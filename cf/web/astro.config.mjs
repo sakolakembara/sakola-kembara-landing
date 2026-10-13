@@ -1,10 +1,10 @@
-import { writeFile } from 'node:fs/promises';
+import { readdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, sessionDrivers } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
 import blogContent from './plugins/blog-content.mjs';
-import { toUnderscoreRedirects } from './redirects.config.mjs';
+import { slashFoldPaths, toUnderscoreRedirects } from './redirects.config.mjs';
 
 // The legacy Next app lives two folders up. Its content/blog markdown is read in
 // place (no copy); its public/ images go through scripts/build-assets.mjs, which
@@ -33,7 +33,10 @@ function redirectsFile() {
         clientDir = config.build.client;
       },
       'astro:build:done': async () => {
-        await writeFile(new URL('_redirects', clientDir), toUnderscoreRedirects());
+        // The prerendered pages are the .html files of the client folder (the home page and the 404 excluded):
+        // each also gets its trailing-slash twin folded with a 308, see slashFoldPaths.
+        const files = (await readdir(clientDir, { recursive: true })).map((f) => String(f).replaceAll('\\', '/'));
+        await writeFile(new URL('_redirects', clientDir), toUnderscoreRedirects(undefined, { slashFolds: slashFoldPaths(files) }));
       },
     },
   };

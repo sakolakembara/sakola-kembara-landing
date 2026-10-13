@@ -11,6 +11,8 @@ export interface BlogMeta {
   dateISO: string;
   title: string;
   excerpt: string;
+  /** Meta description when the file has one (front matter `description`), otherwise "" (the page uses the excerpt). */
+  description: string;
   featured: boolean;
   /** Cover image path, e.g. /blog/images/2026/05/x.jpg ("" when none). */
   image: string;

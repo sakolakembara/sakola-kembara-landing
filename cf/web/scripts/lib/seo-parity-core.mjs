@@ -480,7 +480,10 @@ function nofollowOf(page) {
 
 const stripSuffix = (title, siteName) => {
   const escaped = siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return title.replace(new RegExp(`\\s*[-–—|·:]\\s*${escaped}.*$`, 'i'), '').replace(new RegExp(`^${escaped}\\s*[-–—|·:]\\s*`, 'i'), '').trim();
+  // A foundation names itself in full on its pages ("Yayasan Sakola Kembara Indonesia" for the site name "Sakola Kembara"):
+  // an optional "Yayasan" before the name; whatever follows the name belongs to the suffix.
+  const name = `(?:Yayasan\\s+)?${escaped}`;
+  return title.replace(new RegExp(`\\s*[-–—|·:]\\s*${name}.*$`, 'i'), '').replace(new RegExp(`^${name}\\s*[-–—|·:]\\s*`, 'i'), '').trim();
 };
 
 const looksNotFound = (text) => /tidak ditemukan|page not found|not found|\b404\b/i.test(text ?? '');

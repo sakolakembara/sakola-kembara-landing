@@ -12,6 +12,12 @@ excerpt: >-
   impian adalah hasil dari kebiasaan kecil yang harus dibangun jauh sebelum itu.
   Terlebih lagi jarang disadari bahwa persiapan kuliah sebenarnya dimulai
   [&hellip;]
+description: >-
+  Persiapan Kuliah Tidak Dimulai dari Kelas 12 Perlu Sahabat Kembara Ketahui
+  bahwa masih banyak siswa baru yang benar-benar baru serius belajar saat ujian
+  sudah kepepet seperti H-3 bulan menuju UTBK. Padahal, masuk Universitas Negeri
+  impian adalah hasil dari kebiasaan kecil yang harus dibangun jauh sebelum itu.
+  Terlebih lagi jarang disadari bahwa persiapan kuliah sebenarnya dimulai
 featured: false
 image: /blog/images/2026/02/woman-with-headphones-having-video-call-laptop-scaled.jpg
 author: salwa

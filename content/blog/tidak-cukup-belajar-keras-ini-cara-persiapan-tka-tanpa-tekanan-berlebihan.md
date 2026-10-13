@@ -12,6 +12,12 @@ excerpt: >-
   tapi pada persiapan TKA yang kurang tepa Banyak siswa mengira semakin lama
   belajar, semakin besar peluang lolos. Padahal, persiapan TKA tidak hanya
   [&hellip;]
+description: >-
+  Sahabat Kembara, pernah merasa sudah belajar lama, tapi hasiltry out TKA tetap
+  segitu-gitu saja? Buku tebal, catatan penuh tulisan, tapi rasa yakin justru
+  semakin menipis. Kalau iya, kemungkinan masalahnya bukan di kemauan belajar,
+  tapi pada persiapan TKA yang kurang tepa Banyak siswa mengira semakin lama
+  belajar, semakin besar peluang lolos. Padahal, persiapan TKA tidak hanya
 featured: false
 image: /blog/images/2025/12/side-view-student-taking-notes-scaled.jpg
 author: salwa

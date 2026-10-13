@@ -85,6 +85,13 @@
       "when": 1791854325177,
       "tag": "0011_admin_signin_without_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791876504061,
+      "tag": "0012_blog_meta_description",
+      "breakpoints": true
     }
   ]
 }
