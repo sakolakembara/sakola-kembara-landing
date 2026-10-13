@@ -245,7 +245,7 @@ Machine of the author, Node 22, the pipeline bundled the way wrangler bundles it
 | | Number |
 | --- | --- |
 | Worker bundle (`wrangler deploy --dry-run`), before | 2,940.93 KiB, 511.02 KiB gzip |
-| Worker bundle, after | **3,463.96 KiB, 619.84 KiB gzip** (+523.0 KiB, +108.8 KiB gzip: unified, remark, micromark, the sanitiser, the 22 KB image table). The Free limit is 3 MiB *compressed*, so 620 KiB gzip is a fifth of it |
+| Worker bundle, after | **3,463.96 KiB, 619.84 KiB gzip** (+523.0 KiB, +108.8 KiB gzip: unified, remark, micromark, the sanitiser, the 22 KB image table). The Free limit was 3 MiB *compressed* when this was written (a fifth of it); it is now 64 MiB uncompressed with no compressed limit ([`free-plan-audit.md`](free-plan-audit.md#21-worker-size)) |
 | SPA build (`build:spa`), before and after | JS 425.87 kB (133.52 kB gzip) to 450.96 kB (140.99 kB gzip): +25.1 kB, +7.5 kB gzip for the screens, the editor and the preview hook (no markdown library in the browser); CSS 48.33 kB to 49.57 kB. The mock is not in the build (`check:spa`) |
 | After the rebase on `cloudflare` 9f72cae (Sistem, Komunikasi, Konten-misc and Pendaftaran merged, so these are totals of the integrated tree, not of the blog alone), with the preview limiter and `SITE_URL` | Worker 3,537.10 KiB, 637.98 KiB gzip; SPA JS 556.64 kB (167.24 kB gzip in the build log), CSS 53.27 kB |
 | The renderer alone, bundled | 480 KB unminified (micromark 65 KB, character entities 44 KB, the app 37 KB, property-information 30 KB, ...) |

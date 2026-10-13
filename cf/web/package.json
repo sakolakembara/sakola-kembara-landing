@@ -12,6 +12,9 @@
     "assets": "node scripts/sync-assets.mjs && node scripts/build-assets.mjs",
     "dev": "pnpm assets && astro dev",
     "build": "pnpm assets && astro build && node scripts/check-dist.mjs",
+    "build:staging": "CLOUDFLARE_ENV=staging pnpm build",
+    "deploy:staging:dry": "pnpm build:staging && node ../scripts/staging-dry-run.mjs web",
+    "deploy:staging:command": "node ../scripts/staging-deploy-command.mjs web",
     "preview": "astro preview",
     "check": "node scripts/sync-assets.mjs && node scripts/build-assets.mjs --manifest-only && astro check",
     "test": "pnpm assets && vitest run",
@@ -21,6 +24,7 @@
     "seo:parity": "node scripts/seo-parity.mjs",
     "seo:parity:local": "node scripts/seo-parity-local.mjs",
     "measure": "node scripts/measure.mjs",
+    "measure:staging": "node scripts/measure-staging.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",
     "stub-origin": "node scripts/stub-origin.mjs",
     "check:dist": "node scripts/check-dist.mjs"

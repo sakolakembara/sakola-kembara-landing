@@ -5,7 +5,7 @@ Why the site is moving to Cloudflare Workers, what the target looks like, and in
 ## Constraints
 
 - **$0.** The hosting bill must stay at zero, so everything runs on the **Workers Free** plan and the Free tiers of D1, R2 and KV.
-- Workers Free limits that shape the design: **10 ms CPU per request**, **100,000 requests per day** (the Worker counts every request it handles, pass-through included), 3 MB compressed Worker size, 50 subrequests per request. Static assets served by the assets layer do not invoke the Worker and do not count as requests.
+- Workers Free limits that shape the design: **10 ms CPU per request**, **100,000 requests per day** (the Worker counts every request it handles, pass-through included), a Worker size of 64 MiB uncompressed with no compressed limit (the older "3 MB compressed" rule is gone: [`free-plan-audit.md`](free-plan-audit.md#21-worker-size)), 50 subrequests per request. Static assets served by the assets layer do not invoke the Worker and do not count as requests.
 - Next.js SSR does not fit those limits, so the public site cannot move as it is.
 - **SEO parity is a requirement.** URLs, titles, canonical, Open Graph, JSON-LD, sitemap, robots, status codes and the WordPress redirects must match what the Next app serves today.
 - **Visual style and Indonesian copy are fixed** (`DESIGN.md`, `docs/context/tone-of-voice.md`). The port moves markup to Astro; it does not redesign or reword.
@@ -34,7 +34,14 @@ Which account is used, what the owner does in the terminal and dashboard, and wh
 
 ## Cutover, rollback and SEO audit (SAKEM-084, M5)
 
-The runbook for the day the live WordPress site is replaced (preconditions, the DNS inventory, TTLs, the order of operations, smoke and cache checks, monitoring, rollback, what to keep of WordPress, the findings of the audit and the risk register; **go-live is blocked on M4**): [`cutover-runbook.md`](cutover-runbook.md). The read-only SEO parity tool (`cf/web/scripts/seo-parity.mjs`, `pnpm seo:parity`), its finding table, the Core Web Vitals plan and the Search Console plan: [`seo-audit.md`](seo-audit.md). Staging and the Free-plan audit (M5-A) are written separately.
+The runbook for the day the live WordPress site is replaced (preconditions, the DNS inventory, TTLs, the order of operations, smoke and cache checks, monitoring, rollback, what to keep of WordPress, the findings of the audit and the risk register; **go-live is blocked on M4**): [`cutover-runbook.md`](cutover-runbook.md). The read-only SEO parity tool (`cf/web/scripts/seo-parity.mjs`, `pnpm seo:parity`), its finding table, the Core Web Vitals plan and the Search Console plan: [`seo-audit.md`](seo-audit.md). Staging and the Free-plan audit (M5-A) are in the next section.
+
+## Staging and the Free plan (M5, SAKEM-084)
+
+- [`free-plan-audit.md`](free-plan-audit.md): every Cloudflare feature, binding and limit the two Workers rely on, checked against the current documentation, with a verdict (OK, RISK, BLOCKER) and a fallback for each risk. Read its first section before the first staging deploy: the Rate Limiting binding on Free and the sign-in CPU are the two things documentation cannot settle.
+- [`staging-runbook.md`](staging-runbook.md): the owner's ordered steps for staging on `*.workers.dev` (`sakem-admin-staging`, `sakem-web-staging`): pin the account, D1, migrations, R2, deploys, secrets, the first super_admin, smoke tests, the blog import, the CPU measurement, the limits to watch, what must not be done, teardown. Every real step needs Dzul's OK.
+- Configuration: an `env.staging` block in `cf/admin/wrangler.jsonc` and `cf/web/wrangler.jsonc` (no ids, no secrets); `pnpm deploy:staging:dry` in each package runs `wrangler deploy --dry-run` and checks the bundle is the staging one; `pnpm deploy:staging:command` prints (never runs) the real deploy command from an untracked `.staging.vars` (`cf/scripts/`).
+- Measurement: `cf/web/scripts/measure-staging.mjs` (`pnpm measure:staging`): a polite, bounded probe of an explicit staging host and a collector of `wrangler tail --format json` output with per-route p50, p95, p99, max CPU and a verdict against the 10 ms limit.
 
 ## Rules for this folder tree
 
