@@ -338,6 +338,20 @@ export const portalFoundationChecks = [
     tests: `${FORM} ${SCHEMA}`,
   },
   {
+    name: "portal foundation: a local draft without a numeric savedAt is kept (it could never be aged out)",
+    file: "shared/application-form/draft.ts",
+    from: 'if (typeof value.savedAt !== "number" || !Number.isFinite(value.savedAt) || value.savedAt <= 0) return false;',
+    to: "",
+    tests: FORM,
+  },
+  {
+    name: "portal foundation: a local draft never expires",
+    file: "shared/application-form/draft.ts",
+    from: "return now - draft.savedAt >= LOCAL_DRAFT_MAX_AGE_MS;",
+    to: "return false;",
+    tests: FORM,
+  },
+  {
     name: "portal foundation: a submitted application is written as form_data version 2",
     file: "shared/application-form/form-data.ts",
     from: "export const FORM_DATA_VERSION = 3 as const;",
