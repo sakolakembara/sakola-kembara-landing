@@ -36,6 +36,13 @@ export const blogPosts = sqliteTable(
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     excerpt: text("excerpt").notNull(),
+    /**
+     * The text of `<meta name="description">` (and og:description, the JSON-LD description) when it is not the excerpt.
+     * Optional: an article written in the admin has none and the page uses the excerpt. The 80 migrated articles and the 6
+     * imported on 2026-10-13 carry the description their WordPress page had (the SEO parity run of SAKEM-090), because that
+     * is the text search results show today. Public as `description` on the article answer only; no admin form field yet.
+     */
+    metaDescription: text("meta_description"),
     contentMarkdown: text("content_markdown").notNull(),
     /** Rendered from contentMarkdown at save time, same pipeline as the Astro site's build-time renderer. */
     contentHtml: text("content_html").notNull(),

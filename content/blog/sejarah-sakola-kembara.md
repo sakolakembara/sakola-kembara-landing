@@ -12,6 +12,9 @@ excerpt: >-
   menjadi 8 cabang yang tersebar di 3 provinsi. Sejarah Sakola Kembara juga
   membuktikan bahwa siswa dari keluarga kurang mampu dan daerah pelosok
   [&hellip;]
+description: >-
+  Pelajari Sejarah Sakola Kembara dan bagaimana inisiatif ini membuka akses
+  pendidikan tinggi gratis untuk siswa dari pelosok Indonesia.
 featured: false
 image: /blog/images/2025/12/logo_1739619474045_iIqSEetZ.png
 author: Sesilia

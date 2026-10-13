@@ -11,6 +11,9 @@ excerpt: >-
   menjadi calon mahasiswa. Terdapat perbedaan jurusan antara kuliah dengan
   sekolah yang dimana untuk jenjang SMA hanya IPA, IPS & Bahasa. Sedangkan
   perguruan tinggi terdapat banyak pilihan jurusan yang Anda minati. [&hellip;]
+description: >-
+  Tips memilih jurusan menjadi penting bagi siswa punya minat dan keterampilan
+  yang bisa dilakukan untuk mempersiapkan masuk perguruan tinggi
 featured: false
 image: /blog/images/2026/01/4651.jpg
 author: Deanita

@@ -106,6 +106,44 @@ describe("after the import, the public API answers exactly as the fixture API do
   });
 });
 
+describe("the meta description (SAKEM-090)", () => {
+  test("each article's front matter `description` is stored, and an article without one stores NULL", async () => {
+    await runImport();
+    const without: string[] = [];
+    for (const article of oracle.articles) {
+      const expected = String(article.meta.description ?? "") || null;
+      if (!expected) without.push(article.slug);
+      const row = await env.DB.prepare("SELECT meta_description AS d FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ d: string | null }>();
+      expect(row!.d, article.slug).toBe(expected);
+    }
+    expect(without).toEqual(["daffa-najwan"]); // its live description was not one ("Manajemen, UGM")
+  });
+
+  test("the public article answer carries it (the fixture answers, deep-equal, are in the test above), and null where there is none", async () => {
+    await runImport();
+    const withOne = oracle.articles.find((a) => a.meta.description)!;
+    const without = oracle.articles.find((a) => !a.meta.description)!;
+    expect(((await publicJson(`/api/public/blog/${withOne.slug}`)) as { article: { description: string } }).article.description).toBe(withOne.meta.description);
+    expect(((await publicJson(`/api/public/blog/${without.slug}`)) as { article: { description: unknown } }).article.description).toBeNull();
+  });
+
+  test("an editor's save in the admin does not erase it (the form has no field for it yet), and a second import does not put the file's back over an edited article", async () => {
+    await runImport();
+    const article = oracle.articles.find((a) => a.meta.description)!;
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
+    const item = (await env.DB.prepare("SELECT id FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ id: string }>())!;
+    const opened = ((await (await call(`/api/admin/blog/${item.id}`, { cookie })).json()) as { item: Record<string, unknown> }).item;
+    const put = await call(`/api/admin/blog/${item.id}`, { method: "PUT", cookie, headers: { "if-match": `"${String(opened.updatedAt)}"` }, json: { ...opened, title: "Judul baru" } });
+    expect(put.status).toBe(200);
+    const description = () => env.DB.prepare("SELECT meta_description AS d FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ d: string | null }>();
+    expect((await description())!.d).toBe(article.meta.description);
+    // an operator who changed the text by hand: the edited article is not touched by another import
+    await env.DB.prepare("UPDATE blog_posts SET meta_description = 'Diubah tangan' WHERE slug = ?").bind(article.slug).run();
+    await runImport();
+    expect((await description())!.d).toBe("Diubah tangan");
+  });
+});
+
 describe("running the import again", () => {
   test("changes nothing: same rows, same ids, same answers", async () => {
     await runImport();

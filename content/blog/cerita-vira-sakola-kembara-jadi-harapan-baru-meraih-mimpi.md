@@ -12,6 +12,10 @@ excerpt: >-
   dari Bandung. Seorang siswi lulusan SMK yang memiliki keinginan kuliah, tetapi
   mau tak mau mengurungkan niatnya sebab masalah biaya. Namun, hal tersebut
   [&hellip;]
+description: >-
+  Minimnya biaya tidak membuat seorang siswa menyerah akan mimpinya. Sakola
+  Kembara berikan harapan baru buat siswa seperti Vira. Baca lengkapnya di
+  artikel ini!
 featured: false
 image: /blog/images/2025/12/WhatsApp-Image-2025-12-01-at-11.13.36_785982c6.jpg
 author: Azkia Himayatu Dini

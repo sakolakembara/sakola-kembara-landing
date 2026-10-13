@@ -12,6 +12,10 @@ excerpt: >-
   kampus impian. Saat ini, hampir seluruh perguruan tinggi negeri maupun swasta
   menyediakan berbagai skema seleksi yang dapat disesuaikan dengan kemampuan,
   prestasi, hingga kondisi ekonomi [&hellip;]
+description: >-
+  Sakola Kembara- Banyak siswa menganggap bahwa gagal di SNBT berarti impian
+  masuk perguruan tinggi telah berakhir. Baca artikel ini supaya kamu tahu opsi
+  lainnya
 featured: false
 image: /blog/images/2026/05/IMG_4189-1-2-scaled.jpg
 author: Muttaqin Hidayahtullah

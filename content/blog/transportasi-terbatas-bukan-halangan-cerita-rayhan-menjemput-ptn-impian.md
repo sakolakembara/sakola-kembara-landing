@@ -12,6 +12,9 @@ excerpt: >-
   ketidakmerataan tersebut adalah masalah transportasi terbatas. Seperti kisah
   Rayhan, seorang anak yang tinggal di tengah keterbatasan akses tersebut,
   impiannya untuk melanjutkan studi di PTN terbaik hampir [&hellip;]
+description: >-
+  Transportasi terbatas tidak lagi menjadi hambatan untuk Rayhan mewujudkan
+  impian masuk kuliah di top PTN Indonesia.
 featured: false
 image: >-
   /blog/images/2025/12/Transportasi-Terbatas-Bukan-Halangan-Cerita-Rayhan-Menjemput-PTN-Impian-scaled.jpg

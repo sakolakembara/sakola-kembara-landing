@@ -12,6 +12,9 @@ excerpt: >-
   (matematika), dan literasi sains. Perubahan ini didasari oleh keinginan
   pemerintah agar siswa tidak lagi memiliki kesan traumatik terhadap kata
   "ujian" yang selama ini dianggap menakutkan. [&hellip;]
+description: >-
+  Simak pengertian, tujuan, hingga solusi permasalahan turunnya nilai TKA di
+  Indonesia.
 featured: false
 image: /blog/images/2026/01/pexels-rdne-7092395-scaled.jpg
 author: athalia

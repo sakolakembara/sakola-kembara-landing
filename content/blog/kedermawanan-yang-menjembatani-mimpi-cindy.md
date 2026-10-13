@@ -12,6 +12,13 @@ excerpt: >-
   Lebih Dekat Cindy seorang siswi dari Desa Langensari Cabang Cibodas yang
   berasal dari keluarga yang tergolong sederhana. Ayahnya bekerja sebagai
   pedagang pemasok barang [&hellip;]
+description: >-
+  Sahabat Kembara, banyak dari kita menilai bahwa pendidikan sering dianggap
+  hanya seputar nilai, peringkat dan almamater. Padahal bagi banyak anak muda di
+  daerah, pendidikan adalah soal bertahan dan berharap. Mari Mengenal Cindy
+  Lebih Dekat Cindy seorang siswi dari Desa Langensari Cabang Cibodas yang
+  berasal dari keluarga yang tergolong sederhana. Ayahnya bekerja sebagai
+  pedagang pemasok barang
 featured: false
 image: /blog/images/2026/01/IMG_0319-Cindy-Ameliadev-scaled.jpeg
 author: salwa

@@ -12,6 +12,9 @@ excerpt: >-
   beasiswa, peluang kerja, dan studi lanjut. Namun, banyak mahasiswa yang merasa
   kesulitan mencapai hasil maksimal karena kurang memahami strategi belajar yang
   efektif. Perlu dipahami [&hellip;]
+description: >-
+  Artikel ini akan membahas secara mendalam berbagai tips yang dapat membantu
+  mahasiswa meraih nilai terbaik di universitas.
 featured: false
 image: /blog/images/2026/02/IMG_15751-1-scaled.jpg
 author: Muttaqin Hidayahtullah

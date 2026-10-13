@@ -117,6 +117,8 @@ export function serializeBlogSummary(row: BlogSummaryRow): PublicBlogSummary {
 
 export interface BlogArticleRow extends BlogSummaryRow {
   updatedAt: Date;
+  /** `blog_posts.meta_description`; null (or empty) when none is set. */
+  metaDescription: string | null;
   contentMarkdown: string;
   contentHtml: string;
 }
@@ -130,6 +132,7 @@ export function serializeBlogArticle(row: BlogArticleRow): PublicBlogArticle {
     date: summary.date,
     dateISO: summary.dateISO,
     modifiedISO: isoDayJakarta(row.updatedAt.getTime()),
+    description: optionalText(row.metaDescription),
     excerpt: summary.excerpt,
     image: summary.image,
     imageWidth: summary.imageWidth,

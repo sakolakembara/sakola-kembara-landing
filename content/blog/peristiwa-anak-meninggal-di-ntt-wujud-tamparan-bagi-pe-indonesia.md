@@ -12,6 +12,9 @@ excerpt: >-
   di NTT Peristiwa anak SD meninggal di NTT menunjukkan masih kurangnya
   kesetaraan akses pendidikan di Indonesia. Khususnya memberikan gambaran adanya
   ketimpangan antara kemiskinan dan [&hellip;]
+description: >-
+  Peristiwa anak meninggal di NTT memberikan kepiluan yang mendalam bagi dunia
+  pendidikan. Peristiwa ini menunjukkan masih adanya keterbatasan pendidikan
 featured: false
 image: >-
   /blog/images/2026/03/gus-ipul-prihatin-kasus-siswa-sd-di-ntt-1770199162640_169-1.jpeg

@@ -266,6 +266,7 @@ describe("GET /api/public/blog/{slug}", () => {
       title: a.title,
       category: a.category,
       excerpt: a.excerpt,
+      metaDescription: a.description,
       image: a.image,
       imageWidth: a.imageWidth,
       imageHeight: a.imageHeight,
@@ -286,6 +287,20 @@ describe("GET /api/public/blog/{slug}", () => {
     expect(body.related.length).toBeGreaterThan(0);
     expect(sameShape(body.related[0], EXAMPLES.blogArticle.related[0])).toEqual([]);
     expect(Object.keys(body).sort()).toEqual(["article", "related"]);
+  });
+
+  test("description (SAKEM-090): the stored meta description as it is; null when none is set or it is empty; never in the list", async () => {
+    await addPost({ slug: "dengan", metaDescription: "Teks untuk mesin pencari, bukan ringkasan.", excerpt: "Ringkasan kartu [&hellip;]" });
+    await addPost({ slug: "tanpa" });
+    await addPost({ slug: "kosong", metaDescription: "" });
+    const read = async (slug: string) => (await json<{ article: { description: string | null; excerpt: string } }>(await get(`/api/public/blog/${slug}`))).article;
+    expect((await read("dengan")).description).toBe("Teks untuk mesin pencari, bukan ringkasan.");
+    expect((await read("dengan")).excerpt).toBe("Ringkasan kartu ..."); // the card text is not touched
+    expect((await read("tanpa")).description).toBeNull();
+    expect((await read("kosong")).description).toBeNull();
+    const list = await (await get("/api/public/blog")).text();
+    expect(list).not.toContain("Teks untuk mesin pencari");
+    expect(list).not.toContain("description");
   });
 
   test("contentHtml is returned exactly as stored: the read path never renders markdown", async () => {

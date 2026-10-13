@@ -15,6 +15,9 @@ excerpt: >-
   mengajar di Sakola Kembara menjadi pengalaman berharga baginya, Selain
   mendapatkan relasi baru, ia juga bisa melatih kemampuan mengajar dan merasakan
   pengalaman yang sangat menyenangkan [&hellip;]
+description: >-
+  Perjalanan mengajar Zulfa Jannati di Sakola Kembara, dari memanfaatkan libur
+  kuliah hingga menempuh perjalanan jauh demi pendidikan untuk semua.
 featured: false
 image: /blog/images/2026/03/image.png
 author: Nayla Nisreen

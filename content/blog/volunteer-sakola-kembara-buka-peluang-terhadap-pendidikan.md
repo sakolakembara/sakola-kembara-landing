@@ -12,6 +12,9 @@ excerpt: >-
   sangat penting terhadap tantangan akses pendidikan di Indonesia. Kini hadir
   komunitas yang menjadi solusi atas kesenjangan pendidikan, dengan cara
   sederhana penuh makna dalam bidang pendidikan. [&hellip;]
+description: >-
+  Sakola Kembara membuka kesempatan kembali buat mengisi waktu luang dan
+  meningkatkan keterampilan sebagai volunteer
 featured: false
 image: /blog/images/2026/01/logo-volunteer.jpg
 author: Deanita

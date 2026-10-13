@@ -12,6 +12,13 @@ excerpt: >-
   belahan dunia. Sejarah volunteer menunjukkan bahwa keikhlasan untuk mengabdi
   telah lama menjadi kekuatan utama dalam membangun peradaban, solidaritas, dan
   keadilan sosial. Akar Sejarah Volunteer dalam [&hellip;]
+description: >-
+  Volunteer atau kerelawanan bukanlah konsep baru dalam peradaban manusia. Jauh
+  sebelum istilah volunteer dikenal secara formal, praktik saling membantu tanpa
+  pamrih telah menjadi bagian dari kehidupan sosial masyarakat di berbagai
+  belahan dunia. Sejarah volunteer menunjukkan bahwa keikhlasan untuk mengabdi
+  telah lama menjadi kekuatan utama dalam membangun peradaban, solidaritas, dan
+  keadilan sosial. Akar Sejarah Volunteer dalam
 featured: false
 image: /blog/images/2024/11/Hero-Image-1.png
 author: Muttaqin Hidayahtullah

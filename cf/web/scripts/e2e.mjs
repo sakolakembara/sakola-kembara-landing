@@ -111,12 +111,18 @@ for (const slug of slugs) {
     assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
     assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), `${article.title} - Yayasan Sakola Kembara Indonesia`);
     assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), `https://sakolakembara.org/blog/${slug}`);
-    assert.equal(decodeEntities(tag(html, /<meta name="description" content="([^"]*)"/)), article.excerpt);
+    // SAKEM-090: the page's own meta description first (the migrated articles carry the one their WordPress page had), then the excerpt
+    const description = article.description ?? article.excerpt;
+    assert.equal(decodeEntities(tag(html, /<meta name="description" content="([^"]*)"/)), description);
+    assert.equal(decodeEntities(tag(html, /<meta property="og:description" content="([^"]*)"/)), description);
+    assert.equal(decodeEntities(tag(html, /<meta name="twitter:description" content="([^"]*)"/)), description);
     assert.match(tag(html, /<meta property="og:image" content="([^"]*)"/), /^https:\/\/sakolakembara\.org\//);
     // SAKEM-090: one @graph; the BlogPosting is the live site's type
     assert.equal(ldBlocks(html).length, 1);
     const post = nodeOf(html, 'BlogPosting');
     assert.equal(post.headline, article.title);
+    assert.equal(post.description, description);
+    assert.equal(nodeOf(html, 'WebPage').description, description);
     assert.equal(post.datePublished, article.dateISO);
     assert.equal(post.dateModified, article.modifiedISO);
     assert.equal(post.mainEntityOfPage['@id'], `https://sakolakembara.org/blog/${slug}#webpage`);

@@ -12,6 +12,9 @@ excerpt: >-
   desa di Wanayasa, Purwakarta, yang melalui sebuah surat terbuka menyampaikan
   kegelisahan mendalam tentang masa depan pendidikannya. Surat yang ditujukan
   kepada Presiden Republik Indonesia, Gubernur Jawa [&hellip;]
+description: >-
+  Di tengah gemerlap pembangunan dan berbagai capaian pendidikan nasional, masih
+  terdapat suara-suara dari pelosok negeri yang berjuang untuk didengar.
 featured: false
 image: /blog/images/2026/07/Screenshot-2026-07-13-002735.png
 author: Muttaqin Hidayahtullah

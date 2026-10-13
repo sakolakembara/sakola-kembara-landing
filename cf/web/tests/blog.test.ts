@@ -32,6 +32,28 @@ describe('blog content (virtual modules built from the root content/blog)', () =
     expect(articles.filter((a) => a.featured).map((a) => a.id)).toEqual(['tanpa-jasa-ahdan-mewujudkan-murid-masuk-perguruan-tinggi']);
   });
 
+  // SAKEM-090: the meta description of each WordPress page, set from the recorded live pages of 2026-10-13 (front matter
+  // `description`; the site uses it before the excerpt). One live description is not a description.
+  const WITHOUT_DESCRIPTION = ['daffa-najwan']; // the live page says "Manajemen, UGM" (14 characters): the excerpt stays in use
+  it('every article carries a description, except the one whose live description was not one; it is clean text', () => {
+    expect(articles.filter((a) => !a.description).map((a) => a.id)).toEqual(WITHOUT_DESCRIPTION);
+    for (const a of articles.filter((x) => x.description)) {
+      expect(a.description, a.id).toBe(a.description.trim());
+      expect(a.description.length, a.id).toBeGreaterThanOrEqual(50);
+      expect(a.description.length, a.id).toBeLessThanOrEqual(600);
+      expect(a.description, a.id).not.toMatch(/\s{2,}/); // one line of single spaces
+      expect(a.description, a.id).not.toMatch(/#(?:post|site|separator|page)_\w+/); // an SEO-plugin variable that never resolved
+      expect(a.description, a.id).not.toMatch(/&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i); // entities were decoded
+      expect(a.description, a.id).not.toMatch(/\[&?hellip;?\]/); // not the WordPress excerpt trailer
+    }
+  });
+
+  it('a description is not the title and not a stored copy of the excerpt of another article', () => {
+    const descriptions = articles.map((a) => a.description).filter(Boolean);
+    expect(new Set(descriptions).size).toBe(descriptions.length); // no two articles share one
+    for (const a of articles) expect(a.description, a.id).not.toBe(a.title);
+  });
+
   it('is sorted newest first, deterministic on ties', () => {
     const dates = articles.map((a) => a.dateISO);
     expect(dates).toEqual([...dates].sort().reverse());

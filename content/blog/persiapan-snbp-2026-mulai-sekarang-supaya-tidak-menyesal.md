@@ -12,6 +12,9 @@ excerpt: >-
   non-akademik gemilang untuk meraih kursi di kampus impian tanpa harus
   mengikuti ujian tulis. Persiapan SNBP yang matang menjadi kunci utama untuk
   meningkatkan peluang [&hellip;]
+description: >-
+  Panduan lengkap persiapan SNBP 2026 mencakup pemahaman sistem seleksi, jadwal
+  utama, dan strategi memilih program studi yang sesuai.
 featured: false
 image: /blog/images/2026/01/pexels-pamanjoe-35548842-scaled.jpg
 author: Sesilia

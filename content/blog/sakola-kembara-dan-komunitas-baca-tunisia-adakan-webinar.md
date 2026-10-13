@@ -12,6 +12,10 @@ excerpt: >-
   bahasa yang mampu mengajak pembaca berpikir. Kesadaran tersebut menjadi latar
   belakang diselenggarakannya Pelatihan Pembuatan Artikel Opini yang diinisiasi
   oleh Tunisia Book Party bersama Sakola Kembara, dan [&hellip;]
+description: >-
+  Sakola Kembara - Menulis opini bukan sekadar menyampaikan pendapat. Di balik
+  sebuah artikel opini yang menarik, terdapat kemampuan untuk membaca persoalan
+  -
 featured: false
 image: /blog/images/2026/08/Screenshot-2026-08-15-110253.png
 author: Muttaqin Hidayahtullah

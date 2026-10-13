@@ -12,6 +12,9 @@ excerpt: >-
   merampas potensi pemuda Indonesia di balik embel-embel kemajuan Indonesia.
   Kita tidak sepenuhnya dapat menyebutnya kemajuan jika, fondasi pemerataan hak
   atas belajar ternyata hanya ilusi bagi sebagian [&hellip;]
+description: >-
+  Membuka pemikiran mengenai kesenjangan pendidikan, pahami definisi dan
+  penyebab masalah dominan yang menghambat akses pendidikan
 featured: false
 image: >-
   /blog/images/2025/11/Ironi-Aksara-Membongkar-Celah-Kesenjangan-Pendidikan-Indonesia-scaled.jpg

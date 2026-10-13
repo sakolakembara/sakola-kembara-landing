@@ -12,6 +12,9 @@ excerpt: >-
   napas yang menghidupkan perjalanan hidup seseorang. Oleh karena itu,
   pendidikan adalah hak bagi seluruh warga negara Indonesia. Namun, pada
   kenyataannya, masih banyak anak-anak di pelosok yang belum [&hellip;]
+description: >-
+  Kisah inspiratif Nur Febriyati yang dedikasikan diri untuk mengajar di Sakola
+  Kembara demi mewujudkan akses pendidikan setara bagi seluruh anak negeri.
 featured: false
 image: /blog/images/2026/02/IMG_20260121_123128-Febry-1.jpg
 author: athalia

@@ -15,6 +15,9 @@ excerpt: >-
   diberikan ruang yang sama untuk mengenali potensi unik mereka. Melalui
   pendekatan ini harapannya mereka dapat memahami kelebihan dan arah karier
   impian di masa depan. Rangkaian kegiatan [&hellip;]
+description: >-
+  Praktisi Talents Mapping memberikan testimoni tentang program pemetaan diri
+  untuk mewujudkan pendidikan inklusif bersama Sakola Kembara.
 featured: false
 image: >-
   /blog/images/2025/12/Wujudkan-Pendidikan-Inklusif-Inilah-Catatan-Inspiratif-Praktisi-Talents-Mapping-Kak-Nurwening-Tentang-Pemetaan-Potensi-Sejak-Dini.jpeg

@@ -15,6 +15,13 @@ excerpt: >-
   muslim di Indonesia. Dalam beberapa tahun terakhir, PTKIN tidak lagi dipandang
   sebagai kampus yang hanya fokus pada ilmu agama semata. Banyak PTKIN kini
   berkembang menjadi universitas modern dengan [&hellip;]
+description: >-
+  Sakola Kembara- Perguruan Tinggi Keagamaan Islam Negeri (PTKIN) merupakan
+  institusi pendidikan tinggi di bawah naungan Kementerian Agama Republik
+  Indonesia yang memiliki peran penting dalam mencetak generasi intelektual
+  muslim di Indonesia. Dalam beberapa tahun terakhir, PTKIN tidak lagi dipandang
+  sebagai kampus yang hanya fokus pada ilmu agama semata. Banyak PTKIN kini
+  berkembang menjadi universitas modern dengan
 featured: false
 image: /blog/images/2026/05/images-1.jpg
 author: Muttaqin Hidayahtullah

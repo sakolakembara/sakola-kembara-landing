@@ -12,6 +12,9 @@ excerpt: >-
   masuk perguruan tinggi. Bagi Yoanie, pendidikan adalah salah satu cara terbaik
   untuk membuka peluang kesempatan untuk belajar dengan masa depan yang layak
   dan lebih [&hellip;]
+description: >-
+  Yoanie suka membantu siswa tidak hanya mengajarkan untuk belajar tetapi
+  menjadi pengalaman berharga dalam pengembangan diri
 featured: false
 image: /blog/images/2026/05/IMG_4189-1-1-scaled.jpg
 author: Deanita

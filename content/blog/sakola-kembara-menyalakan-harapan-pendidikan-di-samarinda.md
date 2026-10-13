@@ -12,6 +12,9 @@ excerpt: >-
   memadai. Faktor ekonomi sering kali menjadi penghalang bagi banyak siswa untuk
   memperoleh pendampingan belajar yang berkualitas. Di tengah kondisi tersebut,
   hadirnya program Sakola Kembara menjadi kabar [&hellip;]
+description: >-
+  Pendidikan merupakan salah satu instrumen paling penting dalam membangun masa
+  depan. Namun, realitas menunjukkan bahwa tidak semua pelajar memiliki akses.
 featured: false
 image: /blog/images/2026/07/Screenshot-2026-07-13-001055.png
 author: Muttaqin Hidayahtullah

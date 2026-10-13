@@ -54,7 +54,8 @@ const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttr
   seo={{
     kind: 'page',
     title: article.title,
-    description: article.excerpt,
+    // the page's own meta description when the article has one (the migrated ones carry their WordPress description), else the excerpt
+    description: article.description ?? article.excerpt,
     path: `/blog/${article.slug}`,
     ogImage: cover?.src,
     article: {

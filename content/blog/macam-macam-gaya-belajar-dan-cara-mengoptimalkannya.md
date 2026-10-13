@@ -12,6 +12,9 @@ excerpt: >-
   keberhasilan seseorang dalam memahami materi pelajaran. Banyak siswa merasa
   kesulitan belajar bukan karena mereka tidak cerdas, tetapi karena metode
   belajar yang digunakan tidak sesuai [&hellip;]
+description: >-
+  Setiap manusia memiliki cara unik dalam menerima, mengolah, dan mengingat
+  informasi. Perbedaan ini disebut sebagai gaya belajar.
 featured: false
 image: /blog/images/2024/11/Hero-Image-1.png
 author: Muttaqin Hidayahtullah

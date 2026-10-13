@@ -4,7 +4,7 @@ id: >-
 wpId: 5439
 title: >-
   Harta Karun Pribadi: Kisah Pembelajaran Hekkel Mengenali Potensi
-  &#8216;Maximizer' di Dalam Dirinya
+  ‘Maximizer’ di Dalam Dirinya
 category: Testimonials
 date: 30 Desember 2025
 dateISO: '2025-12-30'
@@ -15,6 +15,10 @@ excerpt: >-
   Hekkel, seorang siswa asal Bandung yang masih dilema dengan pilihannya. Namun,
   masalah ini teratasi dengan hadirnya Talents Mapping. Layanan ini merupakan
   program [&hellip;]
+description: >-
+  Simak kisah inspiratif Hekkel menemukan potensi diri melalui Talents Mapping.
+  Sebuah perjalanan pembelajaran bermakna untuk menentukan jurusan kuliah dan
+  karier masa depan.
 featured: false
 image: >-
   /blog/images/2025/12/Harta-Karun-Pribadi-Kisah-Pembelajaran-Hekkel-Mengenali-Potensi-Maximizer-di-Dalam-Dirinya.jpeg

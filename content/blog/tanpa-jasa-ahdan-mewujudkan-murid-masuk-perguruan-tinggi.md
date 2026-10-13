@@ -12,6 +12,9 @@ excerpt: >-
   untuk membantu para siswa mewujudkan impiannya masuk Perguruan Tinggi Negeri
   (PTN). Ia pun mengajar matematika yang menjelaskan dari detail yang berbasis
   dasar dan [&hellip;]
+description: >-
+  Ahdan sebagai pengajar matematika dapat membantu mewujudkan para murid supaya
+  percaya diri untuk masuk perguruan tinggi dengan jurusan pilihan
 featured: true
 image: /blog/images/2026/05/IMG-20260102-WA0069-Ahdan-Darul-Mutaqin-scaled.jpg
 author: Deanita

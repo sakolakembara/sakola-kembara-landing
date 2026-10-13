@@ -15,6 +15,13 @@ excerpt: >-
   satu gagasan yang diangkat dalam kegiatan Kelas Belajar yang melibatkan Sakola
   Kembara dalam sebuah kolaborasi bersama Bank Indonesia di Jakarta. Mengangkat
   tema “Hubungan kondisi [&hellip;]
+description: >-
+  Sakola Kembara - Pendidikan tidak hanya berbicara tentang ruang kelas, buku,
+  dan pencapaian akademik. Lebih jauh, pendidikan juga memiliki hubungan erat
+  dengan kondisi sosial dan ekonomi masyarakat. Kesadaran tersebut menjadi salah
+  satu gagasan yang diangkat dalam kegiatan Kelas Belajar yang melibatkan Sakola
+  Kembara dalam sebuah kolaborasi bersama Bank Indonesia di Jakarta. Mengangkat
+  tema “Hubungan kondisi
 featured: false
 image: /blog/images/2026/08/WhatsApp-Image-2026-08-20-at-02.29.15-1.jpeg
 author: Muttaqin Hidayahtullah

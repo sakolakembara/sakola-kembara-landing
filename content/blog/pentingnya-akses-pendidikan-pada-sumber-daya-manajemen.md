@@ -12,6 +12,9 @@ excerpt: >-
   terhadap permasalahan serius dalam pemerataan akses pendidikan yaitu: Banyak
   anak – anak yang terisolasi di pelosok sulit untuk mengakses sekolah karena
   jarak [&hellip;]
+description: >-
+  Indonesia sangat memerlukan akses pendidikan yang luas dan merata kepada anak
+  bangsa yang kurang mampu dalam pelayanan pendidikan.
 featured: false
 image: /blog/images/2026/02/IMG_15751-scaled.jpg
 author: Muttaqin Hidayahtullah

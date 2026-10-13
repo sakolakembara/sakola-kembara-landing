@@ -11,6 +11,12 @@ excerpt: >-
   untuk para siswa di Indonesia yang telah melalui tahapan seleksi. Acara ini
   berlangsung pada tanggal 13 Desember 2025, di Gede Space Pasar Atas Kota
   Cimahi Jawa Barat. Turut hadir pula Ketua DPRD Kota Cimahi ( [&hellip;]
+description: >-
+  CIMAHI - Bantu Teman, dan Sakola Kembara telah mengadakan Acara Seremonial
+  Penerimaan Beasiswa. Sebuah Bimbingan Belajar UTBK Seleksi Perguruan Tinggi,
+  untuk para siswa di Indonesia yang telah melalui tahapan seleksi. Acara ini
+  berlangsung pada tanggal 13 Desember 2025, di Gede Space Pasar Atas Kota
+  Cimahi Jawa Barat. Turut hadir pula Ketua DPRD Kota Cimahi (
 featured: false
 image: /blog/images/2025/12/WhatsApp-Image-2025-12-19-at-15.48.10_ee372481.jpg
 author: Muttaqin Hidayahtullah

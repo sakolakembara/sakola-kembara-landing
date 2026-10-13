@@ -12,6 +12,9 @@ excerpt: >-
   mencetak masa depan siswa diperlukan pendidikan yang berkualitas. Simak cerita
   BeeHive yang turut serta sukarela mewujudkannya! Alasan Sukarela Berdonasi di
   Sakola Kembara BeeHive, salah satu [&hellip;]
+description: >-
+  Sukarela berdonasi di Sakola Kembara merupakan jalan yang BeeHive pilih dalam
+  membantu masa depan siswa dalam pendidikannya. Simak cerita lengkapnya!
 featured: false
 image: /blog/images/2026/01/Sukarela-Berdonasi-untuk-Masa-Depan-Siswa.jpeg
 author: Azkia Himayatu Dini

@@ -170,6 +170,16 @@ describe('parsers', () => {
     expect(parseBlogArticle({ article: { ...good, contentHtml: '<p>x</p>' }, related: [] })?.article.modifiedISO).toBe('2026-05-01');
     for (const bad of [null, {}, { article: good }, { article: { ...good, contentHtml: '  ' } }, { article: { contentHtml: '<p>x</p>' } }]) expect(parseBlogArticle(bad)).toBeNull();
   });
+
+  it('description (SAKEM-090): the stored meta description, null when the API has none, sends an empty one or is from before the field', () => {
+    const html = { contentHtml: '<p>x</p>' };
+    expect(parseBlogArticle({ article: { ...good, ...html, description: 'Untuk mesin pencari.' }, related: [] })?.article.description).toBe('Untuk mesin pencari.');
+    for (const description of [undefined, null, '', '   ', 5, {}]) {
+      expect(parseBlogArticle({ article: { ...good, ...html, description }, related: [] })?.article.description, String(description)).toBeNull();
+    }
+    // a list entry has no description: the field belongs to the article answer only
+    expect(parseSummary({ ...good, description: 'x' })).not.toHaveProperty('description');
+  });
 });
 
 describe('covers: the API sends a path; the srcset comes from the asset manifest', () => {
@@ -315,7 +325,7 @@ describe('the API client and the markdown adapter agree on every article', () =>
     expect(res.headers.get('cache-control')).toBe('public, s-maxage=60, stale-while-revalidate=300');
     const json = (await res.json()) as { article: Record<string, unknown> };
     expect(Object.keys(json.article).sort()).toEqual(
-      ['author', 'category', 'contentHtml', 'contentMarkdown', 'date', 'dateISO', 'excerpt', 'featured', 'image', 'imageHeight', 'imageWidth', 'modifiedISO', 'slug', 'title'].sort(),
+      ['author', 'category', 'contentHtml', 'contentMarkdown', 'date', 'dateISO', 'description', 'excerpt', 'featured', 'image', 'imageHeight', 'imageWidth', 'modifiedISO', 'slug', 'title'].sort(),
     );
     const list = (await (await fetch(`${base}/api/public/blog?page=1&pageSize=3`)).json()) as { featured: Record<string, unknown>; articles: Record<string, unknown>[] };
     for (const entry of [list.featured, ...list.articles]) {
