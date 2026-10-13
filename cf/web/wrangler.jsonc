@@ -35,10 +35,11 @@
   //     (`<name>-<environment>` of cf/admin/wrangler.jsonc: wrangler's rule for a binding that targets an
   //     environment). A test (tests/staging-config.test.ts) keeps the two names equal.
   //   - Per-deploy public values (TURNSTILE_SITE_KEY, ADMIN_URL, UPLOADS_BASE_URL) are not in git: they are passed
-  //     with `--var` (cf/scripts/staging-vars.mjs prints the arguments from an untracked file). NEVER set
-  //     CONTENT_API_URL, CONTACT_API_URL or LEGACY_ORIGIN_URL here either: the first two would move the reads and
-  //     the contact form off the binding, and staging has no legacy origin (static files only; a pass-through
-  //     path such as /_next/* answers an error there, by design: see docs/cloudflare/staging-runbook.md).
+  //     with `--var` (cf/scripts/staging-deploy-command.mjs prints the command from an untracked file). NEVER set
+  //     CONTENT_API_URL or CONTACT_API_URL, here or there: they would move the reads and the contact form off the
+  //     binding. Staging has no legacy origin behind its hostname, so a pass-through path such as /_next/* would
+  //     fetch the Worker's own address again (Cloudflare's loop limit is 16 invocations); the deploy command passes
+  //     LEGACY_ORIGIN_URL as a `*.invalid` host, which never resolves, so it fails at once (docs/cloudflare/free-plan-audit.md).
   "env": {
     "staging": {
       "name": "sakem-web-staging",

@@ -24,6 +24,7 @@
     "seo:parity": "node scripts/seo-parity.mjs",
     "seo:parity:local": "node scripts/seo-parity-local.mjs",
     "measure": "node scripts/measure.mjs",
+    "measure:staging": "node scripts/measure-staging.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",
     "stub-origin": "node scripts/stub-origin.mjs",
     "check:dist": "node scripts/check-dist.mjs"

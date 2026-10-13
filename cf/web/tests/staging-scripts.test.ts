@@ -45,7 +45,12 @@ describe('staging-deploy-command: the variables file', () => {
 
   it('refuses the variables that would pull the site off its binding or off staging', () => {
     for (const name of ['CONTENT_API_URL', 'CONTACT_API_URL']) expect(() => validate('web', `${name}=https://api.example.org`)).toThrow(/service binding/);
-    expect(() => validate('web', 'LEGACY_ORIGIN_URL=https://sakolakembara.org')).toThrow(/legacy origin/);
+    for (const bad of ['https://sakolakembara.org', 'https://example.com', 'http://127.0.0.1:4390', 'https://x.workers.dev']) {
+      expect(() => validate('web', `LEGACY_ORIGIN_URL=${bad}`), bad).toThrow();
+    }
+    expect(() => validate('web', 'LEGACY_ORIGIN_URL=https://sakolakembara.org')).toThrow(/only a \*\.invalid host/);
+    expect(() => validate('web', 'LEGACY_ORIGIN_URL=https://no-legacy-origin.invalid')).not.toThrow();
+    expect(() => validate('admin', 'LEGACY_ORIGIN_URL=https://no-legacy-origin.invalid')).toThrow(/not a variable of sakem-admin-staging/);
     expect(() => validate('admin', 'ENVIRONMENT=development')).toThrow(/staging block/);
     expect(() => validate('admin', 'COOKIE_DOMAIN=.workers.dev')).toThrow(/not used on staging/);
   });
@@ -88,10 +93,12 @@ describe('staging-deploy-command: the variables file', () => {
     }
   });
 
-  it('the allowed lists hold no secret, no API URL and no ENVIRONMENT', () => {
+  it('the allowed lists hold no secret, no API URL and no ENVIRONMENT; the legacy origin only for the site, and only as a *.invalid host', () => {
     for (const worker of Object.values(WORKERS)) {
-      for (const name of worker.allowed) expect(name).not.toMatch(/SECRET|TOKEN|PASSWORD|API_KEY|CONTENT_API_URL|CONTACT_API_URL|LEGACY_ORIGIN_URL|^ENVIRONMENT$/);
+      for (const name of worker.allowed) expect(name).not.toMatch(/SECRET|TOKEN|PASSWORD|API_KEY|CONTENT_API_URL|CONTACT_API_URL|^ENVIRONMENT$/);
     }
+    expect(WORKERS.web.allowed).toContain('LEGACY_ORIGIN_URL');
+    expect(WORKERS.admin.allowed).not.toContain('LEGACY_ORIGIN_URL');
   });
 });
 

@@ -114,7 +114,8 @@
   //     NAME (`wrangler d1 ... --remote` looks the database up through the API; `wrangler deploy` connects
   //     to an existing resource of that name, or creates one when it is missing, without writing an id
   //     into this file when it runs non-interactively with CI=1). Public per-deploy values (TURNSTILE_SITE_KEY,
-  //     UPLOADS_BASE_URL, SITE_URL) are passed with `--var`, see cf/scripts/staging-vars.mjs.
+  //     UPLOADS_BASE_URL, SITE_URL, EMAIL_FROM) are passed with `--var`: `pnpm deploy:staging:command` prints
+  //     the command from an untracked .staging.vars (cf/scripts/staging-deploy-command.mjs).
   //   - Rate limit namespaces: the ones of the top level plus 100, so staging never shares a counter with
   //     production inside one account.
   "env": {

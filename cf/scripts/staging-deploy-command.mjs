@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const URL_NAMES = new Set(['UPLOADS_BASE_URL', 'SITE_URL', 'ADMIN_URL']);
+const URL_NAMES = new Set(['UPLOADS_BASE_URL', 'SITE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL']);
 
 export const WORKERS = {
   admin: {
@@ -33,7 +33,11 @@ export const WORKERS = {
   web: {
     name: 'sakem-web-staging',
     deploy: ['pnpm', 'exec', 'wrangler', 'deploy', '-c', 'dist/server/wrangler.json'],
-    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS'],
+    // LEGACY_ORIGIN_URL is allowed with ONE kind of value, a `.invalid` host (RFC 2606: it never resolves). Staging has no
+    // legacy origin behind its hostname, so the pass-through of a path nobody serves (/_next/*, /images/team/*) would
+    // fetch the Worker's own workers.dev address again, up to Cloudflare's loop limit of 16 invocations for one request;
+    // a host that cannot resolve makes it fail at once instead, with no code change. Never the live site.
+    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS'],
     before: 'pnpm build:staging',
   },
 };
@@ -41,7 +45,6 @@ export const WORKERS = {
 /** Names that must never be passed this way, with the reason (shown to the owner). */
 const NEVER = [
   [/^(CONTENT_API_URL|CONTACT_API_URL)$/, 'these move the reads and the contact form off the service binding onto public HTTP'],
-  [/^LEGACY_ORIGIN_URL$/, 'staging has no legacy origin and must not forward to the live site'],
   [/^ENVIRONMENT$/, 'the staging block of wrangler.jsonc sets it'],
   [/^BETTER_AUTH_SECRET$|SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE/i, 'a secret: use `wrangler secret put`, typed at its prompt'],
   [/^COOKIE_DOMAIN$|^TRUSTED_ORIGINS$/, 'not used on staging (host-only cookies, same-origin writes)'],
@@ -91,6 +94,9 @@ export function validateVars(worker, entries) {
       if (url.protocol !== 'https:') throw new Error(`${where}: must be an https origin`);
       if (url.username || url.password || url.search || url.hash || url.pathname !== '/' || value.endsWith('/')) {
         throw new Error(`${where}: must be an origin only, like https://host (no path, no trailing slash, no credentials)`);
+      }
+      if (name === 'LEGACY_ORIGIN_URL' && !url.hostname.endsWith('.invalid')) {
+        throw new Error(`${where}: refused, staging must never forward to a real host: only a *.invalid host (it never resolves) is accepted`);
       }
     } else if (name === 'TURNSTILE_SITE_KEY') {
       if (!/^[0-9A-Za-z_-]{10,64}$/.test(value)) throw new Error(`${where}: not a Turnstile site key (letters, digits, - and _, 10 to 64 characters)`);
