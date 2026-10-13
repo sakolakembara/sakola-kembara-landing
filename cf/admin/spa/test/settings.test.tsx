@@ -378,6 +378,7 @@ describe("the form: create", () => {
     await user.type(screen.getByLabelText(/Email/), "guru@contoh.test");
     await user.click(screen.getByRole("radio", { name: /Viewer/ }));
     await user.type(screen.getByLabelText(/Password/), "kata sandi awal");
+    await user.type(screen.getByLabelText(/^Ketik ulang email/), "guru@contoh.test");
     await user.click(screen.getByRole("button", { name: "Buat Admin" }));
     await waitFor(() => expect(location()).toBe("/settings/new-id/edit"));
     expect(api.last(`POST ${LIST}`)?.body).toEqual({ email: "guru@contoh.test", name: "", role: "viewer", password: "kata sandi awal" });
@@ -394,6 +395,57 @@ describe("the form: create", () => {
     expect(hint).not.toContain("tetap harus");
   });
 
+  // Dzul's decision (2026-10-13): an admin made with a password is never verified by email, so a mistyped address would
+  // hand the role to its owner: the address is typed twice.
+  describe("the address typed twice (only with a password)", () => {
+    test("the second field appears when a password is typed, and not for an invitation", async () => {
+      const user = userEvent.setup();
+      await openForm("/settings/new");
+      expect(screen.queryByLabelText(/^Ketik ulang email/)).toBeNull();
+      await user.type(screen.getByLabelText(/Password/), "kata sandi awal");
+      expect(screen.getByLabelText(/^Ketik ulang email/)).toBeTruthy();
+      await user.clear(screen.getByLabelText(/Password/));
+      expect(screen.queryByLabelText(/^Ketik ulang email/)).toBeNull();
+    });
+
+    test("a difference is refused on the field, nothing is sent, and what was typed stays", async () => {
+      const user = userEvent.setup();
+      const { api } = await openForm("/settings/new");
+      await user.type(screen.getByLabelText(/Email/), "guru@contoh.test");
+      await user.type(screen.getByLabelText(/Password/), "kata sandi awal");
+      await user.type(screen.getByLabelText(/^Ketik ulang email/), "guru@contoh.tset");
+      await user.click(screen.getByRole("button", { name: "Buat Admin" }));
+      expect(await screen.findByText("Email tidak sama. Ketik ulang alamat yang sama dengan di atas.")).toBeTruthy();
+      expect(api.count(`POST ${LIST}`)).toBe(0);
+      expect(screen.getByLabelText(/^Ketik ulang email/).getAttribute("aria-invalid")).toBe("true");
+      expect((screen.getByLabelText(/Email/) as HTMLInputElement).value).toBe("guru@contoh.test");
+    });
+
+    test("case and spaces around the address are not a difference, and the confirmation is not sent", async () => {
+      const user = userEvent.setup();
+      const created = admin({ id: "new-id", email: "guru@contoh.test", status: "active", emailVerified: true });
+      const { api } = await openForm("/settings/new", { [`POST ${LIST}`]: respond({ item: created, user: created }, 201), [`GET ${LIST}/new-id`]: respond({ item: created }) });
+      await user.type(screen.getByLabelText(/Email/), "guru@contoh.test");
+      await user.type(screen.getByLabelText(/Password/), "kata sandi awal");
+      await user.type(screen.getByLabelText(/^Ketik ulang email/), " Guru@Contoh.Test ");
+      await user.click(screen.getByRole("button", { name: "Buat Admin" }));
+      await waitFor(() => expect(location()).toBe("/settings/new-id/edit"));
+      const body = api.last(`POST ${LIST}`)?.body as Record<string, unknown>;
+      expect(body).toMatchObject({ email: "guru@contoh.test", password: "kata sandi awal" });
+      expect(body).not.toHaveProperty("emailConfirm");
+    });
+
+    test("an invitation (no password) needs no second address", async () => {
+      const user = userEvent.setup();
+      const created = admin({ id: "new-id", email: "guru@contoh.test", status: "invited" });
+      const { api } = await openForm("/settings/new", { [`POST ${LIST}`]: respond({ item: created, user: created }, 201), [`GET ${LIST}/new-id`]: respond({ item: created }) });
+      await user.type(screen.getByLabelText(/Email/), "guru@contoh.test");
+      await user.click(screen.getByRole("button", { name: "Buat Admin" }));
+      await waitFor(() => expect(location()).toBe("/settings/new-id/edit"));
+      expect(api.count(`POST ${LIST}`)).toBe(1);
+    });
+  });
+
   test("a refused form: each field says it, the summary links to it, and nothing was navigated", async () => {
     const user = userEvent.setup();
     await openForm("/settings/new", {
@@ -402,6 +454,7 @@ describe("the form: create", () => {
     // (A value the browser itself would refuse never reaches the Worker, so the address here is well formed.)
     await user.type(screen.getByLabelText(/Email/), "x@y");
     await user.type(screen.getByLabelText(/Password/), "pendek");
+    await user.type(screen.getByLabelText(/^Ketik ulang email/), "x@y");
     await user.click(screen.getByRole("button", { name: "Buat Admin" }));
     const summary = await screen.findByRole("alert");
     expect(within(summary).getByRole("link", { name: "Email: Format email tidak valid" })).toBeTruthy();

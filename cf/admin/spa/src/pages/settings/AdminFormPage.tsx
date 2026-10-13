@@ -5,7 +5,7 @@ import { Field, Input } from "@/components/ui/field";
 import { FormSection, FormShell } from "~/components/crud/FormShell";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { accessTo } from "~/lib/access";
-import { api } from "~/lib/api";
+import { type ApiFailure, api } from "~/lib/api";
 import { describeFailure } from "~/lib/crud/errors";
 import { ifMatch } from "~/lib/crud/etag";
 import { type FlashControl, flashState, useFlash } from "~/lib/crud/flash";
@@ -15,7 +15,7 @@ import { useItem } from "~/lib/crud/useItem";
 import { useMutation } from "~/lib/crud/useMutation";
 import { usePageTitle } from "~/lib/hooks";
 import { useMe } from "~/lib/session";
-import { type AdminItem, type AdminValues, API_PATH, AREA_LABEL, AREA_MENUS, AREAS, FIELD_LABELS, ROLE_HINT, ROLE_LABEL, ROLES, ROUTE, STATUS, toCreateBody, toUpdateBody, toValues } from "./model";
+import { type AdminItem, type AdminValues, API_PATH, AREA_LABEL, AREA_MENUS, AREAS, FIELD_LABELS, ROLE_HINT, ROLE_LABEL, ROLES, ROUTE, STATUS, toCreateBody, toUpdateBody, toValues, emailsDiffer } from "./model";
 
 // Create and edit an admin, built with the form blocks of docs/cloudflare/admin-crud.md. The same screen serves
 // `/settings/new` and `/settings/:id/edit` (the address the Aktivitas page links an admin row to). A port of the
@@ -29,6 +29,16 @@ import { type AdminItem, type AdminValues, API_PATH, AREA_LABEL, AREA_MENUS, ARE
 //     and the form shows both.
 
 const ROLE_CARD = "flex cursor-pointer items-start gap-3 rounded-xl border-2 border-gray-200 p-3 transition-colors hover:border-primary-blue has-[:checked]:border-primary-blue has-[:checked]:bg-primary-blue/5";
+
+// A password is given but the address was not typed twice the same: refused here, nothing is sent (the Worker cannot
+// know what was meant). Shaped like the Worker's own 400 so the form shows it the same way.
+const EMAIL_MISMATCH: ApiFailure = {
+  ok: false,
+  status: 400,
+  code: "invalid",
+  message: "Periksa kembali isian formulir.",
+  fields: { emailConfirm: "Email tidak sama. Ketik ulang alamat yang sama dengan di atas." },
+};
 
 export function AdminFormPage() {
   const { id } = useParams();
@@ -85,7 +95,9 @@ function AdminForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
   const save = useMutation<AdminValues, ItemPayload<AdminItem>>((values) =>
     item
       ? api<ItemPayload<AdminItem>>(`${API_PATH}/${encodeURIComponent(item.id)}`, { method: "PUT", json: toUpdateBody(values), ifMatch: ifMatch(item.updatedAt) })
-      : api<ItemPayload<AdminItem>>(API_PATH, { method: "POST", json: toCreateBody(values) }),
+      : emailsDiffer(values)
+        ? Promise.resolve(EMAIL_MISMATCH)
+        : api<ItemPayload<AdminItem>>(API_PATH, { method: "POST", json: toCreateBody(values) }),
   );
 
   async function submit() {
@@ -145,6 +157,17 @@ function AdminForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
             hint="Opsional. Kosongkan untuk mengundang lewat email: admin memilih sendiri password-nya lewat tautan di email (berlaku 7 hari). Jika diisi, admin langsung bisa masuk dengan password itu tanpa verifikasi email, jadi pastikan emailnya benar dan sampaikan password-nya langsung ke admin."
           >
             <Input type="password" {...form.field("password")} autoComplete="new-password" placeholder="Password awal (opsional)" />
+          </Field>
+        )}
+        {!item && form.values.password !== "" && (
+          <Field
+            label="Ketik ulang email"
+            id="emailConfirm"
+            required
+            error={fields.emailConfirm}
+            hint="Admin dengan password langsung bisa masuk tanpa verifikasi email, jadi alamatnya diketik dua kali."
+          >
+            <Input type="email" required {...form.field("emailConfirm")} placeholder="nama@contoh.com" autoComplete="off" />
           </Field>
         )}
       </FormSection>
