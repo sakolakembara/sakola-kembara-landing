@@ -32,6 +32,10 @@ In production the Worker is attached to the zone with a **route** (not a custom 
 
 Which account is used, what the owner does in the terminal and dashboard, and when each step is needed: [`account-setup.md`](account-setup.md).
 
+## Cutover, rollback and SEO audit (SAKEM-084, M5)
+
+The runbook for the day the live WordPress site is replaced (preconditions, the DNS inventory, TTLs, the order of operations, smoke and cache checks, monitoring, rollback, what to keep of WordPress, the findings of the audit and the risk register; **go-live is blocked on M4**): [`cutover-runbook.md`](cutover-runbook.md). The read-only SEO parity tool (`cf/web/scripts/seo-parity.mjs`, `pnpm seo:parity`), its finding table, the Core Web Vitals plan and the Search Console plan: [`seo-audit.md`](seo-audit.md). Staging and the Free-plan audit (M5-A) are written separately.
+
 ## Rules for this folder tree
 
 - No Cloudflare account use from this repo's tooling during the spike: no login, no deploy, no remote resource commands. `wrangler deploy --dry-run` only.

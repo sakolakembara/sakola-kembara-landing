@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "base": "https://sakolakembara.org",
+  "entries": {
+    "/robots.txt": { "status": 200, "contentType": "text/plain; charset=UTF-8", "file": "bodies/robots.txt" },
+    "/sitemap_index.xml": { "status": 200, "contentType": "application/xml; charset=UTF-8", "file": "bodies/sitemap_index.xml" },
+    "/post-sitemap.xml": { "status": 200, "contentType": "application/xml; charset=UTF-8", "file": "bodies/post-sitemap.xml" },
+    "/page-sitemap.xml": { "status": 200, "contentType": "application/xml; charset=UTF-8", "file": "bodies/page-sitemap.xml" },
+    "/cerita/sample-post/": { "status": 200, "contentType": "text/html; charset=UTF-8", "file": "bodies/sample-post.html" },
+    "/tim/": { "status": 200, "contentType": "text/html; charset=UTF-8", "file": "bodies/tim.html" }
+  }
+}

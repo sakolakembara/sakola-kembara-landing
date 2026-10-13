@@ -18,6 +18,8 @@
     "test:e2e": "node scripts/e2e.mjs",
     "test:e2e:uploads": "node scripts/e2e-uploads.mjs",
     "test:negative:shortlink": "node scripts/negative-checks-shortlink.mjs",
+    "seo:parity": "node scripts/seo-parity.mjs",
+    "seo:parity:local": "node scripts/seo-parity-local.mjs",
     "measure": "node scripts/measure.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",
     "stub-origin": "node scripts/stub-origin.mjs",

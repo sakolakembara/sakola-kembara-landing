@@ -12,3 +12,5 @@
 /.asset-state.json
 # Local measurement output
 /.measure/
+# Output of scripts/seo-parity.mjs (reports and recorded answers of a real site: never committed)
+/.seo-parity/
