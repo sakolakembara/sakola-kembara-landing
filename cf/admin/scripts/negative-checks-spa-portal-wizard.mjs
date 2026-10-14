@@ -22,6 +22,8 @@ const A11Y = "wizard-a11y.test.tsx";
 const PRIVACY = "wizard-privacy.test.tsx";
 const RULES = "wizard-rules.test.ts";
 const MOCK = "wizard-mock.test.tsx";
+const BUSY = "wizard-busy.test.tsx";
+const FIELD = "file-slot-field.test.tsx";
 
 const W = "portal-spa/src/lib/wizard";
 const P = "portal-spa/src/pages/daftar";
@@ -264,6 +266,40 @@ export const portalWizardSpaChecks = [
     '<Field group id={name} label={label} required={required} hint={hint} error={errors[name]}>\n      <div className={GRID[columns]} data-field={name}>',
     '<Field id={name} label={label} required={required} hint={hint} error={errors[name]}>\n      <div className={GRID[columns]} data-field={name}>',
     t(A11Y),
+  ),
+
+  // ---------------------------------------------- a file on its way holds the buttons (the field's `onBusyChange`)
+  check("the buttons are not held while a file is on its way", `${W}/use-wizard.ts`, "    busy: pending || uploading,\n", "    busy: pending,\n", t(BUSY)),
+  check("the page does not say why the buttons are held", `${P}/Wizard.tsx`, '? "Tunggu unggahan selesai."', '? ""', t(BUSY)),
+  check(
+    "a slot that is over is still counted as busy",
+    `${W}/use-wizard.ts`,
+    ": prev.filter((other) => other !== slot)));",
+    ": prev));",
+    t(BUSY),
+  ),
+  check(
+    "the documents screen does not listen to its slots' busy signal",
+    `${P}/steps/Documents.tsx`,
+    "        onBusyChange={(busy) => setSlotBusy(slot, busy)}\n",
+    "",
+    t(BUSY),
+  ),
+  check("the field is not busy while it deletes a file", "portal-spa/src/components/FileSlotField.tsx", "const busy = uploading || removing !== null;", "const busy = uploading;", t(BUSY)),
+  check(
+    "a field that goes away mid-upload leaves its page held for good",
+    "portal-spa/src/components/FileSlotField.tsx",
+    "      reportedBusy.current = false;\n      busyCallback.current?.(false);\n    },\n    [],",
+    "      reportedBusy.current = false;\n    },\n    [],",
+    t(BUSY),
+  ),
+  check("the field reports a change that is not one (the first render says 'not busy')", "portal-spa/src/components/FileSlotField.tsx", "    if (reportedBusy.current === busy) return;\n", "", t(BUSY)),
+  check(
+    "the field keeps calling the first function it was given",
+    "portal-spa/src/components/FileSlotField.tsx",
+    "  useEffect(() => {\n    busyCallback.current = onBusyChange;\n  });\n",
+    "",
+    t(BUSY, FIELD),
   ),
 
   // ---------------------------------------------- the mock holds to the contract

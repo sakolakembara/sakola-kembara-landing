@@ -156,7 +156,10 @@ export async function upload(_user: UserEvent, label: string, name = "berkas.pdf
   await act(async () => {
     fireEvent.change(input, { target: { files: [new File(["isi berkas"], name, { type })] } });
   });
-  if (options.expectStored !== false) await waitFor(() => expect(listed()).toBe(before + 1));
+  if (options.expectStored === false) return;
+  await waitFor(() => expect(listed()).toBe(before + 1));
+  // The page holds "Selanjutnya" until the field says the file is over (it does, a moment after the file is listed).
+  await waitFor(() => expect(screen.getByRole("button", { name: "Selanjutnya" })).toHaveProperty("disabled", false));
 }
 
 // ─── Opening the wizard on a screen, the way a returning student would: from the copy in the browser

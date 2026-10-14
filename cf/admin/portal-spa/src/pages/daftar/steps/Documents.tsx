@@ -37,10 +37,19 @@ function slotHint(slot: SlotId, note?: ReactNode): ReactNode {
 
 /** One document or proof: the file field, wired to the wizard's list of files and to the screen's errors. */
 function Slot({ slot, note, required = SLOTS[slot].required === true }: { slot: SlotId; note?: ReactNode; required?: boolean }) {
-  const { errors, filesOf, applyFileChange, expire } = useForm();
+  const { errors, filesOf, applyFileChange, setSlotBusy, expire } = useForm();
   return (
     <div data-field={fileErrorKey(slot)}>
-      <FileSlotField slot={slot} files={filesOf(slot)} onChange={applyFileChange} onUnauthorized={expire} error={errors[fileErrorKey(slot)]} required={required} hint={slotHint(slot, note)} />
+      <FileSlotField
+        slot={slot}
+        files={filesOf(slot)}
+        onChange={applyFileChange}
+        onUnauthorized={expire}
+        onBusyChange={(busy) => setSlotBusy(slot, busy)}
+        error={errors[fileErrorKey(slot)]}
+        required={required}
+        hint={slotHint(slot, note)}
+      />
     </div>
   );
 }

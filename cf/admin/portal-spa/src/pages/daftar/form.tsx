@@ -11,7 +11,7 @@ import type { Wizard } from "~/lib/wizard/use-wizard";
 // so a screen reader hears the question once and then the options; the keyboard is the native one (Tab into the group, the
 // arrow keys inside it).
 
-export type FormState = Pick<Wizard, "values" | "errors" | "update" | "filesOf" | "applyFileChange" | "expire">;
+export type FormState = Pick<Wizard, "values" | "errors" | "update" | "filesOf" | "applyFileChange" | "setSlotBusy" | "expire">;
 const FormContext = createContext<FormState | null>(null);
 
 export function FormProvider({ form, children }: { form: FormState; children: ReactNode }) {

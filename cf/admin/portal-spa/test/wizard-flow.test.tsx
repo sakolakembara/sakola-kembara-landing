@@ -315,6 +315,8 @@ describe("the review, and sending what was changed after a screen was left", () 
     await u.click(within(screen.getByRole("group", { name: /^Scan Kartu Keluarga/ })).getByRole("button", { name: "Hapus berkas 1 Scan Kartu Keluarga" }));
     await u.click(within(screen.getByRole("group", { name: /^Scan Kartu Keluarga/ })).getByRole("button", { name: "Ya, hapus" }));
     await waitFor(() => expect(within(screen.getByRole("group", { name: /^Scan Kartu Keluarga/ })).queryByText("Berkas 1")).toBeNull());
+    // The list of screens is held while the delete is on its way, and comes back a moment after the file is gone.
+    await waitFor(() => expect(within(screen.getByRole("navigation", { name: "Bagian formulir" })).getByRole("button", { name: /Tinjau & Kirim/ })).toHaveProperty("disabled", false));
     await u.click(within(screen.getByRole("navigation", { name: "Bagian formulir" })).getByRole("button", { name: /Tinjau & Kirim/ }));
     await u.click(screen.getByRole("button", { name: "Kirim Pendaftaran" }));
     await heading("Berkas Pendaftaran");

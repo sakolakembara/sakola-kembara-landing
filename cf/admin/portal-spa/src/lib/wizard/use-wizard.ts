@@ -49,7 +49,12 @@ export interface Wizard {
   /** Goes up each time the summary has something new to say: the screen moves focus to it. */
   summaryToken: number;
   status: WizardStatus;
+  /** A save or the send is going on, or a file is on its way: nothing that moves between screens can be pressed. */
   busy: boolean;
+  /** A file is on its way (an upload or a delete in some slot): the page says "Tunggu unggahan selesai." */
+  uploading: boolean;
+  /** A slot's `onBusyChange`. */
+  setSlotBusy: (slot: SlotId, busy: boolean) => void;
   /** Per screen: has the student typed something the server does not hold? */
   unsaved: Record<UiStepId, boolean>;
   sent: Submitted | null;
@@ -102,6 +107,10 @@ export function useWizard(init: WizardInit, onGate: (gate: GateError, message: s
   const [summaryToken, setSummaryToken] = useState(0);
   const [status, setStatus] = useState<WizardStatus>({ kind: "idle" });
   const [sent, setSent] = useState<Submitted | null>(null);
+  // The slots with a file on its way (the field says so: `onBusyChange`). Going on or sending while one is would ask for a
+  // document that is not stored yet, and leaving the screen would cancel it.
+  const [busySlots, setBusySlots] = useState<readonly SlotId[]>([]);
+  const uploading = busySlots.length > 0;
 
   const screenId = UI_STEP_ORDER[screen] as UiStepId;
 
@@ -157,6 +166,10 @@ export function useWizard(init: WizardInit, onGate: (gate: GateError, message: s
       return Object.keys(kept).length === Object.keys(current).length ? prev : { ...prev, [on]: kept };
     });
     setStatus((now) => (now.kind === "saved" ? { kind: "idle" } : now));
+  }
+
+  function setSlotBusy(slot: SlotId, busy: boolean) {
+    setBusySlots((prev) => (busy ? (prev.includes(slot) ? prev : [...prev, slot]) : prev.filter((other) => other !== slot)));
   }
 
   function applyFileChange(change: FileSlotChange) {
@@ -331,7 +344,9 @@ export function useWizard(init: WizardInit, onGate: (gate: GateError, message: s
     notice,
     summaryToken,
     status,
-    busy: pending,
+    busy: pending || uploading,
+    uploading,
+    setSlotBusy,
     unsaved,
     sent,
     update,

@@ -63,7 +63,15 @@ export function Wizard({ init, config, onGate }: { init: WizardInit; config: Wiz
   const items = summaryItems(screenId, errors);
   const isReview = screenId === "review";
   const statusText =
-    status.kind === "saving" ? "Menyimpan…" : status.kind === "submitting" ? "Mengirim…" : status.kind === "saved" ? `Bagian ${UI_STEP_LABELS[status.screen]} tersimpan.` : "";
+    status.kind === "saving"
+      ? "Menyimpan…"
+      : status.kind === "submitting"
+        ? "Mengirim…"
+        : wizard.uploading
+          ? "Tunggu unggahan selesai."
+          : status.kind === "saved"
+            ? `Bagian ${UI_STEP_LABELS[status.screen]} tersimpan.`
+            : "";
   const nextLabel = status.kind === "saving" ? "Menyimpan…" : "Selanjutnya";
 
   return (
