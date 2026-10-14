@@ -19,6 +19,7 @@ import { kontenMiscChecks } from "./negative-checks-konten-misc.mjs";
 import { pendaftaranChecks } from "./negative-checks-pendaftaran.mjs";
 import { blogChecks } from "./negative-checks-blog.mjs";
 import { portalFoundationChecks } from "./negative-checks-portal-foundation.mjs";
+import { portalApiChecks } from "./negative-checks-portal-api.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -57,6 +58,9 @@ const checks = [
 
   // The student portal's foundation (SAKEM-083): scripts/negative-checks-portal-foundation.mjs.
   ...portalFoundationChecks,
+
+  // The student's application API (SAKEM-083): scripts/negative-checks-portal-api.mjs.
+  ...portalApiChecks,
 
   // ---------------------------------------------------------------- auth
   {

@@ -1,9 +1,10 @@
 import type { Context, MiddlewareHandler, Next } from "hono";
 import type { AppEnv } from "../context";
-import { emailAvailable } from "../email/send";
+import { EMAIL_QUOTA_MESSAGE, emailAvailable, emailQuotaSpent } from "../email/send";
 import { clientIp, emailKey } from "../security/client";
 import { checkLimits, limitedResponse, type LimitCheck } from "../security/rate-limit";
 import { guardTurnstile, type TurnstileAction } from "../security/turnstile";
+import { STUDENT_AUDIENCE } from "./audience";
 import { AUTH_BASE_PATH } from "./factory";
 
 // One table says which routes under /api/auth are public and what each one is
@@ -12,11 +13,13 @@ import { AUTH_BASE_PATH } from "./factory";
 // sign-up/email without Turnstile, ...) are not reachable by accident, and a
 // route can never be added without choosing its limits.
 //
-// Order for a listed route, cheapest first, none of it touching the database:
+// Order for a listed route, cheapest first, none of it touching the database but the one marked:
 //   1. JSON only (POST)         415, so form-encoded bodies cannot dodge the keys below
 //   2. email available          503, a route that sends email refuses BEFORE it creates anything
 //   3. rate limits              429 with Retry-After and the Indonesian message
-//   4. Turnstile                403 failed or reused, 503 when the check cannot run
+//   4. the day's email quota    503 `email_quota`: ONE D1 read, only for a route that sends email on the PORTAL's mount
+//                               point (docs/cloudflare/portal-architecture.md, 9.2); the admin's routes are unchanged
+//   5. Turnstile                403 failed or reused, 503 when the check cannot run
 // then Better Auth (or src/auth/register.ts) runs.
 
 interface RouteKeys {
@@ -157,6 +160,13 @@ async function runGate(basePath: string, c: Context<AppEnv>, next: Next): Promis
   const ip = clientIp(c.req.raw.headers);
   const limited = await checkLimits(c.env, policy.limits({ ip, email }));
   if (!limited.allowed) return limitedResponse(limited);
+
+  // Resend's 100 a day: once they are spent a registration, a resend or a reset would answer "ok" and send nothing
+  // (the anonymous routes answer the same for everyone), so the person is told instead, before anything is created
+  // and before a Turnstile token is spent. A function of the day, not of the address: it enumerates nobody.
+  if (policy.sendsEmail && basePath === STUDENT_AUDIENCE.basePath && (await emailQuotaSpent(c.env))) {
+    return c.json({ error: "email_quota", message: EMAIL_QUOTA_MESSAGE }, 503);
+  }
 
   if (policy.turnstile) {
     const refused = await guardTurnstile(c.env, c.req.raw, policy.turnstile);

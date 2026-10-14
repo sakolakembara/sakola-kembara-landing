@@ -12,7 +12,7 @@ import { currentStudentUser, hasStudentSessionCookie } from "./guard";
 import { apiHeaders } from "./headers";
 // Route files, one import per line, alphabetical (docs/cloudflare/portal-architecture.md, 11.3). Each line below is
 // reserved for the task that owns the file; replace the comment with the import, nothing else moves.
-// P1b: import { applicationRoutes } from "./applications";
+import { applicationRoutes } from "./applications";
 
 // P4: import { fileRoutes } from "./files";
 
@@ -87,6 +87,7 @@ app.get(`${API}/dev/mailbox`, (c) => {
 // mounts: one line per route file, alphabetical. Every route in them starts with requireStudent(...)
 // (src/portal/guard.ts); a route without it is a route anyone can call.
 // P1b: app.route(API, applicationRoutes);
+app.route(API, applicationRoutes);
 
 // P4: app.route(API, fileRoutes);
 
