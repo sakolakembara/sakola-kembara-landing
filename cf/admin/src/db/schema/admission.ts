@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import type { FormDataV3 } from "../../../shared/application-form/form-data";
 import { createdAt, enumCheck, jsonCheck, timestampMs, updatedAt, uuidPk } from "./_common";
 import { users } from "./auth";
 
@@ -45,17 +46,36 @@ export type ApplicationStatus = (typeof applicationStatus)[number];
 /**
  * Current schema version stamped on every new submission. Bump whenever the
  * shape below changes in a way that is not back-compat readable.
+ *
+ * Version 3 (SAKEM-083, the student portal): the documents and the marketing proofs are FILES (`application_files`),
+ * not links, so `documents` keeps only `dtksRegistered` and `marketing` only `instagramUsername`; every other bucket
+ * is the same as version 2. The shape is `FormDataV3` of `shared/application-form/form-data.ts`, which is what the
+ * submit writes (docs/cloudflare/portal-api.md, 9.3). Version 2 is what the legacy app wrote; no row of it is in
+ * production (dummy data only), and the admin screen still reads it.
  */
-export const CURRENT_FORM_DATA_VERSION = 2 as const;
+export const CURRENT_FORM_DATA_VERSION = 3 as const;
+
+/** What a stored `form_data` is: the version the portal writes now, or the legacy one, which stays readable. */
+export type StudentApplicationFormData = StudentApplicationFormDataV3 | StudentApplicationFormDataV2;
 
 /**
- * Everything the multi-step recruitment wizard collects that is not already a
+ * Version 3, written by the portal's submit: `FormDataV3` of the shared module, except that the agreement to the signed
+ * statement is a BOOLEAN in the stored row, as it was in version 2 and as docs/cloudflare/portal-api.md 9.3 says (the
+ * admin's screen reads `=== true`). The shared module's builder hands the answer over as the text it was asked with
+ * ("ya"); `src/portal/rules.ts` (`formDataToStore`) turns it into the boolean before the row is written.
+ */
+export type StudentApplicationFormDataV3 = Omit<FormDataV3, "interview"> & {
+  interview: Omit<FormDataV3["interview"], "agreedToSignedStatement"> & { agreedToSignedStatement: boolean };
+};
+
+/**
+ * Version 2: everything the multi-step recruitment wizard of the legacy app collected that is not already a
  * top-level column. Copied from lib/db/schema/student-applications.ts; keep the
  * two in step until the legacy app is retired. Optional groups are `null` when
  * not applicable.
  */
-export type StudentApplicationFormData = {
-  formVersion: typeof CURRENT_FORM_DATA_VERSION;
+export type StudentApplicationFormDataV2 = {
+  formVersion: 2;
   identity: {
     nickname: string;
     gender: "laki-laki" | "perempuan";
