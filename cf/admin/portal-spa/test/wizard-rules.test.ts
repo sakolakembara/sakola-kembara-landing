@@ -77,7 +77,15 @@ describe("the wizard's source", () => {
 
   test("calls the Worker only through `api()`, so the mock and the tests can stand in for it", () => {
     const callers = wizard.filter((file) => /from\s+["'](?:@shared\/spa\/api|(?:\.\.\/)+shared\/spa\/api)["']/.test(code(file))).map(rel);
-    expect(callers).toEqual(["lib/wizard/api.ts", "lib/wizard/config.ts"]);
+    expect(callers).toEqual(["lib/wizard/api.ts", "lib/wizard/use-wizard-config.ts"]);
+  });
+
+  test("the files a Worker test runs (api, values, screens, config) import only by relative path, so no alias is needed there", () => {
+    for (const name of ["api", "values", "screens", "config", "fields", "summary"]) {
+      const text = code(path.join(src, `lib/wizard/${name}.ts`));
+      expect(text, name).not.toMatch(/from\s+["'](?:~\/|@\/|@shared\/)/);
+      expect(text, name).not.toMatch(/from\s+["']react["']/);
+    }
   });
 
   test("the wizard's page is the only part of it the first load imports, and it imports nothing but the lazy loader", () => {

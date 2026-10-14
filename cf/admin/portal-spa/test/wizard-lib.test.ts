@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { LOCAL_DRAFT_VERSION, type LocalDraft } from "../../shared/application-form/draft";
 import { STEP_IDS, UI_STEP_BUCKETS, UI_STEP_ORDER } from "../../shared/application-form/steps";
 import { classify, failureMessage, GATE_MESSAGES, parseCurrent, parseStepSaved, parseSubmitted } from "../src/lib/wizard/api";
+import { parsePortalConfig } from "../src/lib/public-config";
 import { contactHref, parseWizardConfig } from "../src/lib/wizard/config";
 import { FIELD_LABELS, labelOf } from "../src/lib/wizard/fields";
 import { BUCKET_SCREENS, firstIncompleteScreen, REVIEW_INDEX, screenOf, screensDone } from "../src/lib/wizard/screens";
@@ -306,5 +307,23 @@ describe("the wizard's part of /portal/api/config", () => {
     expect(parseWizardConfig({ whatsappGroupUrl: "javascript:alert(1)" }).whatsappGroupUrl).toBe("");
     expect(parseWizardConfig(null)).toEqual({ siteUrl: "", contactWhatsapp: "", whatsappGroupUrl: "" });
     expect(contactHref("6281200000001")).toBe("https://wa.me/6281200000001");
+  });
+
+  test("absent, empty or present: both values are optional, and an empty text is the same as none", () => {
+    const none = { siteUrl: "", contactWhatsapp: "", whatsappGroupUrl: "" };
+    expect(parseWizardConfig({ google: false, turnstileSiteKey: null, siteUrl: "", adminUrl: "" })).toEqual(none);
+    expect(parseWizardConfig({ siteUrl: "", adminUrl: "", contactWhatsapp: "", whatsappGroupUrl: "" })).toEqual(none);
+    expect(parseWizardConfig({ contactWhatsapp: null, whatsappGroupUrl: 5 })).toEqual(none);
+    expect(parseWizardConfig({ contactWhatsapp: "6281200000001", whatsappGroupUrl: "https://chat.contoh.test/grup" })).toEqual({
+      siteUrl: "",
+      contactWhatsapp: "6281200000001",
+      whatsappGroupUrl: "https://chat.contoh.test/grup",
+    });
+  });
+
+  test("the public site's address is read as the shell reads it (the one rule, kept in two files that a Worker test can and cannot import)", () => {
+    for (const value of ["https://situs.contoh.test", "http://localhost:4321/", "https://situs.contoh.test/jalan?x=1", "ftp://situs.contoh.test", "bukan alamat", "", "  ", null, 7]) {
+      expect(parseWizardConfig({ siteUrl: value }).siteUrl, String(value)).toBe(parsePortalConfig({ siteUrl: value }).siteUrl);
+    }
   });
 });

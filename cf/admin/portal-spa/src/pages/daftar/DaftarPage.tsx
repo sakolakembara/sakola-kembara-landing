@@ -7,7 +7,7 @@ import { wipeLocalDrafts } from "~/lib/local-drafts";
 import { useMe } from "~/lib/session";
 import { useApiData } from "~/lib/use-api-data";
 import { CURRENT_PATH, GATE_MESSAGES, type GateError, parseCurrent } from "~/lib/wizard/api";
-import { useWizardConfig } from "~/lib/wizard/config";
+import { useWizardConfig } from "~/lib/wizard/use-wizard-config";
 import { NoBatchGate, SubmittedGate } from "./Gates";
 import { Wizard } from "./Wizard";
 
