@@ -1,6 +1,6 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { identityColumns } from "../../shared/application-form/form-data";
+import { buildFormData, identityColumns } from "../../shared/application-form/form-data";
 import { JSON_BODY_MAX_BYTES, STEP_BODY_MAX_BYTES } from "../../shared/application-form/limits";
 import { INVALID_FORM_MESSAGE, validateStep } from "../../shared/application-form/rules";
 import { isStepId } from "../../shared/application-form/steps";
@@ -32,7 +32,6 @@ import {
   countBySlot,
   dtksRegisteredIn,
   DUPLICATE_WINDOW_MS,
-  formDataToStore,
   gateOf,
   MESSAGES,
   missingFilesOf,
@@ -251,7 +250,7 @@ export function createApplicationRoutes() {
         batchYear: state.batch.year,
         draftVersion: draft.updatedAt,
         columns: identityColumns(identity),
-        formDataJson: JSON.stringify(formDataToStore(checked.values)),
+        formDataJson: JSON.stringify(buildFormData(checked.values)),
         auditId: crypto.randomUUID(),
         now,
       });

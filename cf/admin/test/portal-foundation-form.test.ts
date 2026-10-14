@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
 import portalApi from "../../../docs/cloudflare/portal-api.md?raw";
+// The admin's Pendaftar screen reads what the portal stores (pure files of the admin SPA, as the contract tests do).
+import { profileSections } from "../spa/src/pages/applications/answers";
+import type { ApplicationDetail } from "../spa/src/pages/applications/model";
 import {
   isLocalDraft,
   isLocalDraftExpired,
@@ -93,6 +96,28 @@ const VALID: { [K in keyof StepValues]: Body } = {
     agreedToSignedStatement: "ya",
   },
 };
+
+/** An application as the admin's detail endpoint hands it to the screen, around a stored `form_data` (parsed JSON). */
+function adminDetail(formData: unknown): ApplicationDetail {
+  return {
+    id: "5f1d2c3b-0000-4000-8000-000000000002",
+    batch: { id: "8b7e0c1a-0000-4000-8000-000000000001", year: 2026, name: "Gen Uji" },
+    fullName: "Sari Dewi Lestari",
+    email: "sari@example.test",
+    whatsapp: "6281392254544",
+    schoolName: "SMA Contoh 1",
+    graduationYear: "2027 (Kelas 12)",
+    branchPreference: "Cililin",
+    motivation: null,
+    economicBackground: null,
+    formData,
+    status: "pending",
+    reviewNotes: null,
+    reviewedAt: null,
+    submittedAt: "2026-10-13T03:40:00.000Z",
+    updatedAt: "2026-10-13T03:40:00.000Z",
+  };
+}
 
 function fieldsOf(step: keyof StepValues, body: unknown): Record<string, string> | "ok" {
   const result = validateStep(step, body);
@@ -944,8 +969,38 @@ describe("buildFormData and identityColumns", () => {
       ],
       documents: { dtksRegistered: true },
       marketing: { instagramUsername: "sari.contoh" },
-      interview: VALID.interview,
+      // The six answers as typed, and the agreement as the boolean the legacy stored (the bucket holds "ya").
+      interview: { ...VALID.interview, agreedToSignedStatement: true },
     });
+  });
+
+  test("the agreement: the wizard's value 'ya' becomes the boolean true, through the JSON that is stored, and the admin's Pendaftar screen reads it as Ya", () => {
+    // The wizard-shaped input (the radio's text) for the interview, and a valid sample of every other bucket.
+    const wizard: Body = { ...VALID.interview, agreedToSignedStatement: "ya" };
+    const interview = validateStep("interview", wizard);
+    expect(interview.ok).toBe(true);
+    if (!interview.ok) return;
+    expect(interview.value.agreedToSignedStatement).toBe("ya"); // the bucket, as the wizard holds it and the draft stores it
+
+    const formData = buildFormData(buckets({ interview: wizard }));
+    expect(formData.interview.agreedToSignedStatement).toBe(true);
+    expect(typeof formData.interview.agreedToSignedStatement).toBe("boolean");
+
+    // What is written to `student_applications.form_data` is JSON text; what the admin's API hands the screen is that JSON parsed.
+    const stored: unknown = JSON.parse(JSON.stringify(formData));
+    expect((stored as { interview: { agreedToSignedStatement: unknown } }).interview.agreedToSignedStatement).toBe(true);
+
+    const rows = profileSections(adminDetail(stored)).flatMap((section) => section.rows);
+    const answer = rows.find((row) => row.label === "Siap Materai");
+    expect(answer?.value).toEqual({ type: "text", text: "Ya" }); // not "Tidak": the text "ya" would have read as no
+  });
+
+  test("the legacy reading of the old shape is unchanged: the admin shows Tidak for anything but the boolean true (so a stored text would have been caught here)", () => {
+    for (const stored of ["ya", "tidak", false, null, undefined]) {
+      const formData = { ...buildFormData(buckets()), interview: { ...buildFormData(buckets()).interview, agreedToSignedStatement: stored } };
+      const row = profileSections(adminDetail(JSON.parse(JSON.stringify(formData)))).flatMap((section) => section.rows).find((candidate) => candidate.label === "Siap Materai");
+      expect(row?.value, String(stored)).toEqual({ type: "text", text: "Tidak" });
+    }
   });
 
   test("no earners, no debt and no organizations: empty lists and null, and no link field anywhere", () => {
