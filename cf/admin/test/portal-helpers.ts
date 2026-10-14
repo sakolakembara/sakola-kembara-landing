@@ -2,12 +2,12 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
 import { vi } from "vitest";
-import { STUDENT_AUDIENCE } from "../src/auth/factory";
+import { STUDENT_AUDIENCE } from "../src/auth/audience";
 import type { UserRole } from "../src/auth/roles";
-import { createAuthContext } from "../src/auth/session";
 import type { AppEnv } from "../src/context";
 import { mailbox, type RecordedEmail } from "../src/email/send";
 import type { Bindings } from "../src/env";
+import { studentAuthContext } from "../src/portal/auth-context";
 import { apiHeaders } from "../src/portal/headers";
 import portalWorker from "../src/portal/worker";
 import { sameOriginGuard } from "../src/security/csrf";
@@ -74,7 +74,7 @@ export function portalAppAround(mounts: Record<string, Hono<AppEnv>>): Handler {
   const app = new Hono<AppEnv>();
   app.use("/portal/api/*", apiHeaders);
   app.use("/portal/api/*", sameOriginGuard);
-  app.use("/portal/api/*", createAuthContext(STUDENT_AUDIENCE));
+  app.use("/portal/api/*", studentAuthContext);
   for (const [path, routes] of Object.entries(mounts)) app.route(path, routes);
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {

@@ -373,6 +373,55 @@ describe("requireStudent: the pipeline of a student route, in order", () => {
   });
 });
 
+describe("a request without the portal's cookie costs nothing: Better Auth is not built (SAKEM-091's constraint)", () => {
+  // Better Auth refuses to be built without BETTER_AUTH_SECRET, so a request that DOES build it fails with a 500 here:
+  // that is how these tests see whether it was built, without touching the code under test.
+  const noSecret = { BETTER_AUTH_SECRET: undefined };
+  const routes = new Hono<AppEnv>();
+  routes.get("/read", requireStudent("portalRead"), (c) => c.json({ ok: true }));
+  const via = portalAppAround({ "/portal/api": routes });
+
+  test("`me`, a student route and `get-session` answer signed-out without building anything", async () => {
+    const me = await portalCall("/portal/api/me", { env: noSecret });
+    expect([me.status, await me.json()]).toEqual([401, { error: "unauthenticated" }]);
+    const data = await portalCall("/portal/api/read", { env: noSecret, via });
+    expect([data.status, await data.json()]).toEqual([401, { error: "unauthenticated" }]);
+    const session = await portalCall("/portal/api/auth/get-session", { env: noSecret });
+    expect([session.status, await session.json()]).toEqual([200, null]);
+    expectApiHeaders(session, "get-session");
+  });
+
+  test("a request that carries only another cookie (the admin's, or noise) is the same: no session, nothing built", async () => {
+    for (const cookie of ["better-auth.session_token=abc", "__Host-better-auth.session_token=abc", "sakem-student=abc", "x=sakem-student.session_tokenabc", "session_token=abc"]) {
+      expect((await portalCall("/portal/api/me", { env: noSecret, cookie })).status, cookie).toBe(401);
+      expect(await (await portalCall("/portal/api/auth/get-session", { env: noSecret, cookie })).json(), cookie).toBeNull();
+    }
+  });
+
+  test("with the portal's cookie, in any of its three names, Better Auth IS built (the 500 is the missing secret, proof it was reached)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const name of ["sakem-student.session_token", "__Host-sakem-student.session_token", "__Secure-sakem-student.session_token"]) {
+      const cookie = `${name}=abc.def`;
+      expect((await portalCall("/portal/api/me", { env: noSecret, cookie })).status, name).toBe(500);
+      expect((await portalCall("/portal/api/read", { env: noSecret, cookie, via })).status, name).toBe(500);
+      expect((await portalCall("/portal/api/auth/get-session", { env: noSecret, cookie })).status, name).toBe(500);
+    }
+  });
+
+  test("the shortcut answers what Better Auth answers for a signed-out reader (`null`, 200, JSON), so the navbar cannot tell", async () => {
+    const shortcut = await portalCall("/portal/api/auth/get-session");
+    const real = await portalCall("/portal/api/auth/get-session", { cookie: "sakem-student.session_token=garbage.garbage" });
+    expect([shortcut.status, await shortcut.text()]).toEqual([real.status, await real.text()]);
+    expect(shortcut.headers.get("content-type")).toContain("application/json");
+  });
+
+  test("the rest of the auth surface still builds it: a sign-in with no cookie reaches Better Auth", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await portalCall("/portal/api/auth/sign-in/email", { method: "POST", json: { email: uniqueEmail(), password: PASSWORD }, env: noSecret });
+    expect(res.status).toBe(500);
+  });
+});
+
 describe("what a full run writes to the console", () => {
   test("no address, name, token, cookie or password appears in any log line, on success or on failure", async () => {
     const lines: string[] = [];

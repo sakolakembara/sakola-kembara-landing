@@ -1,6 +1,7 @@
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
+import { STUDENT_AUDIENCE } from "../auth/audience";
 import { currentUser } from "../auth/session";
-import type { AppEnv } from "../context";
+import type { AppEnv, AuthUser } from "../context";
 import { checkLimits, limitedResponse, type LimitName } from "../security/rate-limit";
 
 // The guard of a student route: steps 2 to 5 of the pipeline in docs/cloudflare/portal-api.md, section 1. Step 1 (the
@@ -28,9 +29,31 @@ export const EMAIL_NOT_VERIFIED_MESSAGE = "Verifikasi email kamu dulu sebelum me
 /** The role a student data route is for. The only place the portal compares a role (the admin's are in src/auth/permissions.ts). */
 const STUDENT_ROLE = "student";
 
+const SESSION_COOKIE_SUFFIX = `${STUDENT_AUDIENCE.cookiePrefix}.session_token=`;
+
+/**
+ * Does the request carry the portal's session cookie at all? A header substring, decided before anything is built or
+ * read. The name ends the same in development (`sakem-student.session_token`), production (`__Host-` in front) and
+ * with COOKIE_DOMAIN (`__Secure-` in front). A request without it has no session, whatever else it carries (the
+ * admin's cookie is another name), so nothing that needs Better Auth, a D1 read or a limiter is worth starting.
+ */
+export function hasStudentSessionCookie(c: Context<AppEnv>): boolean {
+  const cookie = c.req.header("cookie");
+  return cookie !== undefined && cookie.includes(SESSION_COOKIE_SUFFIX);
+}
+
+/**
+ * The signed-in account, or null. Without the portal's cookie it is null and costs nothing: Better Auth is not
+ * built (a signed-out visitor, a bot, a request that only carries the admin's cookie). With it, exactly
+ * `currentUser` of src/auth/session.ts.
+ */
+export async function currentStudentUser(c: Context<AppEnv>): Promise<AuthUser | null> {
+  return hasStudentSessionCookie(c) ? currentUser(c) : null;
+}
+
 export function requireStudent(limit?: StudentLimit): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    const user = await currentUser(c);
+    const user = await currentStudentUser(c);
     if (!user) return c.json({ error: "unauthenticated" }, 401);
     if (user.role !== STUDENT_ROLE) return c.json({ error: "student_only", message: STUDENT_ONLY_MESSAGE }, 403);
     if (!user.emailVerified) return c.json({ error: "email_not_verified", message: EMAIL_NOT_VERIFIED_MESSAGE }, 403);

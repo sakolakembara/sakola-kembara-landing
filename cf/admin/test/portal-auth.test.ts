@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { ADMIN_AUDIENCE, AUTH_BASE_PATH, STUDENT_AUDIENCE } from "../src/auth/factory";
+import { ADMIN_AUDIENCE, STUDENT_AUDIENCE } from "../src/auth/audience";
+import { AUTH_BASE_PATH, AUTH_ERROR_PATH } from "../src/auth/factory";
 import { AUTH_POLICIES, findPolicy } from "../src/auth/gate";
 import { REGISTER_MESSAGE } from "../src/auth/register";
 import { TURNSTILE_TEST_SECRETS } from "../src/security/turnstile";
@@ -63,7 +64,11 @@ describe("the audiences", () => {
   test("the admin's is exactly what it was; the student's has its own mount point, error page and cookie", () => {
     expect(ADMIN_AUDIENCE).toEqual({ name: "admin", basePath: "/api/auth", errorPath: "/auth/error", cookiePrefix: "better-auth" });
     expect(STUDENT_AUDIENCE).toEqual({ name: "student", basePath: "/portal/api/auth", errorPath: "/portal/auth/error", cookiePrefix: "sakem-student" });
-    expect(AUTH_BASE_PATH).toBe("/api/auth"); // what src/worker.ts and the admin SPA use
+    // What src/worker.ts and the admin SPA use: the constants of factory.ts are the admin audience's values, not a second copy that can drift.
+    expect(AUTH_BASE_PATH).toBe("/api/auth");
+    expect(AUTH_ERROR_PATH).toBe("/auth/error");
+    expect(AUTH_BASE_PATH).toBe(ADMIN_AUDIENCE.basePath);
+    expect(AUTH_ERROR_PATH).toBe(ADMIN_AUDIENCE.errorPath);
   });
 
   test("the two test secrets differ (the deployed ones must too: docs/cloudflare/portal-architecture.md, section 12, item 3)", () => {

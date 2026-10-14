@@ -1,13 +1,14 @@
 import { Hono } from "hono";
-import { STUDENT_AUDIENCE } from "../auth/factory";
+import { STUDENT_AUDIENCE } from "../auth/audience";
 import { createAuthGate } from "../auth/gate";
 import { createRegisterStudent } from "../auth/register";
-import { createAuthContext, currentUser } from "../auth/session";
 import { publicOrigin } from "../config/public-origin";
 import type { AppEnv } from "../context";
 import { mailbox } from "../email/send";
 import type { Bindings } from "../env";
 import { sameOriginGuard } from "../security/csrf";
+import { studentAuthContext } from "./auth-context";
+import { currentStudentUser, hasStudentSessionCookie } from "./guard";
 import { apiHeaders } from "./headers";
 // Route files, one import per line, alphabetical (docs/cloudflare/portal-architecture.md, 11.3). Each line below is
 // reserved for the task that owns the file; replace the comment with the import, nothing else moves.
@@ -41,12 +42,16 @@ app.use(`${API}/*`, apiHeaders);
 // Worker sends no Access-Control-* header and has no OPTIONS handler.
 app.use(`${API}/*`, sameOriginGuard);
 
-app.use(`${API}/*`, createAuthContext(STUDENT_AUDIENCE));
+app.use(`${API}/*`, studentAuthContext);
 
 // Public auth surface (src/auth/gate.ts), the same route table, limits and Turnstile actions as the admin's, under the
 // portal's base path: only the routes in the table exist. Registration is ours; the rest is Better Auth's, whose
 // Response (including every Set-Cookie) is returned as is.
 app.use(`${AUTH}/*`, createAuthGate(AUTH));
+// `get-session` without the portal's cookie has no session to read, and Better Auth would answer `null`: answer that
+// without building it. It is the public site's navbar asking on every visit of a signed-out reader, so it must cost
+// nothing (docs/cloudflare/portal-architecture.md, 6.6). With the cookie it falls through to Better Auth as before.
+app.get(`${AUTH}/get-session`, (c, next) => (hasStudentSessionCookie(c) ? next() : c.json(null)));
 app.post(`${AUTH}/register`, createRegisterStudent(AUTH));
 app.on(["GET", "POST"], `${AUTH}/*`, (c) => c.get("auth")().handler(c.req.raw));
 
@@ -63,9 +68,10 @@ app.get(`${API}/config`, (c) =>
 );
 
 // The signed-in account, whatever its role: the one route that does not check `student`, so the SPA can tell an admin
-// account (and show the screen that links to the admin) from a student. No limiter: it reads the session and nothing else.
+// account (and show the screen that links to the admin) from a student. No limiter: it reads the session and nothing else,
+// and not even that when the request carries no portal cookie.
 app.get(`${API}/me`, async (c) => {
-  const user = await currentUser(c);
+  const user = await currentStudentUser(c);
   if (!user) return c.json({ error: "unauthenticated" }, 401);
   const { id, name, email, emailVerified, role } = user;
   return c.json({ user: { id, name, email, emailVerified, role } });

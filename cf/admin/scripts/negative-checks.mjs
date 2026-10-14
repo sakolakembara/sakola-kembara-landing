@@ -607,8 +607,8 @@ const checks = [
     file: "src/auth/factory.ts",
     // Since SAKEM-083 the prefix is built from the audience (`__Host-better-auth` for the admin, `__Host-sakem-student`
     // for the portal), so this breaks both; the portal's own test of the production name is in test/portal-auth.test.ts.
-    from: "cookiePrefix: `__Host-${audience.cookiePrefix}`,",
-    to: "cookiePrefix: audience.cookiePrefix,",
+    from: "cookiePrefix: `__Host-${prefix}`,",
+    to: "cookiePrefix: prefix,",
     tests: "test/auth.test.ts test/portal-auth.test.ts",
   },
   {

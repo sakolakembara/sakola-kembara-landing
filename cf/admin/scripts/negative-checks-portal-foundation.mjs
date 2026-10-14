@@ -18,7 +18,7 @@ export const portalFoundationChecks = [
   // ------------------------------------------------ one Better Auth, two audiences
   {
     name: "portal foundation: the student's session cookie gets the admin's name (the audiences share a cookie)",
-    file: "src/auth/factory.ts",
+    file: "src/auth/audience.ts",
     from: 'errorPath: "/portal/auth/error", cookiePrefix: "sakem-student" }',
     to: 'errorPath: "/portal/auth/error", cookiePrefix: "better-auth" }',
     tests: `${AUTH} ${SKELETON}`,
@@ -95,6 +95,29 @@ export const portalFoundationChecks = [
     file: "src/portal/guard.ts",
     from: "if (limit) {",
     to: "if (false as boolean) {",
+    tests: SKELETON,
+  },
+
+  // ------------------------------------------------ nothing is built for a request without the portal's cookie
+  {
+    name: "portal foundation: a request without the portal's cookie still builds Better Auth (me and the student routes)",
+    file: "src/portal/guard.ts",
+    from: "return hasStudentSessionCookie(c) ? currentUser(c) : null;",
+    to: "return currentUser(c);",
+    tests: SKELETON,
+  },
+  {
+    name: "portal foundation: any cookie at all counts as the portal's (a request with only the admin's cookie builds Better Auth)",
+    file: "src/portal/guard.ts",
+    from: "return cookie !== undefined && cookie.includes(SESSION_COOKIE_SUFFIX);",
+    to: "return cookie !== undefined && cookie.length > 0;",
+    tests: SKELETON,
+  },
+  {
+    name: "portal foundation: get-session without the portal's cookie builds Better Auth (the navbar's call on every visit)",
+    file: "src/portal/worker.ts",
+    from: "app.get(`${AUTH}/get-session`, (c, next) => (hasStudentSessionCookie(c) ? next() : c.json(null)));",
+    to: "",
     tests: SKELETON,
   },
 
