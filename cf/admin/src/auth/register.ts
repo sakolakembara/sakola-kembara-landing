@@ -55,7 +55,19 @@ const registerInput = z
 
 export const REGISTER_MESSAGE = "Pendaftaran diterima. Cek email kamu untuk langkah berikutnya (periksa juga folder spam).";
 
-export async function registerStudent(c: Context<AppEnv>): Promise<Response> {
+/**
+ * The registration handler for one audience's mount point: it forwards to Better Auth's sign-up under the same base
+ * path (`/api/auth/sign-up/email` on the admin host, `/portal/api/auth/sign-up/email` on the apex). The rules, the
+ * answers and the neutrality are identical; only the path differs.
+ */
+export function createRegisterStudent(basePath: string): (c: Context<AppEnv>) => Promise<Response> {
+  return (c) => handleRegister(basePath, c);
+}
+
+/** The admin Worker's: `POST /api/auth/register`. */
+export const registerStudent = createRegisterStudent(AUTH_BASE_PATH);
+
+async function handleRegister(basePath: string, c: Context<AppEnv>): Promise<Response> {
   const raw: unknown = await c.req.json().catch(() => undefined);
   if (raw === undefined) return c.json({ error: "invalid", message: "Periksa kembali isian formulir." }, 400);
 
@@ -73,7 +85,7 @@ export async function registerStudent(c: Context<AppEnv>): Promise<Response> {
   // The request Better Auth sees: same origin and headers (its origin check
   // and IP detection read them), a body that holds only what it should.
   const url = new URL(c.req.url);
-  url.pathname = `${AUTH_BASE_PATH}/sign-up/email`;
+  url.pathname = `${basePath}/sign-up/email`;
   url.search = "";
   const headers = new Headers(c.req.raw.headers);
   headers.set("content-type", "application/json");

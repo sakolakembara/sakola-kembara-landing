@@ -92,6 +92,13 @@
       "when": 1791876504061,
       "tag": "0012_blog_meta_description",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791964917437,
+      "tag": "0013_portal_applications",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,12 @@ export interface Bindings {
   ASSETS: Fetcher;
   /** R2 bucket of admin uploads (wrangler.jsonc `r2_buckets`; src/uploads, docs/cloudflare/uploads.md). Served to visitors from a separate public domain, never by this Worker (except the local-only GET /uploads/*). */
   UPLOADS: R2Bucket;
+  /**
+   * R2 bucket of applicants' files (wrangler.jsonc and wrangler.portal.jsonc `r2_buckets`, placeholder name
+   * `sakem-private`), SAKEM-083. PRIVATE: no public domain, no r2.dev, never the bucket of `UPLOADS`. Every read
+   * goes through a Worker after an ownership or area check. docs/cloudflare/portal-architecture.md, section 8.
+   */
+  PRIVATE_FILES: R2Bucket;
 
   // Cloudflare rate limit bindings, one per concern (wrangler.jsonc "ratelimits",
   // limits and keys in src/security/rate-limit.ts). Declared here as present;
@@ -22,6 +28,13 @@ export interface Bindings {
   RL_UPLOAD: RateLimit;
   /** The blog editor's preview, per user (src/api/blog.ts). */
   RL_BLOG_PREVIEW: RateLimit;
+  /** The student portal's signed-in routes, per user id (src/portal/guard.ts). Declared by the portal Worker with namespaces of its own. */
+  RL_PORTAL_READ: RateLimit;
+  RL_PORTAL_SAVE: RateLimit;
+  RL_PORTAL_UPLOAD: RateLimit;
+  RL_PORTAL_SUBMIT: RateLimit;
+  /** An admin opening an applicant's file, per admin id (admin Worker). */
+  RL_ADMIN_FILE: RateLimit;
 
   /** "production" unless set otherwise. Anything else is a local or test run. */
   ENVIRONMENT?: string;
@@ -59,6 +72,31 @@ export interface Bindings {
    * SPA by GET /api/config as `siteUrl`. docs/cloudflare/admin-blog.md.
    */
   SITE_URL?: string;
+
+  // ─── The student portal (SAKEM-083). Declared once for every task of the milestone; docs/cloudflare/portal-architecture.md, 3.5 and 8. ───
+
+  /**
+   * Origin of the admin host (public variable, portal Worker), e.g. "https://admin.sakolakembara.org": where the
+   * portal's "this is an admin account" screen links. Answered to the SPA by GET /portal/api/config as `adminUrl`.
+   * Empty, unset or not a plain http(s) origin = no link.
+   */
+  ADMIN_URL?: string;
+  // There is no secret for the private bucket: Dzul decided on 2026-10-13 against SSE-C (customer-provided keys), so no
+  // key is declared and nothing may depend on one. The bucket's protection is that it stays private, R2's encryption
+  // at rest, and the Worker as the only reader.
+  /** The hard storage budget of the private bucket, in bytes (public variable). Proposed 8,000,000,000, under the 10 GB-month free. Empty or unreadable = the code's default. */
+  PRIVATE_FILES_BUDGET_BYTES?: string;
+  /**
+   * Retention of applicants' files, in days. Dzul decided on 2026-10-13 that NOTHING is deleted automatically, so all
+   * three ship as `0`, which means "never delete" (so do empty, negative and unreadable values: an unreadable setting
+   * never deletes, as `AUDIT_RETENTION_DAYS` does). No code reads them: the retention cron of the first design was
+   * replaced by a manual purge action (an editor with the Pendaftaran grant, or a super_admin; audited). They stay
+   * declared, at `0`, so that turning an automatic rule on later is a decision made in one visible place; a task that
+   * finds it never needs them may delete them.
+   */
+  DRAFT_RETENTION_DAYS?: string;
+  REJECTED_FILES_RETENTION_DAYS?: string;
+  ACCEPTED_FILES_RETENTION_DAYS?: string;
 }
 
 /** Only an explicit "development" or "test" opts out of production behaviour. */

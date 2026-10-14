@@ -9,7 +9,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | Part | Where |
 | --- | --- |
 | Drizzle schema, one file per concern, re-exported from `src/db/schema.ts` | `cf/admin/src/db/schema/` |
-| SQL migrations, one per concern (`0000` to `0003` the schema of part A, then) `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), `0007_audit_viewer_indexes` (the indexes of the Aktivitas filters; [`admin-sistem.md`](admin-sistem.md)), and `0008_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0008)), `0009_applications_name_search` (one index, for the prefix search of Pendaftar: [`admin-pendaftaran.md`](admin-pendaftaran.md)), `0010_last_super_admin_signin` (hand-written: the view `signable_super_admins` and a new `users_keep_one_super_admin` trigger that reads it, SAKEM-087; [`auth.md`](auth.md#the-last-super_admin)), and `0011_admin_signin_without_verification` (hand-written: replaces the view so a super_admin who can sign in is one who is not deactivated and has an account, with no condition on the verified address, and verifies the admins who already had an account; the trigger is untouched because it reads the view by name; SAKEM-089, [`auth.md`](auth.md#admins-and-email-verification)). Twelve migrations, `0000` to `0011` | `cf/admin/migrations/` |
+| SQL migrations, one per concern (`0000` to `0003` the schema of part A, then) `0004_public_blog_index` (one index, added by the public API: [`public-api.md`](public-api.md)), `0005_user_deactivation` and `0006_keep_one_super_admin` (a hand-written trigger; [`auth.md`](auth.md)), `0007_audit_viewer_indexes` (the indexes of the Aktivitas filters; [`admin-sistem.md`](admin-sistem.md)), and `0008_reports_updated_at` (a hand-written table rebuild: SQLite refuses `ADD COLUMN` with a non-constant default; [`admin-konten.md`](admin-konten.md#8-migration-0008)), `0009_applications_name_search` (one index, for the prefix search of Pendaftar: [`admin-pendaftaran.md`](admin-pendaftaran.md)), `0010_last_super_admin_signin` (hand-written: the view `signable_super_admins` and a new `users_keep_one_super_admin` trigger that reads it, SAKEM-087; [`auth.md`](auth.md#the-last-super_admin)), and `0011_admin_signin_without_verification` (hand-written: replaces the view so a super_admin who can sign in is one who is not deactivated and has an account, with no condition on the verified address, and verifies the admins who already had an account; the trigger is untouched because it reads the view by name; SAKEM-089, [`auth.md`](auth.md#admins-and-email-verification)), `0012_blog_meta_description` (one nullable column, SAKEM-090: [`admin-blog.md`](admin-blog.md)) and `0013_portal_applications` (the student portal's four tables, SAKEM-083: [`portal-architecture.md`](portal-architecture.md#75-migration-0013_portal_applications-owned-by-p1a); a generated file plus one hand-added row, the storage counter). Fourteen migrations, `0000` to `0013` | `cf/admin/migrations/` |
 | Permission model (pure) and the `requireArea` guard | `src/auth/permissions.ts`, `src/auth/guard.ts` |
 | Super-admin routes to grant and revoke an editor's areas | `src/api/admin-users.ts` |
 | Dev seed for every table | `scripts/seed-data.ts`, `scripts/seed.ts` |
@@ -32,7 +32,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 
 ## Tables at a glance
 
-16 tables. Area = which area of the permission model owns the menu (see [Permission model](#permission-model)).
+20 tables. Area = which area of the permission model owns the menu (see [Permission model](#permission-model)).
 
 | Table | From | Area | Migration |
 | --- | --- | --- | --- |
@@ -45,6 +45,7 @@ Decisions here are made (by Dzul, in the epic and in the SAKEM-081 comment of 20
 | `site_resources` (menu "Pusat Dokumen") | legacy | `pendaftaran` | `0003` |
 | `blog_posts` | **new** (legacy: 80 markdown files) | `konten` | `0003` |
 | `media` | **new** | by `purpose` | `0003` |
+| `application_drafts`, `application_files`, `private_storage`, `email_daily` | **new** (the student portal, SAKEM-083) | `pendaftaran` reads the files' metadata; the student's own routes write the rest | `0013_portal_applications` |
 
 **Not ported:** legacy `accounts` (NextAuth OAuth links; Better Auth's `account` replaces it, and also holds the password hash) and `rate_limit_hits` (Cloudflare rate limit bindings replace it, so there is no counter table and no write per request).
 
@@ -150,6 +151,10 @@ Follows the "Illustrative D1 mapping" of [`content-api.md`](content-api.md).
 | `created_by`, `updated_by`, `created_at`, `updated_at` | Audit columns, never exposed. |
 
 Index `(status, published_at)` serves the public list (published, newest first). Index `(status, featured, published_at)` (migration `0004`) makes the featured article of the blog index an index seek instead of a sort of every article, and serves the published count.
+
+### The student portal's tables (migration `0013_portal_applications`)
+
+Four new tables, no change to `student_applications`: `application_drafts` (one per student per batch, `form_data` a JSON object of at most 98,304 characters with one key per saved bucket, its `id` becomes the application's `id` at submit), `application_files` (the metadata of an applicant's file in the private bucket: slot, sniffed type, size, dimensions, MD5 checksum, soft delete; **no foreign key** on `application_id`, which is the draft's id and later the application's), `private_storage` (one counter row, seeded with zeros, the hard budget guard) and `email_daily` (the day's Resend count). Columns, CHECKs and the reasons: [`portal-architecture.md` section 7.5](portal-architecture.md#75-migration-0013_portal_applications-owned-by-p1a); the contract that uses them: [`portal-api.md`](portal-api.md). Tested against the real SQLite in `test/portal-foundation-schema.test.ts`.
 
 ### `media`
 

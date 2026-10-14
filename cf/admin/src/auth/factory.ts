@@ -9,6 +9,7 @@ import { isProduction, type Bindings } from "../env";
 import { auditStatement, writeAuditSafely } from "../db/audit";
 import * as schema from "../db/schema";
 import { parseOrigins } from "../security/csrf";
+import { ADMIN_AUDIENCE, type AuthAudience } from "./audience";
 import { hashPassword, verifyPassword } from "./password";
 
 /** Better Auth's mount point. The SPA and the email links use this prefix. */
@@ -39,6 +40,8 @@ export interface AuthRequestContext {
   baseURL: string;
   /** `ctx.waitUntil` of the current request. Email is sent after the response. */
   waitUntil: (promise: Promise<unknown>) => void;
+  /** Who this instance serves (src/auth/audience.ts). Default: the admin, so every existing caller is unchanged. */
+  audience?: AuthAudience;
 }
 
 /** The `callbackURL` a registration came with, so the "you already have an account" email can link to the page the form wants. */
@@ -65,16 +68,17 @@ async function callbackOf(request: Request | undefined): Promise<string | undefi
  *     `__Secure-better-auth.session_token`, Secure, Domain=<value>.
  *   development and test (plain http)
  *     `better-auth.session_token`, not Secure, host-only.
+ * The portal's audience swaps `better-auth` for `sakem-student` in every one of those names (src/auth/audience.ts).
  */
-function cookieSettings(env: Bindings) {
-  if (!isProduction(env)) return { useSecureCookies: false };
+function cookieSettings(env: Bindings, prefix: string = ADMIN_AUDIENCE.cookiePrefix) {
+  if (!isProduction(env)) return { useSecureCookies: false, cookiePrefix: prefix };
   if (env.COOKIE_DOMAIN) {
-    return { useSecureCookies: true, crossSubDomainCookies: { enabled: true, domain: env.COOKIE_DOMAIN } };
+    return { useSecureCookies: true, cookiePrefix: prefix, crossSubDomainCookies: { enabled: true, domain: env.COOKIE_DOMAIN } };
   }
   return {
     // Better Auth only knows the __Secure- prefix; the __Host- one is built from the cookie prefix.
     useSecureCookies: false,
-    cookiePrefix: "__Host-better-auth",
+    cookiePrefix: `__Host-${prefix}`,
     defaultCookieAttributes: { secure: true, httpOnly: true, sameSite: "lax" as const, path: "/" },
   };
 }
@@ -85,7 +89,7 @@ function cookieSettings(env: Bindings) {
  * Ruang Bakat worker). Its cost per request is measured in
  * docs/cloudflare/admin-skeleton.md.
  */
-export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestContext) {
+export function createAuth(env: Bindings, { baseURL, waitUntil, audience = ADMIN_AUDIENCE }: AuthRequestContext) {
   if (!env.BETTER_AUTH_SECRET) {
     // Never fall back to a built-in secret: sessions would be forgeable.
     throw new Error("BETTER_AUTH_SECRET is not set");
@@ -100,14 +104,14 @@ export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestCon
 
   return betterAuth({
     baseURL,
-    basePath: AUTH_BASE_PATH,
+    basePath: audience.basePath,
     secret: env.BETTER_AUTH_SECRET,
     // The request origin is always trusted by Better Auth. These are extra
     // browser origins (e.g. a Vite dev server, or a sibling subdomain).
     trustedOrigins: parseOrigins(env.TRUSTED_ORIGINS),
     // Failed OAuth/verification links land on a SPA route, not Better Auth's
     // built-in error page.
-    onAPIError: { errorURL: AUTH_ERROR_PATH },
+    onAPIError: { errorURL: audience.errorPath },
 
     database: drizzleAdapter(db, {
       provider: "sqlite",
@@ -247,7 +251,7 @@ export function createAuth(env: Bindings, { baseURL, waitUntil }: AuthRequestCon
 
     advanced: {
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
-      ...cookieSettings(env),
+      ...cookieSettings(env, audience.cookiePrefix),
       backgroundTasks: { handler: waitUntil },
     },
   });

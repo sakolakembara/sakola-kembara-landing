@@ -76,7 +76,11 @@ describe('the admin Worker: staging has the same bindings, limiters and settings
   it('the same D1 binding, R2 binding and migrations folder, on resources of their own (named, never identified)', () => {
     expect(adminStaging.d1_databases.map((d) => [d.binding, d.migrations_dir])).toEqual(adminProduction.d1_databases.map((d) => [d.binding, d.migrations_dir]));
     expect(adminStaging.d1_databases.map((d) => d.database_name)).toEqual(['sakem-staging']);
-    expect(adminStaging.r2_buckets.map((b) => [b.binding, b.bucket_name])).toEqual([['UPLOADS', 'sakem-files-staging']]);
+    // The second bucket is the applicants' private one (SAKEM-083, the student portal).
+    expect(adminStaging.r2_buckets.map((b) => [b.binding, b.bucket_name])).toEqual([
+      ['UPLOADS', 'sakem-files-staging'],
+      ['PRIVATE_FILES', 'sakem-private-staging'],
+    ]);
     for (const resource of [...adminStaging.d1_databases, ...adminStaging.r2_buckets]) {
       expect(Object.keys(resource).filter((key) => /(^|_)id$/.test(key))).toEqual([]);
     }
@@ -85,7 +89,8 @@ describe('the admin Worker: staging has the same bindings, limiters and settings
   it('every limiter of production is in staging under the same name, with the same limit and period', () => {
     const summary = (r: Resolved['ratelimits']) => r.map((l) => ({ name: l.name, simple: l.simple }));
     expect(summary(adminStaging.ratelimits)).toEqual(summary(adminProduction.ratelimits));
-    expect(adminProduction.ratelimits).toHaveLength(10);
+    // Ten of the first milestones, plus the student portal's four RL_PORTAL_* and RL_ADMIN_FILE (SAKEM-083).
+    expect(adminProduction.ratelimits).toHaveLength(15);
   });
 
   it('the namespaces of the two environments are all different (a shared namespace shares counters, even across Workers)', () => {

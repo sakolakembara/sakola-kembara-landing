@@ -843,7 +843,9 @@ describe("local-only GET /uploads/*", () => {
     const json = wranglerConfig.replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1");
     const config = JSON.parse(json) as { assets: { run_worker_first: string[] }; r2_buckets: { binding: string; bucket_name: string }[] };
     expect(config.assets.run_worker_first).toEqual(["/api/*", "/uploads/*"]);
-    expect(config.r2_buckets).toEqual([{ binding: "UPLOADS", bucket_name: "sakem-files" }]);
+    expect(config.r2_buckets.find((bucket) => bucket.binding === "UPLOADS")).toEqual({ binding: "UPLOADS", bucket_name: "sakem-files" });
+    // The applicants' bucket (SAKEM-083) is a second binding and a bucket of its own: test/portal-foundation-config.test.ts.
+    expect(config.r2_buckets.map((bucket) => bucket.binding).sort()).toEqual(["PRIVATE_FILES", "UPLOADS"]);
     expect(wranglerConfig).not.toMatch(/"(?:database_id|account_id|id)"\s*:/);
   });
 });

@@ -63,7 +63,7 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | 1 | Pin the account, log in | a login on this Mac | yes |
 | 2 | Check locally | nothing on Cloudflare | no |
 | 3 | Create the D1 database | an empty database | yes |
-| 4 | Apply the migrations | 13 migrations, `0000` to `0012` | yes |
+| 4 | Apply the migrations | 14 migrations, `0000` to `0013` (`0013` is the student portal's tables, SAKEM-083) | yes |
 | 5 | Create the R2 bucket and turn its `r2.dev` URL on | a bucket, public | yes |
 | 6 | First deploy of the admin Worker | the Worker, its bindings, the cron | yes (**checkpoint: rate limits**) |
 | 7 | Turnstile widget and Resend key | dashboard objects | yes |
@@ -135,11 +135,11 @@ CI=1 pnpm exec wrangler d1 create sakem-staging --location apac
 - **Verify:** `pnpm exec wrangler d1 info sakem-staging` (shows `version: production`); `git status --short` is clean.
 - **Revert:** `pnpm exec wrangler d1 delete sakem-staging` (the database is empty: nothing is lost).
 
-## 4. Apply the migrations (`0000` to `0012`)
+## 4. Apply the migrations (`0000` to `0013`)
 
 ```bash
 cd cf/admin
-pnpm exec wrangler d1 migrations list  sakem-staging --env staging --remote     # thirteen not yet applied
+pnpm exec wrangler d1 migrations list  sakem-staging --env staging --remote     # fourteen not yet applied
 pnpm exec wrangler d1 migrations apply sakem-staging --env staging --remote     # shows them, asks you to confirm
 pnpm exec wrangler d1 execute sakem-staging --env staging --remote --command \
   "SELECT type, name FROM sqlite_master WHERE name IN ('signable_super_admins', 'users_keep_one_super_admin')"

@@ -242,7 +242,7 @@ Every Worker gets `<name>.<account subdomain>.workers.dev` unless `workers_dev: 
 | Statement length / row size | 100,000 bytes / 2,000,000 bytes | the import writes one statement per article; the longest is **21,161 bytes** (86 articles, 1,080,402 bytes in all, measured with `pnpm blog:import:local -- --out` on 2026-10-13) | OK |
 | Queries per invocation | 50 | at most 30 (cron), usually under 10 | OK |
 | Batches | statements in a `batch()` are one transaction; each keeps the per-statement limits | used for audit and write pairs | OK |
-| Migrations | `wrangler d1 migrations apply` runs each file in a transaction and rolls back a failing one; takes a backup after applying | thirteen, `0000` to `0012` | OK |
+| Migrations | `wrangler d1 migrations apply` runs each file in a transaction and rolls back a failing one; takes a backup after applying | fourteen, `0000` to `0013` | OK |
 
 **The accepted RISK.** Every short-link click is counted, with no cap (Dzul, 2026-10-12): one link that goes viral can spend the day's 100,000 writes, after which every write (admin sign-in, a contact message) fails until 00:00 UTC while redirects keep working. Rows written per day is on the watch list ([`staging-runbook.md`](staging-runbook.md#14-limits-to-watch)). The two fallbacks he named: a per-link cap of 2,000 clicks a day, or no counting. The account limit is shared by staging and production.
 

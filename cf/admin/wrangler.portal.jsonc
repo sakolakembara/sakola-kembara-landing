@@ -1,0 +1,99 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The student portal's Worker (SAKEM-083, docs/cloudflare/portal-architecture.md, sections 3 and 4): the third Worker
+  // next to the public site and the admin, serving the portal SPA from its own assets and the student API from its
+  // script. Same package as the admin Worker, a second entry. Public repo: no account ids, no resource ids, no
+  // secrets, no hostnames beyond the public domain. The D1 binding has no database_id on purpose; it is only usable
+  // locally (`pnpm dev:portal`, which shares the local D1 of `wrangler dev`). Real resources are attached in the deploy
+  // ticket (SAKEM-084). The name is a PLACEHOLDER.
+  //
+  // Things that must stay equal to wrangler.jsonc (the admin's), and are checked by test/portal-foundation-config.test.ts:
+  // the compatibility date and flags, the D1 database_name and migrations_dir, the private bucket's name, the limiter
+  // numbers (the limit and the period of every binding both declare) and PRIVATE_FILES_BUDGET_BYTES. Migrations are
+  // applied once, from this folder (`pnpm db:migrate:local`), for both Workers.
+  "name": "sakem-portal",
+  "main": "src/portal/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Anything that is not production must say so in untracked .dev.vars (ENVIRONMENT=development), as for the admin.
+  // A deployed Worker with this file as-is is production: email, Turnstile and rate limiting fail closed.
+  // Not here, set per deploy: TURNSTILE_SITE_KEY (the widget's public key, for the apex host), EMAIL_FROM, SITE_URL
+  // (the public site's origin: the links to /gabung-siswa and the privacy policy, served by GET /portal/api/config),
+  // ADMIN_URL (the admin host's origin, where the "this is an admin account" screen links, also served by it),
+  // TRUSTED_ORIGINS (normally unset: the apex's own origin is trusted), COOKIE_DOMAIN (leave unset).
+  // Secrets, set with `wrangler secret put`: BETTER_AUTH_SECRET (a DIFFERENT value from the admin Worker's: a token of
+  // one audience must not be valid for the other), RESEND_API_KEY, TURNSTILE_SECRET_KEY, GOOGLE_CLIENT_ID and
+  // GOOGLE_CLIENT_SECRET (optional; a separate OAuth client from the admin's, whose redirect URI is
+  // https://<apex>/portal/api/auth/callback/google). There is no secret for the private bucket: no SSE-C (decided
+  // 2026-10-13), so no PRIVATE_FILES_KEY.
+  "vars": {
+    "ENVIRONMENT": "production",
+    // Hard budget of the private bucket, in bytes: under the 10 GB-month of R2 Free.
+    "PRIVATE_FILES_BUDGET_BYTES": "8000000000"
+  },
+
+  "assets": {
+    // The portal SPA's build (`pnpm build:portal-spa`, written by the SPA task of the milestone). The build puts every
+    // file under a portal/ folder (dist/portal-spa/portal/assets/<hash>.js answers /portal/assets/<hash>.js) because
+    // assets are matched by their pathname as it arrives, and copies portal/index.html to dist/portal-spa/index.html,
+    // which is the single-page-application fallback.
+    "directory": "./dist/portal-spa",
+    "binding": "ASSETS",
+    // A path that is no file gets the portal's own index.html (React Router handles it in the browser), and a
+    // navigation does not run the Worker at all (compatibility date 2025-04-01 or later).
+    "not_found_handling": "single-page-application",
+    // No redirects or rewrites of HTML: /portal, /portal/ and every other path that is not a file fall through to the
+    // single /index.html, so there is no 307 between /portal and /portal/.
+    "html_handling": "none",
+    // Only the API runs the Worker. Everything else is answered by the assets layer, which costs no Worker request.
+    // The pattern includes the /portal prefix because assets and routes are matched by the pathname as it arrives
+    // (a real zone must confirm it: docs/cloudflare/portal-architecture.md, 3.6 item 3).
+    "run_worker_first": ["/portal/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      // Equal to the admin's, so both Workers see one database. No database_id (see above).
+      "database_name": "sakem-admin",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // The applicants' files. PRIVATE: never a public domain, never r2.dev, never the admin's public bucket. Placeholder
+  // name, no id (docs/cloudflare/portal-architecture.md, section 8). The code paths are the access control: R2 gives a
+  // binding the whole bucket.
+  "r2_buckets": [{ "binding": "PRIVATE_FILES", "bucket_name": "sakem-private" }],
+
+  // Routes are NOT declared here: the deploy ticket adds them, after the zone is active (adding `routes` turns
+  // `workers_dev` off on the next deploy, which is right for production and wrong for staging on workers.dev):
+  //   sakolakembara.org/portal      (a route pattern with a trailing /* does not match the bare path: two are needed)
+  //   sakolakembara.org/portal/*
+  // zone sakolakembara.org, both on this Worker, failure mode CLOSED (the portal holds session-bound data; a bypass
+  // would send /portal/api/* to the public site's Worker, which answers 404 and hides the cause).
+  // docs/cloudflare/portal-architecture.md, 3.5.
+
+  // Cloudflare rate limit bindings (see wrangler.jsonc for what they are and why a period is 10 or 60 seconds). The
+  // numbers equal the admin's and the table in src/security/rate-limit.ts (a test compares them); the namespace ids
+  // are this Worker's OWN (80xx, placeholders: a number we choose, unique per account; the admin's production ones are
+  // 78xx and its staging ones 79xx), so the portal's counters never share a bucket with the admin's.
+  "ratelimits": [
+    // The auth routes of the portal (src/auth/gate.ts under /portal/api/auth).
+    { "name": "RL_LOGIN", "namespace_id": "8001", "simple": { "limit": 5, "period": 60 } },
+    { "name": "RL_LOGIN_ACCOUNT", "namespace_id": "8002", "simple": { "limit": 20, "period": 60 } },
+    { "name": "RL_REGISTER", "namespace_id": "8003", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RL_RESET", "namespace_id": "8004", "simple": { "limit": 5, "period": 60 } },
+    { "name": "RL_VERIFY_RESEND", "namespace_id": "8005", "simple": { "limit": 2, "period": 60 } },
+    { "name": "RL_MAIL_TARGET", "namespace_id": "8006", "simple": { "limit": 3, "period": 60 } },
+    { "name": "RL_TOKEN", "namespace_id": "8007", "simple": { "limit": 20, "period": 60 } },
+    // The signed-in student routes, keyed by user id (src/portal/guard.ts).
+    { "name": "RL_PORTAL_READ", "namespace_id": "8031", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RL_PORTAL_SAVE", "namespace_id": "8032", "simple": { "limit": 30, "period": 60 } },
+    { "name": "RL_PORTAL_UPLOAD", "namespace_id": "8033", "simple": { "limit": 20, "period": 60 } },
+    { "name": "RL_PORTAL_SUBMIT", "namespace_id": "8034", "simple": { "limit": 3, "period": 60 } }
+  ]
+
+  // No `triggers.crons`: the daily cleanup, and the retention of applicants' files, run on the admin Worker.
+}

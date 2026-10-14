@@ -8,6 +8,9 @@
 ENVIRONMENT=development
 
 # Required. At least 32 random characters. Generate one with: openssl rand -base64 32
+# The student portal's Worker (`pnpm dev:portal`, wrangler.portal.jsonc) reads this same file locally, so locally both
+# Workers share one secret; the cookies still differ by name (better-auth.session_token on the admin,
+# sakem-student.session_token on the portal). In production the two Workers MUST have different secrets.
 BETTER_AUTH_SECRET=local-only-fake-secret-change-me-32-chars-min
 
 # Comma-separated browser origins allowed to send cookie-bearing writes (the Origin
@@ -54,3 +57,18 @@ UPLOADS_BASE_URL=
 # A plain http(s) origin with no path and no trailing slash, e.g. https://sakolakembara.org;
 # anything else is treated as empty. Locally the Astro dev server is http://localhost:4321.
 SITE_URL=
+
+# The student portal (SAKEM-083). Read by the portal Worker.
+#
+# Origin of the admin host, where the portal's "this is an admin account" screen links (GET /portal/api/config
+# answers it as `adminUrl`). A plain http(s) origin, no path, no trailing slash. Locally the admin's `wrangler dev`
+# is http://localhost:8787. Empty = no link.
+ADMIN_URL=
+# Hard budget of the private bucket, in bytes (wrangler.jsonc has the production value).
+PRIVATE_FILES_BUDGET_BYTES=8000000000
+# Days to keep applicants' files. 0 = never delete, the decision of 2026-10-13 (nothing is deleted automatically;
+# an editor with the Pendaftaran grant or a super_admin purges an applicant's files by hand). No code reads these now.
+DRAFT_RETENTION_DAYS=0
+REJECTED_FILES_RETENTION_DAYS=0
+ACCEPTED_FILES_RETENTION_DAYS=0
+# There is no key for the private bucket: no SSE-C (decided 2026-10-13).

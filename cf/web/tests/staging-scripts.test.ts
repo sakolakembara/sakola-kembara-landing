@@ -139,6 +139,7 @@ describe('staging-dry-run: what a dry run must show', () => {
     'Your Worker has access to the following bindings:',
     'env.DB (sakem-staging)                              D1 Database',
     'env.UPLOADS (sakem-files-staging)                   R2 Bucket',
+    'env.PRIVATE_FILES (sakem-private-staging)           R2 Bucket',
     ...TARGETS.admin.mustContain.filter((line) => line.startsWith('env.RL_')).map((line) => `${line}   Rate Limit`),
     'env.ASSETS                                          Assets',
     'env.ENVIRONMENT ("staging")                         Environment Variable',

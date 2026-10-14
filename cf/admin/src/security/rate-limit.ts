@@ -27,7 +27,12 @@ export type RateLimitBinding =
   | "RL_TOKEN"
   | "RL_CONTACT"
   | "RL_UPLOAD"
-  | "RL_BLOG_PREVIEW";
+  | "RL_BLOG_PREVIEW"
+  | "RL_PORTAL_READ"
+  | "RL_PORTAL_SAVE"
+  | "RL_PORTAL_UPLOAD"
+  | "RL_PORTAL_SUBMIT"
+  | "RL_ADMIN_FILE";
 
 export interface LimitConfig {
   binding: RateLimitBinding;
@@ -113,6 +118,48 @@ export const RATE_LIMITS = {
     limit: 60,
     period: 60,
     message: "Terlalu banyak permintaan pratinjau. Silakan tunggu satu menit lalu coba lagi.",
+  },
+
+  // ─── The student portal (SAKEM-083; docs/cloudflare/portal-architecture.md, 6.3) ───
+  // Signed-in routes are limited by USER ID, never by address or email: a school or a warnet shares one address.
+  // The limiter runs right after the session is read (src/portal/guard.ts) and before the body or any other D1 or
+  // R2 access. The portal Worker declares these (and the auth limiters above) with namespaces of its own, so a flood
+  // of students never spends an admin's bucket.
+
+  /** The draft, the overview, the status list and one's own files: reads. Key: user id. */
+  portalRead: {
+    binding: "RL_PORTAL_READ",
+    limit: 60,
+    period: 60,
+    message: "Terlalu banyak permintaan. Silakan tunggu satu menit lalu coba lagi.",
+  },
+  /** `PUT .../steps/:step`. A student saves a step when they finish it: seven times in a session, 30 is a stuck client. Key: user id. */
+  portalSave: {
+    binding: "RL_PORTAL_SAVE",
+    limit: 30,
+    period: 60,
+    message: "Terlalu banyak penyimpanan. Silakan tunggu satu menit lalu coba lagi.",
+  },
+  /** `PUT` and `DELETE` of a file. Keeps a stuck client from burning the R2 Class A budget and the memory of many streams. Key: user id. */
+  portalUpload: {
+    binding: "RL_PORTAL_UPLOAD",
+    limit: 20,
+    period: 60,
+    message: "Terlalu banyak unggahan. Silakan tunggu satu menit lalu coba lagi.",
+  },
+  /** `POST .../submit`. The legacy allowed 3 per 5 minutes; a binding allows a window of 10 or 60 seconds only, so 3 per minute. Key: user id. */
+  portalSubmit: {
+    binding: "RL_PORTAL_SUBMIT",
+    limit: 3,
+    period: 60,
+    message: "Terlalu banyak percobaan pengiriman. Silakan tunggu beberapa menit lalu coba lagi.",
+  },
+  /** An admin opening an applicant's file (on `sakem-admin`). Bounds a stolen session's bulk copying. Key: admin id. */
+  adminFile: {
+    binding: "RL_ADMIN_FILE",
+    limit: 120,
+    period: 60,
+    message: "Terlalu banyak berkas dibuka. Silakan tunggu satu menit lalu coba lagi.",
   },
 } as const satisfies Record<string, LimitConfig>;
 

@@ -18,6 +18,7 @@ import { komunikasiChecks } from "./negative-checks-komunikasi.mjs";
 import { kontenMiscChecks } from "./negative-checks-konten-misc.mjs";
 import { pendaftaranChecks } from "./negative-checks-pendaftaran.mjs";
 import { blogChecks } from "./negative-checks-blog.mjs";
+import { portalFoundationChecks } from "./negative-checks-portal-foundation.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -53,6 +54,9 @@ const checks = [
 
   // The blog (SAKEM-082): scripts/negative-checks-blog.mjs.
   ...blogChecks,
+
+  // The student portal's foundation (SAKEM-083): scripts/negative-checks-portal-foundation.mjs.
+  ...portalFoundationChecks,
 
   // ---------------------------------------------------------------- auth
   {
@@ -601,9 +605,11 @@ const checks = [
   {
     name: "production session cookie loses its __Host- prefix",
     file: "src/auth/factory.ts",
-    from: 'cookiePrefix: "__Host-better-auth",',
-    to: 'cookiePrefix: "better-auth",',
-    tests: "test/auth.test.ts",
+    // Since SAKEM-083 the prefix is built from the audience (`__Host-better-auth` for the admin, `__Host-sakem-student`
+    // for the portal), so this breaks both; the portal's own test of the production name is in test/portal-auth.test.ts.
+    from: "cookiePrefix: `__Host-${prefix}`,",
+    to: "cookiePrefix: prefix,",
+    tests: "test/auth.test.ts test/portal-auth.test.ts",
   },
   {
     name: "a deactivated account can open a session (session hook removed)",
