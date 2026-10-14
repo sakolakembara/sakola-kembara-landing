@@ -7,7 +7,7 @@ import { LoginPage } from "./pages/auth/Login";
 import { RegisterPage } from "./pages/auth/Register";
 import { ResetPasswordPage } from "./pages/auth/ResetPassword";
 import { VerifyEmailPage } from "./pages/auth/VerifyEmail";
-import { DaftarPlaceholderPage } from "./pages/DaftarPlaceholder";
+import { DaftarRoute } from "./pages/daftar/DaftarRoute";
 import { HomePage } from "./pages/Home";
 import { NotFoundPage } from "./pages/NotFound";
 import { StatusPage } from "./pages/Status";
@@ -31,8 +31,8 @@ export function App() {
         <Route element={<PortalShell />}>
           <Route index element={<HomePage />} />
           <Route path="status" element={<StatusPage />} />
-          {/* The wizard (P3) replaces this line with its own page. */}
-          <Route path="daftar" element={<DaftarPlaceholderPage />} />
+          {/* The wizard: its own chunk, loaded when a student opens it. */}
+          <Route path="daftar" element={<DaftarRoute />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

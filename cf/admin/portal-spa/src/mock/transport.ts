@@ -3,6 +3,7 @@ import { TURNSTILE_HEADER } from "@shared/spa/captcha";
 import { MOCK_SITE_KEY, MOCK_TOKEN_PREFIX } from "@shared/spa/mock-turnstile";
 import { ENDPOINTS } from "~/lib/paths";
 import { isStudent } from "~/lib/me";
+import { createMockApplications } from "./applications";
 import { mockApplications, mockMe, mockOverview } from "./fixtures";
 import type { Persona } from "./persona";
 
@@ -75,6 +76,9 @@ export function createMockTransport(config: MockConfig): Transport {
     if (!isStudent(me)) return json({ error: "student_only", message: "Halaman ini hanya untuk calon siswa. Pengurus yayasan masuk lewat halaman admin." }, 403);
     return null;
   }
+
+  // The wizard's routes (`GET applications/current`, the step saves, the submit, the files): mock/applications.ts.
+  const applications = createMockApplications(config.persona, dataGuard, undefined, { uploadDelayMs: Math.min(150, config.delayMs) });
 
   return async (path, init) => {
     await sleep(config.delayMs);
@@ -162,7 +166,7 @@ export function createMockTransport(config: MockConfig): Transport {
         return json({ url: `${window.location.origin}/portal/` });
 
       default:
-        return json({ error: "not_found" }, 404);
+        return applications.handle(method, url.pathname, init) ?? json({ error: "not_found" }, 404);
     }
   };
 }
