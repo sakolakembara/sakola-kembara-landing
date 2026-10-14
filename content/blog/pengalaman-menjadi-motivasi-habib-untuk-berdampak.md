@@ -12,6 +12,9 @@ excerpt: >-
   dan pengetahuan, sebagai bekal di dunia kerja nanti. Salah satu volunteer
   Sakola Kembara yang menarik perhatian yaitu Habib. Ia sudah bergabung sejak
   tahun 2025, mempunyai [&hellip;]
+description: >-
+  Salah satu volunteer Sakola Kembara yang menarik perhatian yaitu Habib. Yuk,
+  kenal dengan Habib lebih jauh, untuk mempelajari penglaman beliau!
 featured: false
 image: /blog/images/2026/02/IMG-20251203-WA0016.jpg
 author: Muttaqin Hidayahtullah

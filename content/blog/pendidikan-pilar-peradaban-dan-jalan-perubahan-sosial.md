@@ -12,6 +12,9 @@ excerpt: >-
   kebangkitan ilmu pengetahuan. Dalam konteks modern, pendidikan bukan sekadar
   proses transfer ilmu, tetapi juga proses pembentukan karakter, nilai, dan
   kesadaran sosial. Hakikat Pendidikan Secara umum, [&hellip;]
+description: >-
+  Sakola Kembara - Pendidikan merupakan fondasi utama dalam membangun peradaban.
+  Tidak ada bangsa yang maju tanpa sistem pendidikan yang kuat.
 featured: false
 image: /blog/images/2026/03/IMG_9067-1-scaled.jpg
 author: Muttaqin Hidayahtullah

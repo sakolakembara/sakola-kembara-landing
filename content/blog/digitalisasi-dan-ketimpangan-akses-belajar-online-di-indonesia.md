@@ -12,6 +12,13 @@ excerpt: >-
   juga memerlihatkan jurang ketimpangan yang masih besar, antara siswa yang
   punya akses memadai dan mereka yang berada di daerah terpencil atau keluarga
   kurang [&hellip;]
+description: >-
+  Sahabat Kembara perlu tahu bahwa kini perkembangan teknologi digital membuat
+  pembelajaran digital semakin populer dan mudah dijangkau. Di satu sisi, ini
+  memberi harapan baru bagi pemerataan pendidikan. Namun, di sisi lain teknologi
+  juga memerlihatkan jurang ketimpangan yang masih besar, antara siswa yang
+  punya akses memadai dan mereka yang berada di daerah terpencil atau keluarga
+  kurang
 featured: false
 image: >-
   /blog/images/2025/11/bonding-together-university-device-book-reading-scaled.jpg

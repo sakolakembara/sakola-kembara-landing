@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isLegacyPath } from '~/lib/legacy-paths';
+import { isLegacyPath, isPortalOwnedPath } from '~/lib/legacy-paths';
 import { absoluteUrl } from '~/lib/seo';
 import { STATIC_ROUTES } from '~/lib/sitemap';
-import { importRoot, readRoot, webRoot } from './helpers';
+import { graphTypes, importRoot, ldBlocks, liveTitle, readRoot, webRoot } from './helpers';
 
 // Checks on the page `pnpm build` generates for /gabung-siswa (dist/client/gabung-siswa.html) and on
 // the files it must NOT generate (the SSR pages). Skipped, not failed, when dist/ is missing, like
@@ -49,9 +49,9 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('head: lang id, the legacy title, description, canonical, robots, Open Graph and Twitter data', () => {
-    expect(html).toContain('<html lang="id"');
-    expect(decode(html.match(/<title>([^<]*)<\/title>/)![1])).toBe(legacyMeta.title.absolute);
+  it('head: lang id-ID, the legacy title in the live pattern, description, canonical, robots, Open Graph and Twitter data', () => {
+    expect(html).toContain('<html lang="id-ID"');
+    expect(decode(html.match(/<title>([^<]*)<\/title>/)![1])).toBe(liveTitle(legacyMeta.title.absolute));
     expect(meta(html, 'name', 'description')).toBe(legacyMeta.description);
     expect(html.match(/<link rel="canonical" href="([^"]*)"/)?.[1]).toBe(absoluteUrl(legacyMeta.alternates.canonical));
     expect(meta(html, 'name', 'robots')).toBe('index, follow');
@@ -66,8 +66,9 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     expect(meta(html, 'name', 'twitter:description')).toBe(legacyMeta.twitter.description);
   });
 
-  it('no JSON-LD (the legacy page has none), exactly one h1, the hero text', () => {
-    expect(html).not.toContain('application/ld+json');
+  it('no structured data of its own (the legacy page had none): only the site graph; exactly one h1, the hero text', () => {
+    expect(ldBlocks(html)).toHaveLength(1);
+    expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList']);
     const h1 = [...html.matchAll(/<h1[\s>][\s\S]*?<\/h1>/g)];
     expect(h1).toHaveLength(1);
     expect(decode(h1[0][0].replace(/<[^>]+>/g, ''))).toBe('Wujudkan Mimpimu Bersama Sakola Kembara');
@@ -110,15 +111,15 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('every internal link of the page leads somewhere the Worker or the legacy app answers', () => {
+  it('every internal link of the page leads somewhere the Worker, the student portal or the legacy app answers', () => {
     const internal = links(html)
       .map((tag) => attr(tag, 'href'))
       .filter((href) => href.startsWith('/') && !href.startsWith('//'));
     expect(internal.length).toBeGreaterThan(5);
-    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak', '/login']);
+    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak']);
     for (const href of internal) {
       const p = href.split(/[?#]/)[0];
-      expect(known.has(p) || isLegacyPath(p), href).toBe(true);
+      expect(known.has(p) || isLegacyPath(p) || isPortalOwnedPath(p), href).toBe(true);
     }
   });
 

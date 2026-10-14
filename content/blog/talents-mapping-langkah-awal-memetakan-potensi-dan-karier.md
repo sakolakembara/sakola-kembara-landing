@@ -12,6 +12,10 @@ excerpt: >-
   benar-benar memahami apa yang membuat dirinya bertumbuh. Dalam konteks inilah,
   Talents Mapping menjadi relevan sebagai pendekatan untuk membantu memahami
   potensi diri secara lebih [&hellip;]
+description: >-
+  Aqiela Azhura Talents Mapping membantu remaja dan dewasa muda mengenali
+  potensi diri, merencanakan karir, dan menentukan jurusan sesuai kekuatan
+  personal.
 featured: false
 image: /blog/images/2026/02/WhatsApp-Image-2026-02-23-at-1.21.08-PM-1.jpeg
 author: Aqiela Azhura

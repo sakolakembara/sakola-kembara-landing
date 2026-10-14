@@ -160,7 +160,7 @@ export async function seed(d1: D1Database, options: SeedOptions = {}): Promise<S
     statements.push(db.delete(table));
   }
 
-  // The private-storage counter is one row that always exists (migration 0012); nothing is stored in the seed, so zero.
+  // The private-storage counter is one row that always exists (migration 0013); nothing is stored in the seed, so zero.
   put(schema.privateStorage, [{ id: "private-files", bytes: 0, files: 0 }]);
 
   // ------------------------------------------------------------ identity

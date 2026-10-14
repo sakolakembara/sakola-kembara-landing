@@ -7,6 +7,7 @@ import { unified } from "unified";
 import { describe, expect, inject, it } from "vitest";
 import { renderArticle } from "../src/blog/render";
 import { isSafeImageSrc, isSafeLinkHref, sanitizeTree } from "../src/blog/sanitize";
+import { ARTICLE_COUNT } from "./helpers";
 
 // The sanitiser (src/blog/sanitize.ts): an allow-list over the tree the markdown renderer makes. Two ways in:
 //
@@ -57,7 +58,8 @@ function audit(html: string): void {
 const render = (markdown: string) => renderArticle(markdown);
 
 describe("the migrated articles are inside the allow-list as they are", () => {
-  it("passes the audit for all 80 (so the allow-list is no narrower than what the build produced)", () => {
+  it("passes the audit for every article (so the allow-list is no narrower than what the build produced)", () => {
+    expect(inject("blogOracle").articles).toHaveLength(ARTICLE_COUNT);
     for (const article of inject("blogOracle").articles) audit(article.html);
   });
 });

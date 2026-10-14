@@ -15,7 +15,8 @@
     "paths": {
       "~/*": ["./src/*"],
       "@/*": ["../../../*"],
-      "next/link": ["./src/shims/next-link.tsx"],
+      "@shared/*": ["../shared/*"],
+      "next/link": ["../shared/spa/next-link.tsx"],
       // The shared kit lives outside cf/admin; resolve its packages from here.
       "react": ["../node_modules/@types/react"],
       "react/jsx-runtime": ["../node_modules/@types/react/jsx-runtime"],
@@ -23,5 +24,5 @@
       "tailwind-merge": ["../node_modules/tailwind-merge"]
     }
   },
-  "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "test", "vite.config.ts", "vitest.config.ts", "../shared/spa", "../shared/vite"]
 }

@@ -16,6 +16,10 @@ excerpt: >-
   Bergabung sebagai Volunteer Dewi memulai perjalanannya sebagai volunteer di
   Sakola Kembara pada tahun 2025. Keputusannya untuk bergabung didasari
   [&hellip;]
+description: >-
+  Pelajari kisah Dewi, mahasiswa Indonesia yang mengubah hidup anak-anak desa
+  sebagai volunteer, dan bagaimana pengalaman tersebut memperdalam makna
+  pendidikan.
 featured: false
 image: /blog/images/2025/12/IMG-20251206-WA0001.jpg
 author: Sesilia

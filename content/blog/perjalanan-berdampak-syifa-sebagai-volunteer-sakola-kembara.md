@@ -14,6 +14,15 @@ excerpt: >-
   Keputusan ini lahir dari fase refleksi diri ketika capaian akademik menurunkan
   rasa percaya diri. Namun dari titik tersebut, muncul keinginan kuat untuk
   tetap berdampak dan memberi manfaat [&hellip;]
+description: >-
+  Awal Perjalanan Menjadi Volunteer yang Berdampak Syifa Latifah Salsabila,
+  mahasiswa Psikologi Universitas Pendidikan Indonesia angkatan 2024 asal Kota
+  Bandung, memulai langkahnya sebagai volunteer Sakola Kembara pada tahun 2025.
+  Keputusan ini lahir dari fase refleksi diri ketika capaian akademik menurunkan
+  rasa percaya diri. Namun dari titik tersebut, muncul keinginan kuat untuk
+  tetap berdampak dan memberi manfaat Perjalanan berdampak Syifa Latifah sebagai
+  volunteer Sakola Kembara yang menemukan makna hidup, berbagi ilmu, dan peduli
+  ketimpangan pendidikan.
 featured: false
 image: /blog/images/2025/12/IMG-20251205-WA0016-scaled.jpg
 author: Sesilia

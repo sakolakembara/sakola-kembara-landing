@@ -12,6 +12,9 @@ excerpt: >-
   berkembang menjadi terbatas. Oleh karena itu, pentingnya akses pendidikan
   bukan hanya isu sosial, tetapi juga investasi jangka panjang bagi masa depan
   bangsa. Di berbagai [&hellip;]
+description: >-
+  Sakola Kembara - Akses pendidikan merupakan fondasi utama dalam membangun
+  masyarakat yang maju, adil, dan sejahtera. Mari baca selengkapnya!
 featured: false
 image: /blog/images/2026/02/IMG_15751-1-scaled.jpg
 author: Muttaqin Hidayahtullah

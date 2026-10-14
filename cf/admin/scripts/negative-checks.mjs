@@ -1005,7 +1005,7 @@ const checks = [
   // agreement from either end and expect test/spa-contract.test.ts to notice.
   {
     name: "the SPA sends the Turnstile token under another header name",
-    file: "spa/src/lib/captcha.ts",
+    file: "shared/spa/captcha.ts",
     from: 'export const TURNSTILE_HEADER = "X-Turnstile-Token";',
     to: 'export const TURNSTILE_HEADER = "X-Captcha-Token";',
     tests: "test/spa-contract.test.ts",
@@ -1033,7 +1033,7 @@ const checks = [
   },
   {
     name: "the SPA stops mapping captcha_unavailable",
-    file: "spa/src/lib/auth-errors.ts",
+    file: "shared/spa/auth-errors.ts",
     from: 'if (code === "captcha_unavailable") return CAPTCHA_UNAVAILABLE_MESSAGE;',
     to: "",
     tests: "test/spa-contract.test.ts",

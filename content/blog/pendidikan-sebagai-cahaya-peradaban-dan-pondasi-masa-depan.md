@@ -13,6 +13,9 @@ excerpt: >-
   ilmu dan kesadaran intelektual warganya. Makna dan Tujuan Pendidikan
   Pendidikan bukan sekadar proses belajar membaca, menulis, dan berhitung. Ia
   [&hellip;]
+description: >-
+  Pendidikan adalah cahaya yang menerangi perjalanan manusia menuju kemajuan.
+  Tanpa pendidikan, sebuah masyarakat akan berjalan dalam kegelapan kebodohan.
 featured: false
 image: /blog/images/2026/03/20220727_135211-scaled.jpg
 author: Muttaqin Hidayahtullah

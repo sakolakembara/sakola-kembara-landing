@@ -5,7 +5,7 @@
 //
 // Bytes are decimal (10 MB = 10,000,000), like the admin's upload kinds (src/uploads/kinds.ts).
 //
-// The file limits are also written into the CHECK of `application_files.size` (migration 0012). Changing
+// The file limits are also written into the CHECK of `application_files.size` (migration 0013). Changing
 // MAX_FILE_BYTES therefore needs a new migration, and `pnpm db:drift` fails until there is one: that is the
 // intended reminder, not a bug.
 

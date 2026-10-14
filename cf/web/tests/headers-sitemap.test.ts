@@ -38,10 +38,10 @@ describe('security headers', () => {
 });
 
 describe('robots.txt', () => {
-  it('has the same rules as the root app/robots.ts', async () => {
+  it('has the rules of the root app/robots.ts, plus /portal (the student portal is not for search engines)', async () => {
     const src = readRoot('app/robots.ts');
     expect(src).toContain('disallow: ["/admin", "/api", "/login"]');
-    expect(ROBOTS_DISALLOW).toEqual(['/admin', '/api', '/login']);
+    expect(ROBOTS_DISALLOW).toEqual(['/admin', '/api', '/login', '/portal']);
     const root = await importRoot<{ default: () => { rules: { userAgent: string; allow: string; disallow: string[] }[]; sitemap: string; host: string } }>('app/robots.ts');
     const r = root.default();
     expect(r.sitemap).toBe(`${SITE_URL}/sitemap.xml`);

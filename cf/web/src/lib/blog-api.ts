@@ -30,6 +30,11 @@ export interface BlogSummary {
 export interface BlogArticle extends BlogSummary {
   modifiedISO: string;
   /**
+   * The text for `<meta name="description">`, og:description and the JSON-LD description, when it is not the excerpt
+   * (SAKEM-090); null when the API has none or does not send the field (an API from before it): use `excerpt`.
+   */
+  description: string | null;
+  /**
    * HTML rendered by the API when the article was saved. It is injected UNESCAPED
    * (`set:html`), so it is trusted only because the API sanitizes at save (the
    * contract's rule: a producer other than the API must re-render or sanitize).
@@ -123,6 +128,7 @@ export function parseBlogArticle(payload: unknown): BlogArticlePayload | null {
     article: {
       ...summary,
       modifiedISO: modifiedISO && ISO_DATE.test(modifiedISO) ? modifiedISO : summary.dateISO,
+      description: str(payload.article.description),
       contentHtml: html,
     },
     related: summaries(payload.related),

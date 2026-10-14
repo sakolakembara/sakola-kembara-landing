@@ -2,7 +2,7 @@
 import { env } from 'cloudflare:workers';
 import NotFoundPage from '~/components/NotFoundPage.astro';
 import { contentApiTarget } from '~/lib/api-client';
-import { isShortlinkCandidate } from '~/lib/legacy-paths';
+import { isPortalOwnedPath, isShortlinkCandidate } from '~/lib/legacy-paths';
 import { redirectResponse, resolveShortlink, unavailableResponse } from '~/lib/shortlink';
 
 // Catch-all: every path no page, endpoint or static file claims ends up here.
@@ -11,7 +11,7 @@ import { redirectResponse, resolveShortlink, unavailableResponse } from '~/lib/s
 //  1. Middleware only runs for a request that matches a route. Without this
 //     route Astro answers unknown multi-segment paths with its built-in 404
 //     before any middleware, and the legacy pass-through (src/middleware.ts)
-//     would never see e.g. /portal/status or /api/auth/session.
+//     would never see e.g. /admin/blog (redirected to the admin host) or /api/anything (a JSON 404).
 //  2. Admin-managed shortlinks (sakolakembara.org/<slug>) live in D1 and are
 //     resolved here (src/lib/shortlink.ts, docs/cloudflare/admin-konten.md).
 //     Static pages win over this route, exactly like Next's app/(public)/[slug]
@@ -34,7 +34,8 @@ try {
 // Only a visit counts as one: GET, and HEAD (what a link checker or a preview bot sends).
 const visiting = Astro.request.method === 'GET' || Astro.request.method === 'HEAD';
 
-if (visiting && !slug.includes('/') && isShortlinkCandidate(slug)) {
+// A name the portal owns (portal, admin, api, the old auth pages) is reserved: no shortlink can have it, so asking the API would only cost a call.
+if (visiting && !slug.includes('/') && isShortlinkCandidate(slug) && !isPortalOwnedPath(`/${slug}`)) {
   const target = contentApiTarget(env);
   const result = await resolveShortlink(slug, {
     baseUrl: target?.base,

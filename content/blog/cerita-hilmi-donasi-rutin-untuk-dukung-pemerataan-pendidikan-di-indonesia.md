@@ -12,6 +12,10 @@ excerpt: >-
   pendidikan Indonesia masih jauh tertinggal dari segi kualitas dan
   aksesibilitas. Data Kemendagri menunjukkan pada tahun 2024 sebanyak 15% siswa
   SMA tidak melanjutkan [&hellip;]
+description: >-
+  Pemerataan masih jadi isu utama kebijakan pendidikan di Indonesia. Sebagai
+  masyarakat, Hilmi ikut dukung dengan donasi rutin di Sakola Kembara. Simak
+  ceritanya!
 featured: false
 image: >-
   /blog/images/2025/12/WhatsApp_Image_2025-11-25_at_11.14.43-removebg-preview-muhammad-hilmi.png

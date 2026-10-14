@@ -7,7 +7,7 @@ import { api } from "~/lib/api";
 import { RESET_LINK_INVALID_MESSAGE, RESET_LINK_MISSING_MESSAGE, resetFailure } from "~/lib/auth-errors";
 import { focusFirstInvalid, useAutoFocus, usePageTitle, useSubmitLock } from "~/lib/hooks";
 import { type FieldErrors, PASSWORD_MIN, validateReset } from "~/lib/validation";
-import { AUTH_LINK, AuthShell } from "./AuthShell";
+import { AUTH_LINK, AuthShell } from "@shared/spa/AuthShell";
 
 /**
  * `/reset-password?token=...`, where the link in the reset email ends up.

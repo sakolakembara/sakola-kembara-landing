@@ -15,6 +15,13 @@ excerpt: >-
   dari Ketertarikan Keputusan berdonasi berawal dari cerita teman mengenai
   sebuah program pendidikan yang mendukung siswa SMA agar bisa melanjutkan
   kuliah. Ketertarikan itu [&hellip;]
+description: >-
+  Sahabat Kembara, perlu kita ketahui bahwa setiap donasi selalu membawa cerita.
+  Kali ini, datang dari seorang donatur yang memilih untuk berbagi karena
+  kepedulian terhadap pendidikan dan masa depan anak muda. Donasi yang Berangkat
+  dari Ketertarikan Keputusan berdonasi berawal dari cerita teman mengenai
+  sebuah program pendidikan yang mendukung siswa SMA agar bisa melanjutkan
+  kuliah. Ketertarikan itu
 featured: false
 image: /blog/images/2025/12/logo_1739619474045_iIqSEetZ.png
 author: salwa

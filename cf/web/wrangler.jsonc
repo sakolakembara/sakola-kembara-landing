@@ -23,7 +23,31 @@
   // reads nor the contact route exist: every API call would be a 404. A test pins the entrypoint.
   // Locally the binding is not used: CONTENT_API_URL and CONTACT_API_URL point at
   // scripts/fixture-api.mjs (dev.vars.example), and they win over the binding when set.
-  "services": [{ "binding": "API", "service": "sakem-admin", "entrypoint": "PublicApi" }]
+  "services": [{ "binding": "API", "service": "sakem-admin", "entrypoint": "PublicApi" }],
+
+  // STAGING (SAKEM-084, docs/cloudflare/staging-runbook.md): the same code as another Worker on `*.workers.dev`
+  // in the organisation account. This file is read by the Vite plugin of the Astro adapter, which picks the
+  // environment from `CLOUDFLARE_ENV` at BUILD time (`pnpm build:staging`) and writes the flattened result to
+  // dist/server/wrangler.json, with the staging name in it: whatever is deployed from that build is the staging
+  // Worker, whatever `--env` says. `pnpm deploy:staging:dry` builds and dry-runs it. A build WITHOUT
+  // CLOUDFLARE_ENV is the production Worker (name above).
+  //   - `services` is not inherited, so it is written out again, and it names the STAGING admin Worker
+  //     (`<name>-<environment>` of cf/admin/wrangler.jsonc: wrangler's rule for a binding that targets an
+  //     environment). A test (tests/staging-config.test.ts) keeps the two names equal.
+  //   - Per-deploy public values (TURNSTILE_SITE_KEY, ADMIN_URL, UPLOADS_BASE_URL) are not in git: they are passed
+  //     with `--var` (cf/scripts/staging-deploy-command.mjs prints the command from an untracked file). NEVER set
+  //     CONTENT_API_URL or CONTACT_API_URL, here or there: they would move the reads and the contact form off the
+  //     binding. Staging has no legacy origin behind its hostname, so a pass-through path such as /_next/* would
+  //     fetch the Worker's own address again (Cloudflare's loop limit is 16 invocations); the deploy command passes
+  //     LEGACY_ORIGIN_URL as a `*.invalid` host, which never resolves, so it fails at once (docs/cloudflare/free-plan-audit.md).
+  "env": {
+    "staging": {
+      "name": "sakem-web-staging",
+      "workers_dev": true,
+      "preview_urls": false,
+      "services": [{ "binding": "API", "service": "sakem-admin-staging", "entrypoint": "PublicApi" }]
+    }
+  }
 
   // Intentionally NOT set here (no resource ids, hostnames or secrets in git):
   //

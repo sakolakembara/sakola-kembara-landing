@@ -14,6 +14,12 @@ excerpt: >-
   Pendidikan. Acara ini dihadiri oleh Ketua DPRD Kota Cimahi, ( Bapak Wahyu
   Widyatmoko, S.H ), CEO Bantu Teman Indonesia ( Priyo Puji Laksono), Founder
   sekaligus CEO Sakola Kembara ( Rommy Adany ), dan puluhan siswa [&hellip;]
+description: >-
+  Sakola Kembara - Pada tanggal 13 Desember 2025, Bantu Teman bersama dengan
+  Sakola Kembara telah menyelenggarakan acara Seremonial Pemberian Beasiswa
+  Pendidikan. Acara ini dihadiri oleh Ketua DPRD Kota Cimahi, ( Bapak Wahyu
+  Widyatmoko, S.H ), CEO Bantu Teman Indonesia ( Priyo Puji Laksono), Founder
+  sekaligus CEO Sakola Kembara ( Rommy Adany ), dan puluhan siswa
 featured: false
 image: /blog/images/2025/12/WhatsApp-Image-2025-12-26-at-08.55.07.jpeg
 author: Muttaqin Hidayahtullah

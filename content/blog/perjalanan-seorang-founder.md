@@ -14,6 +14,13 @@ excerpt: >-
   apa artinya menjadi seorang founder sejati. Ini adalah cerita tentang Rommy,
   founder Sakola Kembara dan alumni ITB yang memilih mendirikan gerakan
   pendidikan [&hellip;]
+description: >-
+  Membicarakan tentang "founder" di era digital ini, yang terlintas dalam benak
+  kita mungkin adalah pendiri startup teknologi atau perusahaan rintisan yang
+  sedang naik daun. Namun, ada satu cerita yang mengubah perspektif kita tentang
+  apa artinya menjadi seorang founder sejati. Ini adalah cerita tentang Rommy,
+  founder Sakola Kembara dan alumni ITB yang memilih mendirikan gerakan
+  pendidikan
 featured: false
 image: /blog/images/2025/12/IMG-20251201-WA0000.jpg
 author: Sesilia

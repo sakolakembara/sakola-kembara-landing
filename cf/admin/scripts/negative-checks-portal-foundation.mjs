@@ -12,7 +12,7 @@ const CONFIG = "test/portal-foundation-config.test.ts";
 const SKELETON = "test/portal-foundation.test.ts";
 const AUTH = "test/portal-auth.test.ts";
 
-const MIGRATION = "migrations/0012_portal_applications.sql";
+const MIGRATION = "migrations/0013_portal_applications.sql";
 
 export const portalFoundationChecks = [
   // ------------------------------------------------ one Better Auth, two audiences
@@ -167,7 +167,7 @@ export const portalFoundationChecks = [
   {
     name: "portal foundation: the portal shares the admin's rate limit namespace (a flood of students spends an admin's bucket)",
     file: "wrangler.portal.jsonc",
-    from: '"namespace_id": "7901"',
+    from: '"namespace_id": "8001"',
     to: '"namespace_id": "7801"',
     tests: CONFIG,
   },
@@ -201,7 +201,7 @@ export const portalFoundationChecks = [
     tests: CONFIG,
   },
 
-  // ------------------------------------------------ migration 0012
+  // ------------------------------------------------ migration 0013
   {
     name: "portal foundation: the migration lets a file's checksum be anything",
     file: MIGRATION,

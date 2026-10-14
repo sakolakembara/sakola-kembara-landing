@@ -15,6 +15,9 @@ excerpt: >-
   Talents Mapping. Agenda ini dihadiri oleh siswa, orang tua, dan juga
   didampingi oleh salah satu tim Sakola Kembara. Seperti yang sudah
   diinformasikan sebelumnya, Talents [&hellip;]
+description: >-
+  Praktisi Talents Mapping, Kak Nisrina, berbagi cerita sukses siswa Sakola
+  Kembara dalam menentukan jurusan kuliah yang tepat.
 featured: false
 image: >-
   /blog/images/2026/01/Tentukan-Jurusan-Kuliah-Tanpa-Ragu-Cerita-Kak-Nisrina-Dampingi-Siswa-Sakola-Kembara-Lewat-Talents-Mapping.jpeg

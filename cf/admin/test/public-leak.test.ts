@@ -78,7 +78,7 @@ describe("serializers are allow-lists", () => {
   });
 
   test("blog summary and article", () => {
-    const row = { ...stuffed, slug: "s", title: "t", category: "News", excerpt: "e", image: null, imageWidth: null, imageHeight: null, author: "a", featured: false, publishedAt: new Date(), contentMarkdown: "m", contentHtml: "h" };
+    const row = { ...stuffed, slug: "s", title: "t", category: "News", excerpt: "e", image: null, imageWidth: null, imageHeight: null, author: "a", featured: false, publishedAt: new Date(), metaDescription: "d", contentMarkdown: "m", contentHtml: "h" };
     expect(Object.keys(serializeBlogSummary(row as never)).sort()).toEqual(["author", "category", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "slug", "title"]);
     expect(Object.keys(serializeBlogArticle(row as never)).sort()).toEqual([
       "author",
@@ -87,6 +87,7 @@ describe("serializers are allow-lists", () => {
       "contentMarkdown",
       "date",
       "dateISO",
+      "description",
       "excerpt",
       "featured",
       "image",
@@ -156,7 +157,7 @@ describe("no private column reaches any public response", () => {
 
     const article = await json<{ article: object; related: object[] }>(await internalFetch("/api/public/blog/satu"));
     expect(keys(article)).toEqual(["article", "related"]);
-    expect(keys(article.article)).toEqual(["author", "category", "contentHtml", "contentMarkdown", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "modifiedISO", "slug", "title"]);
+    expect(keys(article.article)).toEqual(["author", "category", "contentHtml", "contentMarkdown", "date", "dateISO", "description", "excerpt", "featured", "image", "imageHeight", "imageWidth", "modifiedISO", "slug", "title"]);
     expect(keys(article.related[0]!)).toEqual(["author", "category", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "slug", "title"]);
   });
 

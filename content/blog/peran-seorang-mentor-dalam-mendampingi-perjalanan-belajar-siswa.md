@@ -12,6 +12,13 @@ excerpt: >-
   lingkungan, hingga pandangan keluarga sering menjadi batas yang tidak
   terlihat, tetapi memiliki dampak yang nyata. Kesadaran ini yang dirasakan oleh
   Caca, seorang mahasiswi 20 [&hellip;]
+description: >-
+  Pendidikan Tidak Selalu Datang dengan Akses yang Sama Sahabat Kembara, banyak
+  orang percaya pendidikan adalah hak semua orang. Namun kenyataannya, akses
+  terhadap pendidikan tidak selalu terbuka bagi setiap anak. Faktor ekonomi,
+  lingkungan, hingga pandangan keluarga sering menjadi batas yang tidak
+  terlihat, tetapi memiliki dampak yang nyata. Kesadaran ini yang dirasakan oleh
+  Caca, seorang mahasiswi 20
 featured: false
 image: >-
   /blog/images/2026/02/WhatsApp-Image-2025-09-23-at-8.55.32-PM-Salsabilla-Fadia-Putri-Primadini-1.jpeg

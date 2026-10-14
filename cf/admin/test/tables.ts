@@ -30,7 +30,7 @@ export const TABLES_CHILD_FIRST = [
 ] as const;
 
 /**
- * Tables that always hold their one row (migration 0012 inserts it): setup puts the row back
+ * Tables that always hold their one row (migration 0013 inserts it): setup puts the row back
  * after emptying instead of leaving the table bare, so a test of the upload route finds its counter.
  */
 export const SINGLETON_ROWS: Record<string, string> = {

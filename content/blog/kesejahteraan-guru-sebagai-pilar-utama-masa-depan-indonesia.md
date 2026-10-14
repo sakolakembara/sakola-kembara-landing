@@ -12,6 +12,9 @@ excerpt: >-
   Namun, kondisi ini masih jauh dari harapan, terutama bagi guru yang mengajar
   di wilayah pelosok dan terpencil Indonesia. Kemudian, seperti yang pernah
   dikatakan oleh Presiden [&hellip;]
+description: >-
+  Kesejahteraan guru adalah kunci kualitas pendidikan. Pahami peran, tantangan,
+  dan solusi dalam mewujudkan kesejahteraan guru di pelosok
 featured: false
 image: >-
   /blog/images/2025/12/Kesejahteraan-Guru-sebagai-Pilar-Utama-Masa-Depan-Indonesia-scaled.jpg

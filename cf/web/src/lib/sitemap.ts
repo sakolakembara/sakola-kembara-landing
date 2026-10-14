@@ -56,8 +56,8 @@ export function buildSitemap(entries: SitemapEntry[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-/** Same rules as the root app/robots.ts: allow all, disallow /admin /api /login. */
-export const ROBOTS_DISALLOW = ['/admin', '/api', '/login'];
+/** The rules of the root app/robots.ts (allow all, disallow /admin /api /login) plus /portal: the student portal is not for search engines. */
+export const ROBOTS_DISALLOW = ['/admin', '/api', '/login', '/portal'];
 
 export function buildRobotsTxt(): string {
   return [

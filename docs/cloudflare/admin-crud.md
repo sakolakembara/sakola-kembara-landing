@@ -189,7 +189,7 @@ The numbers (esbuild bundle of one small object schema, the Worker's resolution 
 | zod 4 alone (one schema, unminified, as `wrangler deploy --dry-run` bundles) | ~741 KiB, ~115 KiB gzip |
 | the Worker before this PR | 2,919.22 KiB, 504.66 KiB gzip |
 | the Worker after this PR | 2,940.93 KiB, 511.02 KiB gzip (see [Measured](#20-measured)) |
-| Workers Free limit | 3 MiB compressed |
+| Workers Free limit | 64 MiB uncompressed, no compressed limit (it was 3 MiB compressed when this was written; [`free-plan-audit.md`](free-plan-audit.md#21-worker-size)) |
 
 zod is imported by `src/api/announcements.ts` and `src/api/admin-users.ts` already, so using it for every new resource adds **its schemas, not the library**: the kit adds about `src/api/crud` plus a few kilobytes. The alternative (hand-written validators) would save nothing the Worker does not already carry, and would repeat what zod gives for free: type inference from the schema (the `Input` type of a resource is `z.infer`), `refine` for cross-field rules (`endsAt >= startsAt`), `pipe`/`transform` for trimming and dates. It would also give four workers four dialects of the 400 body. If a later budget review wants the library out, `zod/mini` has the same schemas as functions and tree-shakes, and only the schema files change.
 

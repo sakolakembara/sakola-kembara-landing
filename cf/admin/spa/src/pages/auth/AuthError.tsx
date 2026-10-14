@@ -3,7 +3,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { queryErrorMessage } from "~/lib/auth-errors";
 import { usePageTitle } from "~/lib/hooks";
-import { AuthShell } from "./AuthShell";
+import { AuthShell } from "@shared/spa/AuthShell";
 
 /** Where Better Auth sends the browser when an OAuth step fails (`onAPIError.errorURL`), with `?error=<code>`. */
 export function AuthErrorPage() {

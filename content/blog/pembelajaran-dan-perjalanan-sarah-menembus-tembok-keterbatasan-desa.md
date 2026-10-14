@@ -12,6 +12,9 @@ excerpt: >-
   salah satunya karena kesenjangan pembelajaran antara kota dengan desa. Sarah
   menempuh pendidikannya di perdesaan, bangunan sekolahnya dikelilingi sawah.
   Kondisi geografis ini sangat identik [&hellip;]
+description: >-
+  Kisah Sarah menjemput kampus impian bersama Sakola Kembara dan berkontribusi
+  untuk pemerataan pendidikan di desa.
 featured: false
 image: /blog/images/2026/03/IMG-20251204-WA0004.jpg
 author: athalia

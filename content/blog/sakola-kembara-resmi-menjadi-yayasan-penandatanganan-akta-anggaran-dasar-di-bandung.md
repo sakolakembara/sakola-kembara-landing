@@ -15,6 +15,13 @@ excerpt: >-
   Sakola Kembara Indonesia pada hari Sabtu tanggal 18 Oktober 2025 di Bandung.
   Acara penandatanganan berlangsung di Jalan Cihapit No.27, Bandung Wetan,
   dengan disaksikan oleh notaris [&hellip;]
+description: >-
+  Bandung, 18 Oktober 2025 – Sakola Kembara, bimbingan belajar masuk perguruan
+  tinggi secara gratis bagi anak-anak dari keluarga prasejahtera di pelosok,
+  resmi berbadan hukum dengan ditandatanganinya Akta Anggaran Dasar Yayasan
+  Sakola Kembara Indonesia pada hari Sabtu tanggal 18 Oktober 2025 di Bandung.
+  Acara penandatanganan berlangsung di Jalan Cihapit No.27, Bandung Wetan,
+  dengan disaksikan oleh notaris
 featured: false
 image: /blog/images/2025/10/1.png
 author: Devanda

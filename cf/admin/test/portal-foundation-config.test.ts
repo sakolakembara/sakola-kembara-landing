@@ -25,6 +25,8 @@ interface WranglerConfig {
   r2_buckets: { binding: string; bucket_name: string }[];
   ratelimits: { name: string; namespace_id: string; simple: { limit: number; period: number } }[];
   triggers?: { crons: string[] };
+  /** The admin's staging block (SAKEM-084): it uses its own namespaces, which the portal's must not collide with. */
+  env?: { staging?: { ratelimits?: { name: string; namespace_id: string; simple: { limit: number; period: number } }[] } };
   [key: string]: unknown;
 }
 
@@ -159,11 +161,14 @@ describe("the portal's configuration", () => {
       for (const other of ["RL_CONTACT", "RL_UPLOAD", "RL_BLOG_PREVIEW", "RL_ADMIN_FILE"]) expect(namesOf(portal)).not.toContain(other);
     });
 
-    test("namespaces are numbers we choose, unique across BOTH files (a shared id would share a counter): the portal's are its own, 79xx", () => {
-      const all = [...admin.ratelimits, ...portal.ratelimits].map((entry) => entry.namespace_id);
+    test("namespaces are numbers we choose, unique across BOTH files and the admin's staging block (ids are per account, and a shared id would share a counter): the portal's are its own, 80xx", () => {
+      const staging = admin.env?.staging?.ratelimits ?? [];
+      expect(staging.length).toBeGreaterThan(0);
+      const all = [...admin.ratelimits, ...staging, ...portal.ratelimits].map((entry) => entry.namespace_id);
       expect(new Set(all).size).toBe(all.length);
-      for (const entry of portal.ratelimits) expect(entry.namespace_id, entry.name).toMatch(/^79\d\d$/);
+      for (const entry of portal.ratelimits) expect(entry.namespace_id, entry.name).toMatch(/^80\d\d$/);
       for (const entry of admin.ratelimits) expect(entry.namespace_id, entry.name).toMatch(/^78\d\d$/);
+      for (const entry of staging) expect(entry.namespace_id, entry.name).toMatch(/^79\d\d$/);
     });
 
     test("a limit is keyed by user id on the student routes, and the ones that count a minute are 60 s windows", () => {
@@ -187,9 +192,9 @@ describe("the package and the migrations", () => {
     expect(packageJson.scripts["db:migrate:local"]).toBe("wrangler d1 migrations apply sakem-admin --local");
   });
 
-  test("the journal lists thirteen migrations in order, the last is 0012_portal_applications", () => {
-    expect(journal.entries.map((entry) => entry.tag.slice(0, 4))).toEqual(Array.from({ length: 13 }, (_, i) => String(i).padStart(4, "0")));
-    expect(journal.entries.at(-1)!.tag).toBe("0012_portal_applications");
+  test("the journal lists fourteen migrations in order, the last is 0013_portal_applications", () => {
+    expect(journal.entries.map((entry) => entry.tag.slice(0, 4))).toEqual(Array.from({ length: 14 }, (_, i) => String(i).padStart(4, "0")));
+    expect(journal.entries.at(-1)!.tag).toBe("0013_portal_applications");
   });
 });
 

@@ -1,0 +1,9 @@
+User-Agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+Disallow: /login
+Disallow: /portal
+
+Host: https://sakolakembara.org
+Sitemap: https://sakolakembara.org/sitemap.xml

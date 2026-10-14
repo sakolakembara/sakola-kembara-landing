@@ -7,7 +7,7 @@ import { admissionBatches } from "./admission";
 import { users } from "./auth";
 import { createdAt, enumCheck, timestampMs, updatedAt, uuidPk } from "./_common";
 
-// The student portal's tables (SAKEM-083, migration 0012_portal_applications): drafts of applications, the metadata of
+// The student portal's tables (SAKEM-083, migration 0013_portal_applications): drafts of applications, the metadata of
 // the files an applicant uploads, the hard storage counter, and the daily email counter. Design and reasons:
 // docs/cloudflare/portal-architecture.md, sections 7 to 9; the contract that uses them: docs/cloudflare/portal-api.md.
 // Area: `pendaftaran` reads the files' metadata; the student's own routes write the rest.

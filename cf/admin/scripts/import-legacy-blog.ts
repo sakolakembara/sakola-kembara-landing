@@ -1,4 +1,5 @@
-// Imports the 80 articles of the legacy blog (content/blog/*.md at the repo root) into the new admin's D1
+// Imports the articles of the legacy blog (content/blog/*.md at the repo root: the 80 migrated and the 6 imported on
+// 2026-10-13) into the new admin's D1
 // (docs/cloudflare/admin-blog.md#import-of-the-80-migrated-articles).
 //
 //   pnpm blog:import:local                 apply to the LOCAL D1 (the one `wrangler dev` and the tests use)
@@ -6,6 +7,7 @@
 //
 // What it writes, per article, as one idempotent upsert by slug:
 //
+//   - the meta description of the WordPress page (front matter `description`, SAKEM-090) when the file has one;
 //   - the markdown as it is (`content.trim()`), and the HTML rendered with the SAME function the admin uses on a
 //     save (src/blog/render.ts), with the size, `srcset` and `@`-safe URL of every inline image taken from the
 //     public site's image manifest, so the 80 articles render as the build rendered them (a test compares them
@@ -52,6 +54,8 @@ export interface LegacyArticle {
   slug: string;
   title: string;
   excerpt: string;
+  /** The meta description of the WordPress page (front matter `description`), or null when the file has none. */
+  description: string | null;
   markdown: string;
   html: string;
   image: string | null;
@@ -123,6 +127,7 @@ export async function readLegacyArticles(options: { contentDir?: string; manifes
       slug,
       title: String(data.title ?? "(untitled)"),
       excerpt: String(data.excerpt ?? ""),
+      description: typeof data.description === "string" && data.description.trim() !== "" ? data.description.trim() : null,
       markdown,
       html: renderArticle(markdown, { images: lookup }).html,
       image,
@@ -181,12 +186,13 @@ export function importStatements(articles: readonly LegacyArticle[], newId: () =
   return articles.map((article) => {
     const publishedAt = startOfIsoDayJakarta(article.dateISO).getTime();
     const updatedAt = startOfIsoDayJakarta(article.modifiedISO).getTime();
-    const columns = ["id", "slug", "title", "excerpt", "content_markdown", "content_html", "image", "image_width", "image_height", "category", "author", "featured", "status", "published_at", "wp_id", "source_url", "created_at", "updated_at"];
+    const columns = ["id", "slug", "title", "excerpt", "meta_description", "content_markdown", "content_html", "image", "image_width", "image_height", "category", "author", "featured", "status", "published_at", "wp_id", "source_url", "created_at", "updated_at"];
     const values = [
       sqlText(newId()),
       sqlText(article.slug),
       sqlText(article.title),
       sqlText(article.excerpt),
+      sqlNullableText(article.description),
       sqlText(article.markdown),
       sqlText(article.html),
       sqlNullableText(article.image),

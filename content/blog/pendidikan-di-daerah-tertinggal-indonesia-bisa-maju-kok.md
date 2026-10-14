@@ -12,6 +12,10 @@ excerpt: >-
   Contohnya: kurangnya akses layanan dasar dan kurangnya sarana prasarana
   layanan publik. Di Indonesia sendiri, yang terkenal dengan negara Sumber Daya
   Alam yang [&hellip;]
+description: >-
+  Indonesia terkenal dengan Sumber Daya Alam yang melimpah, namun banyaknya
+  daerah tertinggal dan minimnya akses pendidikan masih menjadi masalah. Ini
+  solusinya!
 featured: false
 image: /blog/images/2025/12/image.jpeg
 author: Azkia Himayatu Dini

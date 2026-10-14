@@ -62,4 +62,21 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "feed",
   // WordPress paths the redirect table sends on to the blog images:
   "wp-content",
+  // WordPress pages and archives of the live sitemap that the redirect table sends to the new site's pages (SAKEM-090):
+  "home",
+  "sample-page",
+  "who-we-are",
+  "our-partners",
+  "contact-us",
+  "donate",
+  "donation-confirmation",
+  "donation-confirmation-2",
+  "donation-failed",
+  "donation-failed-2",
+  "donor-dashboard",
+  "donor-dashboard-2",
+  "work-with-us",
+  // ...and the archives, `/category/*` and `/tag/*`, which go to the blog index:
+  "category",
+  "tag",
 ]);

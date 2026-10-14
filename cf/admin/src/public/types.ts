@@ -85,6 +85,11 @@ export interface PublicBlogSummary {
 export interface PublicBlogArticle extends PublicBlogSummary {
   /** YYYY-MM-DD of the last save, in Asia/Jakarta. */
   modifiedISO: string;
+  /**
+   * The text for `<meta name="description">`, og:description and the JSON-LD description, when it is not the excerpt
+   * (the migrated articles carry the description their WordPress page had); null when none is set: use the excerpt.
+   */
+  description: string | null;
   /** The source of truth. */
   contentMarkdown: string;
   /** Rendered when the article was saved; never rendered on read. */

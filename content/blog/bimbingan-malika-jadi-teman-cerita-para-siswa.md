@@ -12,6 +12,9 @@ excerpt: >-
   dan minatnya terhadap bantuan dukungan akademik dari Sakola Kembara sehingga
   tidak perlu memikirkan pendidikan mahal dan tidak adil . Para siswa juga
   [&hellip;]
+description: >-
+  Mentor menjadi tempat cerita siswa yang mempunyai masalah sehingga Malika
+  dapat terbuka mendampingi siapapun yang membutuhkannya
 featured: false
 image: /blog/images/2026/03/IMG_20251011_181335-Malika-Fitriani-scaled.jpg
 author: Deanita

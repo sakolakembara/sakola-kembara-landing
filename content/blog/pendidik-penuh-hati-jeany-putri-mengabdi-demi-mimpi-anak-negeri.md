@@ -12,6 +12,10 @@ excerpt: >-
   paling kuat untuk mengubah arah kehidupan seseorang. Sakola Kembara sendiri
   merupakan yayasan nirlaba yang bergerak di bidang pendidikan nonformal bagi
   anak-anak di daerah pelosok. Hingga [&hellip;]
+description: >-
+  Kisah inspiratif Jeany Putri menjadi pendidik di Sakola Kembara, baginya
+  pendidikan adalah senjata untuk mengubah nasib dan mewujudkan mimpi anak
+  pelosok.
 featured: false
 image: >-
   /blog/images/2026/01/Pendidik-Penuh-Hati-Jeany-Putri-Mengabdi-demi-Mimpi-Anak-Negeri.jpg

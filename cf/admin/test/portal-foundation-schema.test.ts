@@ -9,7 +9,7 @@ import { STEP_IDS } from "../shared/application-form/steps";
 import * as schema from "../src/db/schema";
 import { SINGLETON_ROWS, TABLES_CHILD_FIRST } from "./tables";
 
-// Migration 0012_portal_applications: the tables of the student portal, checked against the real SQLite in workerd,
+// Migration 0013_portal_applications: the tables of the student portal, checked against the real SQLite in workerd,
 // with raw SQL where the point is that the DATABASE refuses a value (not Drizzle, not the API). docs/cloudflare/
 // portal-architecture.md, section 7.5.
 
@@ -55,10 +55,10 @@ async function aDraft(userId?: string, batchId?: string): Promise<{ id: string; 
 const file = (patch: Row = {}): Row => ({ id: uid(), application_id: uid(), slot: "family-card", content_type: "application/pdf", size: 1234, checksum: "0123456789abcdef0123456789abcdef", ...patch });
 
 describe("the migration", () => {
-  test("thirteen migrations, 0000 to 0012, the last one is this", () => {
-    expect(env.TEST_MIGRATIONS).toHaveLength(13);
-    expect(env.TEST_MIGRATIONS.at(-1)!.name).toBe("0012_portal_applications.sql");
-    expect(env.TEST_MIGRATIONS.map((migration) => migration.name.slice(0, 4))).toEqual(Array.from({ length: 13 }, (_, i) => String(i).padStart(4, "0")));
+  test("fourteen migrations, 0000 to 0013, the last one is this", () => {
+    expect(env.TEST_MIGRATIONS).toHaveLength(14);
+    expect(env.TEST_MIGRATIONS.at(-1)!.name).toBe("0013_portal_applications.sql");
+    expect(env.TEST_MIGRATIONS.map((migration) => migration.name.slice(0, 4))).toEqual(Array.from({ length: 14 }, (_, i) => String(i).padStart(4, "0")));
   });
 
   test("it makes the four tables and nothing else: student_applications is unchanged", async () => {

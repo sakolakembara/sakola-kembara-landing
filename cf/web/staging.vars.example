@@ -1,0 +1,20 @@
+# Copy to .staging.vars (untracked: `cf/**/.staging.vars*` is git-ignored) and fill in the PUBLIC values of
+# the staging Worker `sakem-web-staging`. `pnpm deploy:staging:command` reads it and PRINTS the deploy
+# command with every value passed as --var; it does not deploy. See docs/cloudflare/staging-runbook.md.
+#
+# Public values only. Never CONTENT_API_URL or CONTACT_API_URL (refused by the script).
+
+# Staging has no legacy origin. Without this line a pass-through path (/_next/*, /images/team/*) would fetch the
+# Worker's own address again, up to Cloudflare's loop limit of 16 invocations for one request. A *.invalid host
+# never resolves, so the request fails at once. Keep it as it is; the script accepts no other host here.
+LEGACY_ORIGIN_URL=https://no-legacy-origin.invalid
+
+# The PUBLIC site key of the Turnstile widget on /kontak (the same widget as the admin's staging one).
+TURNSTILE_SITE_KEY=<site key of the staging widget>
+
+# The origin of the staging admin: /admin on the site is a 308 to it.
+ADMIN_URL=https://sakem-admin-staging.<account-subdomain>.workers.dev
+
+# The public origin of the staging R2 bucket (r2.dev, no trailing slash): photos, report files, blog covers.
+# Leave the line out until the bucket's public URL is on.
+UPLOADS_BASE_URL=https://pub-<hash>.r2.dev

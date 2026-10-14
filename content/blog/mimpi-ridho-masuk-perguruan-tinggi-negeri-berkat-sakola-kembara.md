@@ -12,6 +12,10 @@ excerpt: >-
   perekonomian yang mendesak. Sakola Kembara menjadi paling utama bagi para
   siswa yang kurang mampu dalam keterbatasan ekonomi keluarga, akses tempat
   tinggal yang jauh dan permasalahan lainnya. [&hellip;]
+description: >-
+  Masuk perguruan tinggi negeri bukanlah hal mudah segala rintangan untuk
+  belajar bersama. Sakola Kembara menjadi solusi untuk diterima ke perguruan
+  tinggi
 featured: false
 image: /blog/images/2025/12/ridho-sakola-kembara.jpg
 author: Deanita

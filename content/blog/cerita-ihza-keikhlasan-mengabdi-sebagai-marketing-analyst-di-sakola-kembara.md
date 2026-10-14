@@ -12,6 +12,9 @@ excerpt: >-
   volunteer dan kepengurusan yang terbuka lebar bagi anak muda Indonesia.
   Khususnya untuk anak muda yang peduli dengan pemerataan akses pendidikan.
   Ihza, [&hellip;]
+description: >-
+  Mengabdi untuk negeri jadi salah satu hal penting bagi anak muda. Simak cerita
+  keikhlasan Ihza mengabdi sebagai Marketing Analyst di Sakola Kembara!
 featured: false
 image: >-
   /blog/images/2025/12/Cerita-Ihza-Keikhlasan-Mengabdi-Sebagai-Marketing-Analyst-di-Sakola-Kembara.jpg

@@ -119,6 +119,8 @@ modifiedISO: '2026-01-15'
 ---
 ```
 
+Optional: `description` (a plain-text meta description, 50 to 600 characters on one line). The new Cloudflare site (`cf/web`, [`../cloudflare/content-api.md`](../cloudflare/content-api.md)) uses it for `<meta name="description">`, `og:description` and the JSON-LD description **before the excerpt**; the 85 of the 86 migrated posts that have one carry the description their WordPress page had (SAKEM-090). The Next app ignores it, and `scripts/lib/blog-pipeline.mjs` keeps it when it rewrites a file (it is not written to `lib/blog-posts.json`).
+
 Place any new images under `public/blog/images/...` and reference them with absolute paths.
 
 ## What this enables, and what it doesn't

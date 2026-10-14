@@ -15,6 +15,13 @@ excerpt: >-
   dirasakan langsung oleh Muhammad Ilham, salah satu pengajar di Sakola Kembara
   yang melihat bahwa menjadi seorang pengajar merupakan bentuk investasi
   kebaikan. Bagi Ilham, [&hellip;]
+description: >-
+  Sahabat Kembara, seorang pengajar seringkali dipahami sebatas proses
+  menyampaikan materi di depan kelas. Padahal, di balik itu ada relasi, empati,
+  dan nilai yang tumbuh perlahan antara pengajar dan siswa. Hal inilah yang
+  dirasakan langsung oleh Muhammad Ilham, salah satu pengajar di Sakola Kembara
+  yang melihat bahwa menjadi seorang pengajar merupakan bentuk investasi
+  kebaikan. Bagi Ilham,
 featured: false
 image: >-
   /blog/images/2026/01/WhatsApp-Image-2025-12-28-at-14.36.56-1002_Muhammad-Ilham-Gusti-Yuliantoro.jpeg

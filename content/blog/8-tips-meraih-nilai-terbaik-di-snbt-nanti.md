@@ -12,6 +12,9 @@ excerpt: >-
   diperlukan strategi belajar yang tepat dan terarah agar bisa meraih nilai
   tinggi di SNBT. Artikel ini akan membahas tips lengkap dan efektif yang bisa
   kamu terapkan [&hellip;]
+description: >-
+  Seleksi Nasional Berdasarkan Tes (SNBT) adalah jalur seleksi perguruan tinggi
+  yang selektif. Simak artikel ini agar kamu bisa lulus dengan nilai terbaik!
 featured: false
 image: /blog/images/2026/01/snbt_crop_png-25_0-removebg-preview_0.png
 author: Muttaqin Hidayahtullah

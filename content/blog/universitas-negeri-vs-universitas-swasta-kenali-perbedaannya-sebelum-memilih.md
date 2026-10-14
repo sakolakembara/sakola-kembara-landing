@@ -13,6 +13,10 @@ excerpt: >-
   penting untuk memahami perbedaannya sebelum mengambil keputusan. Universitas
   negeri adalah perguruan tinggi yang dikelola dan didanai pemerintah melalui
   Anggaran Pendapatan dan [&hellip;]
+description: >-
+  Universitas Negeri vs Universitas Swasta, Kenali Perbedaannya Sebelum Memilih
+  Kenali perbedaan universitas negeri dan swasta dari biaya, seleksi, hingga
+  kualitas pendidikan agar kamu bisa memilih kampus sesuai kebutuhan.
 featured: false
 image: /blog/images/2026/02/pexels-airlangga-35865693-scaled.jpg
 author: Sesilia

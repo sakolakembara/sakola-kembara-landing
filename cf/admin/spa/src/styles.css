@@ -8,9 +8,11 @@
 @import "@fontsource-variable/lora";
 
 /* Tailwind generates classes only for files it is told about: this app's own
-   source and the shared kit, which sits outside it. */
+   source and the shared kit, which sits outside it, and the module shared with
+   the student portal's SPA (cf/admin/shared/spa: the auth layout, the crash screen...). */
 @source "./";
 @source "../../../../components/ui";
+@source "../../shared/spa";
 
 /* The Next app loads Plus Jakarta Sans (body) and Lora (display) with
    next/font. Here the same faces come from @fontsource under their own family names. */

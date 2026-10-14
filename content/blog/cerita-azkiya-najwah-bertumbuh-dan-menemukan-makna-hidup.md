@@ -12,6 +12,10 @@ excerpt: >-
   tahun, Azkiya kini menjalani peran sebagai mahasiswa Administrasi Bisnis
   angkatan 2025 di International Women University. Namun, perjalanan yang
   membawanya ke titik ini tidaklah [&hellip;]
+description: >-
+  Di balik sosok yang cenderung tenang, azkiya menyimpan perjalanan yang penuh
+  makna tentang keberanian, dan keinginan untuk tetap memberi arti bagi orang
+  lain.
 featured: false
 image: /blog/images/2026/04/IMG_9167@-1353469099-Azkiya-Najwah-3-scaled.jpg
 author: Muttaqin Hidayahtullah

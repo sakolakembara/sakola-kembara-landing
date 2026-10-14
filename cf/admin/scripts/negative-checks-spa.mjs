@@ -13,6 +13,7 @@ import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
 import { pendaftaranSpaChecks } from "./negative-checks-spa-pendaftaran.mjs";
 import { blogSpaChecks } from "./negative-checks-spa-blog.mjs";
+import { portalSpaChecks } from "./negative-checks-spa-portal.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -33,6 +34,10 @@ const checks = [
 
   // The blog (SAKEM-082): scripts/negative-checks-spa-blog.mjs.
   ...blogSpaChecks,
+
+  // The student portal's SPA (SAKEM-083): scripts/negative-checks-spa-portal.mjs. Its checks run the portal's own tests
+  // (`config` names portal-spa/vitest.config.ts).
+  ...portalSpaChecks,
 
   // Who may see and do what
   {
@@ -158,7 +163,7 @@ const checks = [
   },
   {
     name: "off-site `from` accepted after sign-in",
-    file: "spa/src/lib/guard.ts",
+    file: "shared/spa/safe-from.ts",
     // Two layers keep it on this site: the pre-checks and the URL origin check.
     from: ['!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\\\")', 'if (url.origin !== "http://admin.invalid") return null;'],
     to: ['!raw.startsWith("/")', ""],
@@ -166,7 +171,7 @@ const checks = [
   },
   {
     name: "error boundary never clears",
-    file: "spa/src/components/ErrorBoundary.tsx",
+    file: "shared/spa/ErrorBoundary.tsx",
     from: "previous.resetKey !== this.props.resetKey",
     to: "false",
     tests: t("routes.test.tsx"),
@@ -174,35 +179,35 @@ const checks = [
   // Drawer
   {
     name: "drawer ignores Escape",
-    file: "spa/src/lib/hooks.ts",
+    file: "shared/spa/hooks.ts",
     from: 'if (event.key === "Escape") {',
     to: 'if (event.key === "Escape-disabled") {',
     tests: t("drawer.test.tsx"),
   },
   {
     name: "drawer Tab does not wrap forward",
-    file: "spa/src/lib/hooks.ts",
+    file: "shared/spa/hooks.ts",
     from: "} else if (!event.shiftKey && (!inside || active === last)) {",
     to: "} else if (false) {",
     tests: t("drawer.test.tsx"),
   },
   {
     name: "drawer Shift+Tab does not wrap backward",
-    file: "spa/src/lib/hooks.ts",
+    file: "shared/spa/hooks.ts",
     from: "if (event.shiftKey && (!inside || active === first)) {",
     to: "if (false) {",
     tests: t("drawer.test.tsx"),
   },
   {
     name: "drawer does not give focus back",
-    file: "spa/src/lib/hooks.ts",
+    file: "shared/spa/hooks.ts",
     from: "if (focusLost && target?.isConnected) target.focus();",
     to: "",
     tests: t("drawer.test.tsx"),
   },
   {
     name: "drawer gives focus back to whatever was active on open (not the menu button)",
-    file: "spa/src/lib/hooks.ts",
+    file: "shared/spa/hooks.ts",
     from: "const target = restoreTo?.current ?? opener;",
     to: "const target = opener;",
     tests: t("drawer.test.tsx"),
@@ -210,7 +215,7 @@ const checks = [
   // Forms
   {
     name: "double submit allowed",
-    file: "spa/src/lib/hooks.ts",
+    file: "shared/spa/hooks.ts",
     from: "if (locked.current) return;",
     to: "",
     tests: t("login.test.tsx", "password-reset.test.tsx", "sidebar.test.tsx", "announcements.test.tsx"),
@@ -224,14 +229,14 @@ const checks = [
   },
   {
     name: "a hand-opened verification page claims success",
-    file: "spa/src/lib/auth-errors.ts",
+    file: "shared/spa/auth-errors.ts",
     from: 'if (params.status === "success") {',
     to: "if (true) {",
     tests: t("auth-errors.test.ts", "password-reset.test.tsx"),
   },
   {
     name: "unknown ?error= text is echoed",
-    file: "spa/src/lib/auth-errors.ts",
+    file: "shared/spa/auth-errors.ts",
     from: "return Object.hasOwn(QUERY_ERRORS, code) ? (QUERY_ERRORS[code] as string) : GENERIC_SIGN_IN_ERROR;",
     to: "return QUERY_ERRORS[code] ?? code;",
     tests: t("auth-errors.test.ts", "login.test.tsx"),
@@ -239,7 +244,7 @@ const checks = [
   // The security check (Turnstile): docs/cloudflare/auth.md#turnstile
   {
     name: "api() drops the Turnstile header",
-    file: "spa/src/lib/api.ts",
+    file: "shared/spa/api.ts",
     from: "if (init.turnstileToken) headers[TURNSTILE_HEADER] = init.turnstileToken;",
     to: "",
     tests: t("api.test.ts", "turnstile.test.tsx"),
@@ -260,7 +265,7 @@ const checks = [
   },
   {
     name: "the widget is not reset after a request (a spent token would be sent again)",
-    file: "spa/src/lib/turnstile.ts",
+    file: "shared/spa/turnstile.ts",
     from: "    const spent = tokenRef.current;\n    reset();\n    return spent;",
     to: "    return tokenRef.current;",
     tests: t("turnstile.test.tsx"),
@@ -288,70 +293,70 @@ const checks = [
   },
   {
     name: "an expired token is kept and sent",
-    file: "spa/src/lib/turnstile.ts",
+    file: "shared/spa/turnstile.ts",
     from: "      onLost() {\n        setToken(null);\n",
     to: "      onLost() {\n",
     tests: t("turnstile.test.tsx"),
   },
   {
     name: "an expired token does not ask for a fresh challenge",
-    file: "spa/src/lib/turnstile.ts",
+    file: "shared/spa/turnstile.ts",
     from: "      onLost() {\n        setToken(null);\n        const current = handle.current;\n        if (current) current.api.reset(current.id);\n      },",
     to: "      onLost() {\n        setToken(null);\n      },",
     tests: t("turnstile.test.tsx"),
   },
   {
     name: "a widget that cannot run is not announced",
-    file: "spa/src/components/TurnstileWidget.tsx",
+    file: "shared/spa/TurnstileWidget.tsx",
     from: "{failed && <Alert>{WIDGET_ERROR_MESSAGE}</Alert>}",
     to: "{null}",
     tests: t("turnstile.test.tsx"),
   },
   {
     name: "the form waits for a widget the deployment does not have",
-    file: "spa/src/lib/turnstile.ts",
+    file: "shared/spa/turnstile.ts",
     from: "const blocked = siteKey !== null && token === null;",
     to: "const blocked = token === null;",
     tests: t("turnstile.test.tsx", "login.test.tsx", "password-reset.test.tsx"),
   },
   {
     name: "the mock may load Cloudflare's script",
-    file: "spa/src/lib/turnstile.ts",
-    from: '  if (import.meta.env.VITE_ADMIN_MOCK === "true") return Promise.reject(new Error("the mock does not load Cloudflare\'s script"));\n',
+    file: "shared/spa/turnstile.ts",
+    from: '  if (import.meta.env.VITE_ADMIN_MOCK === "true" || import.meta.env.VITE_PORTAL_MOCK === "true") {\n    return Promise.reject(new Error("the mock does not load Cloudflare\'s script"));\n  }\n',
     to: "",
     tests: t("turnstile.test.tsx"),
   },
   {
     name: "Cloudflare's script is added on every call",
-    file: "spa/src/lib/turnstile.ts",
+    file: "shared/spa/turnstile.ts",
     from: "let script = document.querySelector<HTMLScriptElement>(`script[${SCRIPT_MARK}]`);",
     to: "let script: HTMLScriptElement | null = null;",
     tests: t("turnstile.test.tsx"),
   },
   {
     name: "captcha_failed has no Indonesian line",
-    file: "spa/src/lib/auth-errors.ts",
+    file: "shared/spa/auth-errors.ts",
     from: 'if (code === "captcha_failed") return CAPTCHA_FAILED_MESSAGE;',
     to: "",
     tests: t("auth-errors.test.ts", "turnstile.test.tsx"),
   },
   {
     name: "captcha_unavailable has no Indonesian line",
-    file: "spa/src/lib/auth-errors.ts",
+    file: "shared/spa/auth-errors.ts",
     from: 'if (code === "captcha_unavailable") return CAPTCHA_UNAVAILABLE_MESSAGE;',
     to: "",
     tests: t("auth-errors.test.ts", "turnstile.test.tsx"),
   },
   {
     name: "email_unavailable has no Indonesian line",
-    file: "spa/src/lib/auth-errors.ts",
+    file: "shared/spa/auth-errors.ts",
     from: 'if (failure.code === "email_unavailable") return EMAIL_UNAVAILABLE_MESSAGE;',
     to: "",
     tests: t("auth-errors.test.ts", "turnstile.test.tsx"),
   },
   {
     name: "the site key is read from anything the server sends",
-    file: "spa/src/lib/captcha.ts",
+    file: "shared/spa/captcha.ts",
     from: 'const key = typeof body.turnstileSiteKey === "string" ? body.turnstileSiteKey.trim() : "";',
     to: 'const key = String(body.turnstileSiteKey ?? "");',
     tests: t("captcha.test.ts", "turnstile.test.tsx"),
@@ -376,7 +381,8 @@ for (const check of checks) {
   }
   try {
     writeFileSync(check.file, froms.reduce((text, from, i) => text.replace(from, tos[i]), original));
-    const run = spawnSync("pnpm", ["exec", "vitest", "run", "--config", "spa/vitest.config.ts", ...check.tests.split(" ")], {
+    // A check says which SPA's tests it runs with `config` (the portal's); the default is the admin's.
+    const run = spawnSync("pnpm", ["exec", "vitest", "run", "--config", check.config ?? "spa/vitest.config.ts", ...check.tests.split(" ")], {
       encoding: "utf8",
     });
     const failed = (run.stdout + run.stderr).match(/Tests\s+(\d+) failed/);

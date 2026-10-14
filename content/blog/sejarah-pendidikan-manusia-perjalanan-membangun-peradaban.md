@@ -13,6 +13,9 @@ excerpt: >-
   mencerminkan bagaimana manusia belajar, berpikir, dan membentuk tatanan sosial
   sepanjang zaman. Pendidikan Manusia Masa Prasejarah Pada masa prasejarah,
   pendidikan belum [&hellip;]
+description: >-
+  Pendidikan merupakan salah satu fondasi utama dalam perkembangan peradaban
+  manusia. Sejak manusia mengenal kehidupan bermasyarakat.
 featured: false
 image: /blog/images/2025/12/Img-2-1.png
 author: Muttaqin Hidayahtullah

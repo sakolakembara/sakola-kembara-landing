@@ -174,7 +174,7 @@ export const blogPageQuery = (db: Db, pageSize: number, offset: number) => {
 /** One published article with both bodies and the dates the page needs. */
 export const articleQuery = (db: Db, slug: string) =>
   db
-    .select({ ...summaryColumns, id: blogPosts.id, updatedAt: blogPosts.updatedAt, contentMarkdown: blogPosts.contentMarkdown, contentHtml: blogPosts.contentHtml })
+    .select({ ...summaryColumns, id: blogPosts.id, updatedAt: blogPosts.updatedAt, metaDescription: blogPosts.metaDescription, contentMarkdown: blogPosts.contentMarkdown, contentHtml: blogPosts.contentHtml })
     .from(blogPosts)
     .where(and(published, eq(blogPosts.slug, slug)))
     .limit(1);

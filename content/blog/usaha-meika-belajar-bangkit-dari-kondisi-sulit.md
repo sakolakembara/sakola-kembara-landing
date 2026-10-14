@@ -11,6 +11,9 @@ excerpt: >-
   Praktek Kerja Lapangan ( PKL) sambil menyusul materi di Sakola Kembara. Anak
   pertama dari dua bersaudara yang memiliki seorang ayah bekerja sebagai
   serabutan bersama ibunya yang ikut bantu bekerja. Meika memilih [&hellip;]
+description: >-
+  Kesulitan Meika dalam lingkungannya berusaha untuk semangat belajar dalam
+  membantu semua orang mencapai tujuan dan cita - cita
 featured: false
 image: /blog/images/2026/02/IMG_20251225_141852-Zahra-Zahra-Meika-Huzna-scaled.jpg
 author: Deanita

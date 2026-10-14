@@ -5,7 +5,7 @@
 // `limits.ts`, so no zod reaches the admin bundle).
 //
 // A slot id appears in a URL (`PUT /portal/api/applications/current/files/:slot`), in the `application_files.slot`
-// CHECK (migration 0012) and on the admin screen. Adding or renaming one is a migration (SQLite cannot alter a CHECK),
+// CHECK (migration 0013) and on the admin screen. Adding or renaming one is a migration (SQLite cannot alter a CHECK),
 // so the list is fixed here and changed on purpose.
 
 /** What a slot can hold. The type is sniffed from the bytes (src/uploads/sniff.ts), never read from the client. */
