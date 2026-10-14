@@ -1,4 +1,5 @@
 import type { Bindings } from "../env";
+import { runFilesHousekeeping } from "../private-files/housekeeping";
 
 // The daily cleanup, run by the Cron Trigger in wrangler.jsonc (it replaces
 // the legacy "prune rate limit hits by hand" and the never-written session
@@ -13,6 +14,10 @@ import type { Bindings } from "../env";
 //                 wrangler.jsonc, 365 by default). Unset, "0" or not a number
 //                 means keep everything: an unreadable setting must never
 //                 delete evidence.
+//
+// The private bucket of applicants' files gets two chores of its own after these (src/private-files/housekeeping.ts):
+// finishing the delete of a file a person already removed (the object that could not be deleted at the time) and
+// recounting the storage counter. Neither ages a file out: nothing is deleted automatically (Dzul, 2026-10-13).
 //
 // Each table is cleared in chunks (a subselect with LIMIT: D1 does not
 // guarantee DELETE ... LIMIT), at most MAX_ROUNDS chunks per run, so one run
@@ -71,6 +76,9 @@ export async function scheduledCleanup(controller: Pick<ScheduledController, "sc
     console.info(
       `[cron] cleanup: sessions=${result.sessions} verifications=${result.verifications} audit=${result.audit} retention=${result.auditRetentionDays ?? "off"}`,
     );
+    // Counts only, and only when there was something to finish (a quiet day logs nothing more).
+    const files = await runFilesHousekeeping(env, controller.scheduledTime);
+    if (files.removed > 0 || files.pending > 0) console.info(`[cron] private files: removed=${files.removed} pending=${files.pending}`);
   } catch (error) {
     // Message only: it names a table or a SQL error, never a row.
     console.error(`[cron] cleanup failed: ${error instanceof Error ? error.message : "unknown error"}`);

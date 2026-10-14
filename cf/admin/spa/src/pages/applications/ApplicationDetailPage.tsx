@@ -12,16 +12,18 @@ import { useFlash } from "~/lib/crud/flash";
 import { useItem } from "~/lib/crud/useItem";
 import { useMe } from "~/lib/session";
 import { instagramUrl, type ProfileRow, type ProfileSection, profileSections, type RowValue, safeWebUrl, whatsappUrl } from "./answers";
-import { API_PATH, APPLICATION_STATUS, type ApplicationDetail, ROUTE } from "./model";
+import { FilesValue, PurgeFiles } from "./FilesSection";
+import { API_PATH, APPLICATION_STATUS, type ApplicationWithFiles, ROUTE } from "./model";
 import { ReviewPanel } from "./ReviewPanel";
 
 // The page of one applicant: every answer, the documents they linked, the notes, and the review. A port of
 // app/(admin)/admin/applications/[id]/page.tsx. The sections are built by `profileSections` (answers.ts), which has
 // the rules of what is shown when; this file draws them.
 //
-// What the applicant gave is shown as text. A document is a link the applicant pasted (the legacy wizard asks for a
-// link to their own Drive folder: nothing of theirs is stored by this app, which is why there is no file to open
-// from here); it is clickable only when it is an http or https address.
+// What the applicant gave is shown as text. A version 2 application has links the applicant pasted (the legacy wizard
+// asked for a link to their own Drive folder); a link is clickable only when it is an http or https address. A version
+// 3 application has FILES the applicant uploaded to the private bucket (FilesSection.tsx): they are listed by slot, and
+// opened one at a time, in a new tab, only by who may (`canOpenFiles`: Pendaftaran write), each open audited.
 
 type Icon = ComponentType<{ size?: number; "aria-hidden"?: boolean | "true" | "false" }>;
 
@@ -83,6 +85,8 @@ function Value({ value }: { value: RowValue }) {
         <span className="text-gray-400">—</span>
       );
     }
+    case "files":
+      return <FilesValue applicationId={value.applicationId} files={value.files} canOpen={value.canOpen} />;
     case "debt":
       return (
         <div className="leading-relaxed text-gray-700">
@@ -140,7 +144,7 @@ export function ApplicationDetailPage() {
   const me = useMe();
   const canWrite = accessTo(me, "pendaftaran") === "write";
   const location = useLocation();
-  const item = useItem<ApplicationDetail>(`${API_PATH}/${encodeURIComponent(id)}`);
+  const item = useItem<ApplicationWithFiles>(`${API_PATH}/${encodeURIComponent(id)}`);
   const notice = useFlash();
 
   if ((item.status === "loading" || item.status === "idle") && !item.item) {
@@ -219,7 +223,8 @@ export function ApplicationDetailPage() {
                 key={application.updatedAt}
                 application={application}
                 onSaved={(next) => {
-                  item.replace(next);
+                  // The answer of a review has no files, no `canOpenFiles` and no version: what the page had stays.
+                  item.replace({ ...application, ...next });
                   notice.show({ tone: "success", text: "Status pendaftar berhasil diubah." });
                 }}
                 onReload={() => {
@@ -233,6 +238,23 @@ export function ApplicationDetailPage() {
               </div>
             )}
           </div>
+          {application.canOpenFiles && application.files.length > 0 && (
+            <div className="mt-6">
+              <PurgeFiles
+                applicationId={application.id}
+                fullName={application.fullName}
+                files={application.files}
+                onPurged={({ pending }) => {
+                  item.refetch();
+                  notice.show(
+                    pending > 0
+                      ? { tone: "danger", text: "Berkas sudah dihapus dari daftar, tetapi sebagian belum terhapus dari penyimpanan. Sistem akan mencoba lagi otomatis." }
+                      : { tone: "success", text: "Semua berkas pendaftar sudah dihapus." },
+                  );
+                }}
+              />
+            </div>
+          )}
         </aside>
       </div>
     </div>

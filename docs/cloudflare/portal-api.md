@@ -19,7 +19,7 @@ The contract the build workers implement and test against: every endpoint of the
 - **The pipeline of a student route**, in this order, each step stopping the request: (1) the same-origin guard on every write (`403 forbidden` with `reason`); (2) the session (`401 unauthenticated`; a deactivated account has none); (3) the role: only `student` (`403 student_only`); (4) a verified email (`403 email_not_verified`, defence in depth: an unverified student cannot sign in); (5) the route's limiter, keyed by the **user id** (`429 rate_limited`, `Retry-After: 60`, `retryAfterSeconds`); (6) the body checks; (7) the route. `config` and the auth routes have no session; `me` stops after (2).
 - **Turnstile** only where `auth.md` puts it (register, login, forgot, resend), in the header `X-Turnstile-Token`. The student routes of this file have none.
 - **Nothing personal in logs.** No name, address, number, answer, file name, byte or token in any log line, on success or failure; counts and codes only. A test reads every console line of a full run.
-- **Audit.** Besides the rows the auth flows already write (`student.register`, `user.email_verified`, `user.password_reset`), only `application.submit` (the student), `application_file.view` (an admin opening a file) and `application_file.purge` (the retention job). Draft saves and uploads are not audited. Audit rows hold ids and field names, never applicant data.
+- **Audit.** Besides the rows the auth flows already write (`student.register`, `user.email_verified`, `user.password_reset`), only `application.submit` (the student), `application_file.view` (an admin opening a file) and `application_file.purge` (an admin deleting an application's files by hand: nothing is deleted automatically). Draft saves and uploads are not audited. Audit rows hold ids and field names, never applicant data.
 
 ## 2. Endpoint index
 
@@ -41,6 +41,7 @@ Rate limit names are bindings of [`portal-architecture.md`](portal-architecture.
 | `GET /portal/api/dev/mailbox` | local development only | none | none | none | none | none |
 | `GET /api/admin/applications/:id` (extended) | admin, `pendaftaran` read | none | none | none | read: as today, plus the files | none |
 | `GET /api/admin/applications/:id/files/:fileId` | admin, `pendaftaran` **write** | `RL_ADMIN_FILE` | none | `application_file.view` | read: the file; write: the audit row | get |
+| `POST /api/admin/applications/:id/files/purge` | admin, `pendaftaran` **write** | `RL_UPLOAD` (20 a minute, key `file-purge:<admin id>`) | none | `application_file.purge` | read: the application and its files; write: the rows marked, the audit row, then the rows deleted and the counter | delete |
 
 Anything else under `/portal/api/` is `404 { "error": "not_found" }`. The admin's routes for applications that are not listed here (`GET /api/admin/applications`, `POST .../:id/status`) do not change.
 
@@ -128,7 +129,7 @@ The wizard's bootstrap: the open batch, the draft or the submitted application o
 | `draft.missingFiles` | the required slots that currently have no file, computed with `documents.dtksRegistered` (the `dtks` slot only counts when it is `"ya"`); `[]` when none, and all required slots while nothing is uploaded |
 | `files` | the live files of the draft, or of the submitted application when `gate` is `submitted`: `[{ id, slot, contentType, size, width, height, uploadedAt }]` (`width` and `height` are `null` for a PDF); oldest first within a slot |
 
-Rules: it **never creates** a draft (a draft is created by the first saved step or the first upload). It does not read the files' bytes. A student whose open batch has closed since they started sees `gate: "no_open_batch"`; the draft stays in D1 until retention removes it ([`portal-architecture.md`](portal-architecture.md#89-retention-and-deletion-proposal)) but is not returned. Reads: the session, the batch, the draft, the application (the unique index), the files (the `(application_id, slot)` index, at most 35 rows).
+Rules: it **never creates** a draft (a draft is created by the first saved step or the first upload). It does not read the files' bytes. A student whose open batch has closed since they started sees `gate: "no_open_batch"`; the draft stays in D1 (nothing is deleted automatically, [`portal-architecture.md`](portal-architecture.md#89-deleting-files-by-hand-the-manual-purge)) but is not returned. Reads: the session, the batch, the draft, the application (the unique index), the files (the `(application_id, slot)` index, at most 35 rows).
 
 ## 6. States and the gate
 
@@ -139,7 +140,7 @@ The legacy statuses are exactly `pending`, `under_review`, `accepted`, `rejected
 | State | Where | How it is entered | How it is left |
 | --- | --- | --- | --- |
 | none | no row | | the first saved step or the first upload creates the draft (batch open) |
-| draft | `application_drafts` | the first `PUT steps/:step` or `PUT files/:slot` | the submit (the draft is deleted in the same transaction); retention |
+| draft | `application_drafts` | the first `PUT steps/:step` or `PUT files/:slot` | the submit (the draft is deleted in the same transaction) |
 | submitted, `pending` | `student_applications.status = 'pending'` | `POST submit` | an admin sets another status |
 | `under_review`, `accepted`, `rejected` | the same row | an admin (`POST /api/admin/applications/:id/status`) | an admin again |
 
@@ -391,7 +392,7 @@ The SPA chooses the words (the legacy `statusView` in `app/(portal)/portal/statu
 
 ## 11. File routes (student)
 
-> **Decided 2026-10-13: no SSE-C.** Every clause of this section about `PRIVATE_FILES_KEY`, an SSE-C key passed to `put` or `get`, or a read that fails for the key (the `storage_unavailable` row of 11.2, "SSE-C when the key is configured" below it, and the last sentence of 11.4) is void: no key is declared and the routes pass none. `503 storage_unavailable` means a missing `PRIVATE_FILES` binding only. P4 removes the clauses when it builds the routes.
+> **Built (P4, `src/portal/files.ts`, `src/private-files/`).** Decided 2026-10-13: **no SSE-C**: no key is declared and the routes pass none, so `503 storage_unavailable` means only that the `PRIVATE_FILES` binding is missing. The clauses of the first draft about a key are gone from this section. Where the build made a choice the contract left open, the paragraph says so ("as built"); the tests (`test/private-files-*.test.ts`) are the record.
 
 ### 11.1 The slots (authoritative)
 
@@ -437,11 +438,11 @@ The order of the checks, cheapest first (the first failure answers):
 | the slot has room (the replaced file does not count): live files below the slot's maximum | `409 slot_full` with `max`: `"Slot ini sudah penuh. Hapus satu berkas dulu atau ganti berkas yang ada."` |
 | the application stays within 40 files and 100,000,000 bytes (after the replace) | `409 application_full`: `"Jumlah berkas sudah mencapai batas."`; `413 application_too_large`: `"Total ukuran berkas sudah mencapai batas."` |
 | the storage counter takes the bytes (`bytes + size <= PRIVATE_FILES_BUDGET_BYTES`) | `503 storage_full`: `"Penyimpanan berkas sedang penuh. Hubungi panitia lewat WhatsApp."` |
-| production has the bucket and `PRIVATE_FILES_KEY` | `503 storage_unavailable`: `"Penyimpanan berkas sedang tidak tersedia. Coba lagi nanti."` |
+| the `PRIVATE_FILES` binding exists (checked once the gate and the room are known, before the counter is touched: as built) | `503 storage_unavailable`: `"Penyimpanan berkas sedang tidak tersedia. Coba lagi nanti."` |
 | the first 1 MiB is read and sniffed | `415 unsupported_type` (`allowed`: the slot's content types; `"Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP, PDF."` or the slot's list), `422 invalid_file` (`"File rusak atau tidak bisa dibaca. Coba simpan ulang lalu unggah lagi."`), `422 unreadable_size` (`"Ukuran gambar tidak terbaca. Simpan ulang gambar tanpa metadata yang besar."`), `422 dimensions_too_large` (`"Dimensi gambar terlalu besar (maksimal 10.000 piksel per sisi dan 50 megapiksel)."`) |
 | the body is exactly as long as declared | `400 body_mismatch`: `"Unggahan terputus. Coba lagi."` (nothing is stored) |
 
-Then the object is stored (key `applications/<batch year>/<application id>/<file id>.<ext>`, `Content-Type` the sniffed one, `Cache-Control: private, no-store`, SSE-C when the key is configured) and the row is inserted in one guarded statement; if the insert writes nothing (the draft vanished, the slot filled up meanwhile) the object is deleted and the answer is the gate's or `slot_full`. On a replace the old row is marked deleted in the same batch and its object is deleted afterwards. `201`:
+Then the object is stored (key `applications/<batch year>/<application id>/<file id>.<ext>`, `Content-Type` the sniffed one, `Cache-Control: private, no-store`) and the row is inserted in one guarded statement; if the insert writes nothing (the draft was submitted, the batch closed, the slot or the application filled up meanwhile) the object is deleted, the reservation of the counter is given back and the answer is the gate's, `slot_full` or `file_not_found`. On a replace the old row is marked deleted in the same batch, with its bytes given back to the counter (only when the new one went in: the two succeed or fail together) and its object is deleted afterwards. **As built:** every file write (an upload, a replace, a delete) also moves the draft's `updated_at` (at least one millisecond later), so a submit that read the draft a moment earlier finds it changed. The draft is created when the first upload has passed every check and is about to be stored: an upload that is refused creates nothing. `201`:
 
 ```json
 { "file": { "id": "c0ffee00-0000-4000-8000-000000000003", "slot": "family-card", "contentType": "application/pdf", "size": 812345, "width": null, "height": null, "uploadedAt": "2026-10-13T03:30:00.000Z" },
@@ -453,7 +454,7 @@ The first upload creates the draft when there is none. The file name the browser
 
 ### 11.3 `DELETE /portal/api/applications/current/files/:fileId`
 
-Only the student's own live file, only while the application is a draft in an open batch (the gate's errors apply). `204`; `404 not_found` for an id that is not theirs or not live (never `403`). `RL_PORTAL_UPLOAD`. The row is marked deleted, the object deleted, the row removed; a failed object delete leaves the marked row for the daily job.
+Only the student's own live file, only while the application is a draft in an open batch (the gate's errors apply). `204`; `404 not_found` for an id that is not theirs or not live (never `403`). `RL_PORTAL_UPLOAD`. The row is marked deleted and its bytes go back to the storage counter in the same batch (the counter is the bytes of the live files); then the object is deleted, then the row is removed; a failed object delete leaves the marked row for the daily job.
 
 ### 11.4 `GET /portal/api/files/:fileId`
 
@@ -469,7 +470,7 @@ The student's own file, in the draft or in a submitted application, in **any** b
 | `Cross-Origin-Resource-Policy` | `same-origin` |
 | `Content-Length` | the object's size |
 
-`Range` and conditional headers are ignored (always a full `200`). With SSE-C configured the read passes the key; a read that fails for the key is `503 storage_unavailable`.
+`Range` and conditional headers are ignored (always a full `200`). A `HEAD` is `405 method_not_allowed` (as built: a read is a read, and this one is not offered). A row whose object is not in the bucket is `404 not_found` and one fixed log line with no key and no id. Without the `PRIVATE_FILES` binding: `503 storage_unavailable`.
 
 ## 12. Admin additions
 
@@ -485,17 +486,34 @@ Guard `requireArea("pendaftaran", "read")` as today. `item` gains:
 | `files` | the live files of the application: `[{ id, slot, contentType, size, width, height, uploadedAt }]`, oldest first within a slot; `[]` for version 2 or none |
 | `canOpenFiles` | `true` for a super_admin and an editor with the `pendaftaran` grant, `false` for a viewer ([`portal-architecture.md`](portal-architecture.md#86-reading-a-file), open decision 1) |
 
-Everything else in the answer, the `ETag` and the 404 are as today. `files` is one more statement in the same round trip (the `(application_id, slot)` index; at most 35 rows).
+Everything else in the answer, the `ETag` and the 404 are as today. `files` is one more statement in the same round trip (`db.batch` of the application and its files: the `(application_id, slot)` index; at most 35 rows). **As built:** only this `GET` has the three fields. The answer of `POST .../status` (the review) is unchanged and has none of them, so the SPA keeps what it had when it applies a review; `files` never carries a key, a checksum or a file name.
 
 ### 12.2 `GET /api/admin/applications/:id/files/:fileId`
 
 Guard `requireArea("pendaftaran", "write")`. `RL_ADMIN_FILE` (120 per 60 s per admin id). The file must be a live file of application `:id` (`404 not_found` otherwise, for every kind of mismatch). **The audit row is written before the body is sent**: action `application_file.view`, resource type `application_file`, resource id the file id, metadata `{ "applicationId": ..., "slot": ... }`, actor the admin; if it cannot be written the answer is `503 audit_unavailable` (`"Berkas belum bisa dibuka. Coba lagi."`) and nothing is served. `200` streams the object with the headers of [11.4](#114-get-portalapifilesfileid) (inline for an image, attachment for a PDF). `401 unauthenticated`, `403 forbidden` (a viewer, an editor without the grant, a student), `429`, `503 storage_unavailable`.
 
-### 12.3 The retention job (not a route)
+**As built:** the file is a live file of a **submitted** application (`student_applications`): the id of a draft, and a file of a draft, are `404` (the admin never sees a draft). The order is the guard (401, 403), the limiter by admin id (429), the file (404), the object from the bucket (a missing object is `404`, one fixed log line, and no audit row: nothing was opened), the audit row (`503 audit_unavailable` and the object's stream cancelled when it cannot be written), then the body. A `HEAD` is `405 method_not_allowed` and writes no row. The audit metadata holds the two ids and the slot name and nothing else; Aktivitas shows none of it (deny by default, `src/audit/present.ts`) and does not link a row to a file, which has no page.
 
-> **Superseded, decided 2026-10-13 (the PM relayed Dzul):** nothing is deleted automatically, so this job is **not built**. It is replaced by a **manual purge action** (an admin editor with the `pendaftaran` grant, or a super_admin, deletes an applicant's files, with a confirmation and an audit row). The contract of that action (route, answers, audit row) is written by P4, which also removes this subsection. The foundation declares the three retention variables at `0` (never delete) and no code reads them; there is no retention table. What follows is kept as the record of the proposal.
+### 12.3 The manual purge: `POST /api/admin/applications/:id/files/purge`
 
-The daily Cron Trigger of `sakem-admin` deletes as [`portal-architecture.md`](portal-architecture.md#89-retention-and-deletion-proposal) says, writes one `application_files.purge` audit row per application (resource type `application`, metadata `{ "reason": "draft_closed" | "rejected" | "accepted" | "orphan", "count": n }`, actor id null and actor email `system`), and logs one line with counts only.
+Decided 2026-10-13 (Dzul, relayed by the PM): **nothing is deleted automatically**. There is no retention job and no retention table; the three retention variables are declared at `0` ("never delete") and no code reads them. An applicant's documents leave the bucket only when a person asks, and this is the way: an admin who may open the files deletes every file of one submitted application, with a confirmation and an audit row. (A family's request to delete is handled with it; the runbook is a go-live item, [`portal-architecture.md`](portal-architecture.md#12-before-go-live).)
+
+| | |
+| --- | --- |
+| Guard | `requireArea("pendaftaran", "write")`: an editor with the grant or a super_admin (a viewer is `403`, like an open) |
+| Limiter | `RL_UPLOAD` (20 a minute) under the key `file-purge:<admin id>`: deleting is rarer than opening and has a counter of its own |
+| Body | `{ "confirm": true }`. Anything else is `400 invalid` and nothing happens (`415 json_required` without a JSON body): the confirmation is in the request, not only in the screen |
+| Application | submitted only: an id that is not an application (a draft's, malformed, unknown) is `404 not_found` and nothing happens |
+| Answer | `200 { "purged": <files marked now>, "pending": <files whose object is still to be deleted> }`. `pending` is `0` unless the bucket refused |
+
+In order, so that a failure in the middle never loses the record of what happened:
+
+1. **One D1 batch:** the audit row, the live files' bytes given back to the storage counter, and the marking of every live file row (`deleted_at`). The counter is **the bytes of the live files**, so a file leaves it when it is marked, in the same batch (the `dtks` removal of the step save does the same, [8.1](#81-put-portalapiapplicationscurrentstepsstep)); a file marked earlier is not released a second time. The row is `application_file.purge`, resource type `application`, resource id the application, actor the admin, metadata `{ "count": n, "fileIds": [...] }`: the count and the ids the same transaction marked, computed in SQL, so they are exactly what was purged; no name, no slot, no size. It is written only if there was something to purge: a second purge finds nothing, answers `{ "purged": 0, "pending": 0 }` and writes no row. If the row cannot be written the batch rolls back and no file is touched.
+2. The objects are deleted from the bucket (the rows marked now and any an earlier failure left marked), then those marked rows in one batch (never a live row, whatever ids arrive).
+
+If step 2 fails (the bucket refuses) the rows stay marked, which makes them invisible to every reader at once (the student, the admin's list, a read) and keeps them out of the counter (already given back at the mark), one fixed log line says so, the answer's `pending` says how many, and the daily cleanup finishes the job (below). The student can no longer read a purged file; the application's answers are untouched.
+
+**What the daily cleanup does (it never ages anything out).** `sakem-admin`'s Cron Trigger, after its audit and session housekeeping, (a) finishes the delete of rows marked more than an hour ago (at most 200 a run; the grace keeps it away from a delete in flight; a file whose application is gone is found by trying every batch year) and (b) recounts the storage counter from the live file rows (a marked row is already out of it). It logs one line of counts, and only when it finished something. It never deletes a live file, whatever its age, the state of its application or the variables.
 
 ## 13. Error codes
 
@@ -511,7 +529,8 @@ The daily Cron Trigger of `sakem-admin` deletes as [`portal-architecture.md`](po
 | `invalid_json` | 400 | none | JSON routes |
 | `invalid` | 400 | `Periksa kembali isian formulir.` + `fields` | `PUT steps/:step` |
 | `unknown_step`, `unknown_slot` | 404 | none | |
-| `not_found` | 404 | none | unknown path, file not yours, file not found |
+| `not_found` | 404 | none | unknown path, file not yours, file not found, an application or a file of the admin's routes that does not match |
+| `method_not_allowed` | 405 | none | `HEAD` on a file route (a read is not offered as a `HEAD`, and an open is audited) |
 | `no_open_batch` | 409 | `Belum ada batch pendaftaran yang dibuka. Silakan kembali saat pendaftaran berikutnya diumumkan.` | the gate |
 | `batch_closed` | 409 | `Pendaftaran untuk batch ini sudah ditutup. Isianmu tidak bisa disimpan atau dikirim.` | the gate |
 | `already_submitted` | 409 | `Kamu sudah mengirim pendaftaran untuk batch ini. Cek status di halaman Portal Siswa.` | the gate, the submit |
@@ -529,7 +548,7 @@ The daily Cron Trigger of `sakem-admin` deletes as [`portal-architecture.md`](po
 | `body_mismatch` | 400 | `Unggahan terputus. Coba lagi.` | upload |
 | `storage_full` | 503 | see 11.2 | upload |
 | `storage_unavailable` | 503 | see 11.2 | file routes |
-| `audit_unavailable` | 503 | `Berkas belum bisa dibuka. Coba lagi.` | admin file open |
+| `audit_unavailable` | 503 | `Berkas belum bisa dibuka. Coba lagi.` | admin file open (the purge's audit row is part of its batch: when it cannot be written nothing is deleted and the answer is `500 internal`) |
 | `email_quota` | 503 | `Pendaftaran akun hari ini sudah penuh. Coba lagi besok, atau masuk dengan Google.` | register, resend, forgot |
 | `email_unavailable`, `captcha_failed`, `captcha_unavailable`, `service_unavailable` | 503, 403 | as [`auth.md`](auth.md#error-shapes) | auth routes |
 | `internal` | 500 | none; the Worker logs the error message only | |
@@ -612,8 +631,10 @@ The workers add these to the Worker suite (workerd, a real local D1, the emulate
 - **Submit:** the check order of 9.1 (build a draft that fails each check and assert the first failure), the transformation to `formData` version 3 (a whole input and the exact output, rupiah to numbers, earners, debt, organizations), the five top-level columns (`full_name`, `whatsapp`, `school_name`, `graduation_year`, `branch_preference`; `identityColumns` of the shared module), **one transaction** (the audit row and the draft deletion; a draft changed between the check and the write inserts nothing), the audit metadata is only ids, the double submit (one `201`, one `409`), the anti-duplicate window, the confirmation email sent after the response and the submit still `201` when the provider fails.
 - **Status and privacy:** the exact key set of every `result` state; the matrix status x published; publish then unpublish; an admin's review note never in the answer before publication; another student's application never listed.
 - **Files:** the check order of 11.2; each sniff outcome; the body shorter and longer than declared (nothing stored, the counter released); the slot and application limits to the byte; the storage budget; replace; delete and the retry of a failed object delete; the key shape (no part from the client); the headers of 11.4; another student's and another application's file id are `404`; an admin viewer cannot open, an editor with the grant can, and every open writes exactly one audit row without a name in it; `GET /uploads/*` of the admin never serves a private key; `PRIVATE_FILES` is not referenced from `src/uploads/` and `UPLOADS` not from `src/private-files/`.
-- **Retention:** each row of the table in the architecture's 8.9 with a frozen clock, the unreadable-setting-keeps rule, the bound per run, the purge audit row.
+- **The manual purge and the daily chores** (there is no retention): the purge's guard matrix, its confirmation, its one audit row (the count and the ids), its second run writing nothing, a failing bucket and the cleanup that finishes it, the rows and objects of another application untouched; the cleanup deleting only marked rows older than an hour, the bound per run, the recount of the counter, and **no retention variable ever read** (the three at `1` delete nothing).
 - **Contract with the SPAs:** the portal SPA's pure files (error maps, request builders, the slot table) run against the real Worker as `test/spa-contract.test.ts` does for the admin; the admin SPA's `files` and `canOpenFiles` parsing runs against the real admin route.
+  As built: `test/portal-files-spa-contract.test.ts` (the addresses of `portal-spa/src/lib/files/paths.ts`, the shape of the answers it parses, the sentences the field shows before asking, what its file input offers per slot; and the admin's `profileSections` read from the real detail, the address of a file's "Lihat" and of the purge).
+- **Privacy (as built):** `test/private-files-privacy.test.ts` reads every console line of a run that uses every route, the failures that log included, and proves that each is one of a fixed set of sentences or counts, with no address, id, key, slot, cookie or content type in any of them; that nothing calls out; and that no answer of the student's API carries a key or a link. `test/private-files-rules.test.ts` reads the sources and fails if one could build an address, a presigned link or a redirect for a file, mentions the public bucket, reads the client's file name or content type, or logs anything but a fixed sentence.
 
 ## 17. What the build of the application routes settled
 

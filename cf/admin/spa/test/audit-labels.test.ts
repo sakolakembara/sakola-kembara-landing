@@ -80,7 +80,7 @@ describe("the filters offer exactly what the Worker declares", () => {
   test("the options carry the labels, in the legacy order: the keys in order for the actions", () => {
     expect(ACTION_OPTIONS.map((option) => option.value)).toEqual([...DECLARED_ACTIONS].sort());
     expect(ACTION_OPTIONS.every((option) => option.label === activityLabel(option.value))).toBe(true);
-    expect(RESOURCE_OPTIONS.map((option) => option.label)).toEqual(["Pendaftar", "Batch", "Pengumuman", "Laporan", "Blog", "Anggota tim", "Pesan", "Admin", "Akun", "Berkas Pendaftaran", "Shortlink", "Berkas unggahan"]);
+    expect(RESOURCE_OPTIONS.map((option) => option.label)).toEqual(["Pendaftar", "Batch", "Pengumuman", "Laporan", "Blog", "Anggota tim", "Pesan", "Admin", "Akun", "Berkas Pendaftaran", "Shortlink", "Berkas unggahan", "Berkas pendaftar"]);
   });
 });
 
@@ -89,6 +89,9 @@ describe("where a row links to", () => {
     expect(activityHref("admin.update", "admin_user", "u1")).toBe("/settings/u1/edit");
   });
   test("an upload, a user and a deletion have nowhere to go", () => {
+    // An applicant's file: the row names the file, which has no page of its own (the purge row names the application and does link).
+    expect(activityHref("application_file.view", "application_file", "f1")).toBeNull();
+    expect(activityHref("application_file.purge", "application", "a1")).toBe("/applications/a1");
     expect(activityHref("upload.create", "media", "m1")).toBeNull();
     expect(activityHref("user.password_reset", "user", "u1")).toBeNull();
     expect(activityHref("upload.delete", "media", "m1")).toBeNull();

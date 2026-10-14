@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { REVIEW_FIELDS, REVIEW_MESSAGES, reviewAction, reviewInput, revocationProblem } from "../admission/review";
 import { applicantPrefix, applicationDetailQuery, applicationsPageQuery, applicationsTotalQuery } from "../admission/queries";
 import { requireArea } from "../auth/guard";
+import { can } from "../auth/permissions";
 import type { AppEnv } from "../context";
 import * as schema from "../db/schema";
 import { applicationStatus, studentApplications, type StudentApplicationFormData } from "../db/schema";
@@ -24,6 +25,7 @@ import {
   withAudit,
   type Filter,
 } from "./crud";
+import { applicationFilesQuery, presentListedFile } from "../private-files/list";
 
 // Pendaftar (area `pendaftaran`): the applications students submit to a batch. A port of
 // app/(admin)/admin/applications/*.
@@ -94,6 +96,12 @@ export function presentApplication(row: DetailRow) {
   };
 }
 
+/** `2` (the legacy links) or `3` (uploaded files) as the wizard stored it in `formData.formVersion`, else null. */
+function formVersionOf(formData: unknown): 2 | 3 | null {
+  const version = typeof formData === "object" && formData !== null ? (formData as { formVersion?: unknown }).formVersion : undefined;
+  return version === 2 || version === 3 ? version : null;
+}
+
 export function createApplicationRoutes() {
   const app = new Hono<AppEnv>();
   const read = requireArea("pendaftaran", "read");
@@ -120,10 +128,22 @@ export function createApplicationRoutes() {
     const id = c.req.param("id");
     if (!validId(id)) return notFound(c);
     const db = drizzle(c.env.DB, { schema });
-    const row = (await applicationDetailQuery(db, id))[0];
+    // One round trip: the application and the list of its files (SAKEM-083, docs/cloudflare/portal-api.md, 12.1).
+    const [rows, files] = await db.batch([applicationDetailQuery(db, id), applicationFilesQuery(db, id)]);
+    const row = rows[0];
     if (!row) return notFound(c);
     c.header("ETag", etagOf(row.updatedAt));
-    return c.json({ item: presentApplication(row) });
+    const formVersion = formVersionOf(row.formData);
+    return c.json({
+      item: {
+        ...presentApplication(row),
+        formVersion,
+        // Metadata only, for a version 3 application (the files are uploads); a version 2 one has links, no files.
+        files: formVersion === 3 ? files.map(presentListedFile) : [],
+        // Opening a file, and purging them, need `pendaftaran` write: a viewer sees the list and cannot open one (Dzul, 2026-10-13).
+        canOpenFiles: can(c.get("user").role, c.get("grantedAreas"), "pendaftaran", "write"),
+      },
+    });
   });
 
   // The review. Order of the answers: If-Match (428), the body (415, 413, 400), the application (404), the version

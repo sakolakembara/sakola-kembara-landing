@@ -1,11 +1,12 @@
+import { sendXhr } from "../../../../shared/spa/xhr";
 import { api } from "../api";
 import { resetConfig, useConfig } from "../config";
 import { describeFailure, MESSAGES } from "./errors";
 import type { UploadKindName } from "./upload-kinds";
 
 // The browser side of `POST /api/admin/uploads` (docs/cloudflare/uploads.md). A file upload cannot go through
-// `api()`: only XMLHttpRequest reports progress, so this has its own request, behind a seam like the
-// transport (`setUploader`) so the mock and the tests replace it.
+// `api()`: only XMLHttpRequest reports progress, so this has its own request (shared/spa/xhr.ts, which the student
+// portal's file client uses too), behind a seam like the transport (`setUploader`) so the mock and the tests replace it.
 
 export interface UploadResult {
   id: string;
@@ -49,51 +50,34 @@ function isResult(value: Record<string, unknown> | null): value is Record<string
 }
 
 /** The real thing: one multipart POST with `kind` in the form AND the query (so the Worker refuses a wrong area or size before it reads the body). */
-export const xhrUploader: Uploader = ({ kind, file, onProgress, signal }) =>
-  new Promise<UploadOutcome>((resolve) => {
-    const xhr = new XMLHttpRequest();
-    const form = new FormData();
-    form.set("kind", kind);
-    form.set("file", file);
+export const xhrUploader: Uploader = async ({ kind, file, onProgress, signal }) => {
+  const form = new FormData();
+  form.set("kind", kind);
+  form.set("file", file);
 
-    const fail = (status: number, message: string, code?: string) => resolve({ ok: false, status, message, code });
+  const fail = (status: number, message: string, code?: string): UploadOutcome => ({ ok: false, status, message, code });
+  // No Content-Type: the browser adds the multipart boundary itself.
+  const sent = await sendXhr({ method: "POST", url: `/api/admin/uploads?kind=${encodeURIComponent(kind)}`, body: form, headers: { Accept: "application/json" }, onProgress, signal });
+  if (sent.kind === "aborted") return fail(0, UPLOAD_MESSAGES_CLIENT.aborted, "aborted");
+  if (sent.kind === "network") return fail(0, MESSAGES.offline);
 
-    xhr.open("POST", `/api/admin/uploads?kind=${encodeURIComponent(kind)}`);
-    xhr.withCredentials = true;
-    xhr.setRequestHeader("Accept", "application/json");
-
-    xhr.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable && event.total > 0) onProgress?.(Math.min(1, event.loaded / event.total));
-    });
-    xhr.addEventListener("load", () => {
-      const body = parseJson(xhr.responseText);
-      if (xhr.status === 201 && isResult(body)) {
-        onProgress?.(1);
-        resolve({ ok: true, result: body });
-        return;
-      }
-      if (xhr.status >= 200 && xhr.status < 300) return fail(xhr.status, UPLOAD_MESSAGES_CLIENT.badAnswer);
-      // The Worker's refusals are `{ error, message }`, the message ready to show.
-      const retry = xhr.getResponseHeader("Retry-After");
-      const described = describeFailure({
-        ok: false,
-        status: xhr.status,
-        code: typeof body?.error === "string" ? body.error : undefined,
-        message: typeof body?.message === "string" ? body.message : undefined,
-        retryAfter: retry && /^\d+$/.test(retry) ? Number(retry) : undefined,
-      });
-      fail(xhr.status, described.message, typeof body?.error === "string" ? body.error : undefined);
-    });
-    xhr.addEventListener("error", () => fail(0, MESSAGES.offline));
-    xhr.addEventListener("timeout", () => fail(0, MESSAGES.offline));
-    xhr.addEventListener("abort", () => fail(0, UPLOAD_MESSAGES_CLIENT.aborted, "aborted"));
-
-    if (signal) {
-      if (signal.aborted) return fail(0, UPLOAD_MESSAGES_CLIENT.aborted, "aborted");
-      signal.addEventListener("abort", () => xhr.abort(), { once: true });
-    }
-    xhr.send(form);
+  const body = parseJson(sent.text);
+  if (sent.status === 201 && isResult(body)) {
+    onProgress?.(1);
+    return { ok: true, result: body };
+  }
+  if (sent.status >= 200 && sent.status < 300) return fail(sent.status, UPLOAD_MESSAGES_CLIENT.badAnswer);
+  // The Worker's refusals are `{ error, message }`, the message ready to show.
+  const retry = sent.header("Retry-After");
+  const described = describeFailure({
+    ok: false,
+    status: sent.status,
+    code: typeof body?.error === "string" ? body.error : undefined,
+    message: typeof body?.message === "string" ? body.message : undefined,
+    retryAfter: retry && /^\d+$/.test(retry) ? Number(retry) : undefined,
   });
+  return fail(sent.status, described.message, typeof body?.error === "string" ? body.error : undefined);
+};
 
 let uploader: Uploader = xhrUploader;
 

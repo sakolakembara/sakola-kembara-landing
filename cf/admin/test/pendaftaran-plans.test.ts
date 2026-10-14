@@ -163,7 +163,8 @@ describe("round trips: a list is one trip, a detail is one, a write is a read an
     const resource = await addResourceRow();
     const reads: [string, string, number][] = [
       ["applications list", "/api/admin/applications?status=pending&q=pend", 2],
-      ["application detail", `/api/admin/applications/${application!.id}`, 1],
+      // The application and the list of its files (docs/cloudflare/portal-api.md, 12.1): two statements, one round trip.
+      ["application detail", `/api/admin/applications/${application!.id}`, 2],
       ["batches list", "/api/admin/batches", 3],
       ["batch detail", `/api/admin/batches/${batch.id}`, 3],
       ["resources list", "/api/admin/resources", 2],
