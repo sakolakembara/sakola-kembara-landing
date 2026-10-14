@@ -1,10 +1,9 @@
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireArea } from "../auth/guard";
 import type { AppEnv } from "../context";
 import { auditStatement } from "../db/audit";
-import * as schema from "../db/schema";
+import { getDb } from "../db/client";
 import { findApplicationFile } from "../private-files/lookup";
 import { purgeApplicationFiles } from "../private-files/purge";
 import { REFUSALS } from "../private-files/refusal";
@@ -54,7 +53,7 @@ applicationFileRoutes.get("/:id/files/:fileId", write, async (c) => {
   // Accountability before convenience: the row is written before a byte is sent, and if it cannot be written the file
   // is not served. Ids only (the file, the application, the slot): never a name, a size or an address.
   try {
-    await auditStatement(drizzle(c.env.DB, { schema }), user, {
+    await auditStatement(getDb(c.env.DB), user, {
       action: "application_file.view",
       resourceType: "application_file",
       resourceId: file.id,
