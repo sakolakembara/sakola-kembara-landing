@@ -33,6 +33,12 @@ const RATE_LIMITS = [
   'RL_CONTACT (5 requests/60s)',
   'RL_UPLOAD (20 requests/60s)',
   'RL_BLOG_PREVIEW (60 requests/60s)',
+  // The student portal's (SAKEM-083): written out in the staging block too, as its test requires.
+  'RL_PORTAL_READ (60 requests/60s)',
+  'RL_PORTAL_SAVE (30 requests/60s)',
+  'RL_PORTAL_UPLOAD (20 requests/60s)',
+  'RL_PORTAL_SUBMIT (3 requests/60s)',
+  'RL_ADMIN_FILE (120 requests/60s)',
 ].map((line) => `env.${line}`);
 
 /** What each target must show. Kept apart from the wrangler files on purpose: the test of those files and this check read the same truth from two sides. */
@@ -41,8 +47,8 @@ export const TARGETS = {
     dir: 'admin',
     workerName: 'sakem-admin-staging',
     args: ['deploy', '--dry-run', '--env', 'staging', '--outdir', 'dist/worker-staging'],
-    mustContain: ['env.DB (sakem-staging)', 'env.UPLOADS (sakem-files-staging)', 'env.ENVIRONMENT ("staging")', 'env.ASSETS', ...RATE_LIMITS],
-    mustNotContain: ['env.DB (sakem-admin)', 'env.UPLOADS (sakem-files)', 'env.ENVIRONMENT ("production")'],
+    mustContain: ['env.DB (sakem-staging)', 'env.UPLOADS (sakem-files-staging)', 'env.PRIVATE_FILES (sakem-private-staging)', 'env.ENVIRONMENT ("staging")', 'env.ASSETS', ...RATE_LIMITS],
+    mustNotContain: ['env.DB (sakem-admin)', 'env.UPLOADS (sakem-files)', 'env.PRIVATE_FILES (sakem-private)', 'env.ENVIRONMENT ("production")'],
   },
   web: {
     dir: 'web',
