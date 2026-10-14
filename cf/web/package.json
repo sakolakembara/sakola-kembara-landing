@@ -26,6 +26,7 @@
     "serve:candidate": "node scripts/serve-candidate.mjs",
     "measure": "node scripts/measure.mjs",
     "measure:staging": "node scripts/measure-staging.mjs",
+    "measure:cpu": "node scripts/measure-cpu.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",
     "stub-origin": "node scripts/stub-origin.mjs",
     "check:dist": "node scripts/check-dist.mjs"
