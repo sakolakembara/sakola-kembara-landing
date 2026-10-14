@@ -211,8 +211,9 @@ export const portalFoundationChecks = [
   {
     name: "portal foundation: a retention period above 0 is set by default (the decision is that nothing is deleted automatically)",
     file: "wrangler.jsonc",
-    from: '"REJECTED_FILES_RETENTION_DAYS": "0",',
-    to: '"REJECTED_FILES_RETENTION_DAYS": "90",',
+    // The top-level block (four spaces): the admin's staging block (eight spaces) writes the same name again.
+    from: '\n    "REJECTED_FILES_RETENTION_DAYS": "0",',
+    to: '\n    "REJECTED_FILES_RETENTION_DAYS": "90",',
     tests: CONFIG,
   },
 
