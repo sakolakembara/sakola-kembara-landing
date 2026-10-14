@@ -59,14 +59,10 @@ export const CURRENT_FORM_DATA_VERSION = 3 as const;
 export type StudentApplicationFormData = StudentApplicationFormDataV3 | StudentApplicationFormDataV2;
 
 /**
- * Version 3, written by the portal's submit: `FormDataV3` of the shared module, except that the agreement to the signed
- * statement is a BOOLEAN in the stored row, as it was in version 2 and as docs/cloudflare/portal-api.md 9.3 says (the
- * admin's screen reads `=== true`). The shared module's builder hands the answer over as the text it was asked with
- * ("ya"); `src/portal/rules.ts` (`formDataToStore`) turns it into the boolean before the row is written.
+ * Version 3, written by the portal's submit: exactly `FormDataV3` of the shared module, whose builder already stores the
+ * agreement to the signed statement as a BOOLEAN, as version 2 had it and as the admin's screen reads it (`=== true`).
  */
-export type StudentApplicationFormDataV3 = Omit<FormDataV3, "interview"> & {
-  interview: Omit<FormDataV3["interview"], "agreedToSignedStatement"> & { agreedToSignedStatement: boolean };
-};
+export type StudentApplicationFormDataV3 = FormDataV3;
 
 /**
  * Version 2: everything the multi-step recruitment wizard of the legacy app collected that is not already a

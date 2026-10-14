@@ -7,7 +7,9 @@ import { mailbox } from "../src/email/send";
 import { dbOf } from "../src/portal/queries";
 import portalWorker from "../src/portal/worker";
 import type { Bindings } from "../src/env";
-import { fakeNetwork, freshIp } from "./helpers";
+import { profileSections } from "../spa/src/pages/applications/answers";
+import type { ApplicationDetail } from "../spa/src/pages/applications/model";
+import { call, fakeNetwork, freshIp, signedInCookie, uniqueEmail } from "./helpers";
 import { limiterBindings, limiterClock, withFrozenDate } from "./limiter-clock";
 import { addApplication, addBatch, audit } from "./pendaftaran-helpers";
 import { PORTAL_ORIGIN, PORTAL_SECRET, portalCall } from "./portal-helpers";
@@ -350,6 +352,25 @@ describe("a complete application is submitted", () => {
     // Nothing of the legacy links is there.
     expect(JSON.stringify(stored)).not.toMatch(/Url"/);
     expect((await applicationOf(who.id))!.batch_id).toBe(batch.id);
+  });
+
+  test("the agreement is stored as the boolean true, and the admin's Pendaftar detail (the real admin route, read by the screen's own rules) shows 'Siap Materai: Ya'", async () => {
+    const { who } = await readyToSubmit();
+    expect((await submit(who)).status).toBe(201);
+
+    // The draft holds the wizard's value, the application the boolean.
+    const row = (await applicationOf(who.id))!;
+    expect(JSON.parse(row.form_data).interview.agreedToSignedStatement).toBe(true);
+
+    const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["pendaftaran"]);
+    const detail = await call(`/api/admin/applications/${row.id}`, { cookie });
+    expect(detail.status).toBe(200);
+    const { item } = (await detail.json()) as { item: ApplicationDetail };
+    expect(item.formData).toMatchObject({ formVersion: 3, interview: { agreedToSignedStatement: true } });
+    const answer = profileSections(item)
+      .flatMap((section) => section.rows)
+      .find((candidate) => candidate.label === "Siap Materai");
+    expect(answer?.value).toEqual({ type: "text", text: "Ya" });
   });
 
   test("no debt, no organizations, no other earners: debt is null, organizations is [], otherEarners is []", async () => {

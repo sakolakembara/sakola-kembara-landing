@@ -1,8 +1,7 @@
-import { buildFormData } from "../../shared/application-form/form-data";
 import { validateStep, type StepValues } from "../../shared/application-form/rules";
 import { missingFilesMessage, missingSlots, missingSlotsOfStep, type SlotId } from "../../shared/application-form/slots";
 import { STEP_IDS, STEP_NOT_SAVED_MESSAGE, type StepId } from "../../shared/application-form/steps";
-import type { ApplicationStatus, DraftFormData, StudentApplicationFormDataV3 } from "../db/schema";
+import type { ApplicationStatus, DraftFormData } from "../db/schema";
 
 // The rules of the student's application API (docs/cloudflare/portal-api.md, sections 5, 6, 9 and 10), as plain
 // functions: no D1, no Hono, no clock of their own (a caller passes `now`). Everything here is decided from values the
@@ -202,17 +201,5 @@ export function checkSubmission(formData: DraftFormData, counts: Readonly<Record
     }
   }
   return { ok: true, values: values as StepValues };
-}
-
-/**
- * The `form_data` the submit writes: version 3, from the shared module's builder (rupiah to numbers, earners, debt,
- * organizations), with ONE correction of the builder's output. The agreement to the signed statement is stored as the
- * boolean `true`, as portal-api.md 9.3 says, as version 2 had it and as the admin's screen reads it (`=== true`); the
- * builder keeps the text it was asked with ("ya"), which that screen would show as "Tidak". The validated bucket can
- * only hold "ya" (the rules refuse anything else), so the boolean is always true.
- */
-export function formDataToStore(values: StepValues): StudentApplicationFormDataV3 {
-  const built = buildFormData(values);
-  return { ...built, interview: { ...built.interview, agreedToSignedStatement: true } };
 }
 

@@ -12,7 +12,6 @@ import {
   dtksRegisteredIn,
   DUPLICATE_WINDOW_MS,
   firstNameOf,
-  formDataToStore,
   gateOf,
   MESSAGES,
   missingFilesOf,
@@ -201,16 +200,14 @@ describe("form_data version 3", () => {
     expect(v2.formVersion).toBe(2);
   });
 
-  test("what the submit stores is the shared module's output with the agreement as a boolean (the builder keeps the text it was asked with, which the admin's screen would read as 'Tidak')", () => {
+  test("what the submit stores is the shared builder's output, with the agreement as the boolean true (the wizard's bucket holds 'ya'; the admin's screen reads `=== true`)", () => {
     const checked = checkSubmission(VALID as unknown as DraftFormData, Object.fromEntries(requiredSlots(false).map((slot) => [slot, 1])));
     if (!checked.ok) throw new Error("fixture does not pass");
-    const built = buildFormData(checked.values);
-    const stored = formDataToStore(checked.values);
+    expect(checked.values.interview.agreedToSignedStatement).toBe("ya"); // the bucket, as the wizard holds and the draft stores it
+    const stored = buildFormData(checked.values);
     expect(stored.formVersion).toBe(3);
     expect(stored.interview.agreedToSignedStatement).toBe(true);
-    // Nothing else differs from the builder.
-    expect({ ...stored, interview: { ...stored.interview, agreedToSignedStatement: built.interview.agreedToSignedStatement } }).toEqual(built);
-    const asStored: StudentApplicationFormData = stored;
+    const asStored: StudentApplicationFormData = stored; // compile-time: the builder's output is a stored shape as it is
     expect(asStored.formVersion).toBe(3);
   });
 });

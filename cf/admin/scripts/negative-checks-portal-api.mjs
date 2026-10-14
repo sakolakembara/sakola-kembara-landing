@@ -243,11 +243,12 @@ export const portalApiChecks = [
     tests: SUBMIT,
   },
   {
-    name: "portal api: the agreement is stored as the text the builder hands over (the admin's screen would show 'Tidak')",
-    file: "src/portal/rules.ts",
-    from: "return { ...built, interview: { ...built.interview, agreedToSignedStatement: true } };",
-    to: "return built as never;",
-    tests: `${SUBMIT} ${RULES}`,
+    name: "portal api: the agreement is stored as the text 'ya' instead of the boolean true (the admin's screen would show 'Tidak')",
+    // The builder of the shared module is where it is decided (it was a workaround in src/portal/rules.ts before).
+    file: "shared/application-form/form-data.ts",
+    from: 'interview: { ...interview, agreedToSignedStatement: interview.agreedToSignedStatement === "ya" },',
+    to: "interview: { ...interview } as never,",
+    tests: `${SUBMIT} ${RULES} test/portal-foundation-form.test.ts`,
   },
   {
     name: "portal api: a second application for the pair is a server error instead of already_submitted (the unique index is not handled)",

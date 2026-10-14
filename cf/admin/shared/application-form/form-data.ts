@@ -39,7 +39,12 @@ export interface FormDataV3 {
   organizations: { name: string; position: string }[];
   documents: { dtksRegistered: boolean };
   marketing: { instagramUsername: string };
-  interview: StepValues["interview"];
+  /**
+   * The six answers as typed, and the agreement as a BOOLEAN: the wizard's bucket holds it as the radio's text
+   * (`"ya"`, `StepValues["interview"]`), the stored row holds `true`, as the legacy wrote it (`=== "ya"`), as version 2
+   * has it, like `documents.dtksRegistered` above, and as the admin's Pendaftar screen reads it (`value === true`).
+   */
+  interview: Omit<StepValues["interview"], "agreedToSignedStatement"> & { agreedToSignedStatement: boolean };
 }
 
 /** The top-level columns of `student_applications` that come out of the identity bucket. The email is the account's, read at submit. */
@@ -112,6 +117,8 @@ export function buildFormData(buckets: StepValues): FormDataV3 {
     organizations: organizations.hasOrganizations ? organizations.entries.filter((entry) => entry.name !== "").map((entry) => ({ name: entry.name, position: entry.position })) : [],
     documents: { dtksRegistered: documents.dtksRegistered === "ya" },
     marketing: { instagramUsername: marketing.instagramUsername },
-    interview: { ...interview },
+    // "ya" is the only answer a validated bucket can hold (the rules refuse "tidak"), so this is `true`; it is written
+    // as the comparison the legacy used, not as a constant, so the stored value follows the bucket.
+    interview: { ...interview, agreedToSignedStatement: interview.agreedToSignedStatement === "ya" },
   };
 }
