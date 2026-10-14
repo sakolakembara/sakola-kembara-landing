@@ -664,6 +664,13 @@ const checks = [
     to: "",
     tests: "test/auth-shared.test.ts test/gate.test.ts",
   },
+  {
+    name: "the shared Better Auth leaves the audience out of its key (the portal would be answered by the admin's instance, mount point and cookie name)",
+    file: "src/auth/session.ts",
+    from: "let key = `${audience.name}\\0${origin}`;",
+    to: "let key = origin;",
+    tests: "test/auth-shared.test.ts test/portal-auth.test.ts",
+  },
 
   {
     name: "a failing warm-up puts the error's message in the log",

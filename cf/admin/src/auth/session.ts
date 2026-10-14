@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv, AuthUser } from "../context";
 import type { Bindings } from "../env";
+import { ADMIN_AUDIENCE, type AuthAudience } from "./audience";
 import { isUserRole } from "./roles";
 import { createAuth, type Auth } from "./factory";
 
@@ -36,8 +37,9 @@ function waitUntilOfCurrentRequest(promise: Promise<unknown>): void {
  * sessions are read from D1 on every call (no cookie cache), the per-request state lives in Better Auth's own
  * request-state store, and this is how Better Auth is meant to run on a long-lived server.
  *
- * What an instance depends on is in its key: the D1 binding (its WeakMap), every text variable and secret of the
- * environment (`configKey`) and the origin of the request. Change one of them (a test does, a redeploy does) and a
+ * What an instance depends on is in its key: the D1 binding (its WeakMap), the audience (the admin's or the student
+ * portal's: its mount point and cookie name), every text variable and secret of the environment (`configKey`) and
+ * the origin of the request. Change one of them (a test does, a redeploy does) and a
  * new instance is built; nothing is shared across keys. The number of instances per binding is capped: a request can
  * name any `Host` it likes, and that must not grow memory without bound, so past the cap an instance is built for
  * the one request and dropped, which is the old behaviour.
@@ -47,20 +49,20 @@ const instances = new WeakMap<object, Map<string, Auth>>();
 let created = 0;
 
 /**
- * Every text variable and secret of the environment, plus the origin. Better Auth and the mail sender read only
+ * The audience's name, the origin, and every text variable and secret of the environment. Better Auth and the mail sender read only
  * those (the secret, the origins, the cookie domain, the environment name, the Google credentials, the mail key and
  * sender), so listing all of them, instead of the ones read today, keeps the next one that is read from being missed:
  * change any value and the key changes. Bindings (D1, R2, the rate limits) are objects and are not part of it.
  */
-function configKey(env: Bindings, origin: string): string {
-  let key = origin;
+function configKey(env: Bindings, origin: string, audience: AuthAudience): string {
+  let key = `${audience.name}\0${origin}`;
   for (const [name, value] of Object.entries(env)) if (typeof value === "string") key += `\0${name}=${value}`;
   return key;
 }
 
-/** The shared Better Auth for this environment and origin. Exported for the tests; routes use `c.get("auth")()`. */
-export function sharedAuth(env: Bindings, origin: string): Auth {
-  const key = configKey(env, origin);
+/** The shared Better Auth for this audience, environment and origin. Exported for the tests; routes use `c.get("auth")()`. */
+export function sharedAuth(env: Bindings, origin: string, audience: AuthAudience = ADMIN_AUDIENCE): Auth {
+  const key = configKey(env, origin, audience);
   let byKey = instances.get(env.DB);
   if (!byKey) {
     byKey = new Map();
@@ -68,7 +70,7 @@ export function sharedAuth(env: Bindings, origin: string): Auth {
   }
   const found = byKey.get(key);
   if (found) return found;
-  const auth = createAuth(env, { baseURL: origin, waitUntil: waitUntilOfCurrentRequest });
+  const auth = createAuth(env, { baseURL: origin, waitUntil: waitUntilOfCurrentRequest, audience });
   created += 1;
   if (byKey.size < MAX_INSTANCES_PER_BINDING) byKey.set(key, auth);
   return auth;
@@ -80,14 +82,19 @@ export function authInstancesBuilt(): number {
 }
 
 /**
- * Makes `c.get("auth")()` available. Better Auth is looked up on first call, so a request that never touches auth
- * (a 404, a 401 without a session cookie) pays nothing for it, and the rest of the request runs in the scope that
- * gives Better Auth this request's `waitUntil`.
+ * Makes `c.get("auth")()` available, for one audience. Better Auth is looked up on first call, so a request that never
+ * touches auth (a 404, a 401 without a session cookie) pays nothing for it, and the rest of the request runs in the
+ * scope that gives Better Auth this request's `waitUntil`. The admin Worker mounts `authContext`; the portal Worker
+ * mounts the student audience's (src/portal/auth-context.ts).
  */
-export const authContext: MiddlewareHandler<AppEnv> = async (c, next) => {
-  c.set("auth", () => sharedAuth(c.env, new URL(c.req.url).origin));
-  await requestScope.run({ waitUntil: (promise) => c.executionCtx.waitUntil(promise) }, next);
-};
+export function createAuthContext(audience: AuthAudience): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    c.set("auth", () => sharedAuth(c.env, new URL(c.req.url).origin, audience));
+    await requestScope.run({ waitUntil: (promise) => c.executionCtx.waitUntil(promise) }, next);
+  };
+}
+
+export const authContext = createAuthContext(ADMIN_AUDIENCE);
 
 /**
  * Whether a request can carry a Better Auth session at all: its Cookie header names a `session_token` cookie
