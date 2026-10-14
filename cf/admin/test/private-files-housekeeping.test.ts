@@ -37,7 +37,7 @@ async function applicationWithFiles() {
 }
 
 describe("finishing a delete that a person already asked for", () => {
-  test("marked rows older than an hour lose their object and their row and their share of the counter; fresh marks and live files are left alone", async () => {
+  test("marked rows older than an hour lose their object and their row; fresh marks and live files are left alone, and the counter (live files only) is not moved by a marked row", async () => {
     const { batch, application } = await applicationWithFiles();
     const live = await seedFile({ applicationId: application.id, year: batch.year, slot: "family-card", size: 100 });
     const old = await seedFile({ applicationId: application.id, year: batch.year, slot: "self-photo", size: 200, deleted: NOW - 2 * HOUR });
@@ -46,7 +46,7 @@ describe("finishing a delete that a person already asked for", () => {
     expect(await runFilesHousekeeping(env, NOW)).toEqual({ removed: 1, pending: 0 });
     expect(await privateKeys()).toEqual([fresh.key, live.key].sort());
     expect((await fileRows()).map((row) => row.id).sort()).toEqual([live.id, fresh.id].sort());
-    expect(await storage()).toEqual({ bytes: 400, files: 2 });
+    expect(await storage()).toEqual({ bytes: 100, files: 1 });
     expect(old.key).not.toBe(live.key);
 
     // An hour later the fresh mark is old enough too.
@@ -107,15 +107,24 @@ describe("finishing a delete that a person already asked for", () => {
 });
 
 describe("removing rows", () => {
-  test("only a MARKED row is ever deleted or taken out of the counter, whatever ids are asked for: a live file's row stays", async () => {
+  test("only a MARKED row is ever deleted, whatever ids are asked for: a live file's row stays; and the counter is not touched (the mark already released the bytes)", async () => {
     const { batch, application } = await applicationWithFiles();
     const live = await seedFile({ applicationId: application.id, year: batch.year, slot: "family-card", size: 100 });
     const marked = await seedFile({ applicationId: application.id, year: batch.year, slot: "self-photo", size: 200, deleted: NOW - 2 * HOUR });
-    const removed = await removeObjects(env, [{ id: live.id, size: 100, keys: [live.key] }, { id: marked.id, size: 200, keys: [marked.key] }], NOW);
+    const removed = await removeObjects(env, [{ id: live.id, keys: [live.key] }, { id: marked.id, keys: [marked.key] }]);
     expect(removed).toBe(2); // both were asked for; the statement itself decides which rows go
     expect((await fileRows()).map((row) => row.id)).toEqual([live.id]);
-    // The counter lost the marked file's share only.
     expect(await storage()).toEqual({ bytes: 100, files: 1 });
+  });
+
+  test("when the bucket refuses nothing changes: the rows stay marked, the counter stays as it is, and the answer is 0", async () => {
+    const { batch, application } = await applicationWithFiles();
+    const marked = await seedFile({ applicationId: application.id, year: batch.year, size: 200, deleted: NOW - 2 * HOUR });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const down = { delete: () => Promise.reject(new Error("r2 is down")) } as unknown as R2Bucket;
+    expect(await removeObjects({ ...env, PRIVATE_FILES: down }, [{ id: marked.id, keys: [marked.key] }])).toBe(0);
+    expect(await fileRows()).toHaveLength(1);
+    expect(await storage()).toEqual({ bytes: 0, files: 0 });
   });
 });
 
@@ -123,7 +132,8 @@ describe("the storage counter is recounted from the file rows", () => {
   test("a reservation that was never given back (too high) and a counter that fell behind (too low) are both put right", async () => {
     const { batch, application } = await applicationWithFiles();
     await seedFile({ applicationId: application.id, year: batch.year, size: 700 });
-    await seedFile({ applicationId: application.id, year: batch.year, slot: "self-photo", size: 300, deleted: NOW - 10 * 60 * 1000 }); // marked, object still in the bucket: counts
+    await seedFile({ applicationId: application.id, year: batch.year, slot: "self-photo", size: 300 });
+    await seedFile({ applicationId: application.id, year: batch.year, slot: "debt-proof", size: 500, deleted: NOW - 10 * 60 * 1000 }); // marked: already out of the counter, whatever its object does
     await env.DB.prepare("UPDATE private_storage SET bytes = 9999999, files = 77").run();
     await runFilesHousekeeping(env, NOW);
     expect(await storage()).toEqual({ bytes: 1000, files: 2 });

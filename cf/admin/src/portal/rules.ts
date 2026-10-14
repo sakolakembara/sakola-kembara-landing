@@ -115,18 +115,9 @@ export function countBySlot(files: readonly { slot: string }[]): Record<string, 
 
 // ─── The key of an object in the private bucket (portal-architecture.md, 8.1) ───
 
-const EXTENSION_OF_CONTENT_TYPE: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "application/pdf": "pdf" };
-
-/**
- * `applications/<batch year>/<application id>/<file id>.<ext>`: no part of it comes from the client (the year is the
- * batch's, both ids are made by the server, the extension is from the SNIFFED type). Null for a type nothing stores.
- * The routes that store files (src/portal/files.ts) build the same key; this copy is only used to delete the
- * `dtks` objects when the student says they are not in DTKS (`PUT steps/documents`).
- */
-export function applicationFileKey(file: { year: number; applicationId: string; fileId: string; contentType: string }): string | null {
-  const extension = EXTENSION_OF_CONTENT_TYPE[file.contentType];
-  return extension ? `applications/${file.year}/${file.applicationId}/${file.fileId}.${extension}` : null;
-}
+// ONE implementation, in src/private-files/key.ts: the routes that store files, the admin's, the cleanup and this API's
+// removal of the `dtks` objects (when the student says they are not in DTKS) all build the key with it.
+export { applicationFileKey } from "../private-files/key";
 
 // ─── The status of an application and the privacy contract (10) ───
 

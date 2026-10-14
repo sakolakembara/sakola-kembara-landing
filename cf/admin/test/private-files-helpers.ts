@@ -194,7 +194,8 @@ export async function seedFile(options: { applicationId: string; year: number; s
   const key = buildKey({ year, applicationId, fileId: id, type: kind as StoredFileType });
   await env.PRIVATE_FILES.put(key, body, { httpMetadata: { contentType: STORED_TYPES[kind].contentType } });
   const isImage = kind !== "pdf";
-  await env.DB.batch([
+  // The counter is the bytes of the LIVE files: a marked row (`deleted`) was released when it was marked, so it adds nothing.
+  const statements = [
     env.DB.prepare("INSERT INTO application_files (id, application_id, slot, content_type, size, width, height, checksum, created_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(
       id,
       applicationId,
@@ -207,8 +208,9 @@ export async function seedFile(options: { applicationId: string; year: number; s
       options.at ?? Date.now(),
       deleted === false ? null : deleted === true ? Date.now() : deleted,
     ),
-    env.DB.prepare("UPDATE private_storage SET bytes = bytes + ?, files = files + 1 WHERE id = 'private-files'").bind(body.byteLength),
-  ]);
+  ];
+  if (deleted === false) statements.push(env.DB.prepare("UPDATE private_storage SET bytes = bytes + ?, files = files + 1 WHERE id = 'private-files'").bind(body.byteLength));
+  await env.DB.batch(statements);
   return { id, key, size: body.byteLength };
 }
 

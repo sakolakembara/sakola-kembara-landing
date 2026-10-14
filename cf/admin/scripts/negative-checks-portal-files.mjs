@@ -22,7 +22,8 @@ export const portalFilesChecks = [
   {
     name: "portal files: the file routes are not mounted on the portal Worker",
     file: "src/portal/worker.ts",
-    from: "app.route(API, fileRoutes);",
+    // The line after the `// P4:` placeholder comment (a config test pins the comment, so the real line is the one found).
+    from: "\napp.route(API, fileRoutes);",
     to: "",
     tests: `${UPLOAD} ${OWN}`,
   },
@@ -80,7 +81,7 @@ export const portalFilesChecks = [
   {
     name: "portal files: a student replaces another student's file (both layers: the lookup and the insert's guard)",
     edits: [
-      { file: "src/private-files/state.ts", from: "WHERE id = ?3 AND deleted_at IS NULL AND application_id = ${DRAFT_OF_OPEN_BATCH}`;", to: "WHERE id = ?3 AND deleted_at IS NULL AND ?1 IS NOT NULL AND ?2 IS NOT NULL`;" },
+      { file: "src/private-files/state.ts", from: "WHERE id = ?2 AND application_id = ?1 AND deleted_at IS NULL\";", to: "WHERE id = ?2 AND ?1 IS NOT NULL AND deleted_at IS NULL\";" },
       { file: "src/private-files/upload.ts", from: "AND (?12 IS NULL OR EXISTS (SELECT 1 FROM application_files WHERE id = ?12 AND application_id = ?2 AND slot = ?3 AND deleted_at IS NULL))`;", to: "`;" },
     ],
     tests: `${UPLOAD} ${OWN}`,
@@ -196,10 +197,31 @@ export const portalFilesChecks = [
   },
   {
     name: "portal files: a purge leaves the files' share of the storage counter",
-    file: "src/private-files/remove.ts",
-    from: "bytes = MAX(bytes - (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE id IN (${list}) AND deleted_at IS NOT NULL), 0),",
-    to: "bytes = bytes,",
-    tests: `${ADMIN} ${OWN} ${HOUSEKEEPING}`,
+    file: "src/private-files/purge.ts",
+    from: '    releaseLiveStatement(env.DB, "application_id = ?1", [applicationId], now),\n',
+    to: "",
+    tests: ADMIN,
+  },
+  {
+    name: "portal files: a student's delete leaves the file's share of the storage counter",
+    file: "src/private-files/delete.ts",
+    from: '    releaseLiveStatement(env.DB, "id = ?1 AND application_id = ?2", [fileId, gate.draftId], now),\n',
+    to: "",
+    tests: OWN,
+  },
+  {
+    name: "portal files: a replaced file leaves its share of the storage counter",
+    file: "src/private-files/upload.ts",
+    from: "    statements.push(releaseLiveStatement(env.DB, REPLACED_CONDITION, [replaced.id, draftId, slot, fileId], now));\n",
+    to: "",
+    tests: `${UPLOAD} ${OWN}`,
+  },
+  {
+    name: "portal files: a file already marked is released from the counter a second time (the live-only guard of the release)",
+    file: "src/private-files/storage.ts",
+    from: "  const live = `${condition} AND deleted_at IS NULL`;\n  return `UPDATE private_storage SET",
+    to: "  const live = condition;\n  return `UPDATE private_storage SET",
+    tests: `${ADMIN} ${HOUSEKEEPING}`,
   },
   {
     name: "portal files: the rows go although R2 could not delete the objects (nothing left to retry from)",
@@ -211,8 +233,8 @@ export const portalFilesChecks = [
   {
     name: "portal files: a live file's row can be deleted with the others (the marked-only guard of the row delete)",
     file: "src/private-files/remove.ts",
-    from: "`DELETE FROM application_files WHERE id IN (${list}) AND deleted_at IS NOT NULL`",
-    to: "`DELETE FROM application_files WHERE id IN (${list})`",
+    from: "`DELETE FROM application_files WHERE id IN (${marks(ids)}) AND deleted_at IS NOT NULL`",
+    to: "`DELETE FROM application_files WHERE id IN (${marks(ids)})`",
     tests: HOUSEKEEPING,
   },
 
@@ -304,10 +326,17 @@ export const portalFilesChecks = [
     tests: UPLOAD,
   },
   {
-    name: "portal files: an application already submitted is not seen by the gate",
+    name: "portal files: a student with an application already sent is let through the gate (the application API's refusal is not used)",
     file: "src/private-files/state.ts",
-    from: "(SELECT a.id FROM student_applications a WHERE a.user_id = ?1 AND a.batch_id = b.id) AS application_id,",
-    to: "NULL AS application_id,",
+    from: "const refusal = writeRefusal(state, state === null && (await anyDraftQuery(db, userId)).length > 0);",
+    to: "const refusal = state === null ? writeRefusal(state, false) : null;",
+    tests: `${UPLOAD} ${OWN}`,
+  },
+  {
+    name: "portal files: a batch that closed on a draft is told `no_open_batch` (the draft is not looked for)",
+    file: "src/private-files/state.ts",
+    from: "const refusal = writeRefusal(state, state === null && (await anyDraftQuery(db, userId)).length > 0);",
+    to: "const refusal = writeRefusal(state, false);",
     tests: `${UPLOAD} ${OWN}`,
   },
   {
@@ -333,6 +362,20 @@ export const portalFilesChecks = [
   },
 
   // ------------------------------------------------ the key, the headers, and the one bucket
+  {
+    name: "portal files: the application API builds its own key again (two implementations of the key)",
+    file: "src/portal/rules.ts",
+    from: 'export { applicationFileKey } from "../private-files/key";',
+    to: "export const applicationFileKey = (file: { year: number; applicationId: string; fileId: string; contentType: string }): string | null => `applications/${file.year}/${file.applicationId}/${file.fileId}.${file.contentType.length}`;",
+    tests: RULES,
+  },
+  {
+    name: "portal files: the one key throws on an id that is not a UUID instead of answering null (a cleanup or a removal would stop at one bad row)",
+    file: "src/private-files/key.ts",
+    from: "if (!type || !isUuid(file.applicationId) || !isUuid(file.fileId) ||",
+    to: "if (!type ||",
+    tests: RULES,
+  },
   {
     name: "portal files: the key has no year (and so is not of the shape the dev route and the checks know)",
     file: "src/private-files/key.ts",
@@ -431,8 +474,8 @@ export const portalFilesChecks = [
   {
     name: "portal files: the files of an application are found without the (application_id, slot) index",
     file: "src/private-files/state.ts",
-    from: "FROM application_files WHERE application_id = ${DRAFT_OF_OPEN_BATCH} AND deleted_at IS NULL GROUP BY slot`;",
-    to: "FROM application_files WHERE application_id || '' = ${DRAFT_OF_OPEN_BATCH} AND deleted_at IS NULL GROUP BY slot`;",
+    from: "FROM application_files WHERE application_id = ?1 AND deleted_at IS NULL GROUP BY slot\";",
+    to: "FROM application_files WHERE application_id || '' = ?1 AND deleted_at IS NULL GROUP BY slot\";",
     tests: PLANS,
   },
 

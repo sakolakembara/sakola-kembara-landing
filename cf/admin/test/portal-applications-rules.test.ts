@@ -175,13 +175,22 @@ describe("checkSubmission: the legacy order, then the files (9.1, checks 5 and 5
 });
 
 describe("the application's id and the object's key", () => {
+  const APPLICATION = "6f1c2a7e-3b4d-4e5f-8a9b-0c1d2e3f4a5b";
+  const FILE = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+
   test("applications/<year>/<application id>/<file id>.<ext> with the extension from the sniffed type, and nothing from the client", () => {
-    const base = { year: 2026, applicationId: "app-1", fileId: "file-1" };
-    expect(applicationFileKey({ ...base, contentType: "image/png" })).toBe("applications/2026/app-1/file-1.png");
-    expect(applicationFileKey({ ...base, contentType: "image/jpeg" })).toBe("applications/2026/app-1/file-1.jpg");
-    expect(applicationFileKey({ ...base, contentType: "image/webp" })).toBe("applications/2026/app-1/file-1.webp");
-    expect(applicationFileKey({ ...base, contentType: "application/pdf" })).toBe("applications/2026/app-1/file-1.pdf");
+    const base = { year: 2026, applicationId: APPLICATION, fileId: FILE };
+    expect(applicationFileKey({ ...base, contentType: "image/png" })).toBe(`applications/2026/${APPLICATION}/${FILE}.png`);
+    expect(applicationFileKey({ ...base, contentType: "image/jpeg" })).toBe(`applications/2026/${APPLICATION}/${FILE}.jpg`);
+    expect(applicationFileKey({ ...base, contentType: "image/webp" })).toBe(`applications/2026/${APPLICATION}/${FILE}.webp`);
+    expect(applicationFileKey({ ...base, contentType: "application/pdf" })).toBe(`applications/2026/${APPLICATION}/${FILE}.pdf`);
     for (const other of ["image/gif", "image/svg+xml", "text/html", "", "../x"]) expect(applicationFileKey({ ...base, contentType: other }), other).toBeNull();
+  });
+
+  test("an id that is not a UUID or a year that is not four digits is no key (the one implementation lives in src/private-files/key.ts)", () => {
+    expect(applicationFileKey({ year: 2026, applicationId: "app-1", fileId: FILE, contentType: "image/png" })).toBeNull();
+    expect(applicationFileKey({ year: 2026, applicationId: APPLICATION, fileId: "../file", contentType: "image/png" })).toBeNull();
+    expect(applicationFileKey({ year: 26, applicationId: APPLICATION, fileId: FILE, contentType: "image/png" })).toBeNull();
   });
 });
 

@@ -6,8 +6,9 @@ import { applicationFilesQuery } from "../src/private-files/list";
 import { MARK_SQL, TOUCH_SQL } from "../src/private-files/delete";
 import { APPLICATION_FILE_SQL, OWN_FILE_SQL } from "../src/private-files/lookup";
 import { APPLICATION_SQL, AUDIT_PURGE_SQL, MARK_ALL_SQL, MARKED_SQL } from "../src/private-files/purge";
-import { ANY_DRAFT_SQL, COUNTS_SQL, GATE_SQL, REPLACED_SQL } from "../src/private-files/state";
-import { CREATE_DRAFT_SQL, INSERT_FILE_SQL, MARK_REPLACED_SQL, TOUCH_DRAFT_SQL, USAGE_SQL } from "../src/private-files/upload";
+import { REPLACED_SQL, USAGE_SQL } from "../src/private-files/state";
+import { releaseLiveSql } from "../src/private-files/storage";
+import { CREATE_DRAFT_SQL, INSERT_FILE_SQL, MARK_REPLACED_SQL, REPLACED_CONDITION, TOUCH_DRAFT_SQL } from "../src/private-files/upload";
 
 // What the file routes cost D1 (docs/cloudflare/portal-architecture.md, section 10; docs/cloudflare/admin-crud.md#12):
 // every statement a student's or an admin's request runs is a seek on an index or a primary key, never a walk of a table
@@ -28,17 +29,17 @@ async function plan(sql: string, count: number): Promise<string[]> {
 const placeholders = (sql: string) => Math.max(0, ...[...sql.matchAll(/\?(\d+)/g)].map((match) => Number(match[1])));
 
 const STATEMENTS: [string, string][] = [
-  ["the gate", GATE_SQL],
-  ["the live counts of the open batch's draft", COUNTS_SQL],
+  ["the live counts of the open batch's draft", USAGE_SQL],
   ["the file a replace names", REPLACED_SQL],
-  ["any draft of the student", ANY_DRAFT_SQL],
   ["a student's own file", OWN_FILE_SQL],
   ["an admin's file of an application", APPLICATION_FILE_SQL],
   ["the guarded insert of a file row", INSERT_FILE_SQL],
   ["the replaced row marked", MARK_REPLACED_SQL],
+  ["the replaced file's bytes given back", releaseLiveSql(REPLACED_CONDITION, 4)],
+  ["a deleted file's bytes given back", releaseLiveSql("id = ?1 AND application_id = ?2", 2)],
+  ["a purge's bytes given back", releaseLiveSql("application_id = ?1", 1)],
   ["the draft's version moved after an upload", TOUCH_DRAFT_SQL],
   ["the draft created by the first upload", CREATE_DRAFT_SQL],
-  ["the usage after an upload", USAGE_SQL],
   ["a student's file marked deleted", MARK_SQL],
   ["the draft's version moved after a delete", TOUCH_SQL],
   ["the application of a purge", APPLICATION_SQL],
@@ -67,12 +68,5 @@ describe("plans: no statement of a request walks a table that grows", () => {
       const lines = (await plan(sql, placeholders(sql))).join(" | ");
       expect(lines).toContain("SEARCH f USING INDEX sqlite_autoindex_application_files_1 (id=?)");
     }
-  });
-
-  test("the gate finds the open batch on the opens_at index and a student's rows on their unique indexes", async () => {
-    const gate = (await plan(GATE_SQL, 2)).join(" | ");
-    expect(gate).toContain("SEARCH b USING INDEX admission_batches_opens_at_idx");
-    expect(gate).toContain("student_applications_user_batch_unique");
-    expect(gate).toContain("application_drafts_user_batch_unique");
   });
 });

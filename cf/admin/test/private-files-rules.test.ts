@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { MAX_BYTES_PER_APPLICATION, MAX_FILE_BYTES, MAX_FILES_PER_APPLICATION } from "../shared/application-form/limits";
 import { SLOT_IDS, SLOTS } from "../shared/application-form/slots";
-import { buildKey, extensionOf, isInlineContentType, isUuid, KEY_PATTERN, STORED_TYPES, typeOfContentType } from "../src/private-files/key";
-import { gateRefusal, REFUSALS, slotFull, unsupportedType } from "../src/private-files/refusal";
-import { keyOfFile } from "../src/private-files/remove";
+import { applicationFileKey, buildKey, extensionOf, isInlineContentType, isUuid, KEY_PATTERN, STORED_TYPES, typeOfContentType } from "../src/private-files/key";
+import { REFUSALS, slotFull, unsupportedType } from "../src/private-files/refusal";
+import { applicationFileKey as portalApplicationFileKey } from "../src/portal/rules";
 import { downloadName, fileHeaders } from "../src/private-files/serve";
 import { checkRoom } from "../src/private-files/state";
 import { DEFAULT_BUDGET_BYTES, storageBudget } from "../src/private-files/storage";
@@ -50,13 +50,26 @@ describe("the object key", () => {
     }
   });
 
-  test("keyOfFile is null for anything it could not build a safe key from, never an exception", () => {
-    expect(keyOfFile(2026, APP, { id: FILE, contentType: "application/pdf" })).toBe(`applications/2026/${APP}/${FILE}.pdf`);
-    expect(keyOfFile(2026, APP, { id: FILE, contentType: "image/gif" })).toBeNull();
-    expect(keyOfFile(2026, "not-an-id", { id: FILE, contentType: "image/png" })).toBeNull();
-    expect(keyOfFile(2026, APP, { id: "x", contentType: "image/png" })).toBeNull();
-    expect(keyOfFile(0, APP, { id: FILE, contentType: "image/png" })).toBeNull();
-    expect(keyOfFile(Number.NaN, APP, { id: FILE, contentType: "image/png" })).toBeNull();
+  test("the key of a file row is null for anything it could not build a safe key from, never an exception", () => {
+    const row = { year: 2026, applicationId: APP, fileId: FILE };
+    expect(applicationFileKey({ ...row, contentType: "application/pdf" })).toBe(`applications/2026/${APP}/${FILE}.pdf`);
+    expect(applicationFileKey({ ...row, contentType: "image/gif" })).toBeNull();
+    expect(applicationFileKey({ ...row, applicationId: "not-an-id", contentType: "image/png" })).toBeNull();
+    expect(applicationFileKey({ ...row, fileId: "x", contentType: "image/png" })).toBeNull();
+    expect(applicationFileKey({ ...row, year: 0, contentType: "image/png" })).toBeNull();
+    expect(applicationFileKey({ ...row, year: Number.NaN, contentType: "image/png" })).toBeNull();
+  });
+
+  test("the key shape is pinned: applications/<year>/<application id>/<file id>.<ext>, and it matches what KEY_PATTERN allows", () => {
+    for (const [contentType, ext] of [["image/png", "png"], ["image/jpeg", "jpg"], ["image/webp", "webp"], ["application/pdf", "pdf"]] as const) {
+      const key = applicationFileKey({ year: 2026, applicationId: APP, fileId: FILE, contentType });
+      expect(key).toBe(`applications/2026/${APP}/${FILE}.${ext}`);
+      expect(KEY_PATTERN.test(key!)).toBe(true);
+    }
+  });
+
+  test("the application API (src/portal/rules.ts) re-exports this very function: there is one implementation of the key", () => {
+    expect(portalApplicationFileKey).toBe(applicationFileKey);
   });
 
   test("the stored types are exactly the four of the table's CHECK, and an unknown content type has no extension of a real type", () => {
@@ -155,13 +168,6 @@ describe("the words (docs/cloudflare/portal-api.md, 11.2 and 13)", () => {
       extra: { allowed: ["image/png", "image/jpeg", "image/webp", "application/pdf"] },
     });
     expect(unsupportedType(SLOTS["self-photo"].types).message).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP.");
-  });
-
-  test("the gate's three sentences are the legacy ones", () => {
-    expect(gateRefusal("no_open_batch").message).toBe("Belum ada batch pendaftaran yang dibuka. Silakan kembali saat pendaftaran berikutnya diumumkan.");
-    expect(gateRefusal("batch_closed").message).toBe("Pendaftaran untuk batch ini sudah ditutup. Isianmu tidak bisa disimpan atau dikirim.");
-    expect(gateRefusal("already_submitted").message).toBe("Kamu sudah mengirim pendaftaran untuk batch ini. Cek status di halaman Portal Siswa.");
-    for (const error of ["no_open_batch", "batch_closed", "already_submitted"] as const) expect(gateRefusal(error).status).toBe(409);
   });
 });
 

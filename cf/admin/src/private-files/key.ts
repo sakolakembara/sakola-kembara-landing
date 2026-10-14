@@ -45,6 +45,18 @@ export function buildKey({ year, applicationId, fileId, type }: KeyParts): strin
   return `applications/${year}/${applicationId}/${fileId}.${STORED_TYPES[type].ext}`;
 }
 
+/**
+ * THE key of a file row, the one implementation (the student's routes, the admin's, the cleanup and the application API's
+ * removal of the `dtks` files, src/portal/rules.ts, all use this): from the batch's year, the two ids and the stored
+ * content type of the row. Null for anything it could not build a safe key from (a content type the table does not allow,
+ * an id that is not a UUID, a year that is not four digits): never an exception, never a key with a part of a person in it.
+ */
+export function applicationFileKey(file: { year: number; applicationId: string; fileId: string; contentType: string }): string | null {
+  const type = typeOfContentType(file.contentType);
+  if (!type || !isUuid(file.applicationId) || !isUuid(file.fileId) || !Number.isInteger(file.year) || file.year < 1000 || file.year > 9999) return null;
+  return buildKey({ year: file.year, applicationId: file.applicationId, fileId: file.fileId, type });
+}
+
 /** The stored type of a `content_type` column value, or null for anything the table does not allow. */
 export function typeOfContentType(contentType: string): StoredFileType | null {
   for (const type of Object.keys(STORED_TYPES) as StoredFileType[]) if (STORED_TYPES[type].contentType === contentType) return type;

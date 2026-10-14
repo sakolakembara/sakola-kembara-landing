@@ -13,7 +13,7 @@
 //   7. the draft is created when this is the first write
 //   8. the body is streamed to R2 (FixedLengthStream of the declared length): nothing is stored unless it is exact
 //   9. ONE guarded batch: the file row (only if the draft is still editable and the slot and application still have
-//      room), the replaced row marked, the draft's version moved
+//      room), the replaced file's bytes given back to the counter and its row marked, the draft's version moved
 //
 // Anything that fails after step 5 gives the reservation back and removes the object. The client's content type and
 // file name are never read, stored or logged; the key has no part of a person in it (src/private-files/key.ts).
@@ -22,11 +22,11 @@ import { MAX_BYTES_PER_APPLICATION, MAX_FILE_BYTES, MAX_FILES_PER_APPLICATION } 
 import { missingSlots, SLOTS, slotAccepts, type SlotId } from "../../shared/application-form/slots";
 import type { Bindings } from "../env";
 import { sniff } from "../uploads/sniff";
-import { buildKey, isUuid, STORED_TYPES } from "./key";
+import { applicationFileKey, buildKey, isUuid, STORED_TYPES } from "./key";
 import { REFUSALS, slotFull, unsupportedType, type Refusal } from "./refusal";
-import { keyOfFile, removeObjects } from "./remove";
-import { checkRoom, readGate, readWriteState, type ReplacedFile, type WriteState } from "./state";
-import { releaseStorage, reserveStorage } from "./storage";
+import { removeObjects } from "./remove";
+import { checkRoom, readGate, readWriteState, USAGE_SQL, type ReplacedFile, type WriteState } from "./state";
+import { releaseLiveStatement, releaseStorage, reserveStorage } from "./storage";
 import { md5Of, putStream, readHead } from "./stream";
 
 type Storage = Pick<Bindings, "DB" | "PRIVATE_FILES" | "PRIVATE_FILES_BUDGET_BYTES">;
@@ -85,7 +85,12 @@ WHERE EXISTS (SELECT 1 FROM application_drafts WHERE id = ?2 AND user_id = ?10 A
   AND (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE application_id = ?2 AND deleted_at IS NULL AND id IS NOT ?12) + ?5 <= ?15
   AND (?12 IS NULL OR EXISTS (SELECT 1 FROM application_files WHERE id = ?12 AND application_id = ?2 AND slot = ?3 AND deleted_at IS NULL))`;
 
-/** The replaced file is marked only when the new one is in (the two succeed or fail together: the guard above is not an error, so a batch alone would not roll back). */
+/**
+ * The replaced file is marked only when the new one is in (the two succeed or fail together: the guard above is not an
+ * error, so a batch alone would not roll back). `?1`... of `REPLACED_CONDITION` are the replaced file's id, the draft, the
+ * slot and the new file's id; the release of its bytes (`releaseLiveStatement`) uses the same condition.
+ */
+export const REPLACED_CONDITION = "id = ?1 AND application_id = ?2 AND slot = ?3 AND EXISTS (SELECT 1 FROM application_files WHERE id = ?4)";
 export const MARK_REPLACED_SQL =
   "UPDATE application_files SET deleted_at = ?1 WHERE id = ?2 AND application_id = ?3 AND slot = ?4 AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM application_files WHERE id = ?5)";
 
@@ -101,7 +106,6 @@ WHERE NOT EXISTS (SELECT 1 FROM application_drafts WHERE user_id = ?2 AND batch_
 /** The draft of this student in this batch, whoever created it. */
 const READ_DRAFT_SQL = "SELECT id FROM application_drafts WHERE user_id = ?1 AND batch_id = ?2";
 
-export const USAGE_SQL = "SELECT slot, COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM application_files WHERE application_id = ?1 AND deleted_at IS NULL GROUP BY slot";
 const DTKS_SQL = "SELECT json_extract(form_data, '$.documents.dtksRegistered') AS dtks FROM application_drafts WHERE id = ?1";
 
 async function removeOrphan(bucket: R2Bucket, key: string): Promise<void> {
@@ -248,7 +252,12 @@ async function receive(
       MAX_BYTES_PER_APPLICATION,
     ),
   ];
-  if (replaced) statements.push(env.DB.prepare(MARK_REPLACED_SQL).bind(now, replaced.id, draftId, slot, fileId));
+  if (replaced) {
+    // The same guard twice: the release counts the replaced file out only when the mark is about to take it (it is still
+    // live then), and the mark runs only when the new row is in.
+    statements.push(releaseLiveStatement(env.DB, REPLACED_CONDITION, [replaced.id, draftId, slot, fileId], now));
+    statements.push(env.DB.prepare(MARK_REPLACED_SQL).bind(now, replaced.id, draftId, slot, fileId));
+  }
   statements.push(env.DB.prepare(TOUCH_DRAFT_SQL).bind(now, draftId, fileId));
   let inserted: boolean;
   try {
@@ -269,8 +278,8 @@ async function receive(
 
   // The replaced file's object goes after the row that replaces it is in; a failure leaves its row marked for the daily cleanup.
   if (replaced) {
-    const oldKey = keyOfFile(state.batch.year, draftId, replaced);
-    if (oldKey) await removeObjects(env, [{ id: replaced.id, size: replaced.size, keys: [oldKey] }], now);
+    const oldKey = applicationFileKey({ year: state.batch.year, applicationId: draftId, fileId: replaced.id, contentType: replaced.contentType });
+    if (oldKey) await removeObjects(env, [{ id: replaced.id, keys: [oldKey] }]);
   }
 
   // From here on nothing may throw: the file is stored and its row is in, so the reservation IS its share of the counter.

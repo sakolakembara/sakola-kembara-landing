@@ -339,7 +339,7 @@ describe("the manual purge (12.3)", () => {
   test("every file of the application goes (objects, rows, the counter), one audit row with the count and the ids, and nobody else's file is touched", async () => {
     const { application, batch, files } = await submitted(["family-card", "self-photo", "house-photos"]);
     const keep = await submitted(["family-card"]);
-    // A file already marked deleted (a failed delete of an earlier day) is finished by the purge too.
+    // A file already marked deleted (a failed delete of an earlier day; its bytes left the counter when it was marked) is finished by the purge too.
     const marked = await seedFile({ applicationId: application.id, year: batch.year, slot: "debt-proof", size: 300, deleted: Date.now() - 1000 });
     const before = await storage();
     const email = uniqueEmail("editor.purge");
@@ -350,7 +350,8 @@ describe("the manual purge (12.3)", () => {
     expect(await res.json()).toEqual({ purged: 3, pending: 0 });
     expect(await privateKeys()).toEqual([keep.files[0]!.key]);
     expect((await fileRows()).map((row) => row.id)).toEqual([keep.files[0]!.id]);
-    expect(await storage()).toEqual({ bytes: before.bytes - 4 * 300, files: before.files - 4 });
+    // Three live files' share goes; the marked one was out of the counter already, so it is not taken out twice.
+    expect(await storage()).toEqual({ bytes: before.bytes - 3 * 300, files: before.files - 3 });
     expect(marked.id).toBeTruthy();
 
     const rows = await auditRows();
@@ -410,7 +411,8 @@ describe("the manual purge (12.3)", () => {
     expect((await auditRows()).map((row) => row.action)).toEqual(["application_file.purge"]);
     expect((await detail(application.id, cookie).then((r) => r.json())) as { item: { files: unknown[] } }).toMatchObject({ item: { files: [] } });
     expect(await privateKeys()).toHaveLength(2);
-    expect(await storage()).toEqual({ bytes: 600, files: 2 });
+    // Out of the counter at the mark (it is the bytes of the live files), though both objects are still in the bucket.
+    expect(await storage()).toEqual({ bytes: 0, files: 0 });
     expect(lines).toEqual(["[private-files] the objects of removed files could not be deleted; they stay marked for the daily cleanup"]);
 
     const { runFilesHousekeeping } = await import("../src/private-files/housekeeping");

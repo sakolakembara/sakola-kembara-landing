@@ -3,8 +3,7 @@
 // never a 403, so nobody learns whether an id belongs to somebody else.
 
 import { isSlotId, type SlotId } from "../../shared/application-form/slots";
-import { isUuid, typeOfContentType } from "./key";
-import { keyOfFile } from "./remove";
+import { applicationFileKey, isUuid, typeOfContentType } from "./key";
 
 export interface FoundFile {
   id: string;
@@ -27,7 +26,7 @@ interface Row {
 
 function found(row: Row | null): FoundFile | null {
   if (!row || row.year === null || !isSlotId(row.slot) || !typeOfContentType(row.content_type)) return null;
-  const key = keyOfFile(row.year, row.application_id, { id: row.id, contentType: row.content_type });
+  const key = applicationFileKey({ year: row.year, applicationId: row.application_id, fileId: row.id, contentType: row.content_type });
   return key ? { id: row.id, slot: row.slot, contentType: row.content_type, size: row.size, applicationId: row.application_id, key } : null;
 }
 

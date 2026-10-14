@@ -23,17 +23,6 @@ const refusal = (status: RefusalStatus, error: string, message?: string, extra?:
   ...(extra ? { extra } : {}),
 });
 
-/** The gate: the legacy sentences (docs/cloudflare/portal-api.md, 13). */
-export const GATE_MESSAGES = {
-  no_open_batch: "Belum ada batch pendaftaran yang dibuka. Silakan kembali saat pendaftaran berikutnya diumumkan.",
-  batch_closed: "Pendaftaran untuk batch ini sudah ditutup. Isianmu tidak bisa disimpan atau dikirim.",
-  already_submitted: "Kamu sudah mengirim pendaftaran untuk batch ini. Cek status di halaman Portal Siswa.",
-} as const;
-
-export type GateError = keyof typeof GATE_MESSAGES;
-
-export const gateRefusal = (error: GateError): Refusal => refusal(409, error, GATE_MESSAGES[error]);
-
 const dotted = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
 const typeName = (type: FileType) => (type === "jpeg" ? "JPEG" : type === "webp" ? "WebP" : type.toUpperCase());

@@ -103,8 +103,8 @@ describe("replace (?replace=<file id>)", () => {
     const marked = (await fileRows()).find((row) => row.id === old.file.id);
     expect(marked?.deleted_at).not.toBeNull();
     expect((await readOwnFile(old.file.id, s.cookie)).status).toBe(404);
-    // The counter still counts what is still in the bucket.
-    expect(await storage()).toEqual({ bytes: 1200, files: 2 });
+    // The counter is the bytes of the LIVE files: the marked row is already out of it, though its object is still in the bucket.
+    expect(await storage()).toEqual({ bytes: 700, files: 1 });
     expect(await privateKeys()).toHaveLength(2);
 
     // Within the first hour the cleanup leaves it alone (its own request may still be finishing); after, it finishes the job.
@@ -223,7 +223,8 @@ describe("delete: DELETE .../files/:fileId", () => {
     expect(await liveRows()).toEqual([]);
     expect(await fileRows()).toHaveLength(1);
     expect(await privateKeys()).toHaveLength(1);
-    expect(await storage()).toEqual({ bytes: 900, files: 1 });
+    // Marked rows are out of the counter already (it is the bytes of the live files), whatever the bucket did.
+    expect(await storage()).toEqual({ bytes: 0, files: 0 });
     // A fixed line, with no key, id or count in it.
     expect(lines).toEqual(["[private-files] the objects of removed files could not be deleted; they stay marked for the daily cleanup"]);
 

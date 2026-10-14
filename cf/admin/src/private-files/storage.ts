@@ -1,9 +1,10 @@
 // The hard storage budget of the private bucket (docs/cloudflare/portal-architecture.md, 8.3): ONE row in
 // `private_storage`, updated atomically BEFORE the bytes are written. R2 Free holds 10 GB-month; the budget variable
 // (PRIVATE_FILES_BUDGET_BYTES, proposed 8,000,000,000) keeps an overshoot, which would cost cents, from happening at
-// all. The counter is bookkeeping, not billing: a Worker that dies between the reservation and the file row leaves
-// the counter too high (the daily cleanup recomputes it from the file rows, src/cron/cleanup.ts), and a recount
-// during an upload makes it briefly too low by that one file. Neither can store a byte the budget refuses.
+// all. The counter is the bytes of the LIVE files, bookkeeping and not billing: a Worker that dies between the reservation
+// and the file row leaves it too high (the daily cleanup recomputes it from the live file rows, src/private-files/
+// housekeeping.ts), and a recount during an upload makes it briefly too low by that one file. Neither can store a byte the
+// budget refuses.
 
 import type { Bindings } from "../env";
 
@@ -38,11 +39,30 @@ export async function releaseStorage(env: Pick<Bindings, "DB">, size: number, no
   await env.DB.prepare("UPDATE private_storage SET bytes = MAX(bytes - ?1, 0), files = MAX(files - 1, 0), updated_at = ?2 WHERE id = ?3").bind(size, now, ROW).run();
 }
 
-/** The counter as the file rows say it is: every row, live or marked for deletion, still has its object in the bucket. */
+/**
+ * Gives back the bytes and the count of the LIVE files that `condition` names (SQL over `application_files`, with the
+ * placeholders `?1`... bound to `params`). It goes in the SAME batch as the statement that marks those rows, just BEFORE it
+ * (the rows are still live then, so each is counted out exactly once, and a mark that matches nothing releases nothing).
+ * The counter is the bytes of the LIVE files; src/private-files/remove.ts says why.
+ */
+export function releaseLiveSql(condition: string, paramCount: number): string {
+  const live = `${condition} AND deleted_at IS NULL`;
+  return `UPDATE private_storage SET
+         bytes = MAX(bytes - (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE ${live}), 0),
+         files = MAX(files - (SELECT COUNT(*) FROM application_files WHERE ${live}), 0),
+         updated_at = ?${paramCount + 1}
+       WHERE id = '${ROW}' AND EXISTS (SELECT 1 FROM application_files WHERE ${live})`;
+}
+
+export function releaseLiveStatement(db: D1Database, condition: string, params: readonly (string | number)[], now: number): D1PreparedStatement {
+  return db.prepare(releaseLiveSql(condition, params.length)).bind(...params, now);
+}
+
+/** The counter as the file rows say it is: the LIVE files. A marked row is already out of it (it was released when it was marked). */
 export function reconcileStorageStatement(db: D1Database, now: number): D1PreparedStatement {
   return db
     .prepare(
-      "UPDATE private_storage SET bytes = (SELECT COALESCE(SUM(size), 0) FROM application_files), files = (SELECT COUNT(*) FROM application_files), updated_at = ?1 WHERE id = ?2",
+      "UPDATE private_storage SET bytes = (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE deleted_at IS NULL), files = (SELECT COUNT(*) FROM application_files WHERE deleted_at IS NULL), updated_at = ?1 WHERE id = ?2",
     )
     .bind(now, ROW);
 }
