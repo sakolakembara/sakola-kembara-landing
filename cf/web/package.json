@@ -21,6 +21,7 @@
     "test:e2e": "node scripts/e2e.mjs",
     "test:e2e:uploads": "node scripts/e2e-uploads.mjs",
     "test:negative:shortlink": "node scripts/negative-checks-shortlink.mjs",
+    "test:negative:page-cache": "node scripts/negative-checks-page-cache.mjs",
     "seo:parity": "node scripts/seo-parity.mjs",
     "seo:parity:local": "node scripts/seo-parity-local.mjs",
     "serve:candidate": "node scripts/serve-candidate.mjs",

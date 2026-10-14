@@ -22,3 +22,6 @@ ADMIN_URL=http://localhost:5173
 # cf/admin, port 8787), so this shows uploaded photos and files without a public domain. Empty or unset:
 # /uploads/... stays a same-origin path and nothing changes. See docs/cloudflare/uploads.md.
 # UPLOADS_BASE_URL=http://localhost:8787
+# Optional: seconds a rendered page (/blog, an article, /tim, /laporan, /gabung-siswa/docs, /sitemap.xml) is kept in the
+# isolate's memory and answered from there, with no render (default: off). At most 120. src/lib/page-cache.ts.
+# PAGE_CACHE_SECONDS=30

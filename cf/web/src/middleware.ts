@@ -5,6 +5,7 @@ import { adminRedirectTarget } from '~/lib/admin-redirect';
 import { canonicalPath } from '~/lib/canonical-path';
 import { isAdminPath, isApiPath, isLegacyPath } from '~/lib/legacy-paths';
 import { forwardToLegacy } from '~/lib/legacy-proxy';
+import { cachedForSeconds, pageCache, pageCacheKey, pageCacheSeconds, responseFromEntry } from '~/lib/page-cache';
 import { withSecurityHeaders } from '~/lib/security-headers';
 
 const redirect = (status: number, location: string) =>
@@ -38,7 +39,9 @@ const apiNotFound = () =>
  *     the legacy app keeps deciding about its own trailing slashes.
  *  4. One URL per page: trailing slash and `.html` are folded with a 308, like
  *     the Next app does.
- *  5. Everything else is Astro's, with the security headers Caddy used to add.
+ *  5. Everything else is Astro's, with the security headers Caddy used to add. When `PAGE_CACHE_SECONDS` is set, a page
+ *     that depends only on the API's data may be answered from a copy kept in this isolate for that many seconds
+ *     (src/lib/page-cache.ts; off by default).
  */
 export const onRequest = defineMiddleware(async (context, next) => {
   // The build renders prerendered pages through this middleware too, asking for
@@ -65,5 +68,27 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const canonical = canonicalPath(pathname);
   if (canonical) return redirect(308, `${canonical}${search}`);
 
-  return withSecurityHeaders(await next());
+  const cacheSeconds = context.request.method === 'GET' ? pageCacheSeconds(env.PAGE_CACHE_SECONDS) : 0;
+  const cacheKey = cacheSeconds > 0 ? pageCacheKey(context.url) : null;
+  if (cacheKey) {
+    const copy = pageCache.get(cacheKey);
+    if (copy) return responseFromEntry(copy);
+  }
+
+  const response = withSecurityHeaders(await next());
+  if (!cacheKey) return response;
+
+  // A render that may be copied is copied after the answer has gone (the body is read from a clone), and says so.
+  const keptFor = cachedForSeconds(response, cacheSeconds);
+  if (keptFor > 0) {
+    response.headers.set('x-page-cache', 'miss');
+    const copy = response.clone();
+    context.locals.cfContext.waitUntil(
+      copy
+        .arrayBuffer()
+        .then((body) => pageCache.set(cacheKey, { status: copy.status, headers: [...copy.headers], body }, keptFor))
+        .catch(() => undefined),
+    );
+  }
+  return response;
 });
