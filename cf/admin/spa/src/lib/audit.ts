@@ -13,6 +13,9 @@ import { AUDIT_LABEL, RESOURCE_TYPE_LABEL } from "@/lib/audit-labels";
 export const NEW_ACTION_LABEL: Record<string, string> = {
   "upload.create": "Berkas diunggah",
   "upload.delete": "Berkas unggahan dihapus",
+  // An applicant's uploaded file (SAKEM-083): an admin opened one (a row each time, ids only), or purged an application's files by hand.
+  "application_file.view": "Berkas pendaftar dibuka",
+  "application_file.purge": "Berkas pendaftar dihapus",
   "batch.delete": "Batch dihapus",
   "blog.publish": "Artikel diterbitkan",
   "blog.unpublish": "Artikel dikembalikan menjadi draf",
@@ -26,6 +29,7 @@ export const NEW_ACTION_LABEL: Record<string, string> = {
 /** The resource types the legacy table has no word for: the file of an upload. */
 export const NEW_RESOURCE_LABEL: Record<string, string> = {
   media: "Berkas unggahan",
+  application_file: "Berkas pendaftar",
 };
 
 /** The label of an audit action ("announcement.create" is "Pengumuman dibuat"); a name nobody labelled shows as it is. */
@@ -58,6 +62,8 @@ export const FILTER_ACTIONS = [
   "application.revoke",
   "application.submit",
   "application.under_review",
+  "application_file.purge",
+  "application_file.view",
   "batch.create",
   "batch.delete",
   "batch.publish_results",
@@ -107,6 +113,7 @@ export const FILTER_RESOURCE_TYPES = [
   "site_resource",
   "shortlink",
   "media",
+  "application_file",
 ] as const;
 
 export interface FilterOption {

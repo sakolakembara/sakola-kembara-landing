@@ -1,4 +1,5 @@
 // Relative imports on purpose: see pages/batches/model.ts.
+import type { SlotId } from "../../../../shared/application-form/slots";
 import type { ListSpec } from "../../lib/crud/query";
 import type { Tone } from "../batches/model";
 
@@ -62,6 +63,36 @@ export interface ApplicationDetail {
   submittedAt: string;
   updatedAt: string;
 }
+
+/** A file an applicant uploaded, as the detail lists it (docs/cloudflare/portal-api.md, 12.1): metadata only, no key, no name. */
+export interface ApplicationFile {
+  id: string;
+  slot: SlotId;
+  contentType: string;
+  size: number;
+  /** Pixels; null for a PDF. */
+  width: number | null;
+  height: number | null;
+  uploadedAt: string;
+}
+
+/**
+ * `GET /:id` (the answer of the review has none of these three, and the page keeps what it had): the version of the
+ * answers, the files and whether this person may open them. A viewer sees the list and `canOpenFiles` is false: opening
+ * a file, and purging them, need `pendaftaran` write (Dzul, 2026-10-13).
+ */
+export interface ApplicationWithFiles extends ApplicationDetail {
+  /** `2` the legacy links, `3` uploads; null when there are no answers. */
+  formVersion: 2 | 3 | null;
+  files: ApplicationFile[];
+  canOpenFiles: boolean;
+}
+
+/** Opening one file (a new tab): the Worker audits every open. */
+export const filePath = (applicationId: string, fileId: string) => `${API_PATH}/${encodeURIComponent(applicationId)}/files/${encodeURIComponent(fileId)}`;
+
+/** The manual purge of an application's files: `POST` with `{ "confirm": true }`. */
+export const purgePath = (applicationId: string) => `${API_PATH}/${encodeURIComponent(applicationId)}/files/purge`;
 
 /**
  * What the list offers: the same names as the Worker's filters and sorts (src/api/applications.ts). The search is

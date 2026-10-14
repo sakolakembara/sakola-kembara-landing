@@ -1,4 +1,5 @@
-import type { ApplicationDetail } from "./model";
+import { slotLabel, slotsOfStep, type SlotId } from "../../../../shared/application-form/slots";
+import type { ApplicationDetail, ApplicationFile, ApplicationWithFiles } from "./model";
 
 // The detail page's sections, as DATA: what each row says and what kind of value it is, so the rules of the legacy
 // page (which rows exist when, how a document or a phone number is shown) are tested without a browser and the
@@ -20,7 +21,9 @@ export type RowValue =
   | { type: "instagram"; username: string }
   | { type: "debt"; kind: string; amount: string; months: number; description: string }
   /** "Belum ditinjau". */
-  | { type: "muted"; text: string };
+  | { type: "muted"; text: string }
+  /** The files an applicant uploaded to one slot (version 3 answers): listed by what they are, opened one by one only by who may (`canOpen`). */
+  | { type: "files"; applicationId: string; files: ApplicationFile[]; canOpen: boolean };
 
 export interface ProfileRow {
   label: string;
@@ -79,9 +82,33 @@ const doc = (label: string, value: unknown): ProfileRow => {
 };
 const yesNo = (value: unknown) => (value === true ? "Ya" : "Tidak");
 
+/** "812 B", "45,5 kB", "1,8 MB": decimal units, as the Worker's limits and its messages write them. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1000) return `${bytes} B`;
+  const [value, unit] = bytes < 1_000_000 ? [bytes / 1000, "kB"] : [bytes / 1_000_000, "MB"];
+  return `${value.toLocaleString("id-ID", { maximumFractionDigits: 1 })} ${unit}`;
+}
+
+/** What a stored content type is called on the page. */
+export function fileTypeLabel(contentType: string): string {
+  return contentType === "application/pdf" ? "PDF" : contentType === "image/png" ? "PNG" : contentType === "image/webp" ? "WebP" : "JPEG";
+}
+
+/** The detail as the page has it: the API's `GET /:id` has the three added fields, the answer of a review and older callers do not. */
+export type ProfileSource = ApplicationDetail & Partial<Pick<ApplicationWithFiles, "formVersion" | "files" | "canOpenFiles">>;
+
 /** The sections of the detail page, in the order of the legacy one. */
-export function profileSections(application: ApplicationDetail): ProfileSection[] {
+export function profileSections(application: ProfileSource): ProfileSection[] {
   const fd = dict(application.formData);
+  // Version 3 answers hold uploads, not links: the Worker says which version it is; without its word the answers do.
+  const uploads = (application.formVersion !== undefined ? application.formVersion : fd?.formVersion) === 3;
+  const filesBySlot = new Map<SlotId, ApplicationFile[]>();
+  for (const file of application.files ?? []) filesBySlot.set(file.slot, [...(filesBySlot.get(file.slot) ?? []), file]);
+  /** One row of the files of a slot: what is there, or "—" when the applicant uploaded nothing to it. */
+  const slotRow = (id: SlotId): ProfileRow => {
+    const files = filesBySlot.get(id) ?? [];
+    return row(slotLabel(id), files.length > 0 ? { type: "files", applicationId: application.id, files, canOpen: application.canOpenFiles === true } : { type: "missing" }, true);
+  };
   const identity = dict(fd?.identity);
   const household = dict(fd?.household);
   const housing = dict(fd?.housing);
@@ -161,8 +188,16 @@ export function profileSections(application: ApplicationDetail): ProfileSection[
     });
   }
 
-  // ------------------------------------------- Berkas (the links the applicant pasted)
-  if (documents) {
+  // ------------------------------------------- Berkas (uploads, version 3)
+  if (uploads) {
+    const dtksRegistered = documents?.dtksRegistered === true;
+    sections.push({
+      id: "berkas",
+      title: "Berkas",
+      rows: [plain("Terdaftar DTKS", yesNo(dtksRegistered)), ...slotsOfStep("documents").filter((id) => id !== "dtks" || dtksRegistered).map(slotRow)],
+    });
+  } else if (documents) {
+    // ------------------------------------------- Berkas (the links the applicant pasted, version 2)
     sections.push({
       id: "berkas",
       // The legacy title was "Berkas Pendaftaran", the name of a menu now called Pusat Dokumen (docs/cloudflare/admin-ia.md, 3.4).
@@ -186,7 +221,13 @@ export function profileSections(application: ApplicationDetail): ProfileSection[
   }
 
   // ------------------------------------------------------------------ Marketing
-  if (marketing) {
+  if (uploads) {
+    sections.push({
+      id: "marketing",
+      title: "Bukti Marketing",
+      rows: [row("Instagram", { type: "instagram", username: text(marketing?.instagramUsername) }), ...slotsOfStep("marketing").map(slotRow)],
+    });
+  } else if (marketing) {
     sections.push({
       id: "marketing",
       title: "Bukti Marketing",

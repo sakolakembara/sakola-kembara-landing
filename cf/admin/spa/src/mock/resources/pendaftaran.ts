@@ -1,5 +1,6 @@
 import type { BatchDetail, BatchItem, BatchListed } from "~/pages/batches/model";
-import type { ApplicationDetail, ApplicationListed, ApplicationStatus } from "~/pages/applications/model";
+import type { SlotId } from "@shared/application-form/slots";
+import type { ApplicationDetail, ApplicationFile, ApplicationListed, ApplicationStatus, ApplicationWithFiles } from "~/pages/applications/model";
 import { REVOCATION_NOTES_MIN, STATUSES } from "~/pages/applications/model";
 import { CATEGORIES, CONTENT_TYPES, type ResourceItem } from "~/pages/resources/model";
 import type { AnyMockResource, MockResource, MockRowBase } from "../resources";
@@ -17,7 +18,8 @@ const DAY = 24 * 60 * 60 * 1000;
 const iso = (offset: number) => new Date(Date.now() + offset).toISOString();
 
 type BatchRow = BatchItem & MockRowBase;
-type ApplicationRow = ApplicationDetail & MockRowBase;
+/** What the store keeps of an application: the answers and the files. `canOpenFiles` is the caller's, so it is added when the detail is answered. */
+type ApplicationRow = Omit<ApplicationWithFiles, "canOpenFiles"> & MockRowBase;
 
 interface World {
   batches: BatchRow[];
@@ -81,7 +83,7 @@ function seedWorld(): World {
   ];
 
   let n = 0;
-  const person = (batchId: string, status: ApplicationStatus, name: string, over: Partial<ApplicationDetail> = {}): ApplicationRow => {
+  const person = (batchId: string, status: ApplicationStatus, name: string, over: Partial<ApplicationRow> = {}): ApplicationRow => {
     n += 1;
     const submittedAt = iso(-(40 - n) * DAY);
     return {
@@ -96,6 +98,8 @@ function seedWorld(): World {
       motivation: null,
       economicBackground: null,
       formData: fullForm(name),
+      formVersion: 2,
+      files: [],
       status,
       reviewNotes: status === "accepted" ? "Berkas lengkap, wawancara baik." : status === "rejected" ? "Tidak memenuhi syarat penghasilan." : null,
       reviewedAt: status === "pending" ? null : iso(-5 * DAY),
@@ -106,8 +110,14 @@ function seedWorld(): World {
     };
   };
   const applications: ApplicationRow[] = [
-    person("mock-batch-2026", "pending", "Siti Aminah"),
-    person("mock-batch-2026", "pending", "Budi Santoso"),
+    // Version 3: the applicant uploaded their documents (nothing is stored here: the files are metadata, and the links open nothing in the mock).
+    person("mock-batch-2026", "pending", "Siti Aminah", {
+      formData: fullFormV3("Siti Aminah"),
+      formVersion: 3,
+      files: mockFiles(["father-income", "electricity-bill", "electricity-bill", "family-card", "parent-permission", "self-photo", "dtks", "house-photos", "house-photos", "house-photos", "vehicle-photos", "marketing-follow-proof", "marketing-broadcast-proof", "marketing-broadcast-proof", "marketing-twibbon-proof"]),
+    }),
+    // Version 3 with most required slots empty: what "—" looks like.
+    person("mock-batch-2026", "pending", "Budi Santoso", { formData: fullFormV3("Budi Santoso", false), formVersion: 3, files: mockFiles(["family-card", "self-photo"]) }),
     person("mock-batch-2026", "under_review", "Ani Lestari"),
     person("mock-batch-2026", "accepted", "Dewi Rahma"),
     person("mock-batch-2026", "rejected", "Eko Prasetyo"),
@@ -123,6 +133,30 @@ function seedWorld(): World {
     person("mock-batch-2024", "rejected", "Okta Ramadhan"),
   ];
   return { batches, applications };
+}
+
+const PDF_SLOTS: readonly SlotId[] = ["electricity-bill", "family-card", "parent-permission", "dtks"];
+
+/** Metadata of uploaded files, one per entry of `slots` (a slot twice is two files): sizes and types of a phone's photos and a few PDFs. */
+function mockFiles(slots: SlotId[]): ApplicationFile[] {
+  return slots.map((slot, index) => {
+    const pdf = PDF_SLOTS.includes(slot);
+    return {
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      slot,
+      contentType: pdf ? "application/pdf" : index % 3 === 0 ? "image/png" : "image/jpeg",
+      size: pdf ? 400_000 + index * 37_000 : 800_000 + index * 91_000,
+      width: pdf ? null : 1600,
+      height: pdf ? null : 1200,
+      uploadedAt: iso(-(20 - index) * 60 * 60 * 1000),
+    };
+  });
+}
+
+/** The answers of a version 3 application: the same buckets as version 2, but a document and a proof is a file, not a link. */
+function fullFormV3(name: string, dtksRegistered = true) {
+  const { identity, household, housing, organizations, interview } = fullForm(name);
+  return { formVersion: 3, identity, household, housing, organizations, documents: { dtksRegistered }, marketing: { instagramUsername: "contoh.siswa" }, interview };
 }
 
 function fullForm(name: string) {
@@ -307,7 +341,7 @@ const applicationsMock: MockResource<ApplicationRow> = {
   area: "pendaftaran",
   seed: () => world.applications,
   parse: () => ({ ok: false, fields: {} }),
-  custom({ method, rest, url, init, rows }) {
+  custom({ method, rest, url, init, rows, access }) {
     if (rest === "") {
       if (method !== "GET") return failure(404, "not_found");
       const params = url.searchParams;
@@ -338,11 +372,20 @@ const applicationsMock: MockResource<ApplicationRow> = {
       return json(envelope(items, url));
     }
 
-    const [rawId, verb] = rest.split("/");
+    const [rawId, verb, third] = rest.split("/");
     const application = rows.find((row) => row.id === decodeURIComponent(rawId ?? ""));
     if (verb === undefined) {
       if (method !== "GET") return failure(404, "not_found");
-      return application ? json({ item: application }, 200, { ETag: `"${application.updatedAt}"` }) : failure(404, "not_found", NOT_FOUND);
+      // The files and the right to open them are the detail's (docs/cloudflare/portal-api.md, 12.1): opening and purging need write.
+      return application ? json({ item: { ...application, canOpenFiles: access === "write" } }, 200, { ETag: `"${application.updatedAt}"` }) : failure(404, "not_found", NOT_FOUND);
+    }
+    // The manual purge of the files of an application: `{ confirm: true }` or nothing happens.
+    if (verb === "files" && third === "purge" && method === "POST") {
+      if (!application) return failure(404, "not_found");
+      if (bodyOf(init)?.confirm !== true) return failure(400, "invalid", INVALID, { fields: { confirm: "Isian belum benar." } });
+      const purged = application.files.length;
+      application.files = [];
+      return json({ purged, pending: 0 });
     }
     if (verb !== "status" || method !== "POST") return failure(404, "not_found");
 
@@ -367,7 +410,9 @@ const applicationsMock: MockResource<ApplicationRow> = {
     application.reviewNotes = notes || null;
     application.reviewedAt = new Date().toISOString();
     application.updatedAt = new Date(Math.max(Date.now(), Date.parse(application.updatedAt) + 1)).toISOString();
-    return json({ item: application }, 200, { ETag: `"${application.updatedAt}"` });
+    // The answer of a review has none of the three fields of the detail (the Worker's does not either), and the page keeps what it had.
+    const { formVersion: _version, files: _files, ...reviewed } = application;
+    return json({ item: reviewed }, 200, { ETag: `"${application.updatedAt}"` });
   },
 };
 
