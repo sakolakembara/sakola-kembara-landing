@@ -14,6 +14,7 @@ import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
 import { pendaftaranSpaChecks } from "./negative-checks-spa-pendaftaran.mjs";
 import { blogSpaChecks } from "./negative-checks-spa-blog.mjs";
 import { portalSpaChecks } from "./negative-checks-spa-portal.mjs";
+import { portalFilesSpaChecks } from "./negative-checks-portal-files.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -38,6 +39,10 @@ const checks = [
   // The student portal's SPA (SAKEM-083): scripts/negative-checks-spa-portal.mjs. Its checks run the portal's own tests
   // (`config` names portal-spa/vitest.config.ts).
   ...portalSpaChecks,
+
+  // The applicants' private files (SAKEM-083, P4): scripts/negative-checks-portal-files.mjs (the admin's detail, the shared
+  // XMLHttpRequest, and the portal's file client and field; the portal's tests run with `config`).
+  ...portalFilesSpaChecks,
 
   // Who may see and do what
   {

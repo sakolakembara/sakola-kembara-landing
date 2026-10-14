@@ -19,6 +19,7 @@ import { kontenMiscChecks } from "./negative-checks-konten-misc.mjs";
 import { pendaftaranChecks } from "./negative-checks-pendaftaran.mjs";
 import { blogChecks } from "./negative-checks-blog.mjs";
 import { portalFoundationChecks } from "./negative-checks-portal-foundation.mjs";
+import { portalFilesChecks } from "./negative-checks-portal-files.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -57,6 +58,9 @@ const checks = [
 
   // The student portal's foundation (SAKEM-083): scripts/negative-checks-portal-foundation.mjs.
   ...portalFoundationChecks,
+
+  // The applicants' private files (SAKEM-083, P4): scripts/negative-checks-portal-files.mjs.
+  ...portalFilesChecks,
 
   // ---------------------------------------------------------------- auth
   {
