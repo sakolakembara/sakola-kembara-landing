@@ -49,7 +49,8 @@ describe("headers and the JSON 404", () => {
   });
 
   test("an unknown path under /portal/api is the ordinary JSON 404, and so are paths outside it (nothing else lives in this script)", async () => {
-    for (const path of ["/portal/api", "/portal/api/", "/portal/api/nothing-here", "/portal/api/overview", "/portal/api/applications", "/portal/status", "/portal", "/", "/api/me", "/api/config", "/api/admin/users"]) {
+    // (`/portal/api/overview` and `/portal/api/applications` were in this list while the skeleton had no routes; P1b mounted them, see test/portal-applications.test.ts.)
+    for (const path of ["/portal/api", "/portal/api/", "/portal/api/nothing-here", "/portal/status", "/portal", "/", "/api/me", "/api/config", "/api/admin/users"]) {
       const res = await portalCall(path);
       expect(res.status, path).toBe(404);
       expect(await res.json(), path).toEqual({ error: "not_found" });

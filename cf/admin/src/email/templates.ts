@@ -1,8 +1,9 @@
 // Email copy, Indonesian, from the legacy app (lib/email.ts) and its voice
 // (docs/context/tone-of-voice.md: "kamu", formal and warm). Every message has an
 // HTML and a plain-text body. The subjects and paragraphs of the verification
-// and reset emails are the legacy ones; the admin invite and the
-// "account already exists" notice are new (there was no equivalent).
+// and reset emails are the legacy ones; the admin invite, the "account already
+// exists" notice and the confirmation of a submitted application are new (the
+// legacy app sent none of them).
 //
 // A `url` here is a live link with a token in it. Templates only place it in
 // the body; nothing in this file logs.
@@ -127,6 +128,38 @@ export function accountExistsEmail(to: string, url: string): EmailMessage {
       ctaLabel: "Masuk",
       url,
       footer: "Jika bukan kamu yang mencoba mendaftar, abaikan saja email ini. Akun kamu tetap aman.",
+    }),
+  };
+}
+
+const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+/** Indonesia's western time zone has no daylight saving: a fixed offset, so no `Intl` is needed (it costs CPU in a Worker). */
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/** "13 Oktober 2026 pukul 10.40 WIB" for an instant in epoch milliseconds. */
+export function formatWib(epochMs: number): string {
+  const d = new Date(epochMs + WIB_OFFSET_MS);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} pukul ${pad(d.getUTCHours())}.${pad(d.getUTCMinutes())} WIB`;
+}
+
+/**
+ * Sent after a student's application is saved (best effort: nothing depends on it, so a failure changes nothing).
+ * It says that the application arrived, when, and where the result will appear. It carries NO answer, no file and no
+ * document name, and no token: its one link is the status page. `batchName` is the admin's label of the batch, never
+ * something the student typed; it is escaped anyway and kept out of the subject.
+ */
+export function applicationReceivedEmail(to: string, details: { batchName: string; receivedAt: number; url: string }): EmailMessage {
+  return {
+    to,
+    purpose: "application-received",
+    subject: "Pendaftaran Sakola Kembara kamu sudah kami terima",
+    ...render({
+      heading: "Pendaftaran kamu sudah kami terima",
+      paragraph: `Pendaftaran kamu untuk ${details.batchName} sudah kami terima pada ${formatWib(details.receivedAt)}. Kami akan mengabari hasilnya di halaman Status Pendaftaran setelah panitia selesai memutuskan seluruh pendaftar batch ini. Kamu tidak perlu mengirim ulang berkas.`,
+      ctaLabel: "Buka Status Pendaftaran",
+      url: details.url,
+      footer: "Kamu menerima email ini karena baru saja mengirim pendaftaran di Portal Siswa Sakola Kembara. Hasil seleksi tidak dikirim lewat email: kamu bisa melihatnya di halaman Status Pendaftaran setelah diumumkan.",
     }),
   };
 }
