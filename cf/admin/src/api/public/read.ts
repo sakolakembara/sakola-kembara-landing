@@ -1,21 +1,9 @@
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context } from "hono";
-import * as schema from "../../db/schema";
 import type { Bindings } from "../../env";
-import { pageWindow, parseIntParam, resolvePageSize } from "../../public/blog-rules";
+import { pageWindow, parseIntParam, relatedWindow, resolvePageSize } from "../../public/blog-rules";
 import { articleTag, CACHE_ANNOUNCEMENT, CACHE_CONTENT, CACHE_NONE, CACHE_NOT_FOUND, TAGS } from "../../public/cache";
-import {
-  articleQuery,
-  blogPageQuery,
-  currentAnnouncementQuery,
-  featuredPostQuery,
-  newestOthersQuery,
-  publishedCountQuery,
-  relatedQuery,
-  reportsQuery,
-  resourcesQuery,
-  teamQuery,
-} from "../../public/queries";
+import { batchAll, publicQueries } from "../../public/prepared";
+import { currentAnnouncementQuery } from "../../public/queries";
 import {
   serializeAnnouncement,
   serializeBlogArticle,
@@ -25,6 +13,7 @@ import {
   serializeTeamMember,
 } from "../../public/serializers";
 import type { AnnouncementResponse, BlogArticleResponse, BlogListResponse, ReportsResponse, ResourcesResponse, TeamResponse } from "../../public/types";
+import { getDb } from "../../db/client";
 
 // The unauthenticated, read-only half of the public API (contract:
 // docs/cloudflare/content-api.md). Mounted under /api/public on the internal
@@ -61,22 +50,19 @@ publicReadRoutes.onError((error, c) => {
 });
 
 publicReadRoutes.get("/team", async (c) => {
-  const db = drizzle(c.env.DB, { schema });
-  const rows = await teamQuery(db);
+  const rows = await publicQueries(c.env.DB).team.all();
   const body: TeamResponse = { members: rows.map(serializeTeamMember) };
   return ok(c, body, CACHE_CONTENT, TAGS.team);
 });
 
 publicReadRoutes.get("/reports", async (c) => {
-  const db = drizzle(c.env.DB, { schema });
-  const rows = await reportsQuery(db);
+  const rows = await publicQueries(c.env.DB).reports.all();
   const body: ReportsResponse = { reports: rows.map(serializeReport) };
   return ok(c, body, CACHE_CONTENT, TAGS.reports);
 });
 
 publicReadRoutes.get("/resources", async (c) => {
-  const db = drizzle(c.env.DB, { schema });
-  const rows = await resourcesQuery(db);
+  const rows = await publicQueries(c.env.DB).resources.all();
   const body: ResourcesResponse = { resources: rows.map(serializeResource) };
   return ok(c, body, CACHE_CONTENT, TAGS.resources);
 });
@@ -86,14 +72,14 @@ publicReadRoutes.get("/resources", async (c) => {
 // staleness. A D1 failure is a 500, never `{ announcement: null }`: a cache
 // must not store a false "nothing is announced".
 publicReadRoutes.get("/announcements/current", async (c) => {
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const [row] = await currentAnnouncementQuery(db, new Date());
   const body: AnnouncementResponse = { announcement: row ? serializeAnnouncement(row) : null };
   return ok(c, body, CACHE_ANNOUNCEMENT, TAGS.announcement);
 });
 
 publicReadRoutes.get("/blog", async (c) => {
-  const db = drizzle(c.env.DB, { schema });
+  const queries = publicQueries(c.env.DB);
   const pageSize = resolvePageSize(c.req.query("pageSize"));
   const requested = parseIntParam(c.req.query("page"));
 
@@ -101,17 +87,17 @@ publicReadRoutes.get("/blog", async (c) => {
   // page asked for, in one batch. The page is clamped once the count is known;
   // only an out-of-range page costs a second query.
   const guessedPage = Math.min(Math.max(1, requested ?? 1), MAX_GUESSED_PAGE);
-  const [featuredRows, countRows, guessedRows] = await db.batch([
-    featuredPostQuery(db),
-    publishedCountQuery(db),
-    blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize),
+  const [featuredRows, countRows, guessedRows] = await batchAll(c.env.DB, [
+    [queries.featured],
+    [queries.count],
+    [queries.page, { limit: pageSize, offset: (guessedPage - 1) * pageSize }],
   ]);
 
   const featured = featuredRows[0] ?? null;
   // The grid is every published article but the featured one.
   const total = Math.max(0, (countRows[0]?.n ?? 0) - 1);
   const span = pageWindow(total, pageSize, requested);
-  const rows = span.page === guessedPage ? guessedRows : await blogPageQuery(db, pageSize, span.offset);
+  const rows = span.page === guessedPage ? guessedRows : await queries.page.all({ limit: pageSize, offset: span.offset });
 
   const body: BlogListResponse = {
     featured: featured ? serializeBlogSummary(featured) : null,
@@ -128,15 +114,15 @@ publicReadRoutes.get("/blog/:slug", async (c) => {
   const slug = c.req.param("slug");
   if (slug.length > SLUG_MAX_LENGTH || !SLUG_PATTERN.test(slug)) return notFound(c);
 
-  const db = drizzle(c.env.DB, { schema });
-  const [row] = await articleQuery(db, slug);
+  const queries = publicQueries(c.env.DB);
+  const [row] = await queries.article.all({ slug });
   // Unknown and unpublished are the same answer.
   if (!row) return notFound(c);
 
-  const target = { id: row.id, category: row.category, publishedAtMs: row.publishedAt?.getTime() ?? 0 };
-  let related = await relatedQuery(db, target);
+  const { from, to } = relatedWindow(row.publishedAt?.getTime() ?? 0);
+  let related = await queries.related.all({ id: row.id, category: row.category, from, to });
   // Nothing in the same category or time window: the newest others (second query only in that case).
-  if (related.length === 0) related = await newestOthersQuery(db, row.id);
+  if (related.length === 0) related = await queries.newestOthers.all({ id: row.id });
 
   const body: BlogArticleResponse = { article: serializeBlogArticle(row), related: related.map(serializeBlogSummary) };
   // Tagged with the list's tag too: an edit can change the card, not only the article.

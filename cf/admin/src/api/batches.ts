@@ -1,5 +1,4 @@
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { batchQuery, batchRecentApplicantsQuery, batchStatusCountsQuery, batchesPageQuery, batchesTotalQuery } from "../admission/queries";
@@ -7,9 +6,9 @@ import { requireArea } from "../auth/guard";
 import type { AppEnv } from "../context";
 import { batchPhase, type BatchPhase } from "../dashboard/payload";
 import { undecidedApplicationsQuery } from "../dashboard/queries";
-import * as schema from "../db/schema";
 import { admissionBatches, type ApplicationStatus } from "../db/schema";
 import { crudHandlers, fail, notFound, pageOf, parseListQuery, withAudit, type CrudDeps } from "./crud";
+import { getDb } from "../db/client";
 
 // Batch (area `pendaftaran`): the yearly admission batches. A port of app/(admin)/admin/batches/*.
 //
@@ -108,7 +107,7 @@ export interface BatchDetail extends ReturnType<typeof presentBatch> {
 }
 
 async function loadDetail(c: Context<AppEnv>, id: string, now = new Date()): Promise<BatchDetail | null> {
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   // One round trip: the batch, its counts per status, its newest applicants.
   const [rows, grouped, recent] = await db.batch([batchQuery(db, id), batchStatusCountsQuery(db, id), batchRecentApplicantsQuery(db, id, RECENT_APPLICANTS)]);
   const row = rows[0];
@@ -178,7 +177,7 @@ export function createBatchRoutes(deps?: CrudDeps) {
     });
     if (!parsed.ok) return parsed.response;
     const { query } = parsed;
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const [rows, totals, waiting] = await db.batch([batchesPageQuery(db, query), batchesTotalQuery(db, query), undecidedApplicationsQuery(db)]);
     const byBatch = new Map<string, { pending: number; underReview: number }>();
     for (const entry of waiting) {
@@ -222,7 +221,7 @@ export function createBatchRoutes(deps?: CrudDeps) {
     if (refusal) return fail(c, 409, refusal.code, refusal.message, refusal.extra);
 
     const user = c.get("user");
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const now = new Date();
     // The same rules are in the WHERE, so an applicant moved back to "pending" a moment ago, or a second publish,
     // cannot slip through the check above: the write matches no row and nothing is written, audit row included.
@@ -271,7 +270,7 @@ export function createBatchRoutes(deps?: CrudDeps) {
     }
 
     const user = c.get("user");
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const [unpublished] = await withAudit(
       db,
       user,

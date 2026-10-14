@@ -1,9 +1,8 @@
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context } from "hono";
-import * as schema from "../../db/schema";
 import type { Bindings } from "../../env";
 import { CACHE_NONE } from "../../public/cache";
-import { recordClick, shortlinkQuery } from "../../public/shortlink";
+import { publicQueries } from "../../public/prepared";
+import { recordClick } from "../../public/shortlink";
 import { isSafeTarget, isShortlinkSlug } from "../../shortlinks/rules";
 
 // GET /api/public/shortlinks/{slug}: where a shortlink goes, for the site's Worker (cf/web), which turns the
@@ -44,8 +43,7 @@ publicShortlinkRoutes.get("/shortlinks/:slug", async (c) => {
   // is answered without touching D1.
   if (!isShortlinkSlug(slug)) return notFound(c);
 
-  const db = drizzle(c.env.DB, { schema });
-  const [row] = await shortlinkQuery(db, slug);
+  const [row] = await publicQueries(c.env.DB).shortlink.all({ slug });
   // Unknown and inactive are the same answer. A target the admin could not have stored is not followed either.
   if (!row || !isSafeTarget(row.targetUrl)) return notFound(c);
 

@@ -1,12 +1,11 @@
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { encodeCursor } from "../audit/cursor";
 import { projectDetails } from "../audit/present";
 import { auditPageQuery, parseAuditFilters } from "../audit/query";
 import { requireArea } from "../auth/guard";
 import type { AppEnv } from "../context";
-import * as schema from "../db/schema";
 import { invalidQuery, parsePage, reader } from "./crud";
+import { getDb } from "../db/client";
 
 // Aktivitas (area `sistem`, super_admin only): the audit log, read-only
 // (docs/cloudflare/admin-sistem.md). Port of app/(admin)/admin/audit/page.tsx.
@@ -42,7 +41,7 @@ auditRoutes.get("/", requireArea("sistem", "read"), async (c) => {
   if (!parsed.ok) return invalidQuery(c, parsed.param);
 
   // One more than a page: whether there is a next page, without counting anything.
-  const rows = await auditPageQuery(drizzle(c.env.DB, { schema }), parsed.filters, pageSize + 1);
+  const rows = await auditPageQuery(getDb(c.env.DB), parsed.filters, pageSize + 1);
 
   const page = rows.slice(0, pageSize);
   const last = page.at(-1);

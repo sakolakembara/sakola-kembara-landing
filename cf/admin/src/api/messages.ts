@@ -1,5 +1,4 @@
 import { and, count, eq, isNotNull } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { requireArea } from "../auth/guard";
@@ -7,6 +6,7 @@ import type { AppEnv } from "../context";
 import { isUnreadMessage, unreadMessagesQuery } from "../dashboard/queries";
 import * as schema from "../db/schema";
 import { crudRoutes, notFound, withAudit, type Filter } from "./crud";
+import { getDb } from "../db/client";
 
 // Pesan (area `komunikasi`): the inbox of the public contact form (`POST /api/public/contact`, which is the only
 // way a message is made). Behaviour, rules and endpoints: docs/cloudflare/admin-komunikasi.md.
@@ -77,7 +77,7 @@ export function createMessageRoutes() {
 
   // Before `/:id`, which would take "counts" for an id.
   app.get("/counts", requireArea(AREA, "read"), async (c) => {
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     // One round trip. The unread count is the dashboard's own statement; the total reads the index entries.
     const [unread, total] = await db.batch([unreadMessagesQuery(db), db.select({ n: count() }).from(schema.contactMessages)]);
     return c.json({ total: total[0]?.n ?? 0, unread: unread[0]?.n ?? 0 });
@@ -111,7 +111,7 @@ export function createMessageRoutes() {
     return async (c: Context<AppEnv>) => {
       const id = c.req.param("id") ?? "";
       if (id.length === 0 || id.length > MAX_ID_LENGTH) return notFound(c);
-      const db = drizzle(c.env.DB, { schema });
+      const db = getDb(c.env.DB);
       const [rows] = await withAudit(db, c.get("user"), { action: `contact_message.${to}`, resourceType: "contact_message", resourceId: id }, [
         db
           .update(schema.contactMessages)

@@ -1,12 +1,11 @@
 import { asc, count, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireArea } from "../auth/guard";
 import type { AppEnv } from "../context";
-import * as schema from "../db/schema";
 import { resourceCategory, resourceContentType, siteResources } from "../db/schema";
 import { crudHandlers, enumFilter, isAllowedFilePath, pageOf, parseListQuery, type CrudDeps } from "./crud";
+import { getDb } from "../db/client";
 
 // Pusat Dokumen (area `pendaftaran`; the legacy menu was "Berkas Pendaftaran"): the files, links and copy-able
 // texts of the public page /gabung-siswa/docs. A port of app/(admin)/admin/resources/*.
@@ -176,7 +175,7 @@ export function createResourceRoutes(deps?: CrudDeps) {
     if (!parsed.ok) return parsed.response;
     const { query } = parsed;
     const order = query.sort === "category" ? [categoryRank(), asc(siteResources.displayOrder), asc(siteResources.createdAt), asc(siteResources.id)] : query.order;
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const [rows, totals] = await db.batch([
       db.select().from(siteResources).where(query.where).orderBy(...order).limit(query.pageSize).offset(query.offset),
       db.select({ total: count() }).from(siteResources).where(query.where),

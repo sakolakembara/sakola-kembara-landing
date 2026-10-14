@@ -1,5 +1,4 @@
 import { and, count, eq, getTableColumns } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import type { AnySQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import { Hono, type Context } from "hono";
 import type { z } from "zod";
@@ -7,7 +6,6 @@ import { requireArea } from "../../auth/guard";
 import type { AdminArea } from "../../auth/permissions";
 import type { AppEnv, AuthUser } from "../../context";
 import type { AuditResourceType, CrudAction, CrudName } from "../../db/audit";
-import * as schema from "../../db/schema";
 import { notifyContentChanged, type ContentChange } from "../../public/purge";
 import { deleteUploadByPath } from "../../uploads/store";
 import { changedFields, withAudit } from "./audit";
@@ -15,6 +13,7 @@ import { etagOf, matches, nextVersion, readIfMatch } from "./concurrency";
 import { conflict, inUse, isForeignKeyViolation, isUniqueViolation, notFound, preconditionRequired, stale } from "./errors";
 import { pageOf, parseListQuery, type ListSpec } from "./pagination";
 import { parseBody } from "./validation";
+import { getDb } from "../../db/client";
 
 // One resource as five routes (docs/cloudflare/admin-crud.md#14-the-worker-kit).
 //
@@ -119,7 +118,7 @@ export function crudHandlers<TTable extends Table, TInput, TItem>(config: Resour
   };
 
   async function findRow(c: Context<AppEnv>, id: string): Promise<Row | null> {
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const rows = (await db.select().from(table).where(eq(idColumn, id)).limit(1)) as Row[];
     return rows[0] ?? null;
   }
@@ -171,7 +170,7 @@ export function crudHandlers<TTable extends Table, TInput, TItem>(config: Resour
       const parsed = parseListQuery(c, { ...config.list, id: idColumn });
       if (!parsed.ok) return parsed.response;
       const { query } = parsed;
-      const db = drizzle(c.env.DB, { schema });
+      const db = getDb(c.env.DB);
       // One round trip: the page and the total over the same WHERE.
       const [rows, totals] = await db.batch([
         db.select().from(table).where(query.where).orderBy(...query.order).limit(query.pageSize).offset(query.offset),
@@ -194,7 +193,7 @@ export function crudHandlers<TTable extends Table, TInput, TItem>(config: Resour
       if (!body.ok) return body.response;
       const user = c.get("user");
       const values = { ...(config.toRow(body.data, { user, mode: "create" }) as Row), id: crypto.randomUUID() };
-      const db = drizzle(c.env.DB, { schema });
+      const db = getDb(c.env.DB);
       let created: Row | undefined;
       try {
         const [rows] = await withAudit(
@@ -238,7 +237,7 @@ export function crudHandlers<TTable extends Table, TInput, TItem>(config: Resour
         return c.json({ item: present(before) });
       }
 
-      const db = drizzle(c.env.DB, { schema });
+      const db = getDb(c.env.DB);
       let updated: Row | undefined;
       try {
         // The version is in the WHERE too: two saves that read the same version cannot both win.
@@ -276,7 +275,7 @@ export function crudHandlers<TTable extends Table, TInput, TItem>(config: Resour
       if (precondition.present && (!current || !matches(precondition, current))) return stale(c);
 
       const user = c.get("user");
-      const db = drizzle(c.env.DB, { schema });
+      const db = getDb(c.env.DB);
       const where = precondition.present && versionColumn && current ? and(eq(idColumn, id), eq(versionColumn, current)) : eq(idColumn, id);
       let removed: unknown[];
       try {
