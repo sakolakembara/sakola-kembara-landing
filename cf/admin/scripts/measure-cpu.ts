@@ -1,8 +1,9 @@
 // Local CPU comparison of the admin Worker's hot routes, before and after a change (SAKEM-091).
 //
-//   pnpm measure:cpu                       the whole table (about 3 minutes)
+//   pnpm measure:cpu                       the whole table (about 15 minutes)
 //   pnpm measure:cpu -- --only me,blog     only the scenarios whose name contains one of these words
-//   pnpm measure:cpu -- --json out.json    also write the numbers (the default folder, .measure/, is git-ignored)
+//   pnpm measure:cpu -- --repeat 5         fresh processes per scenario for the edge-like numbers (default 3; the median of them)
+//   pnpm measure:cpu -- --json out.json    also write the numbers (the default folder, .measure/, is ignored by the repository)
 //   pnpm measure:cpu -- --rebuild          make the fixture database again
 //
 // It runs the REAL Worker code (the Hono apps, Better Auth, Drizzle, the serializers) in plain Node on a local
@@ -62,6 +63,10 @@ export const SCENARIOS: readonly Scenario[] = [
   { name: "me-signedin", app: "default", path: "/api/me", as: "super_admin", note: "GET /api/me, signed in" },
   { name: "dashboard-signedin", app: "default", path: "/api/dashboard", as: "super_admin", note: "GET /api/dashboard, signed in" },
   { name: "adminblog-signedin", app: "default", path: "/api/admin/blog", as: "editor_konten", note: "GET /api/admin/blog, signed in (editor)" },
+  { name: "messages-signedin", app: "default", path: "/api/admin/messages", as: "super_admin", note: "GET /api/admin/messages, signed in" },
+  { name: "shortlinks-signedin", app: "default", path: "/api/admin/shortlinks", as: "super_admin", note: "GET /api/admin/shortlinks, signed in" },
+  { name: "announcements-signedin", app: "default", path: "/api/admin/announcements", as: "super_admin", note: "GET /api/admin/announcements, signed in" },
+  { name: "team-signedin", app: "default", path: "/api/admin/team", as: "super_admin", note: "GET /api/admin/team, signed in" },
   { name: "signin-ok", app: "default", method: "POST", path: "/api/auth/sign-in/email", body: { email: "super-admin@example.test", password: "{password}" }, note: "POST sign-in, right password" },
   { name: "signin-wrong", app: "default", method: "POST", path: "/api/auth/sign-in/email", body: { email: "super-admin@example.test", password: "not-the-password-0000" }, note: "POST sign-in, wrong password" },
   { name: "pub-blog", app: "public", path: "/api/public/blog?page=1&pageSize=15", note: "PublicApi: blog list" },
@@ -112,6 +117,13 @@ async function child(name: string, regime: "cold" | "warm") {
   process.on("unhandledRejection", (reason) => {
     if (!(reason instanceof ReferenceError && /WebAssembly/.test(reason.message))) throw reason;
   });
+
+  // In workerd AsyncLocalStorage is native and always available; in Node the first use turns on promise hooks for the
+  // whole process, which costs every later `await`. Turn it on before anything is measured, so a build that uses it
+  // (the Worker does, for the shared Better Auth) is not charged for Node's start-up of it, and one that does not
+  // (a build from before) is measured under the same conditions.
+  const { AsyncLocalStorage } = await import("node:async_hooks");
+  new AsyncLocalStorage<number>().enterWith(1);
 
   const { createNodeD1 } = await import("./lib/node-d1");
   const work = mkdtempSync(path.join(tmpdir(), "sakem-cpu-"));
@@ -297,12 +309,29 @@ const median = (xs: number[]) => {
 };
 const fmt = (n: number | undefined) => (n === undefined ? "".padStart(7) : n.toFixed(2).padStart(7));
 
-function runChild(name: string, regime: "cold" | "warm"): ChildResult {
+function runChild(name: string, regime: "cold" | "warm", root: string = adminRoot): ChildResult {
   const nodeArgs = [...(regime === "cold" ? ["--jitless"] : []), "--no-warnings", "--import", "tsx", "--import", "./scripts/lib/register-stub.mjs", "scripts/measure-cpu.ts", "--child", name, regime];
-  const run = spawnSync(process.execPath, nodeArgs, { cwd: adminRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 10 * 60_000 });
+  const run = spawnSync(process.execPath, nodeArgs, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 10 * 60_000 });
   const marker = run.stdout.split("@@RESULT@@")[1];
   if (!marker) throw new Error(`${name} (${regime}) failed:\n${run.stdout.slice(-1500)}\n${run.stderr.slice(-1500)}`);
   return JSON.parse(marker) as ChildResult;
+}
+
+/** One fresh process is noisy (the first request above all): the edge-like numbers are the median of the fresh processes for "first" and "p50", and the worst of them for "max". */
+function summarize(colds: ChildResult[], warm: ChildResult) {
+  const sorted = [...warm.samples].sort((a, b) => a - b);
+  const hashes = warm.pbkdf.filter((x) => x > 0);
+  return {
+    status: colds[0]!.status,
+    statements: colds[0]!.statements,
+    bytes: colds[0]!.bytes,
+    first: median(colds.map((run) => run.samples[0]!)),
+    p50: median(colds.map((run) => median(run.samples.slice(2)))),
+    max: Math.max(...colds.map((run) => Math.max(...run.samples.slice(2)))),
+    warmP50: median(warm.samples),
+    warmP95: sorted[Math.floor(sorted.length * 0.95)]!,
+    pbkdf2: hashes.length > 0 ? median(hashes) : undefined,
+  };
 }
 
 async function main(argv: string[]) {
@@ -314,22 +343,39 @@ async function main(argv: string[]) {
   const onlyAt = argv.indexOf("--only");
   const words = onlyAt >= 0 ? argv[onlyAt + 1]!.split(",") : [];
   const picked = SCENARIOS.filter((s) => words.length === 0 || words.some((w) => s.name.includes(w)));
+  const repeatAt = argv.indexOf("--repeat");
+  const repeat = repeatAt >= 0 ? Number(argv[repeatAt + 1]) : 3;
+  // --compare DIR: another copy of cf/admin (an earlier commit, with this script copied into it) is measured with
+  // this one, process by process in turns, so the load of the machine falls on both alike. The table shows
+  // "before > after".
+  const compareAt = argv.indexOf("--compare");
+  const otherRoot = compareAt >= 0 ? path.resolve(argv[compareAt + 1]!) : null;
+  if (otherRoot && (!existsSync(path.join(otherRoot, ".measure/cpu-fixture.sqlite")) || argv.includes("--rebuild"))) {
+    const built = spawnSync(process.execPath, ["--no-warnings", "--import", "tsx", "scripts/measure-cpu.ts", "--rebuild", "--only", "none-such"], { cwd: otherRoot, encoding: "utf8" });
+    if (built.status !== 0) throw new Error(`could not build the fixture of ${otherRoot}:\n${built.stdout}${built.stderr}`);
+  }
 
-  console.log("ms of the Worker's own JavaScript per request (SQLite and native PBKDF2 subtracted); sql = statements per request");
-  console.log(`${"scenario".padEnd(20)} ${"status".padEnd(6)} ${"sql".padStart(3)} ${"bytes".padStart(7)} | edge-like: ${"first".padStart(7)} ${"p50".padStart(7)} ${"max".padStart(7)} | warm: ${"p50".padStart(7)} ${"p95".padStart(7)} | ${"pbkdf2".padStart(7)}`);
+  console.log("ms of the Worker's own JavaScript per request (SQLite and native PBKDF2 subtracted); sql = statements per request" + (otherRoot ? "; each cell is before > after" : ""));
+  const pair = (b: number | undefined, a: number | undefined) => (otherRoot ? `${fmt(b)} >${fmt(a)}` : fmt(a));
+  const width = otherRoot ? 16 : 7;
+  console.log(
+    `${"scenario".padEnd(20)} ${"status".padEnd(6)} ${"sql".padStart(3)} ${"bytes".padStart(7)} | edge-like: ${"first".padStart(width)} ${"p50".padStart(width)} ${"max".padStart(width)} | warm: ${"p50".padStart(width)} ${"p95".padStart(width)} | ${"pbkdf2".padStart(7)}`,
+  );
   const rows: Record<string, unknown>[] = [];
   for (const scenario of picked) {
-    const cold = runChild(scenario.name, "cold");
-    const warm = runChild(scenario.name, "warm");
-    const rest = cold.samples.slice(2);
-    const sorted = [...warm.samples].sort((a, b) => a - b);
-    const p95 = sorted[Math.floor(sorted.length * 0.95)]!;
-    const hashes = warm.pbkdf.filter((x) => x > 0);
-    const pbkdf = hashes.length > 0 ? median(hashes) : undefined;
+    const before: ChildResult[] = [];
+    const after: ChildResult[] = [];
+    for (let i = 0; i < repeat; i++) {
+      if (otherRoot) before.push(runChild(scenario.name, "cold", otherRoot));
+      after.push(runChild(scenario.name, "cold"));
+    }
+    const beforeWarm = otherRoot ? runChild(scenario.name, "warm", otherRoot) : null;
+    const now = summarize(after, runChild(scenario.name, "warm"));
+    const old = otherRoot ? summarize(before, beforeWarm!) : null;
     console.log(
-      `${scenario.name.padEnd(20)} ${String(cold.status).padEnd(6)} ${String(cold.statements).padStart(3)} ${String(cold.bytes).padStart(7)} |            ${fmt(cold.samples[0])} ${fmt(median(rest))} ${fmt(Math.max(...rest))} |       ${fmt(median(warm.samples))} ${fmt(p95)} | ${fmt(pbkdf)}`,
+      `${scenario.name.padEnd(20)} ${String(now.status).padEnd(6)} ${String(now.statements).padStart(3)} ${String(now.bytes).padStart(7)} |            ${pair(old?.first, now.first)} ${pair(old?.p50, now.p50)} ${pair(old?.max, now.max)} |       ${pair(old?.warmP50, now.warmP50)} ${pair(old?.warmP95, now.warmP95)} | ${fmt(now.pbkdf2)}`,
     );
-    rows.push({ scenario: scenario.name, status: cold.status, statements: cold.statements, bytes: cold.bytes, coldFirst: cold.samples[0], coldP50: median(rest), coldMax: Math.max(...rest), warmP50: median(warm.samples), warmP95: p95, pbkdf2: pbkdf ?? null });
+    rows.push({ scenario: scenario.name, status: now.status, statements: now.statements, bytes: now.bytes, before: old, after: now });
   }
   const jsonAt = argv.indexOf("--json");
   if (jsonAt >= 0) {

@@ -1,10 +1,14 @@
 // Local CPU comparison of the site Worker's pages, before and after a change (SAKEM-091).
 //
-//   pnpm build && pnpm measure:cpu                 the whole table (about 3 minutes)
+//   pnpm build && pnpm measure:cpu                 the whole table (about 10 minutes)
 //   pnpm measure:cpu -- --only blog,tim            only the scenarios whose name contains one of these words
+//   pnpm measure:cpu -- --repeat 5                 fresh processes per scenario for the edge-like numbers (default 3; the median of them)
+//   pnpm measure:cpu -- --compare-server DIR       measure another build in turns with this one, and print before > after
+//   pnpm measure:cpu -- --dump DIR                 no timing: write every answer (body and headers) to DIR, to compare two builds byte for byte
 //   pnpm measure:cpu -- --server .measure/baseline-server    measure another build (a copy of dist/server made earlier)
 //   pnpm measure:cpu -- --cache hit                the production path: the API answers come from a warm Cache API
-//   pnpm measure:cpu -- --json out.json            also write the numbers (the default folder, .measure/, is git-ignored)
+//   pnpm measure:cpu -- --page-cache 30            with PAGE_CACHE_SECONDS=30: the first request renders, the next ones are copies
+//   pnpm measure:cpu -- --json out.json            also write the numbers (the default folder, .measure/, is ignored by the repository)
 //
 // It runs the BUILT Worker (dist/server/entry.mjs: Astro, the middleware, the pages, the components) in plain Node,
 // with a stand-in for `cloudflare:workers`, a static-assets binding that finds nothing, and an `API` service binding
@@ -178,6 +182,8 @@ async function child(name, regime, serverDir, cacheMode) {
   };
   // The console is part of what a Worker does per request, but its cost belongs to the runtime: keep it quiet.
   console.warn = () => {};
+  // MEASURE_PAGE_CACHE=30: the page copy in memory is on (PAGE_CACHE_SECONDS); the first request renders and stores it.
+  if (process.env.MEASURE_PAGE_CACHE) env.PAGE_CACHE_SECONDS = process.env.MEASURE_PAGE_CACHE;
   if (cacheMode === 'hit') globalThis.caches = { default: memoryCache() };
 
   const entry = pathToFileURL(path.resolve(webRoot, serverDir, 'entry.mjs')).href;
@@ -262,6 +268,7 @@ async function main(argv) {
   const option = (flag, fallback) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : fallback);
   const serverDir = option('--server', 'dist/server');
   const cacheMode = option('--cache', 'none');
+  if (option('--page-cache', '')) process.env.MEASURE_PAGE_CACHE = option('--page-cache');
   if (!existsSync(path.join(webRoot, serverDir, 'entry.mjs'))) {
     console.error(`${serverDir}/entry.mjs is missing: run \`pnpm build\` first.`);
     process.exit(2);
@@ -284,19 +291,45 @@ async function main(argv) {
     return;
   }
 
-  console.log(`build ${serverDir}, Cache API: ${cacheMode === 'hit' ? 'warm (a custom zone)' : 'none (workers.dev)'}; ms of the Worker's own JavaScript per request, the render included`);
-  console.log(`${'scenario'.padEnd(20)} ${'status'.padEnd(6)} ${'bytes'.padStart(7)} | edge-like: ${'first'.padStart(7)} ${'p50'.padStart(7)} ${'max'.padStart(7)} | warm: ${'p50'.padStart(7)} ${'p95'.padStart(7)}`);
+  // --compare-server DIR: another build (a copy of dist/server made earlier) is measured with this one, process by
+  // process in turns, so the load of the machine falls on both alike. The table shows "before > after".
+  const otherServer = option('--compare-server', '');
+  console.log(
+    `build ${serverDir}${otherServer ? ` (after) against ${otherServer} (before)` : ''}, Cache API: ${cacheMode === 'hit' ? 'warm (a custom zone)' : 'none (workers.dev)'}, page copy: ${process.env.MEASURE_PAGE_CACHE ? `${process.env.MEASURE_PAGE_CACHE} s` : 'off'}; ms of the Worker's own JavaScript per request, the render included${otherServer ? '; each cell is before > after' : ''}`,
+  );
+  const width = otherServer ? 16 : 7;
+  const pair = (b, a) => (otherServer ? `${fmt(b)} >${fmt(a)}` : fmt(a));
+  console.log(`${'scenario'.padEnd(20)} ${'status'.padEnd(6)} ${'bytes'.padStart(7)} | edge-like: ${'first'.padStart(width)} ${'p50'.padStart(width)} ${'max'.padStart(width)} | warm: ${'p50'.padStart(width)} ${'p95'.padStart(width)}`);
   const rows = [];
-  for (const scenario of picked) {
-    const cold = runChild(scenario.name, 'cold', serverDir, cacheMode);
-    const warm = runChild(scenario.name, 'warm', serverDir, cacheMode);
-    const rest = cold.samples.slice(2);
+  // One fresh process is noisy (the first request above all): the edge-like numbers are the median of `--repeat`
+  // fresh processes (default 3) for "first" and "p50", and the worst of them for "max".
+  const repeat = Number(option('--repeat', '3'));
+  const summarize = (colds, warm) => {
     const sorted = [...warm.samples].sort((a, b) => a - b);
-    const p95 = sorted[Math.floor(sorted.length * 0.95)];
+    return {
+      status: colds[0].status,
+      bytes: colds[0].bytes,
+      first: median(colds.map((run) => run.samples[0])),
+      p50: median(colds.map((run) => median(run.samples.slice(2)))),
+      max: Math.max(...colds.map((run) => Math.max(...run.samples.slice(2)))),
+      warmP50: median(warm.samples),
+      warmP95: sorted[Math.floor(sorted.length * 0.95)],
+    };
+  };
+  for (const scenario of picked) {
+    const before = [];
+    const after = [];
+    for (let i = 0; i < repeat; i++) {
+      if (otherServer) before.push(runChild(scenario.name, 'cold', otherServer, cacheMode));
+      after.push(runChild(scenario.name, 'cold', serverDir, cacheMode));
+    }
+    const beforeWarm = otherServer ? runChild(scenario.name, 'warm', otherServer, cacheMode) : null;
+    const now = summarize(after, runChild(scenario.name, 'warm', serverDir, cacheMode));
+    const old = otherServer ? summarize(before, beforeWarm) : null;
     console.log(
-      `${scenario.name.padEnd(20)} ${String(cold.status).padEnd(6)} ${String(cold.bytes).padStart(7)} |            ${fmt(cold.samples[0])} ${fmt(median(rest))} ${fmt(Math.max(...rest))} |       ${fmt(median(warm.samples))} ${fmt(p95)}`,
+      `${scenario.name.padEnd(20)} ${String(now.status).padEnd(6)} ${String(now.bytes).padStart(7)} |            ${pair(old?.first, now.first)} ${pair(old?.p50, now.p50)} ${pair(old?.max, now.max)} |       ${pair(old?.warmP50, now.warmP50)} ${pair(old?.warmP95, now.warmP95)}`,
     );
-    rows.push({ scenario: scenario.name, status: cold.status, bytes: cold.bytes, coldFirst: cold.samples[0], coldP50: median(rest), coldMax: Math.max(...rest), warmP50: median(warm.samples), warmP95: p95 });
+    rows.push({ scenario: scenario.name, status: now.status, bytes: now.bytes, before: old, after: now });
   }
   const jsonAt = argv.indexOf('--json');
   if (jsonAt >= 0) {
