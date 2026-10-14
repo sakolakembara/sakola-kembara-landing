@@ -92,9 +92,14 @@ export async function warmUp(makeEnvironment: () => Bindings = standInEnvironmen
   // Better Auth: build it as a request does, then ask it for a session with a cookie that names one, which fails the
   // signature check and answers "no session". That compiles its context, tables, endpoints and the session read. Then
   // build the router its HTTP handler builds on every call (the sign-in, sign-out, reset and verification routes).
-  const auth = sharedAuth(env, ORIGIN);
-  await step(() => auth.api.getSession({ headers: new Headers({ cookie: "__Host-better-auth.session_token=warm-up.not-a-signature" }) }));
-  await step(async () => (await import("better-auth/api")).router((await auth.$context) as never, auth.options as never));
+  // Built inside the first step's reach, not outside it: an instance that cannot be built (a missing secret) is a skipped
+  // group like any other, never a rejection.
+  const auth = Promise.resolve().then(() => sharedAuth(env, ORIGIN));
+  await step(async () => (await auth).api.getSession({ headers: new Headers({ cookie: "__Host-better-auth.session_token=warm-up.not-a-signature" }) }));
+  await step(async () => {
+    const built = await auth;
+    return (await import("better-auth/api")).router((await built.$context) as never, built.options as never);
+  });
 
   // The public reads: every prepared query built and run against the empty D1, and the serializers on a sample row.
   await step(async () => {

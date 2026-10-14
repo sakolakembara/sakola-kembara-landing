@@ -682,8 +682,15 @@ const checks = [
   {
     name: "a failing warm-up is no longer swallowed",
     file: "src/warmup.ts",
-    from: "  } catch (error) {\n    // A fixed line: the name of the error only, never a message (it could carry a value).",
-    to: "  } catch (error) {\n    throw error;\n    // A fixed line: the name of the error only, never a message (it could carry a value).",
+    from: 'failed.push(error instanceof Error ? error.name : "error");',
+    to: "throw error;",
+    tests: "test/warmup-failure.test.ts",
+  },
+  {
+    name: "a warm-up whose Better Auth cannot be built is a rejection, not a skipped group",
+    file: "src/warmup.ts",
+    from: "const auth = Promise.resolve().then(() => sharedAuth(env, ORIGIN));",
+    to: "const auth = Promise.resolve(sharedAuth(env, ORIGIN));",
     tests: "test/warmup-failure.test.ts",
   },
 
@@ -932,8 +939,8 @@ const checks = [
   {
     name: "blog index queries run one after the other instead of in one batch (round trips triple)",
     file: "src/api/public/read.ts",
-    from: "const [featuredRows, countRows, guessedRows] = await db.batch([\n    featuredPostQuery(db),\n    publishedCountQuery(db),\n    blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize),\n  ]);",
-    to: "const featuredRows = await featuredPostQuery(db);\n  const countRows = await publishedCountQuery(db);\n  const guessedRows = await blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize);",
+    from: "const [featuredRows, countRows, guessedRows] = await batchAll(c.env.DB, [\n    [queries.featured],\n    [queries.count],\n    [queries.page, { limit: pageSize, offset: (guessedPage - 1) * pageSize }],\n  ]);",
+    to: "const featuredRows = await queries.featured.all();\n  const countRows = await queries.count.all();\n  const guessedRows = await queries.page.all({ limit: pageSize, offset: (guessedPage - 1) * pageSize });",
     tests: PUBLIC_BUDGET,
   },
   {

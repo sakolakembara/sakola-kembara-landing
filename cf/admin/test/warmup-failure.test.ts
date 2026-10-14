@@ -22,4 +22,16 @@ describe("a failing warm-up", () => {
     expect(JSON.stringify(warn.mock.calls)).not.toContain("secret-looking");
     warn.mockRestore();
   });
+
+  // Negative check: build Better Auth outside the guarded steps and this rejects.
+  test("a Better Auth that cannot be built (no secret) is a skipped group too, never a rejection, and the other groups still run", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const routed = { router: { match: vi.fn() } };
+    await expect(warmUp(() => ({ ...standInEnvironment(), BETTER_AUTH_SECRET: "" }) as never, { admin: routed })).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("[warm-up] skipped (Error)");
+    // The router lookups and the prepared reads do not depend on it.
+    expect(routed.router.match).toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });
