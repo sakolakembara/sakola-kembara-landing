@@ -46,6 +46,9 @@ export default defineConfig(async () => ({
           // The student portal (SAKEM-083): no admin host, the proposed budget, nothing deleted by retention (0 = never).
           PRIVATE_FILES_BUDGET_BYTES: "8000000000",
           ADMIN_URL: "",
+          // The wizard's contact values: not configured (a developer's untracked .dev.vars must not leak into a test).
+          PORTAL_CONTACT_WHATSAPP: "",
+          PORTAL_WHATSAPP_GROUP_URL: "",
           DRAFT_RETENTION_DAYS: "0",
           REJECTED_FILES_RETENTION_DAYS: "0",
           ACCEPTED_FILES_RETENTION_DAYS: "0",
