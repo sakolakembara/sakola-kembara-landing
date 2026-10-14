@@ -268,7 +268,8 @@ describe("what src/portal may import (the bundle stays the portal's, not the adm
     const worker = portalSources["../src/portal/worker.ts"]!;
     expect(worker).toContain("// mounts:");
     expect(worker).toContain('// P1b: app.route(API, applicationRoutes);');
-    expect(worker).toContain('// P4: app.route(API, fileRoutes);');
+    // P4 (private files) replaced its reserved comment with the real mount, the same way P1b will its own.
+    expect(worker).toContain("app.route(API, fileRoutes);");
     expect(worker).not.toMatch(/scheduled/);
     // Every data route starts with the guard, and the guard is the one module that compares the role.
     expect(Object.entries(portalSources).filter(([file, source]) => file !== "../src/portal/guard.ts" && /role\s*[!=]==?\s*["']/.test(source))).toEqual([]);

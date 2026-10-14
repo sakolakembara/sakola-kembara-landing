@@ -291,8 +291,8 @@ describe("applications: the detail", () => {
     });
     // An explicit field list: no account id, no reviewer id.
     expect(Object.keys(item).sort()).toEqual([
-      "batch", "branchPreference", "economicBackground", "email", "formData", "fullName", "graduationYear", "id", "motivation",
-      "reviewNotes", "reviewedAt", "schoolName", "status", "submittedAt", "updatedAt", "whatsapp",
+      "batch", "branchPreference", "canOpenFiles", "economicBackground", "email", "files", "formData", "formVersion", "fullName", "graduationYear", "id",
+      "motivation", "reviewNotes", "reviewedAt", "schoolName", "status", "submittedAt", "updatedAt", "whatsapp",
     ]);
     expect(res.headers.get("etag")).toBe(`"${item.updatedAt}"`);
   });

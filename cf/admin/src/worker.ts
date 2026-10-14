@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { adminUserRoutes } from "./api/admin-users";
 import { announcementRoutes } from "./api/announcements";
 import { auditRoutes } from "./api/audit";
+import { applicationFileRoutes } from "./api/application-files";
 import { applicationRoutes } from "./api/applications";
 import { batchRoutes } from "./api/batches";
 import { blogRoutes } from "./api/blog";
@@ -47,8 +48,9 @@ app.route("/", createPublicApp());
 app.use("/api/*", async (c, next) => {
   await next();
   // Session-dependent answers must never be cached by the browser or an edge.
-  // Outermost, so the refusals below carry it too.
-  c.header("Cache-Control", "no-store");
+  // Outermost, so the refusals below carry it too. The one value a route may keep is `private, no-store`, the
+  // wording of an applicant's file (src/private-files/serve.ts): the same promise, stated more strictly.
+  if (c.res.headers.get("Cache-Control") !== "private, no-store") c.header("Cache-Control", "no-store");
 });
 
 // Before anything reads a cookie or the database: a state-changing request
@@ -111,6 +113,7 @@ app.route("/api/admin/announcements", announcementRoutes);
 app.route("/api/admin/messages", messageRoutes);
 app.route("/api/admin/batches", batchRoutes);
 app.route("/api/admin/applications", applicationRoutes);
+app.route("/api/admin/applications", applicationFileRoutes);
 app.route("/api/admin/resources", resourceRoutes);
 app.route("/api/admin/blog", blogRoutes);
 app.route("/api/dashboard", dashboardRoutes);

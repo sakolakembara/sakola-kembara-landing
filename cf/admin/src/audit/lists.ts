@@ -19,6 +19,9 @@ export const DECLARED_ACTIONS = [
   "application.accepted",
   "application.rejected",
   "application.revoke",
+  // An applicant's uploaded file: an admin opening one, and the manual purge of an application's files (SAKEM-083).
+  "application_file.view",
+  "application_file.purge",
   "batch.publish_results",
   "batch.unpublish_results",
   "contact_message.submit",
@@ -45,6 +48,7 @@ export const DECLARED_RESOURCE_TYPES = [
   "admin_user",
   "user",
   "application",
+  "application_file",
   "batch",
   "report",
   "blog",

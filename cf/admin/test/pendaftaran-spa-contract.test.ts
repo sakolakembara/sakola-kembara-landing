@@ -164,8 +164,8 @@ describe("the shape of every answer the SPA reads", () => {
     const detail = await api<{ item: Record<string, unknown> }>(`${APPLICATIONS}/${application.id}`);
     if (!detail.ok) throw new Error("detail failed");
     expect(keys(detail.data.item)).toEqual([
-      "batch", "branchPreference", "economicBackground", "email", "formData", "fullName", "graduationYear", "id", "motivation",
-      "reviewNotes", "reviewedAt", "schoolName", "status", "submittedAt", "updatedAt", "whatsapp",
+      "batch", "branchPreference", "canOpenFiles", "economicBackground", "email", "files", "formData", "formVersion", "fullName", "graduationYear", "id",
+      "motivation", "reviewNotes", "reviewedAt", "schoolName", "status", "submittedAt", "updatedAt", "whatsapp",
     ]);
   });
 

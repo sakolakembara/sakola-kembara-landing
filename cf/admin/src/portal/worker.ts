@@ -14,7 +14,7 @@ import { apiHeaders } from "./headers";
 // reserved for the task that owns the file; replace the comment with the import, nothing else moves.
 // P1b: import { applicationRoutes } from "./applications";
 
-// P4: import { fileRoutes } from "./files";
+import { fileRoutes } from "./files";
 
 // The student portal's Worker, `sakem-portal` (SAKEM-083; docs/cloudflare/portal-architecture.md, section 4). It is a
 // second entry of this package: the same auth, security, email and db code as the admin Worker, its own routes, its
@@ -88,7 +88,7 @@ app.get(`${API}/dev/mailbox`, (c) => {
 // (src/portal/guard.ts); a route without it is a route anyone can call.
 // P1b: app.route(API, applicationRoutes);
 
-// P4: app.route(API, fileRoutes);
+app.route(API, fileRoutes);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 
