@@ -47,6 +47,7 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | `EMAIL_FROM` | admin | public var | `Sakola Kembara Staging <onboarding@resend.dev>` | same |
 | `ADMIN_URL` | site | public var | the admin's `workers.dev` address | same |
 | `LEGACY_ORIGIN_URL` | site | public var | **`https://no-legacy-origin.invalid`**, exactly (see step 10) | same |
+| `PAGE_CACHE_SECONDS` | site | optional public var | `30` to try the page copy in memory (step 13g); left out, every request renders | same |
 | `BETTER_AUTH_SECRET` | admin | secret | `openssl rand -base64 32` | you, `wrangler secret put` |
 | `RESEND_API_KEY` | admin | secret | the Resend key of step 7 | you, `wrangler secret put` |
 | `TURNSTILE_SECRET_KEY` | admin | secret | the widget's secret key | you, `wrangler secret put` |
@@ -367,6 +368,15 @@ Per Worker, method and route: count, p50, p95, p99, max CPU, wall time, the outc
 - The tail's JSON, if it has the field (wrangler may print a banner line first, hence the `grep`): `grep '^{' .measure/web-tail.jsonl | jq -r 'select(.cpuTime != null) | [.event.request.method, (.event.request.url|sub("\\?.*";"")), .cpuTime, .outcome] | @tsv' | sort | head`.
 
 **f. After a few days**, look at the metrics again (rows written, requests, errors by status): a spike that only real traffic shows (a cold start, a long article, a first sign-in) is invisible to a bounded probe. Keep staging up for that.
+
+**g. After SAKEM-091 (the first fixes of what this step found, 2026-10-14): what to re-run and what to compare.** What the first probe measured, what was found and what changed is in [`free-plan-audit.md`](free-plan-audit.md#10-cpu-on-the-hot-routes-sakem-091); that section has the per-route table to compare against. Redeploy both Workers (steps 6 and 10), then run the same probe (step b) and the same collection (step d). Three things to look at in particular, and one switch to try:
+
+- **The 401 routes of the admin** (`/api/me`, `/api/dashboard`, `/api/admin/blog`) should now cost about what `/api/config` costs: a request without a session cookie no longer builds Better Auth. A cookie-less probe cannot show the rest (the shared Better Auth, the prepared queries), because those need a session: do a few signed-in reads by hand as in step c and compare with the figures of 2026-10-14.
+- **The first invocation after an idle gap** (the collector prints it apart) is where a change of the cold cost shows. The admin Worker now runs a start-up warm-up of the library code (`src/warmup.ts`). Whether Cloudflare charges that to the first request is not documented, so this is the number that tells. It logs nothing when it works and one line, `[warm-up] skipped (<ErrorName>)`, once per isolate start when it does not (search Workers Logs for `warm-up`). To switch it off, set `WARM_UP_ENABLED` to `false` in that file and redeploy.
+- **Sign-in twice.** The 89 ms of the first sign-in is a cold isolate plus the hash; sign in a second time in the same minute (same isolate) and compare: the second is the figure for a warm Worker. The hash parameters were not touched.
+- **The page copy on the site, off by default.** Put `PAGE_CACHE_SECONDS=30` in `cf/web/.staging.vars` (the deploy command accepts it), deploy the site, run the probe again and compare `/blog`, `/blog/<slug>`, `/tim`, `/laporan`, `/gabung-siswa/docs` and `/sitemap.xml` with the run without it. A page answered from the copy says `x-page-cache: hit`; the render that made it says `miss` (the probe prints the headers it sees). Remove the line and redeploy to go back. At 600 ms between requests a route comes round every 16 s, inside the 30 s the copy lives, so most requests of the second round on should be hits **if the isolate is the same**: the share of `hit` among the answers is itself a measurement of how many isolates the site gets.
+
+Locally, with no account, the same comparison can be made before a deploy: `pnpm measure:cpu` in `cf/admin` and in `cf/web` (after `pnpm build`) print the Worker's own JavaScript per request for the same routes; the method and its limits are in the audit section.
 
 ## 14. Limits to watch
 
