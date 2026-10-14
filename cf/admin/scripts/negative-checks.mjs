@@ -634,6 +634,52 @@ const checks = [
     tests: "test/admin-users.test.ts",
   },
 
+  // The shared Better Auth and the no-cookie shortcut (SAKEM-091, test/auth-shared.test.ts).
+  {
+    name: "every request is sent to Better Auth, cookie or not (the no-cookie shortcut is gone)",
+    file: "src/auth/session.ts",
+    from: 'return headers.get("cookie")?.includes("session_token") === true;',
+    to: "return true;",
+    tests: "test/auth-shared.test.ts",
+  },
+  {
+    name: "no request is ever sent to Better Auth (the shortcut answers 'no session' to a real session cookie)",
+    file: "src/auth/session.ts",
+    from: 'return headers.get("cookie")?.includes("session_token") === true;',
+    to: "return false;",
+    tests: "test/auth-shared.test.ts test/auth.test.ts",
+  },
+  {
+    name: "the shared Better Auth gives all background work to the first request's context",
+    edits: [
+      { file: "src/auth/session.ts", from: "const requestScope = new AsyncLocalStorage<RequestScope>();", to: "const requestScope = new AsyncLocalStorage<RequestScope>();\nlet sticky: RequestScope | undefined;" },
+      { file: "src/auth/session.ts", from: "if (scope) return scope.waitUntil(promise);", to: "if (scope) return (sticky ??= scope).waitUntil(promise);" },
+    ],
+    tests: "test/auth-shared.test.ts",
+  },
+  {
+    name: "the shared Better Auth ignores the environment (a changed secret, mail key or cookie domain would not apply)",
+    file: "src/auth/session.ts",
+    from: 'for (const [name, value] of Object.entries(env)) if (typeof value === "string") key += `\\0${name}=${value}`;',
+    to: "",
+    tests: "test/auth-shared.test.ts test/gate.test.ts",
+  },
+
+  {
+    name: "a failing warm-up puts the error's message in the log",
+    file: "src/warmup.ts",
+    from: 'error instanceof Error ? error.name : "error"',
+    to: 'error instanceof Error ? error.message : "error"',
+    tests: "test/warmup-failure.test.ts",
+  },
+  {
+    name: "a failing warm-up is no longer swallowed",
+    file: "src/warmup.ts",
+    from: "  } catch (error) {\n    // A fixed line: the name of the error only, never a message (it could carry a value).",
+    to: "  } catch (error) {\n    throw error;\n    // A fixed line: the name of the error only, never a message (it could carry a value).",
+    tests: "test/warmup-failure.test.ts",
+  },
+
   // ------------------------------------------------------- admin users API
   {
     name: "the last super_admin trigger does nothing",

@@ -10,6 +10,7 @@ import { dashboardRoutes } from "./api/dashboard";
 import { serveDevUpload } from "./api/dev-uploads";
 import { messageRoutes } from "./api/messages";
 import { createPublicApp } from "./api/public";
+import { publicApiApp } from "./api/public/entrypoint";
 import { reportRoutes } from "./api/reports";
 import { shortlinkRoutes } from "./api/shortlinks";
 import { teamRoutes } from "./api/team";
@@ -28,6 +29,7 @@ import { mailbox } from "./email/send";
 import type { Bindings } from "./env";
 import { sameOriginGuard } from "./security/csrf";
 import { uploadsBase } from "./uploads/base-url";
+import { startWarmUp } from "./warmup";
 
 // Only /api/* reaches this Worker (`run_worker_first` in wrangler.jsonc). The
 // SPA and its assets are served by the assets layer without running any code.
@@ -142,3 +144,6 @@ export default {
 // contact form: the only place either is served). Not reachable from the
 // internet: see src/api/public/internal.ts.
 export { PublicApi } from "./api/public/entrypoint";
+
+// Compile the library code behind the hot paths before the first request, against a stand-in environment (src/warmup.ts). Not awaited.
+startWarmUp({ admin: app, publicApi: publicApiApp });

@@ -13,6 +13,9 @@ import { createInternalApp } from "./index";
 
 const app = createInternalApp();
 
+/** The app the entrypoint serves, for the start-up warm-up (src/warmup.ts). */
+export const publicApiApp = app;
+
 export class PublicApi extends WorkerEntrypoint<Bindings> {
   fetch(request: Request): Promise<Response> | Response {
     return app.fetch(request, this.env, this.ctx);
