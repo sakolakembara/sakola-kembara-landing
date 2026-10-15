@@ -120,7 +120,9 @@ describe("the portal's configuration", () => {
     const names = ["PORTAL_CONTACT_WHATSAPP", "PORTAL_WHATSAPP_GROUP_URL"];
     for (const name of names) {
       expect(envSources["../src/env.ts"], name).toMatch(new RegExp(`${name}\\?:\\s*string;`)); // optional
-      // Not in a `vars` block of any config (a declared one is reset by a deploy that does not pass it, and would be a value in git).
+      // Not in a `vars` block of the production configs or the admin's staging block (a declared one is reset by a deploy that
+      // does not pass it, and a value would be in git). The portal's STAGING block does declare both, EMPTY (SAKEM-098: the
+      // names are then visible and the dry run lists them); the assertion on it is further down, and a value there fails it.
       for (const config of [admin, portal, { vars: admin.env?.staging ? (admin.env.staging as { vars?: Record<string, string> }).vars ?? {} : {} }]) {
         expect(config.vars, name).not.toHaveProperty(name);
       }
