@@ -73,6 +73,14 @@
   //   API's data (/blog, an article, /tim, /laporan, /gabung-siswa/docs, /sitemap.xml) is kept in the isolate's memory
   //   and answered from there, with no render. Unset or 0: every request renders (what the site did before SAKEM-091).
   //   At most 120; 30 is the value to start with. src/lib/page-cache.ts, docs/cloudflare/web-skeleton.md.
+  // - WEB_ANALYTICS_BEACON_ID (a "vars" entry too, optional, PUBLIC): the Cloudflare Web Analytics beacon id (what Cloudflare calls
+  //   the site token: exactly 32 hexadecimal characters; it is in every page's HTML, so it is not a secret, and the name has no
+  //   TOKEN in it so the deploy-command printer keeps refusing secret names). Set with the deploy (`--var
+  //   WEB_ANALYTICS_BEACON_ID:<32 hex characters>`), never in git. It reaches the pages the WORKER renders (/blog, an article,
+  //   /tim, /laporan, /gabung-siswa/docs, /kontak, the 404 page). The prerendered pages (/, /donasi, /gabung-siswa, /program/<id>)
+  //   are static files and take the same name from the shell environment of the BUILD: `WEB_ANALYTICS_BEACON_ID=<...> pnpm build`
+  //   (never from .dev.vars). Set it in both places, from one value. Unset or invalid: no beacon script and no tag at all, which
+  //   is what local runs, tests and staging do. src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md ("Web Analytics").
   // - "ratelimits": the rate-limit binding of the contact form, binding name CONTACT_LIMITER:
   //     "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "<a positive integer you choose>",
   //                      "simple": { "limit": 5, "period": 60 } }]

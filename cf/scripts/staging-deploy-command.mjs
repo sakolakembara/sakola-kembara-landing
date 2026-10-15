@@ -37,7 +37,9 @@ export const WORKERS = {
     // legacy origin behind its hostname, so the pass-through of a path nobody serves (/_next/*, /images/team/*) would
     // fetch the Worker's own workers.dev address again, up to Cloudflare's loop limit of 16 invocations for one request;
     // a host that cannot resolve makes it fail at once instead, with no code change. Never the live site.
-    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS', 'PAGE_CACHE_SECONDS'],
+    // WEB_ANALYTICS_BEACON_ID (SAKEM-095) is a public value (it is in every page's HTML) and is not named `..._TOKEN`, so the
+    // secret-name refusal below stays whole. It is optional and left out on staging; it only reaches the pages the Worker renders.
+    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS', 'PAGE_CACHE_SECONDS', 'WEB_ANALYTICS_BEACON_ID'],
     before: 'pnpm build:staging',
   },
 };
@@ -100,6 +102,9 @@ export function validateVars(worker, entries) {
       }
     } else if (name === 'TURNSTILE_SITE_KEY') {
       if (!/^[0-9A-Za-z_-]{10,64}$/.test(value)) throw new Error(`${where}: not a Turnstile site key (letters, digits, - and _, 10 to 64 characters)`);
+    } else if (name === 'WEB_ANALYTICS_BEACON_ID') {
+      // The same shape as cf/web/web-analytics.config.mjs (a test keeps the two equal). The message does not repeat the value.
+      if (!/^[0-9a-fA-F]{32}$/.test(value)) throw new Error(`${where}: not a Web Analytics beacon id (exactly 32 hexadecimal characters)`);
     } else if (name === 'EMAIL_FROM') {
       if (!/^(?:[^<>"'\\]{1,80}<[^\s<>@"']+@[^\s<>@"']+>|[^\s<>@"']+@[^\s<>@"']+)$/.test(value)) {
         throw new Error(`${where}: expected Name <address@host> or address@host`);
@@ -119,6 +124,17 @@ export function shellQuote(text) {
 export function buildCommand(worker, entries) {
   const config = WORKERS[worker];
   return [...config.deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
+}
+
+/** Lines for the owner that depend on what the file holds. Today one: a `--var` does not reach the prerendered pages of the site. */
+export function extraNotes(worker, entries) {
+  if (worker === 'web' && entries.some((e) => e.name === 'WEB_ANALYTICS_BEACON_ID')) {
+    return [
+      '# the prerendered pages (/, /donasi, /gabung-siswa, /program/<id>) are static files: they get WEB_ANALYTICS_BEACON_ID from the shell of the BUILD,',
+      '# so run step 2 as `WEB_ANALYTICS_BEACON_ID=<the same value> pnpm build:staging`; the --var below reaches the pages the Worker renders only.',
+    ];
+  }
+  return [];
 }
 
 function main(argv) {
@@ -148,6 +164,7 @@ function main(argv) {
       `# 1. pin the ORGANISATION account in this shell first (value not printed here): ${process.env.CLOUDFLARE_ACCOUNT_ID ? 'CLOUDFLARE_ACCOUNT_ID is set' : 'CLOUDFLARE_ACCOUNT_ID is NOT set'}`,
       `# 2. ${config.before}`,
       `# 3. read the command below, then run it. Without --var the value is removed from the Worker.`,
+      ...extraNotes(worker, entries),
       missing.length > 0 ? `# not set in ${path.basename(file)} (fine if you do not need them): ${missing.join(', ')}` : '',
       '',
     ]

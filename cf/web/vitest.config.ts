@@ -9,7 +9,8 @@ const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 // plugin the build uses, so the tests see exactly what the pages see.
 export default defineConfig({
   // Tests run on the build-time markdown adapter (the API client is tested against fakes and the fixture server).
-  define: { __BLOG_SOURCE__: JSON.stringify('markdown') },
+  // The beacon id of the prerendered pages comes from the build; the tests build nothing, so it is none.
+  define: { __BLOG_SOURCE__: JSON.stringify('markdown'), __WEB_ANALYTICS_BEACON_ID__: JSON.stringify(null) },
   plugins: [blogContent({ contentDir: `${repoRoot}content/blog`, manifestFile: `${root}src/generated/image-manifest.json` })],
   // '@' is the legacy app's own path prefix; the tests import a few of its files.
   resolve: { alias: { '~': `${root}src`, '@root': repoRoot.replace(/\/$/, ''), '@': repoRoot.replace(/\/$/, '') } },

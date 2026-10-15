@@ -23,3 +23,9 @@ UPLOADS_BASE_URL=https://pub-<hash>.r2.dev
 # /gabung-siswa/docs, /sitemap.xml) is kept in the isolate's memory and answered from there, with no render.
 # Leave the line out and every request renders. Try 30; the most it takes is 120.
 # PAGE_CACHE_SECONDS=30
+
+# Optional, and leave it out on staging (SAKEM-095): the Cloudflare Web Analytics beacon id (32 hexadecimal characters; what
+# Cloudflare calls the site token). The site in Web Analytics is created for the real host, so a beacon on a workers.dev
+# address would only be refused there; staging stays clean with the line out. Set, it is a --var and reaches the pages the
+# Worker renders only: the prerendered pages take the same name from the shell environment of the build.
+# WEB_ANALYTICS_BEACON_ID=
