@@ -1,39 +1,44 @@
 #!/usr/bin/env node
 // CPU measurement of the STAGING Workers on the Free plan (SAKEM-084, docs/cloudflare/staging-runbook.md).
 //
-//   node scripts/measure-staging.mjs probe   --base https://<web>.<account>.workers.dev [--admin https://<admin>...]
-//   node scripts/measure-staging.mjs collect [--file web-tail.jsonl --file admin-tail.jsonl]   (or a pipe)
+//   node scripts/measure-staging.mjs probe   --base https://<web>.<account>.workers.dev [--admin https://<admin>...] [--portal https://<portal>...]
+//   node scripts/measure-staging.mjs collect [--file web-tail.json --file admin-tail.json --file portal-tail.json]   (or a pipe)
 //   node scripts/measure-staging.mjs plan    --base ...    (what would be asked; nothing is sent)
 //
 // `probe` asks a bounded number of GET requests per route, politely (one at a time, with a pause), as
-// `sakem-staging-measure/1.0`. `collect` reads what `wrangler tail <worker> --format json` printed and turns
+// `sakem-staging-measure/1.0`. `collect` reads what `wrangler tail <worker> --format json` printed (the pretty-printed,
+// many-lines-per-event form wrangler writes, or one compact object per line) and turns
 // it into per-route numbers: count, p50, p95, p99, max CPU, the outcomes (exceededCpu is error 1102), the
 // statuses, the first invocation after an idle gap, and a verdict. The CPU time is Cloudflare's own record of
 // each invocation; this tool never measures it by itself (a timer inside a Worker only moves on I/O).
 //
 // What it will NOT do, by construction (tests/measure-staging.test.ts runs this file against a stub server):
 //   - contact anything unless a subcommand `probe` is given with an explicit --base, and only after the host is
-//     typed back (a prompt, or --confirm <host> without a terminal). `collect` and `plan` never use the network.
+//     typed back (a prompt, or --confirm <host> without a terminal; the same for --admin and --portal, each its own
+//     host). `collect` and `plan` never use the network.
 //   - touch anything that is not `*.workers.dev` (or a loopback address, to rehearse locally). The production
 //     domain is refused, with no flag to allow it.
 //   - send anything but GET, unless --writes AND a second typed confirmation ("write <host>", or
 //     --confirm-writes <host>). The POSTs of --writes are the ones the Workers refuse before storing anything.
 //   - read a credential, a token, a cookie or any file besides the tail capture you name. It sends no
 //     Authorization or Cookie header and reads no environment variable. The routes that need a signed-in session
-//     (sign-in, dashboard, lists, blog save and preview, uploads) are driven by hand in a browser while
-//     `wrangler tail` runs, and `collect` reads them from the capture (runbook, section "Measure").
+//     (sign-in, dashboard, lists, blog save and preview, uploads; the portal's registration, sign-in, wizard saves,
+//     file uploads and submit) are driven by hand in a browser while `wrangler tail` runs, and `collect` reads them
+//     from the capture (runbook, section "Measure"). The portal's part of the probe is GET only, with no cookie and no
+//     route behind a rate limit, so it can never provoke a 429 of its own.
 import { createReadStream, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_SLUGS, THRESHOLDS, USER_AGENT, aggregate, buildPlan, checkBase, isSlug, parseLine, renderReport } from './lib/staging-measure.mjs';
+import { DEFAULT_SLUGS, THRESHOLDS, USER_AGENT, aggregate, buildPlan, checkBase, createCaptureParser, isSlug, renderReport } from './lib/staging-measure.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const HELP = `usage:
-  node scripts/measure-staging.mjs probe --base <https://*.workers.dev> [--admin <https://*.workers.dev>] [options]
-  node scripts/measure-staging.mjs plan  --base <...> [--admin <...>] [options]       print the requests, send nothing
-  node scripts/measure-staging.mjs collect [--file <tail.jsonl> ...] [options]        read a \`wrangler tail --format json\` capture (or stdin)
+  node scripts/measure-staging.mjs probe --base <https://*.workers.dev> [--admin <https://*.workers.dev>] [--portal <https://*.workers.dev>] [options]
+  node scripts/measure-staging.mjs plan  --base <...> [--admin <...>] [--portal <...>] [options]    print the requests, send nothing
+  node scripts/measure-staging.mjs collect [--file <tail.json> ...] [options]         read a \`wrangler tail --format json\` capture (or stdin):
+                                                                                      pretty-printed, or one compact object per line
 
 probe/plan options:
   --rounds N          requests per route, 1-60 (default 12)
@@ -43,12 +48,13 @@ probe/plan options:
   --writes            also the POSTs that the Workers refuse before storing anything (needs a second confirmation)
   --confirm host      the host of --base, typed, when there is no terminal
   --confirm-admin h   the same for --admin
+  --confirm-portal h  the same for --portal (the student portal Worker: its GET routes that need no cookie, never a POST)
   --confirm-writes h  "write <host>" confirmation without a terminal: pass the host of --base
   --out file          where the client-side numbers go (default .measure/staging-probe.json)
   --timeout-ms N      per request (default 20000)
 
 collect options:
-  --file path         a capture; repeat for the web and the admin Worker (default: standard input)
+  --file path         a capture; repeat for the web, the admin and the portal Worker (default: standard input)
   --worker name       only this Worker (scriptName)
   --only-measure      only the requests this tool made (its User-Agent)
   --group-slugs       one row for all of /blog/<slug>
@@ -71,6 +77,7 @@ function parseArgs(argv) {
     switch (arg) {
       case '--base': flags.base = value(i++, arg); break;
       case '--admin': flags.admin = value(i++, arg); break;
+      case '--portal': flags.portal = value(i++, arg); break;
       case '--rounds': flags.rounds = Number(value(i++, arg)); break;
       case '--delay-ms': flags.delayMs = Number(value(i++, arg)); break;
       case '--slugs': flags.slugs = value(i++, arg).split(',').map((s) => s.trim()).filter(Boolean); break;
@@ -78,6 +85,7 @@ function parseArgs(argv) {
       case '--writes': flags.writes = true; break;
       case '--confirm': flags.confirm = value(i++, arg); break;
       case '--confirm-admin': flags.confirmAdmin = value(i++, arg); break;
+      case '--confirm-portal': flags.confirmPortal = value(i++, arg); break;
       case '--confirm-writes': flags.confirmWrites = value(i++, arg); break;
       case '--out': flags.out = value(i++, arg); break;
       case '--timeout-ms': flags.timeoutMs = Number(value(i++, arg)); break;
@@ -114,9 +122,12 @@ const percentileOf = (sorted, q) => (sorted.length === 0 ? null : sorted[Math.mi
 /** The pause after one request of a route: the general one, longer for a route behind a rate limit (not on a loopback rehearsal, which has none). */
 const pauseFor = (route, delayMs, loopback) => (loopback ? delayMs : Math.max(delayMs, route.minDelayMs ?? 0));
 
+/** The origin a route of the plan is asked at: the site's, the admin's or the portal's. */
+const originFor = (bases, target) => (target === 'admin' ? bases.admin.origin : target === 'portal' ? bases.portal.origin : bases.web.origin);
+
 function describePlan(plan, bases, rounds, delayMs) {
   const lines = plan.map((r) => {
-    const target = r.target === 'admin' ? bases.admin.origin : bases.web.origin;
+    const target = originFor(bases, r.target);
     const pause = pauseFor(r, delayMs, bases.web.loopback);
     return `  ${r.method.padEnd(4)} ${`${target}${r.path}`.padEnd(88)} x${rounds}  pause ${pause} ms  [${r.worker === 'none' ? 'control, no Worker expected' : r.worker}]  ${r.note ?? ''}`;
   });
@@ -134,9 +145,11 @@ async function runProbe(flags, { sendNothing }) {
   if (!flags.base) fail('refused: --base is required (the staging site, https://<worker>.<account>.workers.dev). Nothing was contacted.');
   let web;
   let admin;
+  let portal;
   try {
     web = checkBase(flags.base, '--base');
     admin = flags.admin ? checkBase(flags.admin, '--admin') : null;
+    portal = flags.portal ? checkBase(flags.portal, '--portal') : null;
   } catch (error) {
     fail(`refused: ${error.message}. Nothing was contacted.`);
   }
@@ -148,8 +161,8 @@ async function runProbe(flags, { sendNothing }) {
   for (const slug of [...slugs, ...(flags.shortlink ? [flags.shortlink] : [])]) if (!isSlug(slug)) fail(`refused: ${JSON.stringify(slug)} is not a slug`);
   if (flags.writes && !flags.base) fail('refused: --writes needs --base');
 
-  const plan = buildPlan({ slugs, shortlink: flags.shortlink, web: true, admin: Boolean(admin), writes: Boolean(flags.writes) });
-  const bases = { web, admin };
+  const plan = buildPlan({ slugs, shortlink: flags.shortlink, web: true, admin: Boolean(admin), portal: Boolean(portal), writes: Boolean(flags.writes) });
+  const bases = { web, admin, portal };
   process.stderr.write(`Plan (user agent: ${USER_AGENT})\n${describePlan(plan, bases, rounds, delayMs)}\n\n`);
   if (sendNothing) {
     process.stderr.write('plan only: nothing was sent.\n');
@@ -161,6 +174,9 @@ async function runProbe(flags, { sendNothing }) {
   }
   if (admin && !(await confirmed(`Type the host of --admin to include it (${admin.host}):`, admin.host, flags.confirmAdmin))) {
     fail('refused: the admin host was not typed back (--confirm-admin <host> without a terminal). Nothing was contacted.');
+  }
+  if (portal && !(await confirmed(`Type the host of --portal to include it (${portal.host}):`, portal.host, flags.confirmPortal))) {
+    fail('refused: the portal host was not typed back (--confirm-portal <host> without a terminal). Nothing was contacted.');
   }
   if (flags.writes) {
     process.stderr.write(
@@ -180,7 +196,7 @@ async function runProbe(flags, { sendNothing }) {
   loop: for (let round = 1; round <= rounds; round++) {
     for (const [index, r] of plan.entries()) {
       if (skipped.has(index)) continue;
-      const origin = r.target === 'admin' ? admin.origin : web.origin;
+      const origin = originFor(bases, r.target);
       const headers = { 'user-agent': USER_AGENT, accept: r.path.endsWith('.xml') ? 'application/xml' : 'text/html,application/json;q=0.9,*/*;q=0.8', ...(r.headers ?? {}) };
       if (r.withOrigin) headers.origin = origin;
       const result = results.get(index);
@@ -222,7 +238,7 @@ async function runProbe(flags, { sendNothing }) {
     return {
       worker: route.worker,
       method: route.method,
-      url: `${route.target === 'admin' ? 'admin' : 'web'}${route.path}`,
+      url: `${route.target ?? 'web'}${route.path}`,
       requests: wall.length,
       statuses,
       clientWallMs: sorted.length > 0 ? { p50: Math.round(percentileOf(sorted, 0.5)), p95: Math.round(percentileOf(sorted, 0.95)), max: Math.round(sorted[sorted.length - 1]) } : null,
@@ -250,43 +266,45 @@ async function runProbe(flags, { sendNothing }) {
 
 // ------------------------------------------------------------------------------------------------ collect
 
-async function readLines(files) {
-  const lines = [];
+/**
+ * Every capture, read line by line through its own parser (an object cut at the end of one file never joins the first of
+ * the next): the compact form, one object a line, and the pretty-printed form of many lines that wrangler writes.
+ */
+async function readCaptures(files, options) {
+  const records = [];
+  let read = 0;
+  let skipped = 0;
   const sources = files.length > 0 ? files.map((file) => createReadStream(file, 'utf8')) : [process.stdin];
-  if (files.length === 0 && process.stdin.isTTY) fail('collect reads a capture: pass --file <tail.jsonl> or pipe `wrangler tail <worker> --format json` into it');
+  if (files.length === 0 && process.stdin.isTTY) fail('collect reads a capture: pass --file <tail.json> or pipe `wrangler tail <worker> --format json` into it');
   for (const stream of sources) {
+    const parser = createCaptureParser(options);
     const rl = createInterface({ input: stream, crlfDelay: Infinity });
-    for await (const line of rl) lines.push(line);
+    for await (const line of rl) parser.push(line);
+    const result = parser.end();
+    records.push(...result.records);
+    read += result.read;
+    skipped += result.skipped;
   }
-  return lines;
+  return { records, read, skipped };
 }
 
 async function runCollect(flags) {
-  let lines;
+  let captured;
   try {
-    lines = await readLines(flags.files);
+    captured = await readCaptures(flags.files, { groupSlugs: flags.groupSlugs });
   } catch (error) {
     fail(`could not read the capture: ${error.message}`);
   }
-  const records = [];
-  let skipped = 0;
-  let read = 0;
-  for (const line of lines) {
-    const parsed = parseLine(line, { groupSlugs: flags.groupSlugs });
-    if (parsed === null) continue;
-    read += 1;
-    if (parsed === 'skip') skipped += 1;
-    else records.push(parsed);
-  }
+  const { records, read, skipped } = captured;
   const report = aggregate(records, {
     worker: flags.worker,
     onlyMeasure: flags.onlyMeasure,
     idleGapMs: flags.idleGapS === undefined ? THRESHOLDS.idleGapMs : flags.idleGapS * 1000,
   });
-  process.stdout.write(`${renderReport(report, { lines: read, skipped })}\n`);
+  process.stdout.write(`${renderReport(report, { items: read, skipped })}\n`);
   if (flags.json) {
     mkdirSync(path.dirname(path.resolve(flags.json)), { recursive: true });
-    writeFileSync(path.resolve(flags.json), `${JSON.stringify({ totals: { lines: read, skipped }, ...report }, null, 2)}\n`);
+    writeFileSync(path.resolve(flags.json), `${JSON.stringify({ totals: { items: read, skipped }, ...report }, null, 2)}\n`);
   }
   if (report.overall.verdict === 'FAIL') return 1;
   if (report.overall.verdict === 'NO-DATA' || report.overall.verdict === 'NO-CPU') return 3;

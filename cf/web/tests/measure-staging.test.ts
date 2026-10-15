@@ -13,6 +13,7 @@ import {
   aggregate,
   buildPlan,
   checkBase,
+  createCaptureParser,
   eventFromTrace,
   isSlug,
   parseLine,
@@ -21,15 +22,17 @@ import {
   routeOf,
   verdictFor,
 } from '../scripts/lib/staging-measure.mjs';
-import { webRoot } from './helpers';
+import { repoRoot, webRoot } from './helpers';
 
-// scripts/measure-staging.mjs and scripts/lib/staging-measure.mjs (SAKEM-084). Every event below is MADE UP for
+// scripts/measure-staging.mjs and scripts/lib/staging-measure.mjs (SAKEM-084; the portal's routes, `--portal` and the
+// pretty-printed capture SAKEM-098). Every event below is MADE UP for
 // this test from the documented fields of a trace item; none was recorded from Cloudflare. The CLI runs as a real
 // child process against a stub server on loopback, which is how "it contacts nothing by default" is proven.
 
 const T0 = 1_760_000_000_000;
 const WEB = 'sakem-web-staging';
 const ADMIN = 'sakem-admin-staging';
+const PORTAL = 'sakem-portal-staging';
 
 interface Fake {
   script?: string;
@@ -103,10 +106,65 @@ describe('the plan', () => {
     expect(new Set(admin.map((r) => r.method))).toEqual(new Set(['GET']));
   });
 
+  it('the portal: two controls (the SPA) and the GET routes that need no cookie, all on the portal host and none behind a limiter', () => {
+    const portal = buildPlan({ web: false, portal: true });
+    expect(portal.map((r) => r.path)).toEqual([
+      '/portal/',
+      '/portal/status',
+      '/portal/api/config',
+      '/portal/api/me',
+      '/portal/api/auth/get-session',
+      '/portal/api/overview',
+      '/portal/api/applications/current',
+      '/portal/api/applications',
+      '/portal/api/files/00000000-0000-4000-8000-000000000000',
+      '/portal/api/auth/list-sessions',
+      '/portal/api/no-such-route',
+      '/portal/api/dev/mailbox',
+      '/portal/no-such-file.png',
+    ]);
+    expect(new Set(portal.map((r) => r.target))).toEqual(new Set(['portal']));
+    expect(new Set(portal.map((r) => r.method))).toEqual(new Set(['GET']));
+    expect(portal.filter((r) => r.worker === 'none').map((r) => r.path)).toEqual(['/portal/', '/portal/status']);
+    expect(portal.filter((r) => r.worker === 'portal')).toHaveLength(11);
+    // No body, no pause longer than the others (nothing here is behind a rate limit), no cookie or credential of any kind.
+    // (No Sec-Fetch-* header either: Node's fetch sets `Sec-Fetch-Mode: cors` itself and ignores what is given.)
+    for (const route of portal) {
+      expect('body' in route).toBe(false);
+      expect(route.minDelayMs).toBeUndefined();
+      expect(Object.keys(route.headers ?? {}).join(' ')).not.toMatch(/authorization|cookie|token|x-api|cf-access/i);
+    }
+    // Nothing that signs in, registers, saves, uploads or submits: a student's routes are asked without a session and answer 401.
+    expect(portal.map((r) => r.path).join(' ')).not.toMatch(/sign-in|register|reset|verify|steps|submit|upload/);
+  });
+
+  it('every route the portal plan asks is a route of the portal Worker or of its SPA (read from the Worker, so a renamed route breaks this)', () => {
+    const worker = readFileSync(path.join(repoRoot, 'cf/admin/src/portal/worker.ts'), 'utf8');
+    const applications = readFileSync(path.join(repoRoot, 'cf/admin/src/portal/applications.ts'), 'utf8');
+    const files = readFileSync(path.join(repoRoot, 'cf/admin/src/portal/files.ts'), 'utf8');
+    const gate = readFileSync(path.join(repoRoot, 'cf/admin/src/auth/gate.ts'), 'utf8');
+    expect(worker).toContain('const API = "/portal/api";');
+    expect(worker).toContain('app.get(`${API}/config`');
+    expect(worker).toContain('app.get(`${API}/me`');
+    expect(worker).toContain('app.get(`${AUTH}/get-session`');
+    expect(worker).toContain('app.get(`${API}/dev/mailbox`');
+    expect(applications).toContain('app.get("/overview", requireStudent("portalRead")');
+    expect(applications).toContain('app.get("/applications/current", requireStudent("portalRead")');
+    expect(applications).toContain('app.get("/applications", requireStudent("portalRead")');
+    expect(files).toContain('fileRoutes.get("/files/:fileId", requireStudent("portalRead")');
+    // `list-sessions` is deliberately NOT in the auth route table (the gate answers 404), `get-session` is.
+    expect(gate).toContain('path: "/get-session"');
+    expect(gate).not.toContain('path: "/list-sessions"');
+    // The Worker runs first for /portal/api/* only (wrangler.portal.jsonc), so the two controls are the assets layer's.
+    expect(readFileSync(path.join(repoRoot, 'cf/admin/wrangler.portal.jsonc'), 'utf8')).toContain('"run_worker_first": ["/portal/api/*"]');
+  });
+
   it('--writes adds exactly two POSTs, both refused before anything is stored, with a pause that respects their rate limit', () => {
     const plan = buildPlan({ web: true, admin: true, writes: true });
     const posts = plan.filter((r) => r.method !== 'GET');
     expect(posts.map((r) => `${r.method} ${r.path}`)).toEqual(['POST /kontak', 'POST /api/auth/sign-in/email']);
+    // The portal adds none: its part of the probe is GET only, with writes asked for or not.
+    expect(buildPlan({ web: true, admin: true, portal: true, writes: true }).filter((r) => r.method !== 'GET').map((r) => `${r.method} ${r.path}`)).toEqual(['POST /kontak', 'POST /api/auth/sign-in/email']);
     for (const post of posts) {
       expect(post.minDelayMs).toBeGreaterThanOrEqual(12_000);
       expect(post.body).not.toMatch(/cf-turnstile-response|"password":"(?!not-a-real)/i);
@@ -136,6 +194,15 @@ describe('routeOf', () => {
     expect(routeOf('/api/admin/messages/42')).toBe('/api/admin/messages/:n');
     expect(routeOf('/')).toBe('/');
     expect(routeOf('/api/auth/sign-in/email')).toBe('/api/auth/sign-in/email');
+  });
+
+  it('the portal: the file route folds its id, the others keep their names', () => {
+    expect(routeOf('/portal/api/files/c0ffee00-0000-4000-8000-000000000003')).toBe('/portal/api/files/:id');
+    expect(routeOf('/portal/api/files/00000000-0000-4000-8000-000000000000')).toBe('/portal/api/files/:id');
+    expect(routeOf('/portal/api/applications/current/files/family-card')).toBe('/portal/api/applications/current/files/family-card');
+    expect(routeOf('/portal/api/applications/current/steps/identity')).toBe('/portal/api/applications/current/steps/identity');
+    expect(routeOf('/portal/api/auth/verify-email')).toBe('/portal/api/auth/verify-email');
+    expect(routeOf('/portal/')).toBe('/portal');
   });
 });
 
@@ -189,6 +256,104 @@ describe('reading a capture: parseLine', () => {
     expect(parseLine('{}')).toBe('skip');
     expect(parseLine('[1,2]')).toBe('skip');
     expect(parseLine(JSON.stringify(tail({ cpu: 2 })))).toMatchObject({ kind: 'fetch', cpuMs: 2 });
+  });
+});
+
+/** The object as `wrangler tail --format json` prints it: `JSON.stringify(event, null, 2)`, many lines, `}` alone at the start of the last one. */
+const pretty = (f: Fake) => JSON.stringify(tail(f), null, 2);
+
+/** What wrangler prints before the first event. */
+const BANNER = ['Successfully created tail, expires at 2026-10-15T14:10:21Z', 'Connected to sakem-portal-staging, waiting for logs...'];
+
+const readCapture = (text: string, options = {}) => {
+  const parser = createCaptureParser(options);
+  for (const line of text.split('\n')) parser.push(line);
+  return parser.end();
+};
+
+describe('reading a capture: createCaptureParser (pretty-printed objects, compact lines, and the mixture)', () => {
+  const portalEvent = (over: Fake = {}): Fake => ({ script: PORTAL, url: `https://${PORTAL}.acme.workers.dev/portal/api/config`, cpu: 2, wall: 14, ua: USER_AGENT, ...over });
+
+  it('a pretty-printed capture (what wrangler writes: banner, then objects of many lines) is read, event by event', () => {
+    const text = [...BANNER, pretty(portalEvent({ at: T0 })), pretty(portalEvent({ at: T0 + 700, url: `https://${PORTAL}.acme.workers.dev/portal/api/me`, status: 401 })), ''].join('\n');
+    expect(text.split('\n').length).toBeGreaterThan(40); // many lines per object: this is not a one-line-per-event file
+    const result = readCapture(text);
+    expect(result.records).toHaveLength(2);
+    expect(result.records[0]).toMatchObject({ kind: 'fetch', script: PORTAL, cpuMs: 2, wallMs: 14, method: 'GET', route: '/portal/api/config', status: 200, userAgent: USER_AGENT });
+    expect(result.records[1]).toMatchObject({ route: '/portal/api/me', status: 401, at: T0 + 700 });
+    expect(result.read).toBe(4); // two banner lines and two objects
+    expect(result.skipped).toBe(2); // the banner lines
+  });
+
+  it('is the same data as the compact form: the same events give the same report, however they were printed', () => {
+    const events = Array.from({ length: 24 }, (_, i) => portalEvent({ at: T0 + i * 800, cpu: 1 + (i % 4), url: `https://${PORTAL}.acme.workers.dev/portal/api/${i % 2 ? 'me' : 'config'}`, status: i % 2 ? 401 : 200 }));
+    const compact = readCapture(events.map((e) => JSON.stringify(tail(e))).join('\n'));
+    const spread = readCapture([...BANNER, ...events.map((e) => pretty(e))].join('\n'));
+    const blank = readCapture([...BANNER, ...events.map((e) => `${pretty(e)}\n`)].join('\n')); // a blank line between two objects
+    const crlf = readCapture([...BANNER, ...events.map((e) => pretty(e))].join('\n').replaceAll('\n', '\r\n')); // every line ends in \r\n
+    expect(spread.records).toEqual(compact.records);
+    expect(blank.records).toEqual(compact.records);
+    expect(crlf.records).toEqual(compact.records);
+    expect(aggregate(spread.records as never)).toEqual(aggregate(compact.records as never));
+    expect(compact.skipped).toBe(0);
+    expect(spread.skipped).toBe(2);
+  });
+
+  it('compact and pretty-printed objects in one capture, with text between them, are all read', () => {
+    const text = [pretty(portalEvent({ at: T0 })), 'a line of text', JSON.stringify(tail(portalEvent({ at: T0 + 1 }))), pretty(portalEvent({ at: T0 + 2 })), '[1,2]', ''].join('\n');
+    const result = readCapture(text);
+    expect(result.records.map((r) => (r as { at: number }).at)).toEqual([T0, T0 + 1, T0 + 2]);
+    expect(result.skipped).toBe(2); // the text and the array
+  });
+
+  it('braces, brackets and quotes inside a string do not confuse it: only indentation and a closing brace at the start of a line do', () => {
+    const odd = tail(portalEvent({ at: T0, url: `https://${PORTAL}.acme.workers.dev/portal/api/config?x=%7B%7D&y={z}` }));
+    (odd.event as { request: { headers: Record<string, string> } }).request.headers['x-note'] = '}\n{ "a": [1, 2 ], } "';
+    const result = readCapture(JSON.stringify(odd, null, 2));
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({ route: '/portal/api/config', status: 200 });
+  });
+
+  it('an object that was cut never swallows the ones after it: it is one skipped item, and the next object is read', () => {
+    const whole = pretty(portalEvent({ at: T0 + 10 }));
+    const cutAt = whole.split('\n').slice(0, 9).join('\n'); // stops in the middle of "event"
+    // a tail killed mid-object and restarted: the banner comes back, then whole objects
+    const result = readCapture([pretty(portalEvent({ at: T0 })), cutAt, ...BANNER, whole, pretty(portalEvent({ at: T0 + 20 })), ''].join('\n'));
+    expect(result.records.map((r) => (r as { at: number }).at)).toEqual([T0, T0 + 10, T0 + 20]);
+    expect(result.skipped).toBe(3); // the cut object and the two banner lines
+    // a cut one right before a compact line, and a cut one at the end of the input
+    const compactAfterCut = readCapture([cutAt, JSON.stringify(tail(portalEvent({ at: T0 + 30 })))].join('\n'));
+    expect(compactAfterCut.records).toHaveLength(1);
+    expect(compactAfterCut.skipped).toBe(1);
+    const atTheEnd = readCapture([pretty(portalEvent({ at: T0 })), cutAt].join('\n'));
+    expect(atTheEnd.records).toHaveLength(1);
+    expect(atTheEnd.skipped).toBe(1);
+    expect(atTheEnd.read).toBe(2);
+  });
+
+  it('JSON that is complete but is not an invocation is one skipped item (a pretty-printed one too)', () => {
+    const result = readCapture(['{}', '{', '  "hello": "world"', '}', '{"event":{}}', ''].join('\n'));
+    expect(result.records).toHaveLength(0);
+    expect(result.read).toBe(3);
+    expect(result.skipped).toBe(3);
+  });
+
+  it('an overload notice, a cron and an RPC call are read from a pretty-printed capture as they are from a compact one', () => {
+    const notice = JSON.stringify({ outcome: 'ok', event: { type: 'overload', message: 'Tail is currently in sampling mode' } }, null, 2);
+    const cron = JSON.stringify({ outcome: 'ok', scriptName: ADMIN, eventTimestamp: T0, cpuTime: 2, wallTime: 30, event: { cron: '17 3 * * *', scheduledTime: T0 } }, null, 2);
+    const result = readCapture([notice, cron].join('\n'));
+    expect(result.records).toMatchObject([{ kind: 'info', info: 'overload' }, { kind: 'scheduled', route: '17 3 * * *', cpuMs: 2 }]);
+  });
+
+  it('groups the articles on request, as the compact reader does', () => {
+    const text = pretty({ url: `https://${WEB}.acme.workers.dev/blog/macam-macam-gaya-belajar`, cpu: 3 });
+    expect(readCapture(text).records[0]).toMatchObject({ route: '/blog/macam-macam-gaya-belajar' });
+    expect(readCapture(text, { groupSlugs: true }).records[0]).toMatchObject({ route: '/blog/:slug' });
+  });
+
+  it('empty input reads nothing', () => {
+    expect(readCapture('')).toEqual({ records: [], read: 0, skipped: 0 });
+    expect(createCaptureParser().end()).toEqual({ records: [], read: 0, skipped: 0 });
   });
 });
 
@@ -316,12 +481,13 @@ describe('aggregate over a made-up capture', () => {
 
   it('routes are listed worst first, and the text report carries the numbers and the overall line', () => {
     expect(report.routes.map((r) => r.verdict)).toEqual(['FAIL', 'FAIL', 'NO-CPU', 'RISK', 'OK']);
-    const text = renderReport(report, { lines: 60, skipped: 4 });
+    const text = renderReport(report, { items: 60, skipped: 4 });
     expect(text).toContain('OVERALL: FAIL');
     expect(text).toContain('exceededCpu:1');
     expect(text).toContain('POST /api/auth/sign-in/email');
     expect(text).toContain('after-idle: 1 (max 9 ms)');
-    expect(text).toContain('lines skipped');
+    expect(text).toContain('items read (a line, or one pretty-printed object): 60');
+    expect(text).toContain('items skipped');
   });
 
   it('--only-measure keeps the requests of the tool (by user agent) and drops the hand-driven ones; --worker keeps one Worker', () => {
@@ -517,6 +683,106 @@ describe('probe, confirmed: GET only, one at a time, as itself, with no credenti
   });
 });
 
+describe('--portal: the student portal Worker, its own host typed back, GET only, no cookie', () => {
+  const portalPlan = buildPlan({ web: false, portal: true });
+  const portalPaths = portalPlan.map((r) => r.path);
+
+  it('plan prints the portal rows with their notes, counts them in the Worker budget, and sends nothing', async () => {
+    reset();
+    const result = await node(['plan', '--base', origin, '--portal', origin, '--rounds', '2']);
+    expect(result.code).toBe(0);
+    for (const route of portalPlan) expect(result.stderr).toContain(`${origin}${route.path}`);
+    expect(result.stderr).toContain('control: the SPA index, answered by the assets layer');
+    expect(result.stderr).toContain('plan only: nothing was sent');
+    const total = (buildPlan({ web: true, portal: true }).length) * 2;
+    expect(result.stderr).toContain(`${total} requests in total`);
+    expect(seen).toEqual([]);
+    // on the staging hosts the same rows come out against the portal's own origin
+    const staging = await node(['plan', '--base', 'https://sakem-web-staging.acme.workers.dev', '--portal', 'https://sakem-portal-staging.acme.workers.dev']);
+    expect(staging.code).toBe(0);
+    expect(staging.stderr).toContain('https://sakem-portal-staging.acme.workers.dev/portal/api/config');
+    expect(staging.stderr).not.toContain('https://sakem-web-staging.acme.workers.dev/portal/api/config');
+  });
+
+  it('refuses the production domain, a foreign host, plain http and a path for the portal, before any request, with no flag to allow it', async () => {
+    reset();
+    for (const bad of ['https://sakolakembara.org', 'https://www.sakolakembara.org', 'https://example.com', 'http://sakem-portal-staging.acme.workers.dev', 'https://x.acme.workers.dev/portal']) {
+      const result = await node(['probe', '--base', origin, '--portal', bad, '--confirm', host, '--confirm-portal', new URL(bad).host]);
+      expect(result.code, bad).toBe(2);
+      expect(result.stderr, bad).toContain('Nothing was contacted');
+      expect(result.stderr, bad).toContain('--portal');
+    }
+    expect(seen).toEqual([]);
+  });
+
+  it('needs --base too (the site is always probed): --portal alone is refused', async () => {
+    const result = await node(['probe', '--portal', origin, '--confirm-portal', host]);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain('--base is required');
+  });
+
+  it('the portal host must be typed back: without --confirm-portal, or with another host, nothing is sent, not even the routes of the site', async () => {
+    reset();
+    const missing = await node(['probe', '--base', origin, '--portal', origin, '--rounds', '1', '--delay-ms', '0', '--confirm', host]);
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toContain('portal host was not typed back');
+    const wrong = await node(['probe', '--base', origin, '--portal', origin, '--rounds', '1', '--delay-ms', '0', '--confirm', host, '--confirm-portal', 'sakem-portal-staging.acme.workers.dev']);
+    expect(wrong.code).toBe(2);
+    // the site's own confirmation is not the portal's, and the admin's is not either
+    const admin = await node(['probe', '--base', origin, '--portal', origin, '--rounds', '1', '--delay-ms', '0', '--confirm', host, '--confirm-admin', host]);
+    expect(admin.code).toBe(2);
+    expect(seen).toEqual([]);
+  });
+
+  it('confirmed: every portal route the requested number of times, GET only, as itself, with no credential and no cookie', async () => {
+    reset();
+    const out = path.join(tmp, 'probe-portal.json');
+    const result = await node(['probe', '--base', origin, '--portal', origin, '--rounds', '2', '--delay-ms', '0', '--confirm', host, '--confirm-portal', host, '--out', out]);
+    expect(result.code, result.stderr).toBe(0);
+    const web = buildPlan({ web: true });
+    expect(seen.length).toBe((web.length + portalPlan.length) * 2);
+    expect(new Set(seen.map((s) => s.method))).toEqual(new Set(['GET']));
+    expect(seen.every((s) => s.body === '')).toBe(true);
+    // (on one loopback origin the site's own `/portal/api/auth/get-session` and the portal's are the same URL: asked by both rows)
+    for (const route of portalPaths) expect(seen.filter((s) => s.url === route), route).toHaveLength(2 * [...web, ...portalPlan].filter((r) => r.path === route).length);
+    // nothing else of the portal is asked: no sign-in, no registration, no write route
+    expect(seen.filter((s) => s.url.startsWith('/portal/api/') && !portalPaths.includes(s.url))).toEqual([]);
+    for (const entry of seen) {
+      expect(entry.headers['user-agent']).toBe(USER_AGENT);
+      for (const name of Object.keys(entry.headers)) expect(name).not.toMatch(/authorization|cookie|token|x-api|cf-access/i);
+    }
+    const rows = (JSON.parse(readFileSync(out, 'utf8')) as { rows: { worker: string; url: string; requests: number }[] }).rows;
+    const portalRows = rows.filter((r) => r.url.startsWith('portal/'));
+    expect(portalRows.map((r) => r.url)).toEqual(portalPlan.map((r) => `portal${r.path}`));
+    expect(portalRows.every((r) => r.requests === 2)).toBe(true);
+    expect(portalRows.filter((r) => r.worker === 'none')).toHaveLength(2);
+    expect(result.stdout).toContain('portal/portal/api/config');
+  });
+
+  it('a 401 is an answer, not a failure; a 429 stops that route for the rest of the run; an error 1102 makes the run fail', async () => {
+    reset();
+    respond = (req) => (req.url === '/portal/api/me' ? { status: 401, body: '{"error":"unauthenticated"}' } : req.url === '/portal/api/overview' ? { status: 429, body: 'slow down' } : { status: 200, body: 'ok' });
+    const ok = await node(['probe', '--base', origin, '--portal', origin, '--rounds', '4', '--delay-ms', '0', '--confirm', host, '--confirm-portal', host, '--out', path.join(tmp, 'probe-portal-429.json')]);
+    expect(ok.code, ok.stderr).toBe(0);
+    expect(seen.filter((s) => s.url === '/portal/api/me')).toHaveLength(4);
+    expect(seen.filter((s) => s.url === '/portal/api/overview')).toHaveLength(1);
+    expect(ok.stdout).toContain('401:4');
+    reset();
+    respond = (req) => (req.url === '/portal/api/config' ? { status: 503, body: '<title>Error 1102 Worker exceeded resource limits</title>' } : { status: 200, body: 'ok' });
+    const failed = await node(['probe', '--base', origin, '--portal', origin, '--rounds', '2', '--delay-ms', '0', '--confirm', host, '--confirm-portal', host, '--out', path.join(tmp, 'probe-portal-1102.json')]);
+    expect(failed.code).toBe(1);
+    expect(failed.stdout).toContain('ERROR 1102');
+  });
+
+  it('with --writes the portal adds no POST: the same two as without it', async () => {
+    reset();
+    const result = await node(['probe', '--base', origin, '--admin', origin, '--portal', origin, '--writes', '--rounds', '1', '--delay-ms', '0', '--confirm', host, '--confirm-admin', host, '--confirm-portal', host, '--confirm-writes', host, '--out', path.join(tmp, 'probe-portal-writes.json')]);
+    expect(result.code, result.stderr).toBe(0);
+    expect(seen.filter((s) => s.method === 'POST').map((p) => p.url)).toEqual(['/kontak', '/api/auth/sign-in/email']);
+    expect(seen.filter((s) => s.url.startsWith('/portal/')).every((s) => s.method === 'GET')).toBe(true);
+  });
+});
+
 describe('--writes needs its own confirmation, and then sends only the two refused POSTs', () => {
   it('without the second confirmation nothing is sent at all, not even the GETs', async () => {
     reset();
@@ -594,6 +860,86 @@ describe('collect: reads a capture, never the network', () => {
     const result = await node(['collect', '--file', path.join(tmp, 'nope.jsonl')]);
     expect(result.code).toBe(2);
     expect(result.stderr).toContain('could not read the capture');
+  });
+});
+
+describe('collect: a pretty-printed capture, as `wrangler tail --format json` writes it, with the portal Worker in it', () => {
+  const portalUrl = (route: string) => `https://${PORTAL}.acme.workers.dev${route}`;
+  /** The probe's own requests to the portal (user agent of the tool) and a hand-driven sign-in, all invented. */
+  function portalEvents(): Fake[] {
+    const events: Fake[] = [];
+    let t = T0;
+    const at = (gap: number) => (t += gap);
+    const probe = (route: string, status: number, cpu: number[]) => cpu.forEach((c, i) => events.push({ script: PORTAL, url: portalUrl(route), status, cpu: c, wall: 10 + c, at: at(i === 0 ? 120_000 : 700), ua: USER_AGENT }));
+    probe('/portal/api/config', 200, [1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1]);
+    probe('/portal/api/me', 401, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    probe('/portal/api/auth/get-session', 200, [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1]);
+    probe('/portal/api/files/00000000-0000-4000-8000-000000000000', 401, [1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1]);
+    // a sign-in by hand in a browser: another user agent, the heaviest route of the portal
+    for (let i = 0; i < 10; i++) events.push({ script: PORTAL, url: portalUrl('/portal/api/auth/sign-in/email'), method: 'POST', status: 200, cpu: 4 + (i % 3), wall: 60, at: at(5000), ua: 'Mozilla/5.0' });
+    return events;
+  }
+  const prettyCapture = () => [...BANNER, ...portalEvents().map((e) => pretty(e))].join('\n');
+  const compactCapture = () => portalEvents().map((e) => JSON.stringify(tail(e))).join('\n');
+  const file = (name: string, text: string) => {
+    const full = path.join(tmp, name);
+    writeFileSync(full, `${text}\n`);
+    return full;
+  };
+
+  it('prints one row per route of the portal, with the numbers, and exits 0 when none failed (a RISK is not a failure)', async () => {
+    reset();
+    const result = await node(['collect', '--file', file('portal-pretty.json', prettyCapture())]);
+    expect(result.code, result.stdout).toBe(0);
+    for (const row of ['GET /portal/api/config', 'GET /portal/api/me', 'GET /portal/api/auth/get-session', 'GET /portal/api/files/:id', 'POST /portal/api/auth/sign-in/email']) expect(result.stdout, row).toContain(row);
+    expect(result.stdout).toContain(PORTAL);
+    expect(result.stdout).toContain('items skipped');
+    expect(seen).toEqual([]);
+  });
+
+  it('gives the same table as the compact capture of the same events (the PM no longer has to compact it first)', async () => {
+    const spread = await node(['collect', '--file', file('same-pretty.json', prettyCapture()), '--json', path.join(tmp, 'same-pretty-report.json')]);
+    const compact = await node(['collect', '--file', file('same-compact.jsonl', compactCapture()), '--json', path.join(tmp, 'same-compact-report.json')]);
+    expect(spread.code).toBe(compact.code);
+    const a = JSON.parse(readFileSync(path.join(tmp, 'same-pretty-report.json'), 'utf8')) as { routes: unknown; overall: unknown; totals: { items: number; skipped: number } };
+    const b = JSON.parse(readFileSync(path.join(tmp, 'same-compact-report.json'), 'utf8')) as { routes: unknown; overall: unknown; totals: { items: number; skipped: number } };
+    expect(a.routes).toEqual(b.routes);
+    expect(a.overall).toEqual(b.overall);
+    // the pretty file has the two banner lines more, and counts them as items it skipped
+    expect(a.totals).toEqual({ items: b.totals.items + 2, skipped: b.totals.skipped + 2 });
+    expect(b.totals.items).toBe(portalEvents().length);
+  });
+
+  it('reads standard input too, and --only-measure keeps the tool\'s requests (by the user agent inside the pretty-printed event) and drops the hand-driven sign-in', async () => {
+    const result = await node(['collect', '--only-measure'], `${prettyCapture()}\n`);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('GET /portal/api/config');
+    expect(result.stdout).not.toContain('sign-in/email');
+    expect(result.stdout).toContain('Invocations: 48 ');
+  });
+
+  it('reads several files, each with its own state: an object cut at the end of the first never swallows the first object of the second', async () => {
+    const events = portalEvents();
+    const first = pretty(events[0]!);
+    const cut = first.split('\n').slice(0, 8).join('\n');
+    const a = file('cut-a.json', [...BANNER, pretty(events[1]!), cut].join('\n'));
+    const b = file('cut-b.json', [...BANNER, pretty(events[2]!), pretty(events[3]!)].join('\n'));
+    const json = path.join(tmp, 'cut-report.json');
+    const result = await node(['collect', '--file', a, '--file', b, '--json', json]);
+    expect(result.code).toBe(0);
+    const report = JSON.parse(readFileSync(json, 'utf8')) as { events: number; totals: { items: number; skipped: number } };
+    expect(report.events).toBe(3); // one from the first file, two from the second; the cut one is not an event
+    expect(report.totals.skipped).toBe(2 + 2 + 1); // two banners in each file, and the cut object
+  });
+
+  it('a pretty-printed capture with a route that has no CPU field is NO-CPU (exit 3), and one with a stopped invocation fails (exit 1)', async () => {
+    const noCpu = await node(['collect', '--file', file('nocpu.json', [...BANNER, ...[0, 1, 2].map((i) => pretty({ script: PORTAL, url: portalUrl('/portal/api/config'), at: T0 + i * 1000 }))].join('\n'))]);
+    expect(noCpu.code).toBe(3);
+    expect(noCpu.stdout).toContain('NO-CPU');
+    const stopped = [...BANNER, ...Array.from({ length: 12 }, (_, i) => pretty({ script: PORTAL, url: portalUrl('/portal/api/auth/sign-in/email'), method: 'POST', cpu: i === 11 ? 10 : 3, outcome: i === 11 ? 'exceededCpu' : 'ok', status: i === 11 ? 503 : 200, at: T0 + i * 1000 }))].join('\n');
+    const failed = await node(['collect', '--file', file('stopped.json', stopped)]);
+    expect(failed.code).toBe(1);
+    expect(failed.stdout).toContain('exceededCpu:1');
   });
 });
 

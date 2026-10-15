@@ -1,6 +1,6 @@
-// The pure half of scripts/measure-staging.mjs (SAKEM-084): which routes are asked, how a `wrangler tail`
-// event becomes a record, how records become per-route numbers, and the verdict. No network and no file
-// system here, so tests/measure-staging.test.ts runs all of it on text.
+// The pure half of scripts/measure-staging.mjs (SAKEM-084, the portal's routes and the pretty-printed capture SAKEM-098):
+// which routes are asked, how a `wrangler tail` event becomes a record, how records become per-route numbers, and the
+// verdict. No network and no file system here, so tests/measure-staging.test.ts runs all of it on text.
 //
 // What is measured, and what is not. The 10 ms limit of the Workers Free plan is on CPU time, which only
 // Cloudflare can read: a timer inside a Worker only moves on I/O, and the time a client measures includes the
@@ -91,10 +91,13 @@ const SIGN_IN_BODY = JSON.stringify({ email: 'staging-measure@example.invalid', 
  * The routes of the plan. `worker` says which Worker is expected to run: 'none' is a control (the assets layer
  * answers, no Worker invocation, so no event should appear in the tail), 'web' or 'admin' a Worker request.
  * `minDelayMs` stretches the pause for a route behind a rate limit.
- * @param {{ slugs?: string[], shortlink?: string, web?: boolean, admin?: boolean, writes?: boolean }} [options]
+ * `portal`: the student portal's Worker (`sakem-portal-staging`), only the GET routes that need no session and no cookie:
+ * it never signs in, never registers, never asks a route behind a limiter (no 429 is provoked), and `--writes` adds
+ * nothing for it. The routes that need a session are clicked by hand while the tail runs (runbook, step 13c).
+ * @param {{ slugs?: string[], shortlink?: string, web?: boolean, admin?: boolean, portal?: boolean, writes?: boolean }} [options]
  * @returns {{ worker: string, method: string, path: string, target?: string, note?: string, body?: string, headers?: Record<string, string>, withOrigin?: boolean, minDelayMs?: number }[]}
  */
-export function buildPlan({ slugs = DEFAULT_SLUGS, shortlink, web = true, admin = false, writes = false } = {}) {
+export function buildPlan({ slugs = DEFAULT_SLUGS, shortlink, web = true, admin = false, portal = false, writes = false } = {}) {
   const routes = [];
   const add = (worker, method, pathName, extra = {}) => routes.push({ worker, method, path: pathName, ...extra });
   if (web) {
@@ -112,7 +115,7 @@ export function buildPlan({ slugs = DEFAULT_SLUGS, shortlink, web = true, admin 
     add('web', 'GET', '/sitemap.xml', { note: 'SSR: every page of the blog index through the API' });
     add('web', 'GET', shortlink ? `/${shortlink}` : '/measure-unknown-slug', { note: shortlink ? 'SSR: a real short link (307)' : 'SSR: the short-link lookup of an unknown name (404 after one API call)' });
     add('web', 'GET', '/no/such/page', { note: 'SSR: the 404 page render' });
-    add('web', 'GET', '/portal/api/auth/get-session', { note: 'what the navbar asks on every first visit; the portal is not on staging, so a 404 page render' });
+    add('web', 'GET', '/portal/api/auth/get-session', { note: 'what the navbar asks on every first visit; the portal is on a host of its own on staging, not behind this one, so a 404 page render' });
     add('web', 'GET', '/api/announcements/current', { note: 'what the navbar asks; a JSON 404 of the middleware' });
     add('web', 'GET', '/admin', { note: 'middleware: 308 to ADMIN_URL (404 without it)' });
   }
@@ -125,6 +128,25 @@ export function buildPlan({ slugs = DEFAULT_SLUGS, shortlink, web = true, admin 
     add('admin', 'GET', '/api/admin/blog', { target: 'admin', note: 'without a session: 401' });
     add('admin', 'GET', '/uploads/probe', { target: 'admin', note: 'run_worker_first: a JSON 404' });
     add('admin', 'GET', '/api/public/team', { target: 'admin', note: 'must be a 404 from the internet: the reads exist on the service-binding entrypoint only' });
+  }
+  if (portal) {
+    // The assets layer: the SPA's index for the page and for a deep link. (Node's fetch always sends `Sec-Fetch-Mode: cors`,
+    // so these are not browser navigations; the local emulation answers them from the assets layer all the same, and a
+    // tail with an event for them on a real account says otherwise.)
+    add('none', 'GET', '/portal/', { target: 'portal', note: 'control: the SPA index, answered by the assets layer' });
+    add('none', 'GET', '/portal/status', { target: 'portal', note: 'control: a deep link, the SPA fallback of the assets layer' });
+    // The Worker, `run_worker_first: /portal/api/*`. Nothing here carries a cookie, so nothing builds Better Auth or reads D1.
+    add('portal', 'GET', '/portal/api/config', { target: 'portal', note: 'public settings of the SPA (the site key, the two origins, the optional WhatsApp values)' });
+    add('portal', 'GET', '/portal/api/me', { target: 'portal', note: 'without the portal cookie: 401, no session lookup' });
+    add('portal', 'GET', '/portal/api/auth/get-session', { target: 'portal', note: 'without the portal cookie: null (200), Better Auth is not built; what the public site\'s navbar asks at the apex' });
+    add('portal', 'GET', '/portal/api/overview', { target: 'portal', note: 'a student route, no cookie: 401 before any limiter or query' });
+    add('portal', 'GET', '/portal/api/applications/current', { target: 'portal', note: 'a student route, no cookie: 401' });
+    add('portal', 'GET', '/portal/api/applications', { target: 'portal', note: 'a student route, no cookie: 401' });
+    add('portal', 'GET', '/portal/api/files/00000000-0000-4000-8000-000000000000', { target: 'portal', note: 'the file route, no cookie: 401 (an id that is nobody\'s; no bucket read)' });
+    add('portal', 'GET', '/portal/api/auth/list-sessions', { target: 'portal', note: 'an auth route that is not in the route table: a JSON 404 from the gate (what a scanner meets)' });
+    add('portal', 'GET', '/portal/api/no-such-route', { target: 'portal', note: 'an unknown API route: the JSON 404' });
+    add('portal', 'GET', '/portal/api/dev/mailbox', { target: 'portal', note: 'the development mailbox: a JSON 404 outside ENVIRONMENT=development' });
+    add('portal', 'GET', '/portal/no-such-file.png', { target: 'portal', note: 'a file that is not there, not asked as a navigation (a stale client, a scanner): the design expects the Worker\'s JSON 404, the local emulation answers the SPA index from the assets layer; the tail settles which (an event or none)' });
   }
   if (writes) {
     if (web) {
@@ -227,7 +249,11 @@ export function eventFromTrace(raw, options = {}) {
   return null;
 }
 
-/** One line of a tail capture: the record, 'skip' for a line that is not JSON or not an event, or null for blank. Banner lines of wrangler land in 'skip'. */
+/**
+ * One line of a tail capture holding a whole COMPACT JSON object: the record, 'skip' for a line that is not JSON or not an
+ * event, or null for blank. Banner lines of wrangler land in 'skip'. A pretty-printed object is several lines: that is
+ * `createCaptureParser`'s (below), which uses the same reading for each object.
+ */
 export function parseLine(line, options = {}) {
   const trimmed = line.trim();
   if (trimmed === '') return null;
@@ -239,6 +265,90 @@ export function parseLine(line, options = {}) {
     return 'skip';
   }
   return eventFromTrace(parsed, options) ?? 'skip';
+}
+
+/**
+ * Reads a whole tail capture line by line (push each line, then `end()`), whatever shape `wrangler tail --format json`
+ * printed it in:
+ *   - one compact JSON object per line (what the first versions of this tool expected), or
+ *   - PRETTY-PRINTED objects of many lines: `{` at the start of a line, every inner line indented, `}` alone at the start
+ *     of a line (what `JSON.stringify(event, null, 2)` writes, which is what wrangler prints), with or without a blank
+ *     line between two of them,
+ * mixed with the banner lines wrangler prints first ("Successfully created tail...", "Connected to ...") and with
+ * objects that were cut (a tail killed in the middle of one, a line lost). A cut object never swallows the objects that
+ * follow it: a line that is not indented and is not the closing `}` ends it, and ends it as skipped.
+ *
+ * `read` counts items (a line, or one whole object), `skipped` the items that are not an invocation (text, broken
+ * or cut JSON, JSON that is not an event). Pure: no file system, no network.
+ * @param {{ groupSlugs?: boolean }} [options]
+ */
+export function createCaptureParser(options = {}) {
+  const records = [];
+  let read = 0;
+  let skipped = 0;
+  /** The lines of an object that began with `{` and is not complete yet, or null. */
+  let pending = null;
+
+  const accept = (parsed) => {
+    read += 1;
+    const record = eventFromTrace(parsed, options);
+    if (record) records.push(record);
+    else skipped += 1;
+  };
+  const dropPending = () => {
+    if (pending === null) return;
+    pending = null;
+    read += 1;
+    skipped += 1;
+  };
+  const fresh = (text) => {
+    if (text.trim() === '') return;
+    if (text[0] === '{') {
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        // Not a whole object on this line: the first line of a pretty-printed one, or a line that was cut.
+        pending = [text];
+        return;
+      }
+      accept(parsed);
+      return;
+    }
+    read += 1;
+    skipped += 1; // a banner line, text, an array
+  };
+
+  return {
+    push(line) {
+      const text = line.endsWith('\r') ? line.slice(0, -1) : line;
+      if (pending !== null) {
+        if (/^\s/.test(text)) {
+          pending.push(text);
+          return;
+        }
+        if (text === '}') {
+          const body = [...pending, text].join('\n');
+          pending = null;
+          try {
+            accept(JSON.parse(body));
+          } catch {
+            read += 1;
+            skipped += 1;
+          }
+          return;
+        }
+        // Neither indented nor the closing brace: the object was cut. This line is read afresh.
+        dropPending();
+      }
+      fresh(text);
+    },
+    /** The end of the input: an object still open was cut. */
+    end() {
+      dropPending();
+      return { records, read, skipped };
+    },
+  };
 }
 
 // ----------------------------------------------------------------------------------------------- the numbers
@@ -364,11 +474,11 @@ export function aggregate(records, options = {}) {
 const pad = (value, width, right = false) => (right ? String(value).padStart(width) : String(value).padEnd(width));
 const num = (value) => (value === null || value === undefined ? '-' : String(value));
 
-/** The report as text. `totals` is { lines, skipped } from the reader. */
-export function renderReport(report, totals = { lines: 0, skipped: 0 }) {
+/** The report as text. `totals` is { items, skipped } from the reader (`createCaptureParser`). */
+export function renderReport(report, totals = { items: 0, skipped: 0 }) {
   const out = [];
   const withCpu = report.routes.reduce((sum, r) => sum + (r.cpu?.n ?? 0), 0);
-  out.push(`Invocations: ${report.events} (${withCpu} with a CPU time), lines read: ${totals.lines}, lines skipped (not JSON or not an invocation): ${totals.skipped}`);
+  out.push(`Invocations: ${report.events} (${withCpu} with a CPU time), items read (a line, or one pretty-printed object): ${totals.items}, items skipped (not JSON or not an invocation): ${totals.skipped}`);
   out.push(`Thresholds (ms of CPU, limit ${THRESHOLDS.limitMs} on Workers Free): OK p99 < ${THRESHOLDS.okBelowMs}; RISK p99 ${THRESHOLDS.okBelowMs}-${THRESHOLDS.gateMs} or max ${THRESHOLDS.gateMs}-${THRESHOLDS.limitMs}; FAIL any exceededCpu (1102), p99 > ${THRESHOLDS.gateMs} or max >= ${THRESHOLDS.limitMs}`);
   out.push('CPU time is whole milliseconds as Cloudflare records it; "after idle" is a heuristic (first invocation of a Worker after a gap), not an isolate id.');
   out.push('');
