@@ -248,6 +248,8 @@ describe('the API client and the markdown adapter agree on every article', () =>
   let fixture: Awaited<ReturnType<typeof startFixtureApi>>;
   let api: BlogSource;
   let base: string;
+  /** Why the client gave up (its fixed words: `timeout`, `status 500`...). It answers "empty" instead of throwing, so without this the reason is lost. */
+  const failures: string[] = [];
 
   beforeAll(async () => {
     fixture = await startFixtureApi({ port: 0 });
@@ -260,7 +262,7 @@ describe('the API client and the markdown adapter agree on every article', () =>
     if (!warmUp.ok) throw new Error(`the fixture API did not start: ${warmUp.status} ${await warmUp.text()}`);
     await warmUp.arrayBuffer();
     await fetch(`${base}/__reset`, { method: 'POST' });
-    api = createApiBlogSource({ target: contentApiTarget({ CONTENT_API_URL: base }) });
+    api = createApiBlogSource({ target: contentApiTarget({ CONTENT_API_URL: base }), onFailure: (reason) => failures.push(reason) });
   });
   afterAll(async () => {
     await fixture.close();
@@ -272,7 +274,7 @@ describe('the API client and the markdown adapter agree on every article', () =>
       if (!first.data) throw new Error('markdown list failed');
       for (let page = 1; page <= first.data.totalPages + 1; page++) {
         const [a, m] = await Promise.all([api.list(page, pageSize), markdownBlogSource.list(page, pageSize)]);
-        expect(a.data, `page ${page} of ${pageSize}`).toEqual(m.data);
+        expect(a.data, `page ${page} of ${pageSize} (client failures so far: ${failures.join(', ') || 'none'})`).toEqual(m.data);
         expect(a.data).not.toBeNull();
       }
     }
