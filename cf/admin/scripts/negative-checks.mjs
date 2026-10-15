@@ -354,9 +354,17 @@ const checks = [
   {
     name: "the blanket no-store header removed (the dashboard could be cached)",
     file: "src/worker.ts",
-    from: '  c.header("Cache-Control", "no-store");',
+    from: '  if (c.res.headers.get("Cache-Control") !== "private, no-store") c.header("Cache-Control", "no-store");',
     to: "",
     tests: DASHBOARD_TESTS,
+  },
+  {
+    // The one value a route may keep is the stricter `private, no-store` of an applicant's file (src/private-files/serve.ts).
+    name: "the blanket no-store header overwrites the stricter private, no-store of an applicant's file",
+    file: "src/worker.ts",
+    from: '  if (c.res.headers.get("Cache-Control") !== "private, no-store") c.header("Cache-Control", "no-store");',
+    to: '  c.header("Cache-Control", "no-store");',
+    tests: "test/private-files-admin.test.ts test/private-files-own.test.ts",
   },
   {
     name: "a dashboard link points at a route the SPA does not have",
