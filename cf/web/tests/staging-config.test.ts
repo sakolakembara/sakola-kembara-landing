@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { unstable_readConfig } from 'wrangler';
 import { describe, expect, it } from 'vitest';
+import { WORKERS } from '../../scripts/staging-deploy-command.mjs';
 import { readRoot, repoRoot, webRoot } from './helpers';
 
 // The staging environment (SAKEM-084, docs/cloudflare/staging-runbook.md): the same code deployed as Workers
@@ -10,8 +11,10 @@ import { readRoot, repoRoot, webRoot } from './helpers';
 //
 //   cf/web/wrangler.jsonc    the site; the Astro adapter's Vite plugin picks the environment from CLOUDFLARE_ENV at build time
 //   cf/admin/wrangler.jsonc  the API Worker; `--env staging`
+//   cf/admin/wrangler.portal.jsonc  the student portal's Worker (SAKEM-098); `-c wrangler.portal.jsonc --env staging`
 
 const adminFile = path.join(repoRoot, 'cf/admin/wrangler.jsonc');
+const portalFile = path.join(repoRoot, 'cf/admin/wrangler.portal.jsonc');
 const webFile = path.join(webRoot, 'wrangler.jsonc');
 
 /** The part of wrangler's resolved configuration these tests read. */
@@ -39,6 +42,8 @@ const adminProduction = read(adminFile);
 const adminStaging = read(adminFile, 'staging');
 const webProduction = read(webFile);
 const webStaging = read(webFile, 'staging');
+const portalProduction = read(portalFile);
+const portalStaging = read(portalFile, 'staging');
 
 describe('names', () => {
   it('the staging Workers are `sakem-admin-staging` and `sakem-web-staging`, and the production ones keep their names', () => {
@@ -147,8 +152,84 @@ describe('the site: staging has the production settings, and no escape hatch', (
   });
 });
 
+describe('the portal Worker: staging has the same bindings, limiters and settings as its top level, and resources of its own', () => {
+  const summary = (r: Resolved['ratelimits']) => r.map((l) => ({ name: l.name, simple: l.simple }));
+  const FIXED_VARS = ['ENVIRONMENT', 'PRIVATE_FILES_BUDGET_BYTES'];
+
+  it('the Worker is `sakem-portal-staging`, a valid workers.dev label, and the production one keeps its name', () => {
+    expect(portalProduction.name).toBe('sakem-portal');
+    expect(portalStaging.name).toBe('sakem-portal-staging');
+    expect(portalStaging.name).toBe(`${portalProduction.name}-staging`);
+    expect(portalStaging.name).toMatch(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/);
+    expect(portalStaging.name).not.toBe(adminStaging.name);
+    expect(portalStaging.name).not.toBe(webStaging.name);
+  });
+
+  it('is on workers.dev only, with no route, no preview hosts and no service binding (the portal calls no other Worker)', () => {
+    expect(portalStaging.workers_dev).toBe(true);
+    expect(portalStaging.preview_urls).toBe(false);
+    expect(portalStaging.routes ?? []).toEqual([]);
+    expect(portalProduction.routes ?? []).toEqual([]);
+    expect(portalStaging.services ?? []).toEqual([]);
+    expect(portalStaging.triggers ?? {}).toEqual(portalProduction.triggers ?? {});
+    // wrangler resolves `main` to an absolute path: the same entry as the top level's, the portal's, not the admin's.
+    expect(portalStaging.main).toBe(portalProduction.main);
+    expect(portalStaging.main).toMatch(/\/cf\/admin\/src\/portal\/worker\.ts$/);
+  });
+
+  it('the database is the ADMIN STAGING one, named and never identified; the private bucket is the one the admin staging binds, and the portal has no other', () => {
+    expect(portalStaging.d1_databases.map((d) => [d.binding, d.migrations_dir])).toEqual(portalProduction.d1_databases.map((d) => [d.binding, d.migrations_dir]));
+    expect(portalStaging.d1_databases).toEqual(adminStaging.d1_databases);
+    expect(portalStaging.d1_databases.map((d) => d.database_name)).toEqual(['sakem-staging']);
+    expect(portalStaging.r2_buckets.map((b) => [b.binding, b.bucket_name])).toEqual([['PRIVATE_FILES', 'sakem-private-staging']]);
+    expect(adminStaging.r2_buckets.find((b) => b.binding === 'PRIVATE_FILES')?.bucket_name).toBe('sakem-private-staging');
+    for (const resource of [...portalStaging.d1_databases, ...portalStaging.r2_buckets]) {
+      expect(Object.keys(resource).filter((key) => /(^|_)id$/.test(key))).toEqual([]);
+    }
+  });
+
+  it('every limiter of the top level is in staging under the same name, with the same limit and period', () => {
+    expect(summary(portalStaging.ratelimits)).toEqual(summary(portalProduction.ratelimits));
+    // The seven auth limiters and the four signed-in student ones.
+    expect(portalProduction.ratelimits).toHaveLength(11);
+    for (const other of ['RL_CONTACT', 'RL_UPLOAD', 'RL_BLOG_PREVIEW', 'RL_ADMIN_FILE']) expect(portalStaging.ratelimits.map((l) => l.name)).not.toContain(other);
+  });
+
+  it('the namespaces of ALL FOUR blocks are different (an id is per account, and a shared id shares a counter): staging is the top level plus 100', () => {
+    const blocks = { adminProduction, adminStaging, portalProduction, portalStaging };
+    const ids = Object.values(blocks).flatMap((block) => block.ratelimits.map((l) => l.namespace_id));
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[1-9][0-9]*$/);
+    for (const entry of portalStaging.ratelimits) {
+      const top = portalProduction.ratelimits.find((l) => l.name === entry.name)!;
+      expect(Number(entry.namespace_id)).toBe(Number(top.namespace_id) + 100);
+    }
+  });
+
+  it('the same assets setup, observability, compatibility date and flags; the same variables plus the per-deploy ones; an ENVIRONMENT that is not `development` or `test`', () => {
+    expect(portalStaging.assets).toEqual(portalProduction.assets);
+    expect(portalStaging.observability).toEqual(portalProduction.observability);
+    expect(portalStaging.compatibility_date).toBe(portalProduction.compatibility_date);
+    expect(portalStaging.compatibility_flags).toEqual(portalProduction.compatibility_flags);
+    expect(Object.keys(portalStaging.vars).filter((name) => Object.keys(portalProduction.vars).includes(name)).sort()).toEqual(Object.keys(portalProduction.vars).sort());
+    expect(portalStaging.vars.ENVIRONMENT).toBe('staging');
+    expect(['development', 'test']).not.toContain(portalStaging.vars.ENVIRONMENT);
+    expect(portalStaging.vars.PRIVATE_FILES_BUDGET_BYTES).toBe(portalProduction.vars.PRIVATE_FILES_BUDGET_BYTES);
+  });
+
+  it('the variables the printer may pass are exactly the ones the staging block declares empty (a name in one list and not the other is a deploy that blanks it or a value nothing reads)', () => {
+    const declaredEmpty = Object.entries(portalStaging.vars)
+      .filter(([name]) => !FIXED_VARS.includes(name))
+      .map(([name, value]) => {
+        expect(value, name).toBe('');
+        return name;
+      });
+    expect(declaredEmpty.sort()).toEqual([...WORKERS.portal.allowed].sort());
+  });
+});
+
 describe('nothing in git identifies an account or a resource', () => {
-  const files = [adminFile, webFile];
+  const files = [adminFile, webFile, portalFile];
 
   it('no id, account id, 32-character hex string, host or URL inside the staging blocks', () => {
     for (const file of files) {
@@ -160,7 +241,7 @@ describe('nothing in git identifies an account or a resource', () => {
   });
 
   it('only one environment exists in each file: `staging`', () => {
-    for (const config of [adminStaging, webStaging]) expect(config.targetEnvironment).toBe('staging');
+    for (const config of [adminStaging, webStaging, portalStaging]) expect(config.targetEnvironment).toBe('staging');
     for (const file of files) {
       const raw = readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1');
       expect(Object.keys((JSON.parse(raw) as { env: Record<string, unknown> }).env)).toEqual(['staging']);
@@ -189,14 +270,25 @@ describe('the package scripts never deploy by themselves', () => {
   });
 
   it('both packages have the staging dry run and the printed deploy command, through the shared scripts of cf/scripts', () => {
-    expect(packages['cf/admin']['deploy:staging:dry']).toBe('pnpm build:spa && node ../scripts/staging-dry-run.mjs admin');
+    // The admin package's dry run covers the portal too (the same package, a second configuration); the portal's own can run alone.
+    expect(packages['cf/admin']['deploy:staging:dry']).toBe('pnpm build:spa && node ../scripts/staging-dry-run.mjs admin && pnpm deploy:staging:portal:dry');
+    expect(packages['cf/admin']['deploy:staging:portal:dry']).toBe('pnpm build:portal-spa && node ../scripts/staging-dry-run.mjs portal');
     expect(packages['cf/web']['deploy:staging:dry']).toBe('pnpm build:staging && node ../scripts/staging-dry-run.mjs web');
     expect(packages['cf/admin']['deploy:staging:command']).toBe('node ../scripts/staging-deploy-command.mjs admin');
+    expect(packages['cf/admin']['deploy:staging:portal:command']).toBe('node ../scripts/staging-deploy-command.mjs portal');
     expect(packages['cf/web']['deploy:staging:command']).toBe('node ../scripts/staging-deploy-command.mjs web');
     expect(packages['cf/web']['build:staging']).toBe('CLOUDFLARE_ENV=staging pnpm build');
   });
 
-  it('the untracked file of public per-deploy values is git-ignored', () => {
+  it("the untracked file of public per-deploy values is ignored by the repository, the portal's own file name included", () => {
     expect(readRoot('.gitignore')).toMatch(/^cf\/\*\*\/\.staging\.vars\*$/m);
+    // The pattern as the ignore file reads it (`**` is any folders, `*` any characters but a slash), against the file each printer reads by default.
+    const pattern = /^cf\/(?:.*\/)?\.staging\.vars[^/]*$/;
+    for (const worker of Object.values(WORKERS)) {
+      const folder = worker.name.includes('web') ? 'cf/web' : 'cf/admin';
+      expect(`${folder}/${worker.file}`, worker.name).toMatch(pattern);
+    }
+    expect(WORKERS.portal.file).toBe('.staging.vars.portal');
+    expect(WORKERS.portal.file).not.toBe(WORKERS.admin.file);
   });
 });

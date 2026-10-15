@@ -1,6 +1,6 @@
 # Staging runbook (owner's guide)
 
-The exact, ordered steps to put the site on **staging**: two Workers on `*.workers.dev` in the organisation account, run from Dzul's Mac. Written for Dzul; **nothing here is run by an agent**. Ticket: SAKEM-084 (M5). What the plan allows and where it can fail: [`free-plan-audit.md`](free-plan-audit.md). The account and token background: [`account-setup.md`](account-setup.md).
+The exact, ordered steps to put the site on **staging**: three Workers on `*.workers.dev` in the organisation account (the admin API, the public site and, since SAKEM-098, the student portal), run from Dzul's Mac. Written for Dzul; **nothing here is run by an agent**. Ticket: SAKEM-084 (M5); the student portal's steps (15 to 22) are SAKEM-098. What the plan allows and where it can fail: [`free-plan-audit.md`](free-plan-audit.md). The account and token background: [`account-setup.md`](account-setup.md).
 
 ## Decisions this runbook rests on (Dzul, 2026-10-12)
 
@@ -24,15 +24,17 @@ The exact, ordered steps to put the site on **staging**: two Workers on `*.worke
 | Thing | Name (placeholder in git, created by you) |
 | --- | --- |
 | API Worker | `sakem-admin-staging` (`cf/admin`, `--env staging`) |
+| Student portal Worker | `sakem-portal-staging` (`cf/admin`, `-c wrangler.portal.jsonc --env staging`; steps 15 to 22) |
 | Public site Worker | `sakem-web-staging` (`cf/web`, `pnpm build:staging`) |
-| D1 database | `sakem-staging` |
-| R2 bucket | `sakem-files-staging`, public through its `r2.dev` address |
-| Rate limit namespaces | `7901` to `7908`, `7921`, `7922` (the production ones are `78xx`; a shared id would share counters) |
-| Addresses | `https://sakem-admin-staging.<account-subdomain>.workers.dev`, `https://sakem-web-staging.<account-subdomain>.workers.dev` |
+| D1 database | `sakem-staging`, **one for the admin and the portal**, as in production |
+| R2 bucket, public | `sakem-files-staging`, public through its `r2.dev` address (the admin's uploads) |
+| R2 bucket, private | `sakem-private-staging`, **never public**: no `r2.dev`, no custom domain (the applicants' documents; the admin and the portal bind it) |
+| Rate limit namespaces | admin: `7901` to `7908`, `7921`, `7922`, `7931` to `7934`, `7941`; portal: `8101` to `8107`, `8131` to `8134` (the production ones are `78xx` and `80xx`; a shared id would share counters) |
+| Addresses | `https://sakem-admin-staging.<account-subdomain>.workers.dev`, `https://sakem-web-staging.<account-subdomain>.workers.dev`, `https://sakem-portal-staging.<account-subdomain>.workers.dev` (the portal's pages are under `/portal/`) |
 | Turnstile widget | one for the `workers.dev` hostnames, named "Sakola Kembara staging" |
-| Resend key | one named `sakem-staging` |
+| Resend key | one named `sakem-staging` (the portal's, step 19, may be a second) |
 
-The staging block of each `wrangler.jsonc` (and the service binding of the site, which points at the **staging** admin Worker) is checked by tests; `pnpm deploy:staging:dry` in each package proves both bundles are the staging ones. The shape of staging against production: [`free-plan-audit.md`](free-plan-audit.md#37-wrangler-environments-and-automatic-provisioning).
+The staging block of each `wrangler.jsonc` and of `wrangler.portal.jsonc` (and the service binding of the site, which points at the **staging** admin Worker) is checked by tests; `pnpm deploy:staging:dry` in each package proves the bundles are the staging ones (in `cf/admin` it covers the admin's and the portal's). The shape of staging against production: [`free-plan-audit.md`](free-plan-audit.md#37-wrangler-environments-and-automatic-provisioning).
 
 ## Variables and secrets
 
@@ -51,11 +53,18 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | `BETTER_AUTH_SECRET` | admin | secret | `openssl rand -base64 32` | you, `wrangler secret put` |
 | `RESEND_API_KEY` | admin | secret | the Resend key of step 7 | you, `wrangler secret put` |
 | `TURNSTILE_SECRET_KEY` | admin | secret | the widget's secret key | you, `wrangler secret put` |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | admin | optional | not used on staging | nobody |
-| `TRUSTED_ORIGINS`, `COOKIE_DOMAIN` | admin | | left unset | nobody |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | admin, portal | optional | not used on staging | nobody |
+| `TRUSTED_ORIGINS`, `COOKIE_DOMAIN` | admin, portal | | left unset | nobody |
+| `ENVIRONMENT` = `staging`, `PRIVATE_FILES_BUDGET_BYTES` = `8000000000` | portal | var | the staging block of `wrangler.portal.jsonc` (git) | nobody |
+| `TURNSTILE_SITE_KEY` | portal | public var | the widget of step 19 (first: Cloudflare's always-pass test key) | `.staging.vars.portal`, printed as `--var` |
+| `SITE_URL`, `ADMIN_URL` | portal | public var | the site's and the admin's `workers.dev` addresses | same |
+| `EMAIL_FROM` | portal | public var | `Sakola Kembara Staging <onboarding@resend.dev>` (or a verified domain, step 19) | same |
+| `PORTAL_CONTACT_WHATSAPP`, `PORTAL_WHATSAPP_GROUP_URL` | portal | optional public var | **invented** values, or the lines left out | same |
+| `BETTER_AUTH_SECRET` | portal | secret | `openssl rand -base64 32`, **a different value from the admin's** | you, `wrangler secret put -c wrangler.portal.jsonc --env staging` |
+| `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY` | portal | secret | the Resend key and the widget's secret key (step 19) | you, the same |
 | `CONTENT_API_URL`, `CONTACT_API_URL` | site | | **never** (they move the reads and the form off the binding) | refused by the script |
 
-`vars` come from the configuration file on **every** deploy: a variable that is not in the file or in a `--var` is removed by the next deploy. That is why the deploy command is printed from one file (`.staging.vars`, untracked) instead of typed. Secrets are never removed by a deploy.
+`vars` come from the configuration file on **every** deploy: a variable that is not in the file or in a `--var` is removed by the next deploy (the portal's staging block declares its public values **empty**, so a forgotten one is blanked instead). That is why the deploy command is printed from one file (`.staging.vars`, or `.staging.vars.portal` for the portal; untracked) instead of typed. Secrets are never removed by a deploy.
 
 ## At a glance
 
@@ -75,8 +84,16 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | 12 | Seed data | the blog import, a short link, uploads | yes |
 | 13 | Measure CPU per route | requests, a `wrangler tail` | yes |
 | 14 | Limits to watch | reading dashboards | no |
-| 15 | What must not be done on staging | | |
-| 16 | Teardown | deletes everything above | yes |
+| 15 | Check the portal locally | nothing on Cloudflare | no |
+| 16 | Create the private R2 bucket and prove it is private | a bucket, private | yes |
+| 17 | Redeploy the admin Worker | a new version (the private bucket, the file routes) | yes |
+| 18 | First deploy of the portal Worker | the Worker, its bindings | yes |
+| 19 | The real Turnstile widget and the Resend key | dashboard objects | yes |
+| 20 | Portal secrets, then redeploy with its public values | 3 secrets, a new version | yes |
+| 21 | Portal smoke tests | requests only | no |
+| 22 | End-to-end test with one invented applicant | rows in the remote D1, 10 objects, 2 or 3 mails | yes |
+| 23 | What must not be done on staging | | |
+| 24 | Teardown | deletes everything above | yes |
 
 ## Before the first command
 
@@ -87,9 +104,9 @@ export CLOUDFLARE_ACCOUNT_ID=<id of the ORGANISATION account, from `wrangler who
 export CLOUDFLARE_ENV=staging
 ```
 
-`CLOUDFLARE_ENV=staging` makes every wrangler command in this shell target the staging environment even when a flag is forgotten, and makes `pnpm build` in `cf/web` build the staging Worker; without it, wrangler only **warns** ("Multiple environments are defined ... no target environment was specified"), and a deploy would create the production-named Worker in the account. The commands below still carry `--env staging` where wrangler takes it, so they read the same without the variable. At the end: `unset CLOUDFLARE_ENV CLOUDFLARE_ACCOUNT_ID`.
+`CLOUDFLARE_ENV=staging` makes every wrangler command in this shell target the staging environment even when a flag is forgotten (the portal's commands carry `-c wrangler.portal.jsonc --env staging` and read it the same way), and makes `pnpm build` in `cf/web` build the staging Worker; without it, wrangler only **warns** ("Multiple environments are defined ... no target environment was specified"), and a deploy would create the production-named Worker in the account. The commands below still carry `--env staging` where wrangler takes it, so they read the same without the variable. At the end: `unset CLOUDFLARE_ENV CLOUDFLARE_ACCOUNT_ID`.
 
-The same variable also changes what the test runner and a production build use, so **do step 2 (the local checks) in a plain shell first**, or prefix those commands with `env -u CLOUDFLARE_ENV`.
+The same variable also changes what the test runner and a production build use, so **do the local checks (steps 2 and 15) in a plain shell first**, or prefix those commands with `env -u CLOUDFLARE_ENV`.
 
 **After every real command**, check that wrangler did not write ids into a tracked file:
 
@@ -178,9 +195,9 @@ pnpm exec wrangler deploy --env staging
 
 Run it in a normal terminal, not with `CI=1`: it may ask you to register the `workers.dev` subdomain. **No `--var` yet**: this deploy exists to learn one thing before anything else is built.
 
-- **Creates:** the Worker `sakem-admin-staging` (its bindings: the D1 database and the R2 bucket, found by their names, the ten rate limit bindings, the assets), its cron trigger (`17 3 * * *`, daily cleanup), and the `workers.dev` address. No ids are written (the resources exist already).
+- **Creates:** the Worker `sakem-admin-staging` (its bindings: the D1 database and the two R2 buckets, the public one and the private `sakem-private-staging`, found by their names, the fifteen rate limit bindings, the assets), its cron trigger (`17 3 * * *`, daily cleanup), and the `workers.dev` address. No ids are written (the resources exist already). **The private bucket must exist before this deploy**, or the deploy may create it for you without the location hint: create it with the commands of [step 16](#16-create-the-private-r2-bucket-and-prove-it-is-private) first (its first command lists the buckets, and its checks prove the bucket is private).
 - **Your OK:** yes.
-- **CHECKPOINT, read the output.** The question of this step is **whether the Free plan accepts the `ratelimits` bindings** ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)). The listing in the output must show `env.RL_LOGIN (5 requests/60s)` and the nine others, and the deploy must end with the address and a version id. **If the deploy is refused because of a rate limit binding, stop here**: tell the PM the exact message (no ids), and do not build anything on it. The decided fallback is the SQLite-backed Durable Object limiter, built as a separate task ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)).
+- **CHECKPOINT, read the output.** The question of this step is **whether the Free plan accepts the `ratelimits` bindings** ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)). The listing in the output must show `env.RL_LOGIN (5 requests/60s)` and the fourteen others, and the deploy must end with the address and a version id. **If the deploy is refused because of a rate limit binding, stop here**: tell the PM the exact message (no ids), and do not build anything on it. The decided fallback is the SQLite-backed Durable Object limiter, built as a separate task ([`free-plan-audit.md` 3.1](free-plan-audit.md#31-rate-limiting-binding-ratelimits)).
 - **Verify** (replace the address):
 
   ```bash
@@ -194,7 +211,7 @@ Run it in a normal terminal, not with `CI=1`: it may ask you to register the `wo
 
 ## 7. Turnstile widget and Resend key (dashboard, by you)
 
-**Turnstile.** Dashboard, **Turnstile**, **Add widget**: name "Sakola Kembara staging"; hostname **`<account-subdomain>.workers.dev`** (one hostname covers every subdomain under it, so both staging Workers; wildcards are not accepted); mode Managed. Copy the **site key** into both `.staging.vars` files as `TURNSTILE_SITE_KEY`. The **secret key** goes only to `wrangler secret put` in step 8. Free plan: 20 widgets, 10 hostnames each. This must be a real widget: Cloudflare's always-pass test keys work anywhere but prove nothing about the real script, the iframe, `data-action` or Siteverify.
+**Turnstile.** Dashboard, **Turnstile**, **Add widget**: name "Sakola Kembara staging"; hostname **`<account-subdomain>.workers.dev`** (one hostname covers every subdomain under it, so both staging Workers; wildcards are not accepted); mode Managed. Copy the **site key** into both `.staging.vars` files as `TURNSTILE_SITE_KEY`. The **secret key** goes only to `wrangler secret put` in step 8. Free plan: 20 widgets, 10 hostnames each. This must be a real widget: Cloudflare's always-pass test keys work anywhere but prove nothing about the real script, the iframe, `data-action` or Siteverify. (Staging may run on the test keys for now; the portal test of [step 19](#19-the-real-turnstile-widget-and-the-resend-key-dashboard-by-you) is where the real widget is made, and the same widget serves the admin and the site.)
 
 - **Revert:** delete the widget (Turnstile, the widget, Settings).
 
@@ -240,7 +257,7 @@ cd cf/admin
 pnpm first-admin --database sakem-staging --remote
 ```
 
-An address you control (use the **same address as the Resend account**, so the invitation of a second admin can reach you), a name, and a long password typed at the hidden prompt, twice. It writes `CAPITALS` that it is the real database and asks you to type the database name (`sakem-staging`). Everything about it, the password rules and what to do when it goes wrong: [`first-super-admin.md`](first-super-admin.md). Do not pipe the password; never send it anywhere.
+An address you control (use the **same address as the Resend account**, so the invitation of a second admin can reach you; if you will test the portal with the sandbox sender, read the mailbox choice of [step 19](#19-the-real-turnstile-widget-and-the-resend-key-dashboard-by-you) first: the applicant may need that address, and one address cannot be both an admin and a student), a name, and a long password typed at the hidden prompt, twice. It writes `CAPITALS` that it is the real database and asks you to type the database name (`sakem-staging`). Everything about it, the password rules and what to do when it goes wrong: [`first-super-admin.md`](first-super-admin.md). Do not pipe the password; never send it anywhere.
 
 - **Changes:** three rows in the remote D1: the user (`super_admin`, verified), its credential and one audit row. Refuses when a super_admin who can sign in already exists.
 - **First time on a real database.** The `--remote` path of this command has only ever run against a local D1 ([`first-super-admin.md`](first-super-admin.md#what-was-tested), "Not verified"). The command runs wrangler without a terminal, so wrangler's own "Ok to proceed?" for a remote file is not asked (it warns that the database is briefly unavailable and goes ahead). If it fails, it prints wrangler's message with the hash hidden and writes nothing it cannot explain; the alternative is `pnpm first-admin --database sakem-staging --no-run --out <file outside the repo>`, then `wrangler d1 execute sakem-staging --env staging --remote --file <that file>` by hand, then delete the file (it holds the password hash).
@@ -320,25 +337,26 @@ rm /private/tmp/legacy-blog.sql
 
 The question: **no route reaches error 1102 on Free, with the margin written down per route** (SAKEM-084). CPU is Cloudflare's own number per invocation; a timer inside a Worker cannot measure it. Tools: `cf/web/scripts/measure-staging.mjs` (`pnpm measure:staging`), the dashboard, Workers Logs.
 
-**a. Capture the tail** (two terminals; read-only, **your OK**: it connects to a real Worker). The capture holds request URLs, geo data and **your IP address** in the headers: it is written to `cf/web/.measure/` (git-ignored), never goes into the repo, a ticket or chat; delete it after.
+**a. Capture the tail** (three terminals, one per Worker; read-only, **your OK**: it connects to a real Worker). The capture holds request URLs, geo data and **your IP address** in the headers: it is written to `cf/web/.measure/` (git-ignored), never goes into the repo, a ticket or chat; delete it after.
 
 ```bash
 cd cf/web && mkdir -p .measure
-pnpm exec wrangler tail sakem-web-staging   --format json > .measure/web-tail.jsonl      # terminal 1
-pnpm exec wrangler tail sakem-admin-staging --format json > .measure/admin-tail.jsonl    # terminal 2 (from cf/web too)
-head -c 700 .measure/web-tail.jsonl; echo
+pnpm exec wrangler tail sakem-web-staging    --format json > .measure/web-tail.json      # terminal 1
+pnpm exec wrangler tail sakem-admin-staging  --format json > .measure/admin-tail.json    # terminal 2 (from cf/web too)
+pnpm exec wrangler tail sakem-portal-staging --format json > .measure/portal-tail.json   # terminal 3
+head -c 700 .measure/web-tail.json; echo
 ```
 
-The first request lines settle one open question: **does the stream carry `cpuTime` and `wallTime`?** (The trace item that Tail Workers receive has both; the documentation's example of the real-time stream shows neither.) If the lines have no `cpuTime`, use the dashboard and Workers Logs below for the numbers; the collector still counts outcomes and statuses, and says so. A tail expires after a while ("expires at" in its first line): restart it; under heavy traffic it samples and prints a notice.
+`wrangler tail --format json` prints every event as **pretty-printed JSON of many lines**, after two banner lines. `collect` reads that form as it is (and the older one-object-per-line form), skips the banner and an object that was cut when the tail was stopped, and never needs the capture compacted first. The first request lines settle one open question: **does the stream carry `cpuTime` and `wallTime`?** (The trace item that Tail Workers receive has both; the documentation's example of the real-time stream shows neither.) If the lines have no `cpuTime`, use the dashboard and Workers Logs below for the numbers; the collector still counts outcomes and statuses, and says so. A tail expires after a while ("expires at" in its first line): restart it; under heavy traffic it samples and prints a notice.
 
 **b. Probe** (GET only, polite, bounded). First look at what it would send, then send:
 
 ```bash
-node scripts/measure-staging.mjs plan  --base $W --admin $A            # prints every request, sends nothing
-node scripts/measure-staging.mjs probe --base $W --admin $A            # asks you to type the host of --base, then of --admin
+node scripts/measure-staging.mjs plan  --base $W --admin $A --portal $P    # prints every request, sends nothing
+node scripts/measure-staging.mjs probe --base $W --admin $A --portal $P    # asks you to type the host of --base, then of --admin, then of --portal
 ```
 
-12 rounds of 27 routes, 600 ms apart: 324 requests in about 4 minutes, of which 252 run a Worker (0.25% of the day's 100,000, shared with production). User agent `sakem-staging-measure/1.0`. It refuses any host that is not `*.workers.dev` (or loopback), refuses `sakolakembara.org` outright, sends no credential and no cookie, never follows a redirect, stops a route that answers 429 and the run after five failures in a row, and reports error 1102 when an answer carries it. `--writes` (needs a second typed confirmation) adds the two POSTs the Workers refuse before storing anything: a contact form without a Turnstile token (`turnstile_failed`) and a sign-in with an unknown address (a 403 before any password is hashed). They are paced at 13 s for the rate limit (about five more minutes) and **are not the cost of a real sign-in**.
+12 rounds of 27 routes (40 with `--portal`), 600 ms apart: 324 requests in about 4 minutes (480 in about 6), of which 252 run a Worker (384 with the portal: 0.25% and 0.38% of the day's 100,000, shared with production). User agent `sakem-staging-measure/1.0`. `--base` is always probed (the site's 19 routes); leave `--admin` or `--portal` out to skip that Worker. `--confirm-portal <host>` is the typed confirmation when there is no terminal, as `--confirm-admin` is. It refuses any host that is not `*.workers.dev` (or loopback), refuses `sakolakembara.org` outright, sends no credential and no cookie, never follows a redirect, stops a route that answers 429 and the run after five failures in a row, and reports error 1102 when an answer carries it. **The portal's part of the probe** is the two pages of the assets layer (`/portal/`, `/portal/status`, controls: no Worker event expected) and nine GET routes that need no cookie: `config`, `me` (401), `auth/get-session` (`null`), the three student reads and the file route (401 each), an auth route that is not in the table (404), an unknown route and `dev/mailbox` (404), plus a missing static file (the 404 or the index: the tail settles which). It sends **no cookie, no credential, no POST** (`--writes` adds nothing for the portal), asks nothing behind a rate limit, and so cannot provoke a 429 of its own. `--writes` (needs a second typed confirmation) adds the two POSTs the Workers refuse before storing anything: a contact form without a Turnstile token (`turnstile_failed`) and a sign-in with an unknown address (a 403 before any password is hashed). They are paced at 13 s for the rate limit (about five more minutes) and **are not the cost of a real sign-in**.
 
 **c. The routes that need a session, by hand in the browser, while the tails run.** Do each a few times; wait **ten minutes** between two rounds of the first four so some requests meet a cold isolate (the collector marks the first request after a gap of 60 s or more).
 
@@ -351,12 +369,21 @@ node scripts/measure-staging.mjs probe --base $W --admin $A            # asks yo
 | Upload a 5 MB image (team photo), a 20 MB PDF (report), a 25 MB PDF (document) | `POST /api/admin/uploads`: multipart parse; also watch memory in the dashboard |
 | Send a message through the real `W/kontak` form | `POST /kontak` and the admin's `PublicApi` side |
 | Wait for 03:17 UTC (10:17 Jakarta) once | the cron row (`17 3 * * *`) |
+| **Portal** (tail 3, an invented applicant, [step 22](#22-end-to-end-test-with-one-invented-applicant)): register, then open the emailed link | `POST /portal/api/auth/register` (PBKDF2 and a call to Resend), `GET /portal/api/auth/verify-email` |
+| Portal: sign in (right password, then wrong once), a second time in the same minute; wait **ten minutes** and sign in again | `POST /portal/api/auth/sign-in/email`: **the portal's heaviest route** (PBKDF2), warm and cold |
+| Portal: "lupa password", open the link, set a new one | `POST /portal/api/auth/request-password-reset`, `reset-password` |
+| Portal: home, the status page, open the wizard (with and without files) | `GET /portal/api/overview`, `applications`, `applications/current` |
+| Portal: "Selanjutnya" on each screen of the wizard | `PUT /portal/api/applications/current/steps/<step>` (seven buckets) |
+| Portal: upload a photo, then `berkas-9mb.pdf` (step 22 makes it; 10,000,000 bytes is the limit) | `PUT /portal/api/applications/current/files/<slot>`: the streamed body, the sniff, the guarded insert; also watch memory |
+| Portal: "Lihat" on a stored file | `GET /portal/api/files/:id` |
+| Portal: "Kirim Pendaftaran" | `POST /portal/api/applications/current/submit` (seven schemas, the transformation; the mail goes with `waitUntil`) |
+| Admin (tail 2): open one applicant's file; purge an application's files | `GET /api/admin/applications/:id/files/:fileId`, `POST /api/admin/applications/:id/files/purge` |
 
 **d. Collect.** Stop the tails (Ctrl-C), then:
 
 ```bash
-node scripts/measure-staging.mjs collect --file .measure/web-tail.jsonl --file .measure/admin-tail.jsonl --json .measure/report.json
-node scripts/measure-staging.mjs collect --file .measure/web-tail.jsonl --only-measure          # only the probe's own requests
+node scripts/measure-staging.mjs collect --file .measure/web-tail.json --file .measure/admin-tail.json --file .measure/portal-tail.json --json .measure/report.json
+node scripts/measure-staging.mjs collect --file .measure/web-tail.json --only-measure          # only the probe's own requests
 ```
 
 Per Worker, method and route: count, p50, p95, p99, max CPU, wall time, the outcomes (`exceededCpu` is error 1102; a 200 with `exceededCpu` is a `waitUntil` job that ran over), the statuses, and the first invocation after an idle gap with its own maximum. Thresholds, against the 10 ms of Free: **OK** p99 under 5 ms (2x margin); **RISK** p99 5 to 8 ms or a maximum 8 to 10; **FAIL** any `exceededCpu`, p99 over 8 ms, or a maximum of 10 ms or more. The gate of the ticket is "no FAIL"; every RISK is listed with its margin. Exit codes: 0 fine, 1 a route failed, 3 no data or no CPU field. Cloudflare records CPU in whole milliseconds, so p50 of 0 or 1 is normal; with few samples p99 is the maximum (the report says "only n samples"). On a FAIL, the fallbacks are in the audit, section 2.3; for sign-in the decided order is fewer iterations, then Google sign-in, then the Paid plan. Write the table (route, n, p50, p99, max, verdict, margin) in SAKEM-084: **no ids, no addresses, no IPs**.
@@ -365,7 +392,7 @@ Per Worker, method and route: count, p50, p95, p99, max CPU, wall time, the outc
 
 - **Workers & Pages**, the Worker, **Metrics**: **CPU Time per execution** (quantiles over the chosen range, per Worker, not per route; high quantiles can look above 10 ms without errors because of the isolate's rollover), **Wall Time per execution**, **Requests**, **Subrequests**, **Errors** then **Invocation statuses** (`Exceeded Resources` is 1102 or 1027; `Worker threw exception` is 1101). Set the range to the hour of the test.
 - **Workers Logs**: Worker, **Logs** (or **Observability**, **Investigate**). Every invocation is one log (`GET <url>`) carrying its CPU and wall time (published since April 2025). Filter by the URL of one route, or build a query with a **median** or **p99** of CPU time grouped by path; the labels vary, so try it once. Retention on Free is **3 days** (7 from 2026-12-01), 200,000 events a day: read it the same day. Workers Logs shows the **full URL including query strings**: a `verify-email?token=` link you click on staging is in it for three days.
-- The tail's JSON, if it has the field (wrangler may print a banner line first, hence the `grep`): `grep '^{' .measure/web-tail.jsonl | jq -r 'select(.cpuTime != null) | [.event.request.method, (.event.request.url|sub("\\?.*";"")), .cpuTime, .outcome] | @tsv' | sort | head`.
+- The tail's JSON, if it has the field (wrangler prints two banner lines first, hence the `grep`; the events are pretty-printed, which `jq` reads as a stream): `grep -v '^[A-Za-z]' .measure/web-tail.json | jq -r 'select(.cpuTime != null) | [.event.request.method, (.event.request.url|sub("\\?.*";"")), .cpuTime, .outcome] | @tsv' | sort | head`.
 
 **f. After a few days**, look at the metrics again (rows written, requests, errors by status): a spike that only real traffic shows (a cold start, a long article, a first sign-in) is invisible to a bounded probe. Keep staging up for that.
 
@@ -390,21 +417,301 @@ All per **account** (staging and production share them), all reset at 00:00 UTC.
 | D1 size | `d1 info sakem-staging` | 500 MB per database | 100 MB | writes fail |
 | R2 Class A operations (puts, lists) | R2, Overview, usage | 1,000,000 a month | 300,000 | writes fail |
 | R2 Class B operations (reads) | the same | 10,000,000 a month | 3,000,000 | reads fail |
-| R2 storage | the same | 10 GB | 5 GB | writes fail |
+| R2 storage | the same (the private bucket counts too) | 10 GB; the portal refuses an upload past `PRIVATE_FILES_BUDGET_BYTES` (8 GB, `503 storage_full`) | 5 GB | writes fail |
 | Workers Logs events | Observability | 200,000 a day (0.5 GB a day from 2026-12-01) | 100,000 | logging stops |
-| Resend mails | Resend, Emails | 100 a day, 3,000 a month | 50 a day | a 429; the admin's mail routes answer 503 |
+| Resend mails | Resend, Emails; the portal's own count: `SELECT day, sent FROM email_daily ORDER BY day DESC LIMIT 2` (a **UTC** day, 07:00 to 07:00 in Jakarta) | 100 a day, 3,000 a month | 50 a day | a 429; the admin's mail routes answer 503; at 100 the portal's register, resend and reset answer `503 email_quota`, and it sends the submission confirmation only below 80 |
 | Cron runs | the Worker's Triggers, Workers Logs | 5 triggers per account | | |
 | Turnstile | the widget's analytics | unlimited challenges | | |
 
 Set a **billing or usage notification** in the account (Notifications) before R2 holds anything: it is the one place a card could bill. D1 rows written per day is the watch item the short-link decision left open ([`d1-schema.md`](d1-schema.md#free-tier-headroom-estimate)).
 
-## 15. What must not be done on staging
+## The student portal on staging (steps 15 to 22, SAKEM-098)
 
-- **A wrangler command without `--env staging` (admin), or a `cf/web` build without `CLOUDFLARE_ENV=staging`, for these Workers.** It creates the production-named Worker in the account. The shell variable of "Before the first command" is the safety net.
-- **Real personal data**: no real student, applicant or contact data, no real admin passwords reused anywhere, no private files. The staging addresses are public. Only the 80 public articles and dummy rows.
+The third Worker, `sakem-portal-staging` (`cf/admin`, its own configuration `wrangler.portal.jsonc`, `-c wrangler.portal.jsonc --env staging`), with the private bucket `sakem-private-staging` for the applicants' documents. Everything above holds here: **nothing is run by an agent, every real step needs your explicit OK, no ids or hostnames in git, no secret through chat.** Steps 1 to 9 (account, database, migrations, the admin Worker with its first super_admin) are done before these; the site (step 10) is not needed.
+
+**Decisions this part rests on (PM and Dzul, 2026-10-15):**
+
+- Turnstile on staging uses Cloudflare's published always-pass **test** keys until the portal test; a **real** widget for the `workers.dev` hostname is created together with the portal staging test (step 19), because the test keys prove nothing about the real script, `data-action` or Siteverify.
+- Resend is set up with that test too, or the sender stays `onboarding@resend.dev`, which only mails the address of the Resend account (step 19, "Which address receives the mail").
+- Resend's daily limit (100 a day) counts the **UTC day**, which starts at 07:00 in Jakarta; the portal's own counter (`email_daily`) uses the same day.
+- You check the screens yourself (no agent opens a browser); this part gives the exact requests and the expected status of each, and says plainly what only a browser can show.
+
+**How the portal is reached on `workers.dev`.** There is no apex route on staging, so the Worker answers the `/portal/...` paths **directly at its own host**: the entry is `https://sakem-portal-staging.<account-subdomain>.workers.dev/portal/` (the host's `/` answers the same index page, but the router only knows `/portal`, so always type the path). The API is `P/portal/api/...` on the same host. Three consequences:
+
+- The session cookie is `__Host-sakem-student.session_token`, **host-only** on the portal host: signing in there does not sign in on the admin host (its cookie has another name and lives on another host), and the two Workers have different `BETTER_AUTH_SECRET`s.
+- The emailed links (verify, reset) are built from the origin of the request that asked for them, so they point at the portal host.
+- The public site's "Daftar Sekarang" and "Masuk" buttons and its navbar call `W/portal/...` on **the site's own host**, where nothing answers (a 404 page). On staging, open the portal address by hand. What this hides is listed in [What staging cannot show about the portal](#what-staging-cannot-show-about-the-portal).
+
+## 15. Check the portal locally (no account)
+
+```bash
+cd cf/admin
+env -u CLOUDFLARE_ENV pnpm install --frozen-lockfile && pnpm typecheck && pnpm test:worker && pnpm test:portal-spa && pnpm check:portal-worker
+pnpm build:portal-spa && pnpm check:portal-spa     # the SPA that will be deployed; it fails if the development mock is in it
+pnpm deploy:staging:dry                            # the admin's AND the portal's: two "staging dry-run ok" lines
+cp staging.portal.vars.example .staging.vars.portal   # git-ignored; filled in at steps 18 to 20
+```
+
+- **What the SPA build needs:** nothing from the environment and no account. Do not set `VITE_PORTAL_MOCK` or `VITE_ADMIN_MOCK` in this shell (they switch the invented API on; `pnpm check:portal-spa` refuses a build that has it). The build writes `dist/portal-spa/` (the pages under `portal/`, the fallback `index.html` and `_headers` at its root), which the Worker serves from its own assets.
+- **Creates or changes:** nothing on Cloudflare. `dist/` folders and `.staging.vars.portal` on this Mac, both git-ignored.
+- **Your OK:** no.
+- **Verify:** `deploy:staging:dry` ends with `staging dry-run ok: sakem-admin-staging, ...` and `staging dry-run ok: sakem-portal-staging, ...` (about 514 KiB gzipped; the guard is 540 for the portal). The portal's listing has `env.DB (sakem-staging)`, `env.PRIVATE_FILES (sakem-private-staging)`, the eleven `env.RL_*` and the six public variables as `("")`; it has **no** `env.UPLOADS`, no `RL_CONTACT`, `RL_UPLOAD`, `RL_BLOG_PREVIEW` or `RL_ADMIN_FILE`.
+- **Revert:** `rm .staging.vars.portal`.
+
+## 16. Create the private R2 bucket and prove it is private
+
+```bash
+cd cf/admin
+pnpm exec wrangler r2 bucket list                     # read-only: is sakem-private-staging there already?
+CI=1 pnpm exec wrangler r2 bucket create sakem-private-staging --location apac     # only if it was not
+pnpm exec wrangler r2 bucket info sakem-private-staging                            # name, location, storage class
+pnpm exec wrangler r2 bucket dev-url get sakem-private-staging                     # must NOT show a public address
+pnpm exec wrangler r2 bucket domain list sakem-private-staging                     # must list no custom domain
+```
+
+- **Creates:** a bucket for the applicants' documents (documents of children: on staging only invented files go in). It is **private**: a bucket is private until someone enables a public address in the dashboard, and this runbook never does. No `bucket dev-url enable`, no `bucket domain add`, ever.
+- **It may exist already.** The admin staging block binds this bucket, and a deploy of the admin Worker (step 6, or a later one) can create a bucket from its binding without the location hint (`--location apac` cannot be changed later). If `bucket list` shows it, do not create it: read the location in `bucket info`. If it is not `apac` and the bucket is empty, you may delete it (`wrangler r2 bucket delete sakem-private-staging`, your OK) and create it again as above; tell the PM either way.
+- **What it exposes:** nothing outside the two Workers that are bound to it. R2 gives a binding the whole bucket, so the **code paths are the access control**: only the portal (a student reads their own file) and the admin (an admin with `pendaftaran` write opens a file, audited) read it. It is the only R2 binding the portal has: the admin's public bucket is never reachable from the portal.
+- **Your OK:** yes. R2 is on the Free tier only with a card on file and "a card is not a spending cap": the billing notification of [`account-setup.md`](account-setup.md#part-1-quick-checks-5-minutes-now) must be set before anything is stored.
+- **PROVE no public access** (three checks, repeated after **every** later change to R2 in the dashboard):
+  1. The CLI: `dev-url get` says the public development URL is disabled and prints no `pub-<hash>.r2.dev` address; `domain list` lists nothing. **If a public address or a domain shows, stop:** `pnpm exec wrangler r2 bucket dev-url disable sakem-private-staging` (type `disallow`), remove the domain, tell the PM.
+  2. The dashboard: R2, the bucket, **Settings**: *Public Development URL* is **Disabled** and *Custom Domains* has none.
+  3. Requests, once step 22 has stored a file (its key is in the dashboard, R2, the bucket, **Objects**, shaped `applications/<year>/<application id>/<file id>.<ext>`): an object address must fail.
+
+     ```bash
+     K='applications/<year>/<application id>/<file id>.png'              # a key from the Objects list
+     curl -s -o /dev/null -w '%{http_code}\n' "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com/sakem-private-staging/$K"   # 403 (refused: no signature), never 200
+     curl -s -o /dev/null -w '%{http_code}\n' "$UPLOADS_BASE_URL/$K"     # 404: the PUBLIC bucket's address has no such key (UPLOADS_BASE_URL is the r2.dev address of step 5)
+     curl -s -o /dev/null -w '%{http_code}\n' "$P/portal/api/files/<file id>"   # 401: even this Worker route refuses without the student's cookie
+     ```
+
+     The first two codes are the expected ones from the documentation, **not verified on a real account**: what matters is that none of the three is a `200` with the file's bytes (`content-type: image/png`).
+- **Revert:** empty the bucket (dashboard, Objects, select all, delete), then `pnpm exec wrangler r2 bucket delete sakem-private-staging`. Delete the Workers that bind it first (step 24).
+
+## 17. Redeploy the admin Worker (private bucket and file routes)
+
+```bash
+cd cf/admin
+pnpm build:spa
+pnpm deploy:staging:command      # prints:  pnpm exec wrangler deploy --env staging --var '...'
+# copy that line, check it, run it
+```
+
+- **Why:** the admin staging block binds `PRIVATE_FILES` and the code that **opens an applicant's file** and **purges an application's files** (SAKEM-083, P4) must be live for step 22. A Worker deployed before that has neither. `pnpm exec wrangler deployments list --env staging` shows when the live version was made; redeploy it whatever it says, it costs nothing.
+- **Creates:** a new version of `sakem-admin-staging`, from the same `.staging.vars` as before (`TURNSTILE_SITE_KEY`, `UPLOADS_BASE_URL`, `SITE_URL`, `EMAIL_FROM`). No migration: `0013` is applied (step 4).
+- **Your OK:** yes.
+- **Verify:** the output lists `env.PRIVATE_FILES (sakem-private-staging)` and the fifteen `env.RL_*`; `curl -s $A/api/config` still answers its three values; `git status --short` is clean.
+- **Revert:** `pnpm exec wrangler rollback --env staging` (asks to confirm; back to the previous version).
+
+## 18. First deploy of the portal Worker
+
+```bash
+cd cf/admin
+pnpm build:portal-spa && pnpm check:portal-spa
+pnpm exec wrangler deploy -c wrangler.portal.jsonc --env staging
+```
+
+Run it in a normal terminal, **no `--var` and no secret yet**: this deploy shows that the Worker, its bindings and its assets are accepted before anything depends on them.
+
+- **Creates:** the Worker `sakem-portal-staging` with the D1 database `sakem-staging` (found by its name: it is the admin's, as in production), `PRIVATE_FILES` on `sakem-private-staging`, the eleven rate limit bindings (namespaces `8101` to `8107` and `8131` to `8134`), about eleven asset files and its `workers.dev` address `https://sakem-portal-staging.<account-subdomain>.workers.dev`. No cron, no route, no secret. No ids are written.
+- **What it exposes:** a public host with the portal's pages and API. Until step 20 it has no secrets, so sign-in, registration and every route that sends email **fail closed (503)**: nothing can be created. It holds no one's data (the staging database has the admin and the articles only). Do not share the address.
+- **Your OK:** yes.
+- **Verify** (replace the address):
+
+  ```bash
+  P=https://sakem-portal-staging.<account-subdomain>.workers.dev
+  curl -si $P/portal/api/config | head -12   # 200 JSON: {"google":false,"turnstileSiteKey":null,"siteUrl":"","adminUrl":""}
+  curl -si $P/portal/api/me | head -8        # 401 {"error":"unauthenticated"}, cache-control: no-store
+  curl -sI $P/portal/ | head -10             # 200 text/html, cache-control: public, max-age=0, must-revalidate, content-security-policy: ...
+  git status --short                         # clean
+  ```
+
+- **Revert:** `pnpm exec wrangler delete --name sakem-portal-staging` (asks to confirm; removes the Worker, its secrets and its `workers.dev` route; the database and the bucket stay).
+
+## 19. The real Turnstile widget and the Resend key (dashboard, by you)
+
+- **Creates:** a Turnstile widget (unless the one of step 7 exists) and a Resend API key, in their own dashboards: nothing on a Worker and nothing in git. Their values are not typed anywhere in this repo: the site key goes into `.staging.vars.portal` (step 20), the two secrets into `wrangler secret put`.
+- **Your OK:** yes, for each of the two (and for the sending domain of choice A below, if you take it).
+
+**Turnstile.** The widget of step 7 (hostname `<account-subdomain>.workers.dev`) covers **every** host under that name, so it covers the portal; if it exists, reuse its site key here and its secret key in step 20. If staging has run on the always-pass test keys so far (the pair is in `cf/admin/dev.vars.example`), create the widget now: Turnstile, **Add widget**, name "Sakola Kembara staging", hostname `<account-subdomain>.workers.dev`, mode Managed. The widget takes any `data-action`, and the portal's four are `register`, `login`, `forgot-password` and `resend-verification`: the real widget is what proves Siteverify accepts them. Each Worker has its own pair of site key (a public variable) and secret, so the portal can switch to the real widget while the admin and the site keep the test pair; switching all three is simpler.
+
+- **Revert:** delete the widget (Turnstile, the widget, Settings).
+
+**Resend.** Create an API key named `sakem-staging-portal` with **sending access only**; the portal's `EMAIL_FROM` is `Sakola Kembara Staging <onboarding@resend.dev>` until a domain is verified. Free plan: 100 mails a day, 3,000 a month, the day counted in UTC.
+
+- **Revert:** delete the key in Resend.
+
+**Which address receives the mail (decide before step 22).** Without a verified domain `onboarding@resend.dev` delivers **only to the address of the Resend account itself**, and a plus-address is not documented to count. The invented applicant must be able to open the verification link, and **one address cannot be both a student and an admin** (the `users` table has one row per address). Step 9 suggested using the Resend account's address for the first super_admin. So there are three ways, with what each one proves:
+
+| | What you do | What it proves | What it costs |
+| --- | --- | --- | --- |
+| **A. Verify a sending domain in Resend** (recommended) | Add a domain you control (a mail-only sub-domain is enough) in Resend and publish the SPF and DKIM records it lists, then use any mailbox you own as the applicant and set `EMAIL_FROM` to an address of that domain | The whole mail path: sender, delivery, the link, **and the rehearsal the cutover needs anyway** (production sends from a verified domain) | DNS records at the domain's current DNS host (never a nameserver change, never on the Cloudflare zone). Your call; this runbook's rule "nothing on the zone" is about Cloudflare |
+| **B. Sandbox sender, a student on the Resend address** | Give the first super_admin another address (step 9's revert, or an invited second admin), and register the invented applicant with the Resend account's own address | The whole mail path for that one address | A second admin address, and the Resend address is then a student, not an admin |
+| **C. No mail for the applicant** | Register with an invented address, then mark it verified by hand: `UPDATE users SET email_verified = 1 WHERE email = '<applicant address>'` (`wrangler d1 execute sakem-staging --env staging --remote --command ...`, your OK). To see Resend deliver from the portal, register the **admin's** address once: the neutral answer sends "Kamu sudah punya akun Sakola Kembara" to it | Everything except the verification mail and its link | The verification email and its callback are **not tested**: they stay on the cutover rehearsal |
+
+Tell the PM which one you chose. Everything below says "the applicant's address": it is that address.
+
+## 20. Portal secrets, then redeploy with its public values
+
+```bash
+cd cf/admin
+openssl rand -base64 32 | pbcopy                                                         # a NEW value, not the admin's: do not paste the clipboard of step 8
+pnpm exec wrangler secret put BETTER_AUTH_SECRET -c wrangler.portal.jsonc --env staging  # paste at the hidden prompt; then clear the clipboard
+pnpm exec wrangler secret put RESEND_API_KEY -c wrangler.portal.jsonc --env staging      # the key of step 19
+pnpm exec wrangler secret put TURNSTILE_SECRET_KEY -c wrangler.portal.jsonc --env staging   # the widget's secret key (or the test one, for a first look)
+pnpm exec wrangler secret list -c wrangler.portal.jsonc --env staging                    # NAMES only: the three
+```
+
+Then fill `cf/admin/.staging.vars.portal` (`TURNSTILE_SITE_KEY`, `SITE_URL` = the site's address, `ADMIN_URL` = the admin's address, `EMAIL_FROM`; the two WhatsApp lines only with **invented** values) and let the repo print the deploy command, read it, run it:
+
+```bash
+pnpm build:portal-spa
+pnpm deploy:staging:portal:command      # prints:  pnpm exec wrangler deploy -c wrangler.portal.jsonc --env staging --var 'TURNSTILE_SITE_KEY:...' --var '...'
+# copy that line, check it, run it
+```
+
+- **Changes:** three secrets on the portal Worker (encrypted, never shown again), then a new version with its public values. The printer refuses a secret name, an API URL, a placeholder (`<...>`), an `http://` origin, a path, a trailing slash, the production domain, a WhatsApp invitation of WhatsApp's own address and the admin's or the site's variables, with the line number, and **prints, never runs**. A value left out of the file is **blank** after the deploy (the staging block declares each one empty), not kept.
+- **The two `BETTER_AUTH_SECRET`s must differ:** a token of one audience must not be valid for the other. A secret cannot be read back, so the control is that you typed a new one; nothing from outside can compare them.
+- **Your OK:** yes, for each secret and for the deploy.
+- **Verify:** `curl -s $P/portal/api/config` now shows `turnstileSiteKey`, `siteUrl` and `adminUrl` (and `contactWhatsapp` and `whatsappGroupUrl` only if you set valid invented ones; otherwise the keys are absent). Then the sign-in burst, to see the limiter at the edge (expected: five `403` because no Turnstile token was sent, then a `429` with `Retry-After`):
+
+  ```bash
+  for i in 1 2 3 4 5 6 7; do curl -s -o /dev/null -w "%{http_code} " -X POST $P/portal/api/auth/sign-in/email \
+    -H 'content-type: application/json' -H "origin: $P" -d '{"email":"staging-check@example.invalid","password":"x"}'; done; echo
+  # 403 403 403 403 403 429 429   <- the limit works; all 403 means the binding does not count (tell the PM)
+  ```
+
+- **Revert:** `pnpm exec wrangler secret delete <NAME> -c wrangler.portal.jsonc --env staging`; redeploy without a `--var` to blank one.
+
+## 21. Portal smoke tests
+
+```bash
+P=https://sakem-portal-staging.<account-subdomain>.workers.dev
+for p in /portal /portal/ /portal/status /portal/daftar /portal/login /portal/no-such-page /portal/api/config /portal/api/me /portal/api/auth/get-session \
+  /portal/api/overview /portal/api/applications /portal/api/applications/current /portal/api/files/00000000-0000-4000-8000-000000000000 \
+  /portal/api/auth/list-sessions /portal/api/no-such-route /portal/api/dev/mailbox / /portal/no-such-file.png; do
+  printf '%-58s ' "$p"; curl -s -o /dev/null -w '%{http_code} %{content_type}\n' "$P$p"; done
+```
+
+The expected answers come from the code and from running the portal Worker **locally** (`wrangler dev --local`, no account); a real account may still differ, and any difference is the finding to report.
+
+| Request | Expected |
+| --- | --- |
+| `P/portal`, `/portal/`, `/portal/status`, `/portal/daftar`, `/portal/login`, `/portal/no-such-page` | 200 `text/html`, the portal's `index.html` (the single-page fallback; no 307 between `/portal` and `/portal/`), served by the assets layer: **no Worker request** (a `wrangler tail` shows no event). Headers: `cache-control: public, max-age=0, must-revalidate`, `x-frame-options: DENY`, `x-content-type-options: nosniff`, `referrer-policy: same-origin`, a `content-security-policy` that allows `challenges.cloudflare.com` for the widget |
+| `P/portal/assets/<name>.js` (the name from `curl -s $P/portal/ \| grep -o '/portal/assets/index-[^"]*\.js'`) | 200, `cache-control: public, max-age=31536000, immutable`, the same security headers |
+| `P/`, `P/portal/no-such-file.png` | 200, the same `index.html` in the local emulation. `portal-architecture.md` 3.4 expected a request that is not a navigation, for a file that is not there, to reach the Worker and get its JSON 404: **if the real answer is a `404` JSON, write it down** (it costs one Worker request; the tail shows it) |
+| `P/portal/api/config` | 200 JSON, `{"google":false,"turnstileSiteKey":"<the key>","siteUrl":"<W>","adminUrl":"<A>"}`; `cache-control: no-store`, `x-content-type-options: nosniff`, `referrer-policy: no-referrer` |
+| `P/portal/api/me` | 401 `{"error":"unauthenticated"}` |
+| `P/portal/api/auth/get-session` | 200 `null` (no portal cookie: Better Auth is not built) |
+| `P/portal/api/overview`, `/portal/api/applications`, `/portal/api/applications/current`, `/portal/api/files/<an id>` | 401 `{"error":"unauthenticated"}` |
+| `P/portal/api/auth/list-sessions` (a Better Auth route the portal does not expose) | 404 `{"error":"not_found"}` |
+| `P/portal/api/no-such-route` | 404 `{"error":"not_found"}` |
+| `P/portal/api/dev/mailbox` | 404 `{"error":"not_found"}` (only `ENVIRONMENT=development` answers; staging is `staging`) |
+| `curl -si -X POST $P/portal/api/auth/sign-in/email -H 'content-type: application/json' -H 'origin: https://other.example' -d '{}'` | 403 `{"error":"forbidden","reason":"origin_mismatch"}` (the same-origin guard) |
+| `curl -si -X PUT $P/portal/api/applications/current/steps/identity -H "origin: $P" -H 'content-type: application/json' -d '{}'` | 401 (no session; the guard answers before the body is read) |
+| the burst of step 20 | `403 403 403 403 403 429 429` |
+| `W/portal/api/auth/get-session` (the **site's** host) | the site's 404 page: its navbar asks its own host, where there is no portal (known, step 13 lists it) |
+
+Things only the real deploy shows (note them for the PM, no values): that `_headers` applies to the fallback page as well as to files (the CSP above on `/portal/status` is the answer); that no tail event appears for any of the first three rows; whether `cf-ray` answers from a nearby location.
+
+## 22. End-to-end test with one invented applicant
+
+One applicant, from registration to the status page, through both Workers. **Every value is invented**: a made-up name, the WhatsApp number `62` plus nine invented digits, invented answers, **only the sample files below** (no real document, no real photo of anyone). Open the portal and the admin in two separate browser windows (different profiles, or one private window): both cookies are host-only, so even one profile works.
+
+**Before you start:** steps 9 (admin with a super_admin) and 17 to 20 are done; the real widget and the mail decision of step 19 are made; `date -u` is not within a few minutes of 00:00 UTC (the mail counter changes day then). The test writes about 100 rows to D1 (of 100,000 a day), about 11 R2 writes, and sends two or three mails (the verification link, the confirmation, and the "Kamu sudah punya akun" one only if you register an existing address).
+
+**The invented files.** A 70-byte PNG and a one-page PDF, made here from text, so nothing real ever sits on this Mac or in R2:
+
+```bash
+mkdir -p /private/tmp/sakem-e2e && cd /private/tmp/sakem-e2e
+echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > foto-uji.png
+printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > berkas-uji.pdf
+{ cat berkas-uji.pdf; head -c 9500000 /dev/zero; } > berkas-9mb.pdf      # only for the CPU round of step 13: the largest file the portal accepts is 10,000,000 bytes
+```
+
+The Worker reads the bytes, not the name or the declared type: both are accepted as `png` and `pdf`. Use the PNG for every required slot (the self-photo takes images only) and the PDF for one or two, to see a PDF come back as a download.
+
+1. **Admin: a batch that is open.** Pendaftaran, Batch, **Batch Baru**: the current year, a name such as "Uji Staging", opens now and closes in a week. *Expect:* it is listed as open. Without an open batch the portal says there is none and the wizard stays closed.
+2. **Portal: register.** `P/portal/register`: the invented name, **the applicant's address** (step 19) and a long invented password that is not used anywhere else. The Turnstile widget appears and passes. *Expect:* the page says to check the mailbox (the same words whether or not the address already had an account). Admin, Sistem, **Aktivitas**: a row for the new student's registration.
+3. **The verification mail.** *Expect* a mail "Verifikasi email Sakola Kembara" from `EMAIL_FROM`; opening its link lands on `P/portal/login?verified=1`. (Workers Logs keeps the **full URL with the token** for three days: expected on staging, the reason this part uses invented accounts only.) With choice C of step 19: mark the address verified by hand instead and say so in the report.
+4. **Portal: sign in.** `P/portal/login`, with the widget. *Expect:* the home page shows the open batch and "Mulai daftar". In the browser's cookie list: `__Host-sakem-student.session_token`, Secure, HttpOnly, SameSite Lax, **no Domain**, Path `/`; there is no cookie of the admin's name on this host.
+5. **Portal: the wizard.** `P/portal/daftar`: the eight screens with invented answers (the wizard says what shape each field needs; DTKS "tidak"). On the documents screen put one file in each of the ten required slots: `electricity-bill`, `family-card`, `parent-permission`, `self-photo`, `house-photos`, `vehicle-photos` and the four marketing proofs. Reload the page in the middle: the work comes back. *Expect* each upload to finish with its size shown, and the objects to appear in the bucket (dashboard, Objects, keys of the shape `applications/<year>/<id>/<id>.png`). **Now run check 3 of step 16** (the requests) against one of those keys.
+6. **Portal: send.** "Kirim Pendaftaran". *Expect:* the confirmation screen with the application number (and the invented WhatsApp group button, only if you set one), the mail "Pendaftaran Sakola Kembara kamu sudah kami terima", and on `P/portal/status` "Menunggu keputusan": received, with **no verdict** yet.
+7. **Admin: open one file.** Pendaftaran, Pendaftar, the invented applicant: the **Berkas** section lists each slot with its count and size. Press **Lihat** on **one** file (an image shows in a new tab, a PDF downloads). *Expect:* Sistem, **Aktivitas**: **exactly one** row "Berkas pendaftar dibuka" for it, with no name in it. Cross-check, read-only:
+
+   ```bash
+   cd cf/admin
+   pnpm exec wrangler d1 execute sakem-staging --env staging --remote --command \
+     "SELECT action, resource_type, metadata FROM audit_log WHERE action LIKE 'application_file.%' ORDER BY created_at"
+   # one row, application_file.view; the metadata holds two ids and a slot name, no file name, no size, no applicant name
+   ```
+
+8. **Admin: decide, then publish.** On the applicant: **Status baru** "Diterima", a short invented review note, **Simpan Perubahan**. Pendaftaran, Batch, the batch: it reads "Siap dipublikasikan" once every applicant is decided; **Publikasikan Hasil**. *Expect* "Hasil dipublikasikan". The portal did not show a verdict before this.
+9. **Portal: the status.** Reload `P/portal/status`. *Expect:* "Kamu diterima" and the review note: everyone at once, which is the privacy promise.
+10. **The manual purge** (built: `POST /api/admin/applications/:id/files/purge`). On the applicant, the card **Berkas Pendaftar**, **Hapus Semua Berkas**, confirm. *Expect:* the screen reports the count; **exactly one** new Aktivitas row "Berkas pendaftar dihapus" (a count and the file ids, no name); the applicant's objects are gone from the bucket (dashboard, Objects); `P/portal/api/files/<id>` as the student is now `404`; the answers of the application are still there. Read-only check: `SELECT count(*) AS files FROM application_files` is `0`, and `SELECT bytes, files FROM private_storage` is `0` and `0`.
+11. **The draft purge: PENDING.** SAKEM-093 (the files of a draft that nobody submitted or whose account is gone: [`portal-architecture.md`](portal-architecture.md#89-deleting-files-by-hand-the-manual-purge), open decision 15) had **not landed on `cloudflare`** when this was written, so there is nothing to test and **nothing to run**. When it lands, the PM adds its steps here: a second invented student who uploads one file and never submits, then the new action, then the same checks as item 10. Until then the files of an unsubmitted draft are removed by the student (the wizard's delete button) or by emptying the bucket (step 24).
+12. **Resend and the day counter.** Read-only: `SELECT day, sent FROM email_daily ORDER BY day DESC LIMIT 2` is today's **UTC** date with the number of mails the portal sent (two or three), and Resend's own page agrees.
+13. **Clean up the invented data** (this deletes: your OK), with the commands under "Cleaning up the invented data" below. Run them only when item 10 is done (and a draft's files, if there were any, are gone), because the SQL deletes **rows**, never objects.
+
+**Cleaning up the invented data (item 13).** The files of the applicant must all be gone first (item 10; a draft's, by the student's delete button or in the bucket's dashboard). `E` is the address you registered, with no quote in it. The three files are written outside the repo and removed at the end:
+
+```bash
+E='<applicant address>'
+cat > /private/tmp/sakem-e2e/precheck.sql <<SQL
+-- runbook-test: precheck, must say 0
+SELECT count(*) AS live_files FROM application_files WHERE deleted_at IS NULL AND application_id IN (
+  SELECT id FROM student_applications WHERE email = '$E'
+  UNION SELECT d.id FROM application_drafts d JOIN users u ON u.id = d.user_id WHERE u.email = '$E');
+SQL
+cat > /private/tmp/sakem-e2e/cleanup.sql <<SQL
+-- runbook-test: cleanup of one invented applicant
+DELETE FROM application_files WHERE application_id IN (
+  SELECT id FROM student_applications WHERE email = '$E' OR user_id IN (SELECT id FROM users WHERE email = '$E')
+  UNION SELECT d.id FROM application_drafts d JOIN users u ON u.id = d.user_id WHERE u.email = '$E');
+DELETE FROM student_applications WHERE email = '$E' OR user_id IN (SELECT id FROM users WHERE email = '$E');
+DELETE FROM users WHERE email = '$E' AND role = 'student';
+UPDATE private_storage SET bytes = (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE deleted_at IS NULL), files = (SELECT COUNT(*) FROM application_files WHERE deleted_at IS NULL), updated_at = cast(unixepoch('subsecond') * 1000 as integer) WHERE id = 'private-files';
+SQL
+cat > /private/tmp/sakem-e2e/verify.sql <<SQL
+-- runbook-test: verify, all zero
+SELECT (SELECT count(*) FROM users WHERE email = '$E') AS users, (SELECT count(*) FROM student_applications WHERE email = '$E') AS applications, (SELECT count(*) FROM application_files) AS files, (SELECT bytes FROM private_storage) AS bytes;
+SQL
+cd cf/admin
+pnpm exec wrangler d1 execute sakem-staging --env staging --remote --file /private/tmp/sakem-e2e/precheck.sql    # live_files: 0, else stop
+pnpm exec wrangler d1 execute sakem-staging --env staging --remote --file /private/tmp/sakem-e2e/cleanup.sql
+pnpm exec wrangler d1 execute sakem-staging --env staging --remote --file /private/tmp/sakem-e2e/verify.sql     # 0, 0, 0, 0
+rm -rf /private/tmp/sakem-e2e
+```
+
+It deletes the applicant's file rows, application and account (the account's sessions and any draft go with it, by the database's own cascade), then recounts the storage counter the way the daily cleanup does. The audit rows stay (ids only, no name). The batch stays too (a batch holds its year: the next test uses another year or reuses this one); to remove it: `... --command "DELETE FROM admission_batches WHERE name = '<batch name>'"`, which the database refuses while an application or a draft still points at it, and that refusal is the check.
+
+- **Creates:** an admission batch, a student account with its session, a draft that becomes an application, ten objects in the private bucket (and the rows that describe them), two or three mails, audit rows (ids only): about 100 rows written to the remote D1 and 11 R2 writes. Nothing in git.
+- **Your OK:** yes, step by step: each of 2, 5, 6, 8 and 10 and the cleanup writes to the remote database or the bucket.
+- **Report back (no values):** for each numbered step "done" or "failed" with the message; the status of every row of step 21 that was not the expected one; the three checks of step 16; whether the verification mail arrived (and by which choice of step 19); how many `application_file.view` rows Aktivitas showed (the answer must be one); the CPU rounds of step 13 for the portal.
+- **Revert:** the cleanup above, then empty the bucket of any object left (a draft's files), and `rm -rf /private/tmp/sakem-e2e`.
+
+## What staging cannot show about the portal
+
+The portal on `workers.dev` serves its own paths at its own host, with no zone, so these cannot be tested here. Each is a line of the cutover rehearsal ([`cutover-runbook.md`](cutover-runbook.md): the route steps, T-16 and T-17 of its smoke tests, R-26 of its risks) and of [`portal-architecture.md`](portal-architecture.md#36-what-only-a-real-zone-can-verify):
+
+| Not testable here | Why | Goes to |
+| --- | --- | --- |
+| The routes `sakolakembara.org/portal` and `/portal/*` reaching `sakem-portal`: precedence against the site's route or Custom Domain, `/portal` against `/portal/`, `/portalx`, `/Portal/x`, the known trailing-`/*` bug, the failure mode (closed) at the day's limit | There is no zone and no route on `workers.dev` | cutover, S-33 and T-17, R-26 |
+| The apex cookie: `__Host-` on the apex sent to **every** path, including the public pages the site's Worker serves (it must never read it), and the Google callback on the apex | Staging's cookie lives on the portal's own host, which no public page shares; Google is off on staging | cutover |
+| The pass-through of the site: `/login`, `/register` and the navbar's session call going to `/portal/...` **on the same host**, "Masuk" and "Daftar Sekarang" landing in the portal | On staging they point at the site's own host, where nothing answers | cutover, T-16, F-02 and F-11 |
+| Cache: whether anything at the apex caches `/portal/api/*` (it must stay `no-store`, `cf-cache-status` never `HIT`), and whether a Cache Rule on the zone catches the portal's files | The Cache API does not work on `workers.dev`, as for the site's own cache | cutover, the cache checklist |
+| Turnstile for the apex hostname, and Resend with the production sender domain (SPF, DKIM, deliverability of the verification mail to other people's mailboxes) | The staging widget covers `workers.dev` only; the sandbox sender reaches one address | cutover, P-09 |
+| Real R2 costs and limits under a season's load (many students, 10 MB files at once), and the CPU of an upload at that scale | One invented applicant is one data point | the first season |
+
+## 23. What must not be done on staging
+
+- **A wrangler command without `--env staging` (admin), without `-c wrangler.portal.jsonc --env staging` (portal), or a `cf/web` build without `CLOUDFLARE_ENV=staging`, for these Workers.** It creates the production-named Worker in the account (`sakem-admin`, `sakem-portal`). The shell variable of "Before the first command" is the safety net.
+- **Real personal data**: no real student, applicant or contact data, no real admin passwords reused anywhere, **no real document, photo or scan of anyone** (the portal takes documents of children: step 22 uses sample files made from text, nothing else), no real WhatsApp number or group invitation (the config answer is public). The staging addresses are public. Only the 80 public articles and dummy rows.
+- **Making `sakem-private-staging` public**: no `r2.dev` address, no custom domain, no change to its access in the dashboard, ever. Re-run the three checks of step 16 after any change to R2.
+- **The admin's `BETTER_AUTH_SECRET` on the portal** (or any value reused between the two Workers), and the production names of the portal's resources: `sakem-portal`, the bucket `sakem-private`, the namespaces `80xx`.
 - **Sharing the staging addresses** or linking them from a real page, mail or chat.
 - **Anything on the zone**: no route, no custom domain, no DNS record, no nameserver change, no Cache Rule. Staging is on `workers.dev` by decision.
-- **Production resources and keys**: the production D1 (`sakem-admin`), bucket (`sakem-files`), Turnstile widget, Resend domain, rate limit namespaces `78xx`.
+- **Production resources and keys**: the production D1 (`sakem-admin`), buckets (`sakem-files`, `sakem-private`), Turnstile widget, Resend domain, rate limit namespaces `78xx` and `80xx`.
 - **A secret in `.staging.vars`**, in a ticket, in chat or in a commit. The printer refuses secret names; do not work around it.
 - **`ENVIRONMENT=development`** or any value that switches the fail-closed rules off (email, Turnstile, rate limiting).
 - **`CONTENT_API_URL`, `CONTACT_API_URL`**, or a real `LEGACY_ORIGIN_URL` (a real host would forward staging traffic to the live site).
@@ -413,25 +720,30 @@ Set a **billing or usage notification** in the account (Notifications) before R2
 - **Answering yes** when wrangler offers to write ids into a configuration file.
 - **The other three accounts.** If a command ever shows a database or Worker you do not recognise, stop.
 
-## 16. Teardown
+## 24. Teardown
 
-Order matters: the site's service binding points at the admin Worker, so the site goes first. **Each is a deletion: your explicit OK.**
+Order matters: the site's service binding points at the admin Worker, so the site goes first; the portal and the admin both use the database and the private bucket, so both Workers go before them. **Each is a deletion: your explicit OK.** If only the invented applicant is to go (staging stays up), do the cleanup of step 22 and stop there.
 
 ```bash
 cd cf/admin
 pnpm exec wrangler delete --name sakem-web-staging                         # the site (and its workers.dev address)
+pnpm exec wrangler delete --name sakem-portal-staging                      # the portal Worker, its secrets, its workers.dev address
 pnpm exec wrangler delete --name sakem-admin-staging                       # the API Worker, its secrets, its cron
 pnpm exec wrangler d1 delete sakem-staging                                 # the database and everything in it
 pnpm exec wrangler r2 bucket dev-url disable sakem-files-staging           # type disallow
-# empty the bucket in the dashboard (R2, the bucket, Objects, select all, delete), then:
+# empty the PUBLIC bucket in the dashboard (R2, the bucket, Objects, select all, delete), then:
 pnpm exec wrangler r2 bucket delete sakem-files-staging
-rm -f .staging.vars ../web/.staging.vars ../web/.measure/*.jsonl ../web/.measure/*.json
+# the PRIVATE bucket: it has no public address to turn off. Empty it in the dashboard the same way (a draft's files, and anything a test left,
+# are only in the bucket: no screen reaches them), check that Objects is empty, then:
+pnpm exec wrangler r2 bucket delete sakem-private-staging
+rm -f .staging.vars .staging.vars.portal ../web/.staging.vars ../web/.measure/*.jsonl ../web/.measure/*.json
+rm -rf /private/tmp/sakem-e2e
 unset CLOUDFLARE_ENV CLOUDFLARE_ACCOUNT_ID
 pnpm exec wrangler logout
 ```
 
-In the dashboards: delete the Turnstile widget and the Resend key `sakem-staging`. The `workers.dev` subdomain of the account stays (it is the account's). Check afterwards: `wrangler d1 list`, `wrangler r2 bucket list` show nothing of staging; Workers & Pages shows no `*-staging` Worker. Staging used the production namespaces of nothing, so no production resource changes.
+In the dashboards: delete the Turnstile widget and the Resend key(s) `sakem-staging` (and `sakem-staging-portal`), and the sending domain if step 19 added one (its DNS records at the domain's host too). The `workers.dev` subdomain of the account stays (it is the account's). Check afterwards: `wrangler d1 list`, `wrangler r2 bucket list` show nothing of staging; Workers & Pages shows no `*-staging` Worker. Staging used the production namespaces of nothing, so no production resource changes.
 
 ## Report back (no values)
 
-Tell the PM only: the step number and "done" or "failed" with the message of a failure (no ids, no secrets, no addresses); the **checkpoint result of step 6** (rate limit bindings accepted or not); the three smoke-test results that were not the expected ones; the CPU table of step 13 with verdicts; whether `wrangler tail` carried `cpuTime`; the largest D1 rows-written day. Nothing else is required.
+Tell the PM only: the step number and "done" or "failed" with the message of a failure (no ids, no secrets, no addresses); the **checkpoint result of step 6** (rate limit bindings accepted or not); the smoke-test results that were not the expected ones (steps 11 and 21); the CPU table of step 13 with verdicts, the portal's rows included; whether `wrangler tail` carried `cpuTime`; the largest D1 rows-written day. For the portal: the three checks of step 16 (the bucket is private), whether the bucket existed before step 16 and its location, the mailbox choice of step 19 and whether the verification mail arrived, the number of `application_file.view` rows after step 22 (it must be one), the answer of `curl $P/portal/no-such-file.png` (index or JSON 404), and that SAKEM-093's draft purge is still pending. Nothing else is required.
