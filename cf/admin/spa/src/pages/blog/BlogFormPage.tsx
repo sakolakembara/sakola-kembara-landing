@@ -21,6 +21,7 @@ import { useMutation } from "~/lib/crud/useMutation";
 import { usePageTitle } from "~/lib/hooks";
 import { useMe } from "~/lib/session";
 import { BodyEditor, type BodyMode } from "./BodyEditor";
+import { MetaDescriptionField } from "./MetaDescriptionField";
 import { API_PATH, type BlogItem, type BlogValues, CATEGORY_OPTIONS, type EditorTab, FIELD_LABELS, FIELD_TAB, ROUTE, STATUS, toBody, toValues } from "./model";
 import { LIMITS } from "./rules";
 
@@ -227,6 +228,7 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
           <Field label="Excerpt" id="excerpt" required error={fields.excerpt} hint={`${LIMITS.excerptMin}-${LIMITS.excerptMax} karakter. Muncul di list artikel dan SEO description.`}>
             <Textarea required rows={3} {...form.field("excerpt")} placeholder="Ringkasan singkat artikel..." />
           </Field>
+          <MetaDescriptionField field={form.field("metaDescription")} error={fields.metaDescription} stored={item?.metaDescription ?? ""} />
         </FormSection>
 
         <FormSection title="Klasifikasi & Publikasi" description="Bagaimana artikel ini dikelompokkan dan ditampilkan.">
