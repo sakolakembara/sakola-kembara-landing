@@ -33,6 +33,14 @@ declare namespace Cloudflare {
      * not a number: off (every request renders). 30 is the value to start with. src/lib/page-cache.ts.
      */
     PAGE_CACHE_SECONDS?: string;
+    /**
+     * The Cloudflare Web Analytics beacon id (what Cloudflare calls the site token; a PUBLIC value: it is in every page's
+     * HTML, which is why the name has no `TOKEN` in it). Set per deploy with `--var`, never in git. Valid = exactly 32
+     * hexadecimal characters; unset or anything else: the pages the Worker renders carry no beacon and no tag. It reaches
+     * those pages only: the prerendered ones are static files and take the same name from the BUILD's environment
+     * (astro.config.mjs). src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md ("Web Analytics").
+     */
+    WEB_ANALYTICS_BEACON_ID?: string;
     /** Local/CI only: where the contact form posts instead of the `API` service binding (scripts/fixture-api.mjs). Unset in production. */
     CONTACT_API_URL?: string;
     /**

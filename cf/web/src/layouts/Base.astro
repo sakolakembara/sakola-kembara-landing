@@ -4,6 +4,7 @@ import lora700 from '@fontsource/lora/files/lora-latin-700-normal.woff2?url';
 import jakarta400 from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-400-normal.woff2?url';
 import Footer from '~/components/Footer.astro';
 import Navbar from '~/components/Navbar.astro';
+import WebAnalytics from '~/components/WebAnalytics.astro';
 import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph, buildSeo, jsonLdScript, type SeoInput } from '~/lib/seo';
 
 /**
@@ -13,6 +14,9 @@ import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph
  * WebPage, BreadcrumbList, and for an article BlogPosting and Person), emitted as ONE application/ld+json script;
  * `jsonLd` is a list of further schema.org objects (a program's), each emitted as a script of its own.
  * The LCP image of a page is marked on the <img> itself (fetchpriority="high").
+ *
+ * <WebAnalytics /> (SAKEM-095) renders the Cloudflare Web Analytics beacon, and only when one is configured; it sits
+ * right after <Footer /> with no whitespace between them, so a page without it is byte for byte what it was before.
  */
 interface Props {
   seo: SeoInput;
@@ -83,7 +87,7 @@ const graph = buildGraph(seo);
       <div id="konten-utama">
         <slot />
       </div>
-      <Footer />
+      <Footer /><WebAnalytics />
     </div>
   </body>
 </html>

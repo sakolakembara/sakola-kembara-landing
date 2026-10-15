@@ -5,6 +5,7 @@ import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
 import blogContent from './plugins/blog-content.mjs';
 import { slashFoldPaths, toUnderscoreRedirects } from './redirects.config.mjs';
+import { BEACON_ID_VARIABLE, parseBeaconId } from './web-analytics.config.mjs';
 
 // The legacy Next app lives two folders up. Its content/blog markdown is read in
 // place (no copy); its public/ images go through scripts/build-assets.mjs, which
@@ -17,6 +18,16 @@ const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 const blogSource = process.env.BLOG_SOURCE ?? 'api';
 if (blogSource !== 'api' && blogSource !== 'markdown') {
   throw new Error(`BLOG_SOURCE must be "api" or "markdown", got "${blogSource}"`);
+}
+
+// The Cloudflare Web Analytics beacon id of the PRERENDERED pages (SAKEM-095). It comes only from the shell
+// environment of this build (`WEB_ANALYTICS_BEACON_ID=<32 hex characters> pnpm build`), never from `.dev.vars` (the
+// prerender's `env` holds that file) and never from the Worker variable, which static HTML cannot see. A value that is
+// not a beacon id is ignored with a warning that does not repeat it. The pages the Worker renders read the Worker
+// variable instead. See src/lib/web-analytics.ts and docs/cloudflare/web-skeleton.md, "Web Analytics".
+const beaconId = parseBeaconId(process.env[BEACON_ID_VARIABLE]);
+if (beaconId === null && (process.env[BEACON_ID_VARIABLE] ?? '').trim() !== '') {
+  console.warn(`${BEACON_ID_VARIABLE} is set but is not a beacon id (32 hexadecimal characters): the prerendered pages are built without the beacon`);
 }
 
 /**
@@ -68,7 +79,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   server: { host: true, port: process.env.PORT ? Number(process.env.PORT) : 4321 },
   vite: {
-    define: { __BLOG_SOURCE__: JSON.stringify(blogSource) },
+    define: { __BLOG_SOURCE__: JSON.stringify(blogSource), __WEB_ANALYTICS_BEACON_ID__: JSON.stringify(beaconId) },
     plugins: [
       tailwindcss(),
       blogContent({

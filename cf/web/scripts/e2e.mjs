@@ -2429,6 +2429,112 @@ await check('page-cache', 'on: what must not be copied is not: a 404, a stale or
   }
 });
 
+// ---------------------------------------------------------------- Cloudflare Web Analytics (SAKEM-095, decision D-07)
+// ONE beacon tag at the end of <body>, only when a valid WEB_ANALYTICS_BEACON_ID is configured, and a page gets it from
+// its own source: the pages the Worker renders from the Worker variable (checked here, with a `--var`), the prerendered
+// ones from the build's environment (checked by scripts/e2e-analytics.mjs against a second build). This group runs the
+// plain build: nothing is configured in `stack`, so nothing carries the beacon, and a Worker variable alone cannot
+// reach a static file. The id is invented.
+const BEACON_ID = '0123456789abcdef0123456789abcdef';
+const BEACON_PRERENDERED = ['/', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+const BEACON_RENDERED = ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/kontak?terkirim=1', '/no-such-page', '/blog/no-such-article'];
+const BEACON_ANYWHERE = /cloudflareinsights|data-cf-beacon|beacon\.min\.js/i;
+const beaconTags = (html) => [...html.matchAll(/<script\b[^>]*>/g)].map((m) => m[0]).filter((t) => BEACON_ANYWHERE.test(t));
+
+await check('analytics', 'no beacon id configured (the plain build, no Worker variable): no page of either kind has the script, the tag or the host, and none sends a policy or a cookie', async () => {
+  for (const p of [...BEACON_PRERENDERED, ...BEACON_RENDERED]) {
+    const res = await get(p);
+    const html = await text(res);
+    assert.match(res.headers.get('content-type') ?? '', /text\/html/, p);
+    assert.doesNotMatch(html, BEACON_ANYWHERE, p);
+    assert.ok(html.includes('</footer> </div> </body></html>'), `${p}: the page ends as it did before the beacon`);
+    assert.equal(res.headers.get('content-security-policy'), null, p);
+    assert.equal(res.headers.get('content-security-policy-report-only'), null, p);
+    assert.equal(res.headers.get('set-cookie'), null, p);
+  }
+});
+
+await check('analytics', 'a stack with the Worker variable: every page the Worker renders has exactly one beacon tag, a module script with the token, after the footer; status and policy headers are as without it', async () => {
+  const s = await startStack({ port: 8811, stubPort: 4431, fixturePort: 4432, inspectorPort: 9351, vars: { WEB_ANALYTICS_BEACON_ID: BEACON_ID, ADMIN_URL: 'https://admin.example.test' } });
+  const plain = (p) => fetch(`${stack.base}${p}`, { redirect: 'manual' });
+  try {
+    for (const p of BEACON_RENDERED) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      const html = await res.text();
+      const tags = beaconTags(html);
+      assert.equal(tags.length, 1, `${p}: one tag`);
+      assert.equal(html.split('data-cf-beacon').length - 1, 1, `${p}: one attribute`);
+      const tag = tags[0];
+      assert.match(tag, /^<script type="module" src="https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js" data-cf-beacon="[^"]*">$/, p);
+      assert.doesNotMatch(tag, /\b(defer|async)\b/, p);
+      const json = JSON.parse(decodeEntities(tag.match(/data-cf-beacon="([^"]*)"/)[1]));
+      assert.deepEqual(json, { token: BEACON_ID }, p);
+      assert.ok(html.lastIndexOf(tag) > html.lastIndexOf('</footer>') && html.indexOf('</body>') > html.lastIndexOf(tag), `${p}: at the end of <body>`);
+      assert.doesNotMatch(html.slice(0, html.indexOf('</head>')), BEACON_ANYWHERE, `${p}: not in <head>`);
+      // the beacon changes nothing else about the answer
+      const without = await plain(p);
+      assert.equal(res.status, without.status, `${p}: status`);
+      assert.equal(res.headers.get('content-security-policy'), null, p);
+      assert.equal(res.headers.get('set-cookie'), null, p);
+      assert.equal(res.headers.get('cache-control'), without.headers.get('cache-control'), `${p}: cache-control`);
+    }
+    // what the beacon must not do to the pages' own facts: the contact form and the 404 keep their statuses
+    assert.equal((await fetch(`${s.base}/no-such-page`)).status, 404);
+    assert.equal((await fetch(`${s.base}/kontak`)).status, 200);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('analytics', 'with only the Worker variable the prerendered pages (static files) have no beacon, and the answers that are not HTML (a redirect to the admin host, the JSON 404 of /api, robots.txt, the sitemap) carry none either', async () => {
+  const s = await startStack({ port: 8811, stubPort: 4431, fixturePort: 4432, inspectorPort: 9351, vars: { WEB_ANALYTICS_BEACON_ID: BEACON_ID, ADMIN_URL: 'https://admin.example.test' } });
+  try {
+    for (const p of BEACON_PRERENDERED) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      assert.equal(res.status, 200, p);
+      assert.doesNotMatch(await res.text(), BEACON_ANYWHERE, `${p}: static HTML cannot see a Worker variable`);
+    }
+    const admin = await fetch(`${s.base}/admin/blog`, { redirect: 'manual' });
+    assert.equal(admin.status, 308);
+    assert.equal(admin.headers.get('location'), 'https://admin.example.test/blog');
+    assert.equal(await admin.text(), '');
+    const api = await fetch(`${s.base}/api/anything`, { redirect: 'manual' });
+    assert.equal(api.status, 404);
+    assert.match(api.headers.get('content-type') ?? '', /json/);
+    assert.doesNotMatch(await api.text(), BEACON_ANYWHERE);
+    for (const p of ['/robots.txt', '/sitemap.xml']) {
+      const res = await fetch(`${s.base}${p}`);
+      assert.doesNotMatch(await res.text(), BEACON_ANYWHERE, p);
+    }
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('analytics', 'an invalid Worker variable is ignored: no tag on any rendered page, the value is in no page and no log line, and the Worker says once, in fixed words, that it is wrong', async () => {
+  const hostile = '"><img src=x onerror=alert(1)>0123456789';
+  const s = await startStack({ port: 8812, stubPort: 4433, fixturePort: 4434, inspectorPort: 9352, vars: { WEB_ANALYTICS_BEACON_ID: hostile } });
+  try {
+    for (const p of ['/blog', `/blog/${slugs[0]}`, '/tim', '/kontak', '/no-such-page', '/blog']) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      const html = await res.text();
+      assert.doesNotMatch(html, BEACON_ANYWHERE, p);
+      assert.ok(!html.includes('onerror') && !html.includes('src=x') && !html.includes('0123456789&quot;'), `${p}: the value is not echoed`);
+    }
+    for (let i = 0; i < 30 && !/WEB_ANALYTICS_BEACON_ID is set but is not a beacon id/.test(s.output()); i++) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 300));
+    const out = s.output();
+    assert.equal(out.split('WEB_ANALYTICS_BEACON_ID is set but is not a beacon id (32 hexadecimal characters); the page is rendered without the beacon').length - 1, 1, 'one line per isolate');
+    assert.doesNotMatch(out, /onerror|src=x|alert\(1\)/);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('analytics', 'unset is silent: the default stack\'s Worker output has no line about the beacon', async () => {
+  assert.doesNotMatch(stack.output(), /WEB_ANALYTICS_BEACON_ID|beacon/i, 'nothing to say when it is unset');
+});
+
 // ---------------------------------------------------------------- report
 await stack.stop();
 

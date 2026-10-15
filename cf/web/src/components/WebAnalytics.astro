@@ -1,0 +1,18 @@
+---
+import { env } from 'cloudflare:workers';
+import { BEACON_SCRIPT_URL, BUILD_BEACON_ID, beaconAttribute, webAnalyticsBeaconId } from '~/lib/web-analytics';
+
+/**
+ * The Cloudflare Web Analytics beacon (SAKEM-095, decision D-07): ONE <script>, the last thing in the page wrapper of
+ * the layout (so at the end of <body>, after the footer), and only when a valid beacon id is configured. Unset: nothing
+ * at all, no tag and no whitespace. A prerendered page takes the build's value, a page the Worker renders takes the
+ * Worker variable (src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md, "Web Analytics").
+ *
+ * It is a tag with a `src` and a data attribute, no inline code, so a script policy added later needs no
+ * 'unsafe-inline' for it. It is its own component, and not a line of the layout, because Astro's compiler writes the
+ * whitespace after `</body>` differently in any layout that holds a <script> element: with the tag here, the HTML of
+ * every page is byte for byte what it was before when nothing is configured.
+ */
+const beaconId = webAnalyticsBeaconId({ prerendered: Astro.isPrerendered, build: BUILD_BEACON_ID, runtime: env.WEB_ANALYTICS_BEACON_ID });
+---
+{beaconId && <script is:inline type="module" src={BEACON_SCRIPT_URL} data-cf-beacon={beaconAttribute(beaconId)} />}

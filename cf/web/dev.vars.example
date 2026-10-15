@@ -25,3 +25,7 @@ ADMIN_URL=http://localhost:5173
 # Optional: seconds a rendered page (/blog, an article, /tim, /laporan, /gabung-siswa/docs, /sitemap.xml) is kept in the
 # isolate's memory and answered from there, with no render (default: off). At most 120. src/lib/page-cache.ts.
 # PAGE_CACHE_SECONDS=30
+# Optional: the Cloudflare Web Analytics beacon id (32 hexadecimal characters; what Cloudflare calls the site token). Leave it
+# unset locally: no beacon script, no tag. Set, it reaches the pages the Worker renders; the prerendered pages take the same
+# name from the shell environment of the BUILD, never from this file. src/lib/web-analytics.ts.
+# WEB_ANALYTICS_BEACON_ID=
