@@ -593,7 +593,8 @@ describe("the body is exactly what Content-Length says", () => {
     expect(await storage()).toEqual({ bytes: 0, files: 0 });
   });
 
-  test("a body that arrives in small chunks is stored whole and exact (the head is built from several reads)", async () => {
+  // 200 chunks of 1,500 bytes, each its own read: real work (2 s when other runs share the machine, against the default limit of 5 s).
+  test("a body that arrives in small chunks is stored whole and exact (the head is built from several reads)", { timeout: 60_000 }, async () => {
     const { s } = await ready();
     const body = bytes.png(300_000);
     const chunks: Uint8Array[] = [];

@@ -14,6 +14,12 @@ import { internalFetch } from "./public-helpers";
 
 const oracle = inject("blogOracle");
 
+// Every test below but the first two imports the 86 articles (about 3 MB of SQL) into a fresh D1, and most then take every
+// article through the Worker, one or two requests each (a save renders the markdown again). That is real work, not a wait: about
+// 0.1 to 0.25 s a test alone, and several times that when other runs share the machine, where a test has gone past the default
+// 5 s. The tests that do this say so, with the same explicit limit the sibling suites use for theirs (public-blog-parity).
+const LOTS_OF_WORK = { timeout: 60_000 };
+
 async function runImport() {
   await env.DB.exec(oracle.importSql);
 }
@@ -56,7 +62,7 @@ describe("the SQL of the import", () => {
   });
 });
 
-describe("after the import, the public API answers exactly as the fixture API does", () => {
+describe("after the import, the public API answers exactly as the fixture API does", LOTS_OF_WORK, () => {
   test("imports every article (80 migrated + 6 imported on 2026-10-13), all published", async () => {
     await runImport();
     expect(await count()).toBe(ARTICLE_COUNT);
@@ -106,7 +112,7 @@ describe("after the import, the public API answers exactly as the fixture API do
   });
 });
 
-describe("the meta description (SAKEM-090)", () => {
+describe("the meta description (SAKEM-090)", LOTS_OF_WORK, () => {
   test("each article's front matter `description` is stored, and an article without one stores NULL", async () => {
     await runImport();
     const without: string[] = [];
@@ -151,7 +157,7 @@ describe("the meta description (SAKEM-090)", () => {
   });
 });
 
-describe("running the import again", () => {
+describe("running the import again", LOTS_OF_WORK, () => {
   test("changes nothing: same rows, same ids, same answers", async () => {
     await runImport();
     const before = (await env.DB.prepare("SELECT id, slug, updated_at, content_html FROM blog_posts ORDER BY slug").all()).results;
@@ -187,7 +193,7 @@ describe("running the import again", () => {
   });
 });
 
-describe("an imported article opens in the editor and can be saved again", () => {
+describe("an imported article opens in the editor and can be saved again", LOTS_OF_WORK, () => {
   test("every article, opened and saved with the form's own values, is accepted and changes nothing (one needs a longer excerpt, as it did in the legacy form)", async () => {
     await runImport();
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
