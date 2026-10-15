@@ -1,6 +1,6 @@
 # Staging runbook (owner's guide)
 
-The exact, ordered steps to put the site on **staging**: three Workers on `*.workers.dev` in the organisation account (the admin API, the public site and, since SAKEM-098, the student portal), run from Dzul's Mac. Written for Dzul; **nothing here is run by an agent**. Ticket: SAKEM-084 (M5); the student portal's steps (15 to 22) are SAKEM-098. What the plan allows and where it can fail: [`free-plan-audit.md`](free-plan-audit.md). The account and token background: [`account-setup.md`](account-setup.md).
+The exact, ordered steps to put the site on **staging**: three Workers on `*.workers.dev` in the organisation account (the admin API, the public site and, since SAKEM-098, the student portal), run from Dzul's Mac. Written for Dzul; **nothing here is run by an agent**. Ticket: SAKEM-084 (M5); the student portal's steps (15 to 22) are SAKEM-098. What the plan allows and where it can fail: [`free-plan-audit.md`](free-plan-audit.md). The account and token background: [`account-setup.md`](account-setup.md). **Production** (cutover Phase A, SAKEM-104: the same two Workers on the real domain, with printers and dry runs of their own) is in [`cutover-runbook.md`](cutover-runbook.md#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104), section 14; nothing there reuses `CLOUDFLARE_ENV=staging`, which must be unset before any production command.
 
 ## Decisions this runbook rests on (Dzul, 2026-10-12)
 

@@ -75,6 +75,8 @@ pnpm exec wrangler whoami         # lists the accounts you can reach
 
 ## Part 4: before cutover (not now)
 
+> **Update 2026-10-15:** the zone `sakolakembara.org` is already active in the organisation account (Free plan) with the live WordPress site behind it, and the cutover is split in two: Phase A (the public site and the admin) first, the portal later. The steps below that say "add the zone" are done; what is left of this part, in order and with the commands, is [`cutover-runbook.md`](cutover-runbook.md#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104), section 14.
+
 - **Zone and DNS.** Staging does not need the zone. When the date is agreed: add `sakolakembara.org` to the account, compare the imported records with the current ones, export them (**DNS, Records, Export**) to a private place **outside the repo**, keep the existing records DNS-only, and change nameservers only on cutover day. The WordPress site and mail keep working until then.
 - **Resend.** Create the account, add the domain, publish the SPF and DKIM records it shows, wait for "verified". The API key is created with sending access only and goes to the Worker as a secret (`wrangler secret put`), never into the repo.
 - **Turnstile.** Create a widget for the production and staging hostnames. The site key is public, the secret key goes to the Worker as a secret.
