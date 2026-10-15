@@ -92,7 +92,7 @@ describe("what the form sends is what the Worker takes", () => {
   test("a create, then the item the Worker answers opened in the form and saved unchanged, then published and saved again", async () => {
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
     over(cookie);
-    const typed = { ...toValues(null, "dzul@sakolakembara.org"), title: "Cara Belajar yang Efektif", metaDescription: "  Cara belajar yang efektif   untuk siswa.  ", excerpt: "Ringkasan artikel tentang cara belajar yang efektif.", contentMarkdown: "## Mulai\n\nBuat jadwal belajar harian dan patuhi dengan **disiplin** setiap hari." };
+    const typed = { ...toValues(null, "dzul@contoh.test"), title: "Cara Belajar yang Efektif", metaDescription: "  Cara belajar yang efektif   untuk siswa.  ", excerpt: "Ringkasan artikel tentang cara belajar yang efektif.", contentMarkdown: "## Mulai\n\nBuat jadwal belajar harian dan patuhi dengan **disiplin** setiap hari." };
     const created = await api<{ item: BlogItem }>(API_PATH, { method: "POST", json: toBody(typed) });
     if (!created.ok) throw new Error(JSON.stringify(created));
     const item = created.data.item;

@@ -83,7 +83,7 @@ describe("the pure helpers", () => {
   });
 
   test("the form's values and the body of a save", () => {
-    expect(toValues(null, "dzul@sakolakembara.org")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
+    expect(toValues(null, "dzul@contoh.test")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
     const item = article({ status: "published", date: "2026-05-21", image: "/uploads/blog-image/2026/a.png" }) as never;
     expect(toBody(toValues(item))).toEqual({
       title: "Cara Belajar Efektif",
