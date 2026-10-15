@@ -306,6 +306,8 @@ Every `/portal/api/*` answer: `Cache-Control: no-store`, `X-Content-Type-Options
 
 ### 6.6 What happens to the pass-through of `cf/web`
 
+> **Phase A addendum (SAKEM-103, decided by Dzul on 2026-10-15).** The public site and the admin go live on `sakolakembara.org` first and the portal follows as Phase B, so for now **the portal is not live and not linked**: what is described below as the end state is what Phase B brings back. In Phase A: `PORTAL_ENABLED` is unset, so the navbar has no "Masuk", no session call and no button (the slot is empty); `/login` is **forwarded to WordPress** (it was a 308 into `/portal/login`), and `/register`, `/forgot-password`, `/reset-password`, `/verify-email` and `/portal*` are the site's **own 404** (they were 308s into `/portal`); the old pass-through list (`/_next`, `/images`, `/blog/images`, `/files`, `/reports`, `/resources`) is gone and the list holds WordPress's own paths; `/daftar` is an admin shortlink to the old form. [`web-skeleton.md`](web-skeleton.md#phase-a-of-the-cutover-sakem-103) has the table, the switch, and **how Phase B turns the navbar on and what it must restore** (the five 308s, the choice about `/login`, re-pointing the `daftar` shortlink at `/portal/daftar`).
+
 The web Worker no longer forwards the signed-in and auth surface. In **P2's cf/web part** (`cf/web/src/lib/legacy-paths.ts`, `redirects.config.mjs`, `src/middleware.ts`, `src/components/Navbar.astro`, `src/lib/sitemap.ts`, the tests):
 
 **Removed from `LEGACY_PATHS`:** `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, `/portal`, `/admin`, `/api`.

@@ -3,7 +3,12 @@
 // Bindings and variables of this Worker (see wrangler.jsonc and dev.vars.example).
 declare namespace Cloudflare {
   interface Env {
-    /** Stand-in origin for local runs. Unset in production: pass-through is a plain fetch(request). */
+    /**
+     * Stand-in origin for local runs (since SAKEM-103 the "legacy origin" is the live WordPress site: `/wp-admin`, `/wp-login.php`,
+     * `/wp-content`, `/wp-includes`, `/wp-json`, `/xmlrpc.php` and `/login` are forwarded to it, src/lib/legacy-paths.ts). Unset in
+     * production: pass-through is a plain fetch(request), which the route reaches the origin with. Staging, which has no origin,
+     * sets a `*.invalid` host so a pass-through fails at once.
+     */
     LEGACY_ORIGIN_URL?: string;
     /**
      * Local/CI only: base URL of the content API (`${CONTENT_API_URL}/api/public/team`, `/reports`, `/resources`,
@@ -41,6 +46,14 @@ declare namespace Cloudflare {
      * (astro.config.mjs). src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md ("Web Analytics").
      */
     WEB_ANALYTICS_BEACON_ID?: string;
+    /**
+     * Whether the student portal is live (SAKEM-103, Phase A of the cutover). A PUBLIC variable, set per deploy with `--var`, never in
+     * git. Exactly `true` shows the navbar's "Masuk" link and its session script on the pages the Worker renders; unset, `false`
+     * or anything else (one log line, no value in it) leaves both out, and the slot of the link stays empty (no
+     * button at all in the navbar). It reaches those pages only: the prerendered ones are static files and take the same name from the BUILD's
+     * environment (astro.config.mjs). src/lib/portal-enabled.ts, docs/cloudflare/web-skeleton.md ("The student portal switch").
+     */
+    PORTAL_ENABLED?: string;
     /** Local/CI only: where the contact form posts instead of the `API` service binding (scripts/fixture-api.mjs). Unset in production. */
     CONTACT_API_URL?: string;
     /**

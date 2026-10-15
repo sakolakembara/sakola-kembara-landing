@@ -1,6 +1,7 @@
 ---
 import Container from '~/components/Container.astro';
 import SectionHeader from '~/components/SectionHeader.astro';
+import { REGISTRATION_PATH } from '~/lib/site';
 
 /**
  * Homepage "Bergabung Bersama Kami": four ways to take part, one card each.
@@ -15,7 +16,8 @@ const ctaOptions = [
     description:
       'Pembinaan penuh selama satu tahun, Agustus hingga April, tanpa biaya. Terbuka bagi siswa kelas 12 dan lulusan yang menyiapkan UTBK maupun ujian mandiri.',
     buttonText: 'Daftar Sekarang',
-    href: '/gabung-siswa',
+    // SAKEM-103: straight to the registration shortlink (it was /gabung-siswa, the information page).
+    href: REGISTRATION_PATH,
     color: 'bg-orange-500 hover:bg-orange-600 text-white',
   },
   {

@@ -97,10 +97,39 @@ describe.skipIf(!built)('build output', () => {
     const file = read('client/_redirects');
     expect(file).toContain('/cerita/:slug  /blog/:slug  308');
     expect(file).toContain('/blog/page/:page  /blog?page=:page  308');
-    expect(file).toContain('/wp-content/uploads/*  /blog/images/:splat  308');
     expect(file).toContain('/program  /program/prapembinaan  307');
     expect(file).not.toMatch(/\.html/);
     expect(file).not.toMatch(/\s301\s*$/m);
+  });
+
+  it('_redirects (SAKEM-103): one rule per WordPress upload this build ships, no splat over /wp-content/uploads, and none of the names that left the table', () => {
+    const client = path.join(dist, 'client');
+    const file = read('client/_redirects');
+    const lines = file.trim().split('\n');
+    // the splat that answered EVERY upload is gone: an upload this site did not copy is WordPress's, forwarded to the origin
+    expect(lines.filter((l) => l.startsWith('/wp-content'))).not.toContainEqual(expect.stringMatching(/\*/));
+    const shipped = walk(path.join(client, 'blog/images')).map((f) => path.relative(path.join(client, 'blog/images'), f).split(path.sep).join('/'));
+    expect(shipped.length).toBeGreaterThan(200);
+    const uploads = lines.filter((l) => l.startsWith('/wp-content/uploads/'));
+    expect(uploads).toHaveLength(shipped.length);
+    for (const rel of shipped) {
+      const target = `/blog/images/${rel}`.replace(/@/g, '%40');
+      expect(uploads, rel).toContain(`/wp-content/uploads/${rel}  ${target}  308`);
+    }
+    // an upload with an @ in its name is one hop to the %40 form (the assets layer would add a 307 of its own to a literal @)
+    expect(uploads.filter((l) => l.split(/\s+/)[0].includes('@')).every((l) => !l.split(/\s+/)[1].includes('@'))).toBe(true);
+    // static rules, so they come before the first rule with a placeholder or a splat
+    const firstDynamic = lines.findIndex((l) => /[:*]/.test(l.split(/\s+/)[0]));
+    expect(lines.lastIndexOf(uploads[uploads.length - 1])).toBeLessThan(firstDynamic);
+    // the registration link is a shortlink (D1), the auth names are not redirects any more, the old registration form goes to the link
+    const sources = lines.map((l) => l.split(/\s+/)[0]);
+    for (const name of ['/daftar', '/daftar/', '/login', '/login/', '/register', '/forgot-password', '/reset-password', '/verify-email']) expect(sources, name).not.toContain(name);
+    expect(file).toContain('/gabung-siswa/form  /daftar  308');
+    expect(file).not.toContain('/portal');
+    // the Cloudflare limits: 2,000 static and 100 dynamic rules
+    const dynamic = lines.filter((l) => /[:*]/.test(l.split(/\s+/)[0])).length;
+    expect(dynamic).toBeLessThanOrEqual(100);
+    expect(lines.length - dynamic).toBeLessThanOrEqual(2000);
   });
 
   it('_headers carries the security headers and immutable caching for hashed assets', () => {

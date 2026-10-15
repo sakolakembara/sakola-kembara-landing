@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { REDIRECTS } from '../redirects.config.mjs';
 import { RESERVED_SLUGS } from '../../admin/src/shortlinks/reserved';
 import { LEGACY_PATHS, NOT_YET_PORTED, PORTAL_OWNED_PATHS, isShortlinkCandidate } from '~/lib/legacy-paths';
+import { REGISTRATION_PATH, REGISTRATION_SLUG } from '~/lib/site';
 import { readRoot, webRoot } from './helpers';
 
 // A shortlink is looked for only AFTER everything the site really serves has had its chance (the catch-all route
@@ -34,6 +35,7 @@ const claimed = (() => {
   for (const name of pageNames()) claim(name, 'a page of src/pages');
   for (const { path: prefix } of [...LEGACY_PATHS, ...NOT_YET_PORTED]) claim(firstSegment(prefix), 'a legacy path (src/lib/legacy-paths.ts)');
   // M4: the signed-in and auth surface is no longer forwarded, but the names stay claimed (PORTAL_OWNED_PATHS).
+  // SAKEM-103: the forwarded list is WordPress's paths now (wp-admin, wp-content, wp-includes, wp-json, /login) and they are claimed the same way.
   for (const { path: prefix } of PORTAL_OWNED_PATHS) claim(firstSegment(prefix), 'a portal-owned path (PORTAL_OWNED_PATHS in src/lib/legacy-paths.ts)');
   for (const source of Object.keys(REDIRECTS)) claim(firstSegment(source), 'a redirect source (redirects.config.mjs)');
   // The 404 page has a URL of its own.
@@ -43,10 +45,27 @@ const claimed = (() => {
 
 describe('the names the site claims are reserved', () => {
   it('finds a real set of them (the derivation itself works)', () => {
-    for (const expected of ['blog', 'tim', 'donasi', 'laporan', 'kontak', 'gabung-siswa', 'program', 'login', 'portal', 'api', 'daftar', 'cerita', 'tentang-kami']) {
+    for (const expected of ['blog', 'tim', 'donasi', 'laporan', 'kontak', 'gabung-siswa', 'program', 'login', 'portal', 'api', 'apply', 'cerita', 'tentang-kami']) {
       expect(claimed.has(expected), expected).toBe(true);
     }
     expect(claimed.size).toBeGreaterThan(25);
+  });
+
+  it('SAKEM-103: the WordPress paths that are forwarded to the origin are claimed (and so reserved): wp-admin, wp-content, wp-includes, wp-json, and /login', () => {
+    for (const name of ['wp-admin', 'wp-content', 'wp-includes', 'wp-json', 'login']) {
+      expect(claimed.has(name), `${name} is no longer derived as claimed`).toBe(true);
+      expect(RESERVED_SLUGS.has(name), `${name} is forwarded to WordPress, so a shortlink with that name would never open`).toBe(true);
+    }
+    // a file name has a dot, which no slug has: it needs no reservation
+    for (const file of ['wp-login.php', 'xmlrpc.php']) expect(isShortlinkCandidate(file), file).toBe(false);
+  });
+
+  it('SAKEM-103: `daftar` is the registration shortlink, so NOTHING claims it and the admin does not reserve it', () => {
+    expect(claimed.has('daftar'), 'a page, a legacy path or a redirect source takes /daftar again: the registration link would never open').toBe(false);
+    expect(RESERVED_SLUGS.has('daftar'), 'the admin refuses the slug the registration link needs').toBe(false);
+    expect(REGISTRATION_SLUG).toBe('daftar');
+    expect(REGISTRATION_PATH).toBe(`/${REGISTRATION_SLUG}`);
+    expect(isShortlinkCandidate(REGISTRATION_SLUG)).toBe(true);
   });
 
   it('the portal-owned names stay reserved after they left the legacy list: portal, login, register, forgot-password, reset-password, verify-email, admin, api', () => {

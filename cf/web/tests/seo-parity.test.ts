@@ -976,10 +976,15 @@ describe('the tool and the repository agree', () => {
     const runbook = readRoot('docs/cloudflare/cutover-runbook.md');
     const rows = runbook.split('\n').filter((l) => /^\| (P|S|T|C|M|X|RB)-\d+ \|/.test(l) || /^\| H\d \|/.test(l));
 
-    it('says up front that go-live is blocked on M4 and makes it a precondition', () => {
-      expect(runbook).toMatch(/GO-LIVE IS BLOCKED ON M4/);
-      expect(runbook).toMatch(/\/portal\/\*`, `\/login` and `\/register` have \*\*no backend\*\*/);
-      expect(runbook.split('\n').find((l) => l.startsWith('| P-01 |'))).toMatch(/M4/);
+    // SAKEM-103 (2026-10-15): Dzul decided Phase A, so go-live is no longer blocked on M4 (student registration): registration stays on the old
+    // form behind the `/daftar` shortlink and the portal follows as Phase B. The banner says so, P-01 records the decision, and P-25 is the
+    // precondition that the shortlink exists.
+    it('says up front that Phase A decouples go-live from M4 (registration stays on the old form), and records the decision and the shortlink as preconditions', () => {
+      expect(runbook).not.toMatch(/GO-LIVE IS BLOCKED ON M4/);
+      expect(runbook).toMatch(/PHASE A \(decided by Dzul on 2026-10-15, SAKEM-103\): registration stays on the old form/);
+      expect(runbook).toMatch(/Phase B/);
+      expect(runbook.split('\n').find((l) => l.startsWith('| P-01 |'))).toMatch(/Phase A.*SAKEM-103/);
+      expect(runbook.split('\n').find((l) => l.startsWith('| P-25 |'))).toMatch(/\/daftar|`daftar`/);
     });
 
     it('marks every precondition, step, hold point, smoke test, cache check and rollback step with who does it', () => {

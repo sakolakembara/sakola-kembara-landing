@@ -53,15 +53,20 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "testimonials",
   "career",
   "kiat-kiat",
-  // Old call-to-action addresses and renamed pages:
-  "daftar",
+  // Old call-to-action addresses and renamed pages. `daftar` is NOT here (SAKEM-103, Phase A of the cutover): `/daftar` is the
+  // registration shortlink, created in this admin, whose target is the form of the current cohort. A test of cf/web
+  // (tests/shortlink-reserved.test.ts) fails the day anything claims that name again.
   "apply",
   "tentang-kami",
   "about",
   "impact-reports",
   "feed",
-  // WordPress paths the redirect table sends on to the blog images:
+  // WordPress's own paths, forwarded by the site to the WordPress origin behind the same hostname (SAKEM-103, cf/web/src/lib/legacy-paths.ts):
+  // the Worker forwards them before it looks for a shortlink. (`/wp-login.php` and `/xmlrpc.php` have a dot, which no slug has.)
+  "wp-admin",
   "wp-content",
+  "wp-includes",
+  "wp-json",
   // WordPress pages and archives of the live sitemap that the redirect table sends to the new site's pages (SAKEM-090):
   "home",
   "sample-page",

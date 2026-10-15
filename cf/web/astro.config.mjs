@@ -4,7 +4,8 @@ import { defineConfig, sessionDrivers } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
 import blogContent from './plugins/blog-content.mjs';
-import { slashFoldPaths, toUnderscoreRedirects } from './redirects.config.mjs';
+import { mirroredUploadRules, slashFoldPaths, toUnderscoreRedirects } from './redirects.config.mjs';
+import { PORTAL_ENABLED_VARIABLE, parsePortalEnabled } from './portal-enabled.config.mjs';
 import { BEACON_ID_VARIABLE, parseBeaconId } from './web-analytics.config.mjs';
 
 // The legacy Next app lives two folders up. Its content/blog markdown is read in
@@ -30,6 +31,17 @@ if (beaconId === null && (process.env[BEACON_ID_VARIABLE] ?? '').trim() !== '') 
   console.warn(`${BEACON_ID_VARIABLE} is set but is not a beacon id (32 hexadecimal characters): the prerendered pages are built without the beacon`);
 }
 
+// Whether the PRERENDERED pages offer the student portal ("Masuk" and the session script of the navbar; SAKEM-103, Phase A of
+// the cutover). Like the beacon id it comes only from the shell environment of this build (`PORTAL_ENABLED=true pnpm build`),
+// never from `.dev.vars` and never from the Worker variable, which static HTML cannot see; the pages the Worker renders read the
+// Worker variable instead. Strict: exactly `true` switches it on, unset or `false` is off, anything else is off with one warning
+// that does not repeat the value. See src/lib/portal-enabled.ts and docs/cloudflare/web-skeleton.md, "The student portal switch".
+const portalSetting = parsePortalEnabled(process.env[PORTAL_ENABLED_VARIABLE]);
+if (portalSetting === null) {
+  console.warn(`${PORTAL_ENABLED_VARIABLE} is set but is neither "true" nor "false": the prerendered pages are built with the portal off`);
+}
+const portalEnabled = portalSetting === true;
+
 /**
  * Writes the WordPress/legacy redirect table to dist/client/_redirects, where
  * the Workers assets layer answers it before the Worker is invoked. Astro's own
@@ -45,9 +57,14 @@ function redirectsFile() {
       },
       'astro:build:done': async () => {
         // The prerendered pages are the .html files of the client folder (the home page and the 404 excluded):
-        // each also gets its trailing-slash twin folded with a 308, see slashFoldPaths.
+        // each also gets its trailing-slash twin folded with a 308, see slashFoldPaths. The WordPress upload URLs of the
+        // files this build ships under /blog/images get their own one-hop 308 (mirroredUploadRules): every other
+        // /wp-content/uploads path is WordPress's and reaches the origin (src/lib/legacy-paths.ts).
         const files = (await readdir(clientDir, { recursive: true })).map((f) => String(f).replaceAll('\\', '/'));
-        await writeFile(new URL('_redirects', clientDir), toUnderscoreRedirects(undefined, { slashFolds: slashFoldPaths(files) }));
+        await writeFile(
+          new URL('_redirects', clientDir),
+          toUnderscoreRedirects(undefined, { slashFolds: slashFoldPaths(files), uploadMirrors: mirroredUploadRules(files) }),
+        );
       },
     },
   };
@@ -79,7 +96,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   server: { host: true, port: process.env.PORT ? Number(process.env.PORT) : 4321 },
   vite: {
-    define: { __BLOG_SOURCE__: JSON.stringify(blogSource), __WEB_ANALYTICS_BEACON_ID__: JSON.stringify(beaconId) },
+    define: { __BLOG_SOURCE__: JSON.stringify(blogSource), __WEB_ANALYTICS_BEACON_ID__: JSON.stringify(beaconId), __PORTAL_ENABLED__: JSON.stringify(portalEnabled) },
     plugins: [
       tailwindcss(),
       blogContent({

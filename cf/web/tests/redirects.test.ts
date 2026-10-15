@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, slashFoldPaths, toUnderscoreRedirects } from '../redirects.config.mjs';
+import { REDIRECTS, WP_BLOG_CATEGORIES, matchRedirect, mirroredUploadRules, slashFoldPaths, toUnderscoreRedirects } from '../redirects.config.mjs';
+import { LEGACY_PATHS, PORTAL_OWNED_PATHS } from '~/lib/legacy-paths';
 import { ARTICLE_COUNT, IMPORTED_2026_10_13, blogPosts, readRoot, repoRoot, webRoot } from './helpers';
 
 /** The article files of the repo root (README.md is not one). */
@@ -82,18 +83,10 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     ['/cerita', '', 308, '/blog'],
     ['/education/', '', 308, '/blog'],
     ['/kiat-kiat', '', 308, '/blog'],
-    ['/daftar', '', 308, '/gabung-siswa'],
     ['/apply', '', 308, '/gabung-siswa'],
-    ['/gabung-siswa/form', '', 308, '/portal/daftar'],
-    // M4: the legacy auth pages moved into the student portal.
-    ['/login', '', 308, '/portal/login'],
-    ['/login/', '', 308, '/portal/login'],
-    ['/register', '', 308, '/portal/register'],
-    ['/forgot-password', '', 308, '/portal/forgot-password'],
-    ['/reset-password', '', 308, '/portal/reset-password'],
-    ['/verify-email', '', 308, '/portal/verify-email'],
-    ['/login', '?from=%2Fportal%2Fstatus', 308, '/portal/login?from=%2Fportal%2Fstatus'],
-    ['/reset-password', '?token=abc', 308, '/portal/reset-password?token=abc'],
+    // SAKEM-103: the old registration form goes to the registration shortlink, which is not a rule of this table (D1).
+    ['/gabung-siswa/form', '', 308, '/daftar'],
+    ['/gabung-siswa/form', '?utm_source=ig', 308, '/daftar?utm_source=ig'],
     ['/tentang-kami', '', 308, '/tim'],
     ['/about', '', 308, '/tim'],
     ['/impact-reports', '', 308, '/laporan'],
@@ -103,7 +96,6 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     ['/feed', '', 308, '/blog'],
     ['/feed/atom/', '', 308, '/blog'],
     ['/index.php', '', 308, '/'],
-    ['/wp-content/uploads/2026/05/foto.jpg', '', 308, '/blog/images/2026/05/foto.jpg'],
     ['/program', '', 307, '/program/prapembinaan'],
     ['/cerita/x', '?utm_source=a', 308, '/blog/x?utm_source=a'],
     ['/blog/page/2', '?utm_source=a', 308, '/blog?page=2'],
@@ -113,7 +105,12 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     expect(evalUnderscoreRedirects(file, path, search)).toEqual({ status, location });
   });
 
-  it.each(['/', '/blog', '/blog/some-slug', '/tim', '/portal/daftar', '/portal/login', '/cerita/a/b', '/blog/page', '/wp-content', '/programs', '/login-help', '/registered', '/admin', '/api'])(
+  it.each([
+    '/', '/blog', '/blog/some-slug', '/tim', '/portal/daftar', '/portal/login', '/cerita/a/b', '/blog/page', '/wp-content', '/programs', '/login-help', '/registered', '/admin', '/api',
+    // SAKEM-103: the registration link is a shortlink, the auth names are WordPress's (/login) or the site's 404, and an upload is WordPress's unless this build copied it
+    '/daftar', '/daftar/', '/login', '/login/', '/register', '/forgot-password', '/reset-password', '/verify-email',
+    '/wp-content/uploads/2026/05/foto.jpg', '/wp-content/uploads/2099/01/not-copied.jpg',
+  ])(
     '%s is not redirected',
     (path) => {
       expect(matchRedirect(path)).toBeNull();
@@ -326,11 +323,12 @@ describe('parity with the root next.config.ts', () => {
     expect(cats).toEqual(WP_BLOG_CATEGORIES);
   });
 
-  it('every explicit rule of next.config.ts is in the table, with the same status', () => {
+  it('every explicit rule of next.config.ts is in the table, with the same status (the two that differ on purpose are checked below)', () => {
     const rules = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:\s*"([^"]+)",\s*permanent:\s*(true|false)/g)];
     expect(rules.length).toBeGreaterThanOrEqual(11);
     const toAstro = (s: string) => s.replace(/:path\*/g, '[...path]').replace(/:(\w+)/g, '[$1]');
     for (const [, source, destination, permanent] of rules) {
+      if (source === '/daftar' || source === '/gabung-siswa/form') continue; // SAKEM-103: see the test below
       const entry = REDIRECTS[toAstro(source)];
       expect(entry, `missing rule for ${source}`).toBeDefined();
       expect(entry.destination).toBe(toAstro(destination));
@@ -338,15 +336,24 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules + the two SAKEM-075 additions + the five auth pages of M4 + 2 x 7 category rules + the SAKEM-090 additions', () => {
+  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103), + /program + 2 x 7 category rules + the SAKEM-090 additions', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
-    // next.config.ts: 11 literal rules; the 14 category rules are generated from the list.
-    expect(Object.keys(REDIRECTS)).toHaveLength(explicit + WP_BLOG_CATEGORIES.length * 2 + 2 + 5 + SAKEM_090_RULES);
+    // next.config.ts: 11 literal rules; the 14 category rules are generated from the list. Gone since SAKEM-075 and M4: the splat over
+    // /wp-content/uploads (a rule per mirrored file is written at build time now) and the five auth pages (Phase A, SAKEM-103).
+    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 1 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES);
   });
 
-  it('the auth pages that moved into the portal are exactly the five names, each to the same name under /portal', () => {
-    const auth = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
-    for (const name of auth) expect(REDIRECTS[name], name).toEqual({ status: 308, destination: `/portal${name}` });
+  it('Phase A (SAKEM-103): no auth name is a redirect (/login is WordPress\'s, the others are the site\'s own 404), and nothing is redirected into /portal', () => {
+    for (const name of ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/daftar']) expect(REDIRECTS[name], name).toBeUndefined();
+    for (const [source, { destination }] of Object.entries(REDIRECTS)) expect(destination.startsWith('/portal'), `${source} -> ${destination}`).toBe(false);
+    expect(file).not.toContain('/portal');
+  });
+
+  it('the two rules of next.config.ts that differ on purpose: /daftar is the shortlink (not in the table), /gabung-siswa/form goes to /daftar and not to /portal/daftar', () => {
+    expect(REDIRECTS['/daftar']).toBeUndefined();
+    expect(REDIRECTS['/gabung-siswa/form']).toEqual({ status: 308, destination: '/daftar' });
+    expect(next).toContain('source: "/daftar", destination: "/gabung-siswa"');
+    expect(next).toContain('destination: "/portal/daftar"');
   });
 });
 
@@ -364,5 +371,102 @@ describe('_redirects file shape', () => {
     const dynamic = lines.filter((l) => /[:*]/.test(l.split(/\s+/)[0])).length;
     expect(dynamic).toBeLessThanOrEqual(100);
     expect(lines.length - dynamic).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe('SAKEM-103: the WordPress uploads this site copied are redirected one by one, every other upload is WordPress\'s', () => {
+  const listing = [
+    'index.html',
+    'blog',
+    'blog/images',
+    'blog/images/2025',
+    'blog/images/2025/10',
+    'blog/images/2025/10/1.png',
+    'blog/images/2026/04/IMG_9167@-1353469099-Azkiya-Najwah-3-scaled.jpg',
+    'blog/images/2026/05/b.jpeg',
+    'blog/images/2026/05/.hidden',
+    'images/hero.png',
+    '_img/0123456789ab-480.webp',
+    'blog/imagesx/2026/c.jpg',
+  ];
+
+  it('one rule per FILE below blog/images (not folders, not other paths), with the path below it kept, sorted', () => {
+    expect(mirroredUploadRules(listing)).toEqual([
+      { from: '/wp-content/uploads/2025/10/1.png', to: '/blog/images/2025/10/1.png' },
+      { from: '/wp-content/uploads/2026/04/IMG_9167@-1353469099-Azkiya-Najwah-3-scaled.jpg', to: '/blog/images/2026/04/IMG_9167%40-1353469099-Azkiya-Najwah-3-scaled.jpg' },
+      { from: '/wp-content/uploads/2026/05/b.jpeg', to: '/blog/images/2026/05/b.jpeg' },
+    ]);
+    expect(mirroredUploadRules([])).toEqual([]);
+    expect(mirroredUploadRules([...listing].reverse())).toEqual(mirroredUploadRules(listing));
+  });
+
+  const rules = mirroredUploadRules(listing);
+  const withUploads = toUnderscoreRedirects(REDIRECTS, { slashFolds: ['/donasi'], uploadMirrors: rules });
+
+  it('they are written as static rules, 308, between the static rules of the table and the first dynamic one; no trailing-slash twin of a file', () => {
+    const lines = withUploads.trim().split('\n');
+    const at = (source: string) => lines.findIndex((l) => l.split(/\s+/)[0] === source);
+    const firstDynamic = lines.findIndex((l) => /[:*]/.test(l.split(/\s+/)[0]));
+    for (const { from, to } of rules) {
+      expect(lines, from).toContain(`${from}  ${to}  308`);
+      expect(at(from)).toBeGreaterThan(0);
+      expect(at(from)).toBeLessThan(firstDynamic);
+      expect(at(`${from}/`), `${from}/`).toBe(-1);
+    }
+    expect(at('/program')).toBeLessThan(at(rules[0].from)); // after the table's own static rules
+    expect(lines.slice(0, 1)).toEqual(['/donasi/  /donasi  308']);
+  });
+
+  it('an upload this build copied is one hop to its copy; any other upload, and anything else under /wp-content, is not redirected at all', () => {
+    const query = '?ver=1';
+    expect(evalUnderscoreRedirects(withUploads, '/wp-content/uploads/2025/10/1.png', query)).toEqual({ status: 308, location: `/blog/images/2025/10/1.png${query}` });
+    expect(evalUnderscoreRedirects(withUploads, '/wp-content/uploads/2026/04/IMG_9167@-1353469099-Azkiya-Najwah-3-scaled.jpg')).toEqual({
+      status: 308,
+      location: '/blog/images/2026/04/IMG_9167%40-1353469099-Azkiya-Najwah-3-scaled.jpg',
+    });
+    for (const path of ['/wp-content/uploads/2025/10/2.png', '/wp-content/uploads/2025/10/1.png.bak', '/wp-content/uploads/2025/10', '/wp-content/themes/astra/style.css', '/wp-content/plugins/x/y.js', '/wp-content/uploads/2099/01/not-copied.jpg']) {
+      expect(evalUnderscoreRedirects(withUploads, path), path).toBeNull();
+    }
+  });
+
+  it('the file stays inside the Cloudflare limits even with a thousand files (about 250 today): static rules of the 2,000', () => {
+    const many = mirroredUploadRules(Array.from({ length: 1000 }, (_, i) => `blog/images/2026/${String(i).padStart(4, '0')}.jpg`));
+    const lines = toUnderscoreRedirects(REDIRECTS, { uploadMirrors: many }).trim().split('\n');
+    const dynamic = lines.filter((l) => /[:*]/.test(l.split(/\s+/)[0])).length;
+    expect(dynamic).toBeLessThanOrEqual(100);
+    expect(lines.length - dynamic).toBeLessThanOrEqual(2000);
+  });
+
+  it('with no uploads the output is the table alone (the default of the helper)', () => {
+    expect(toUnderscoreRedirects(REDIRECTS, { uploadMirrors: [] })).toBe(toUnderscoreRedirects(REDIRECTS));
+  });
+});
+
+describe('SAKEM-103: no redirect rule shadows a path that is forwarded to the origin', () => {
+  // The redirect table is answered before the Worker (the assets layer) and again at its start, so a rule over a WordPress path would
+  // quietly stop it from ever reaching WordPress.
+  const samples = [
+    '/wp-admin', '/wp-admin/', '/wp-admin/post.php', '/wp-login.php', '/wp-content', '/wp-content/themes/astra/style.css', '/wp-content/plugins/a/b.js',
+    '/wp-content/uploads/2099/01/x.jpg', '/wp-includes/js/a.js', '/wp-json', '/wp-json/wp/v2/posts', '/xmlrpc.php', '/login', '/login/',
+  ];
+
+  it.each(samples)('%s: no rule in the table, none in the shipped file', (path) => {
+    expect(matchRedirect(path), path).toBeNull();
+    expect(evalUnderscoreRedirects(file, path), path).toBeNull();
+  });
+
+  it('every entry of the forwarded list is covered by a sample above, and no rule of the table has a source under one of them (the one overlap is a mirrored upload, written per file)', () => {
+    for (const entry of LEGACY_PATHS) expect(samples.some((s) => s === entry.path || s.startsWith(`${entry.path}/`)), entry.path).toBe(true);
+    for (const source of Object.keys(REDIRECTS)) {
+      for (const entry of LEGACY_PATHS) {
+        expect(source === entry.path || source.startsWith(`${entry.path}/`), `${source} sits under ${entry.path}`).toBe(false);
+      }
+    }
+  });
+
+  it('nor does a rule of the table take a name of the portal-owned list (they are the site\'s 404 in Phase A, or the admin and API answers of the middleware)', () => {
+    for (const source of Object.keys(REDIRECTS)) {
+      for (const entry of PORTAL_OWNED_PATHS) expect(source === entry.path || source.startsWith(`${entry.path}/`), `${source} sits under ${entry.path}`).toBe(false);
+    }
   });
 });

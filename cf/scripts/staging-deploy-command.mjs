@@ -50,12 +50,14 @@ export const WORKERS = {
     name: 'sakem-web-staging',
     deploy: ['pnpm', 'exec', 'wrangler', 'deploy', '-c', 'dist/server/wrangler.json'],
     // LEGACY_ORIGIN_URL is allowed with ONE kind of value, a `.invalid` host (RFC 2606: it never resolves). Staging has no
-    // legacy origin behind its hostname, so the pass-through of a path nobody serves (/_next/*, /images/team/*) would
-    // fetch the Worker's own workers.dev address again, up to Cloudflare's loop limit of 16 invocations for one request;
+    // origin (WordPress) behind its hostname, so the pass-through of a path nobody serves there (/wp-login.php, /wp-admin/*,
+    // /wp-content/*, /login) would fetch the Worker's own workers.dev address again, up to Cloudflare's loop limit of 16 invocations for one request;
     // a host that cannot resolve makes it fail at once instead, with no code change. Never the live site.
     // WEB_ANALYTICS_BEACON_ID (SAKEM-095) is a public value (it is in every page's HTML) and is not named `..._TOKEN`, so the
     // secret-name refusal below stays whole. It is optional and left out on staging; it only reaches the pages the Worker renders.
-    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS', 'PAGE_CACHE_SECONDS', 'WEB_ANALYTICS_BEACON_ID'],
+    // PORTAL_ENABLED (SAKEM-103) is a public switch (does the navbar offer "Masuk" and its session call), exactly `true` or `false`,
+    // optional and left out by default (the portal is off in Phase A); like the beacon id it only reaches the pages the Worker renders.
+    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS', 'PAGE_CACHE_SECONDS', 'WEB_ANALYTICS_BEACON_ID', 'PORTAL_ENABLED'],
     before: 'pnpm build:staging',
     file: '.staging.vars',
   },
@@ -145,6 +147,9 @@ export function validateVars(worker, entries) {
     } else if (name === 'WEB_ANALYTICS_BEACON_ID') {
       // The same shape as cf/web/web-analytics.config.mjs (a test keeps the two equal). The message does not repeat the value.
       if (!/^[0-9a-fA-F]{32}$/.test(value)) throw new Error(`${where}: not a Web Analytics beacon id (exactly 32 hexadecimal characters)`);
+    } else if (name === 'PORTAL_ENABLED') {
+      // The same rule as cf/web/portal-enabled.config.mjs (a test keeps the two equal): exactly true or false. The message does not repeat the value.
+      if (value !== 'true' && value !== 'false') throw new Error(`${where}: exactly true or false`);
     } else if (name === 'EMAIL_FROM') {
       if (!/^(?:[^<>"'\\]{1,80}<[^\s<>@"']+@[^\s<>@"']+>|[^\s<>@"']+@[^\s<>@"']+)$/.test(value)) {
         throw new Error(`${where}: expected Name <address@host> or address@host`);
@@ -166,15 +171,22 @@ export function buildCommand(worker, entries) {
   return [...config.deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
 }
 
-/** Lines for the owner that depend on what the file holds. Today one: a `--var` does not reach the prerendered pages of the site. */
+/** Lines for the owner that depend on what the file holds: a `--var` does not reach the prerendered pages of the site. */
 export function extraNotes(worker, entries) {
+  const notes = [];
   if (worker === 'web' && entries.some((e) => e.name === 'WEB_ANALYTICS_BEACON_ID')) {
-    return [
+    notes.push(
       '# the prerendered pages (/, /donasi, /gabung-siswa, /program/<id>) are static files: they get WEB_ANALYTICS_BEACON_ID from the shell of the BUILD,',
       '# so run step 2 as `WEB_ANALYTICS_BEACON_ID=<the same value> pnpm build:staging`; the --var below reaches the pages the Worker renders only.',
-    ];
+    );
   }
-  return [];
+  if (worker === 'web' && entries.some((e) => e.name === 'PORTAL_ENABLED')) {
+    notes.push(
+      '# the same goes for PORTAL_ENABLED: the prerendered pages take it from the shell of the BUILD, so run step 2 as',
+      '# `PORTAL_ENABLED=<the same value> pnpm build:staging`; the --var below reaches the pages the Worker renders only.',
+    );
+  }
+  return notes;
 }
 
 function main(argv) {

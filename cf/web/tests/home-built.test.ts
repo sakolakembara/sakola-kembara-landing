@@ -151,7 +151,7 @@ describe.skipIf(!built)('home page build output', () => {
     it('has the four role cards with their links', () => {
       const links = all(cta, /<a href="[^"]+" class="mt-auto[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
-        ['/gabung-siswa', 'Daftar Sekarang'],
+        ['/daftar', 'Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink (it was the information page, /gabung-siswa)
         ['/donasi', 'Donasi Sekarang'],
         ['/kontak', 'Gabung Tim'],
         ['/kontak', 'Hubungi Kami'],

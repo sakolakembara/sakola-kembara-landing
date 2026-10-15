@@ -204,6 +204,8 @@ function validateContact(input) {
  * an unknown slug. (Targets are made up; example.org is reserved.)
  */
 export const SAMPLE_SHORTLINKS = {
+  // The registration link (SAKEM-103): every "Daftar Sekarang" goes to /daftar, which an admin points at the current cohort's form.
+  daftar: 'https://example.org/formulir-pendaftaran',
   'daftar-2026': 'https://example.org/form',
   gabung: '/gabung-siswa?utm_source=ig',
   'unduh-panduan': 'https://example.org/panduan.pdf',

@@ -6,6 +6,7 @@ import Icon from '~/components/Icon.astro';
 import ResourceCard from '~/components/ResourceCard.astro';
 import Base from '~/layouts/Base.astro';
 import { contentPageHeaders, contentRuntime } from '~/lib/content-api';
+import { REGISTRATION_PATH } from '~/lib/site';
 import {
   RESOURCE_CATEGORY_DESCRIPTION,
   RESOURCE_CATEGORY_LABEL,
@@ -58,7 +59,7 @@ const hasAnything = groups.length > 0;
         <p class="text-base md:text-lg text-white/90 max-w-[600px]">
           Semua panduan, template berkas, poster, twibbon, dan bahan lain yang perlu kamu siapkan selama proses
           pendaftaran ada di sini. Kalau kamu baru mulai mendaftar, buka
-          <a href="/portal/daftar" class="underline font-semibold hover:text-white">formulir pendaftaran</a>
+          <a href={REGISTRATION_PATH} class="underline font-semibold hover:text-white">formulir pendaftaran</a>
           di tab lain agar bisa lihat berkas + isi formulir bersamaan.
         </p>
       </Container>

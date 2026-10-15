@@ -1,5 +1,8 @@
+# The same five headers as src/lib/security-headers.ts (a test keeps them equal). HSTS is staged: five minutes, no
+# includeSubDomains, no preload (SAKEM-103, F-01/D-04 of docs/cloudflare/cutover-runbook.md); it is raised in steps after the cutover.
+
 /*
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Strict-Transport-Security: max-age=300
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
