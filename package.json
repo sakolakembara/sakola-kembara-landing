@@ -15,6 +15,7 @@
     "build-storybook": "storybook build",
     "scrape:blog": "node scripts/scrape-blog.mjs",
     "blog:sync": "node scripts/blog-sync-from-markdown.mjs",
+    "images:strip-metadata": "node scripts/strip-image-metadata.mjs",
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:generate": "node --env-file-if-exists=.env.local ./node_modules/drizzle-kit/bin.cjs generate",

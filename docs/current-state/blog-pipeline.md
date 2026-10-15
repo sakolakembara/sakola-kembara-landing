@@ -61,13 +61,23 @@ Defined in `scripts/lib/blog-pipeline.mjs` and the two CLIs:
 `scripts/scrape-blog.mjs`. Pulls everything from `https://sakolakembara.org/wp-json/wp/v2`:
 
 1. Fetch all posts (paginated) + categories + media.
-2. Download each image referenced by `wp-content/uploads/...` into `public/blog/images/...` (preserving WP path).
+2. Download each image referenced by `wp-content/uploads/...` into `public/blog/images/...` (preserving WP path), with its metadata stripped (see [Image metadata](#image-metadata)).
 3. Convert post HTML → markdown via `turndown` + `turndown-plugin-gfm`.
 4. Rewrite image URLs from `https://sakolakembara.org/wp-content/uploads/...` → `/blog/images/...`.
 5. Write `content/blog/<slug>.md` with YAML frontmatter (id, wpId, title, category, date, dateISO, excerpt, image, author, sourceUrl, modifiedISO).
 6. Re-derive HTML from markdown via `marked` and write the consolidated `lib/blog-posts.json`.
 
 Category IDs are mapped to Indonesian names via `CATEGORY_MAP` (Career, Cerita, Education, Kiat kiat, News, Testimonials, Tips, Uncategorized).
+
+### Image metadata
+
+This repository is public and a photo straight from a phone carries Exif (camera, time, **GPS position**), XMP and IPTC, so the image sources under `public/` are kept without that metadata (SAKEM-099). The files the site serves were already clean, because the `cf/web` asset pipeline re-encodes them without metadata, but the sources in git were not (40 JPEGs under `public/` had GPS coordinates).
+
+- **At import:** `downloadFile` in `scripts/lib/blog-pipeline.mjs` runs every download through `sanitizeImportedImage` before it is written. A JPEG goes through `scripts/lib/strip-jpeg-metadata.mjs`, which is lossless: it leaves out the APP1 (Exif, XMP) and APP13 (Photoshop/IPTC) segments and copies everything else byte for byte (scan data, colour profile, JFIF), so no pixel, size or colour changes. An Exif block with Orientation 2 to 8 is cut down to a block that holds only that tag, so the rotation survives (no current file needs it). A PNG or WebP that still carries GPS is refused, not committed.
+- **By hand:** for a photo you add yourself, run `pnpm images:strip-metadata` at the repository root (`--check` only reports).
+- **Guard:** `cf/web/tests/repo-image-metadata.test.ts` fails while any image, PDF or SVG of the repository carries GPS metadata (Exif GPS IFD or XMP GPS properties), and says to run the command above.
+- **Hashes:** the `/_img/<hash>-<w>.webp` names of the web build hash the source bytes, so stripping a source renames its derivatives (same bytes, new names), and `cf/admin/src/blog/legacy-images.json` holds those hashes: run `pnpm blog:legacy-images` in `cf/admin` after the sources change; a test fails when the file is out of date.
+- Git history still holds the original files with their metadata; SAKEM-099 did not rewrite it.
 
 ### `npm run blog:sync` — re-sync after editing markdown
 

@@ -162,10 +162,14 @@ describe("the list of drafts that hold files (GET /api/admin/applications/drafts
 
   test("oldest change first (so the drafts that may be purged come first), and what is still active says from when it may be purged", async () => {
     const now = Date.now();
-    const newest = await draftWithFiles({ ageDays: 2 });
-    const oldest = await draftWithFiles({ ageDays: 90 });
-    const middle = await draftWithFiles({ ageDays: 31 });
-    const recent = await draftWithFiles({ ageDays: 29 });
+    // The ids are planted, in the REVERSE of the order of the last change: the list is ordered by `updated_at` and only then by
+    // `id`, and a random id would agree with the right order by luck (one run in 24 for four drafts), which let the negative
+    // check "portal drafts: the list is not in the order of the last change (oldest first)" report "tests still pass" now
+    // and then. With these ids a list sorted by `id` comes out newest first, on every run.
+    const newest = await draftWithFiles({ ageDays: 2, id: "00000000-0000-4000-8000-000000000001" });
+    const oldest = await draftWithFiles({ ageDays: 90, id: "00000000-0000-4000-8000-000000000004" });
+    const middle = await draftWithFiles({ ageDays: 31, id: "00000000-0000-4000-8000-000000000003" });
+    const recent = await draftWithFiles({ ageDays: 29, id: "00000000-0000-4000-8000-000000000002" });
     const body = await page(await listDrafts(await editor()));
     expect(body.items.map((item) => item.id)).toEqual([oldest.id, middle.id, recent.id, newest.id]);
     expect(body.items.map((item) => item.purgeable)).toEqual([true, true, false, false]);
