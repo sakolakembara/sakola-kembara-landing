@@ -20,12 +20,14 @@ description: >-
   dari kita membayangkan bangunan sekolah yang bagus, guru yang ramah, dan ruang
   kelas yang layak. Namun kenyataannya, tidak semua
 featured: false
-image: /blog/images/2025/11/temp_image-4072.webp
+image: /blog/images/2024/06/IMG_0978-1-scaled.jpg
 author: Muttaqin Hidayahtullah
 sourceUrl: >-
   https://sakolakembara.org/education/pendidikan-untuk-semua-tantangan-dan-solusi-dalam-pemerataan-akses-pendidikan/
-modifiedISO: '2025-12-01'
+modifiedISO: '2026-08-31'
 ---
+![](/blog/images/2024/06/IMG_0978-1-1024x768.jpg)
+
 Pemerataan akses pendidikan menjadi pondasi penting bagi terciptanya kesempatan belajar yang adil bagi seluruh anak Indonesia, dengan menyoroti tantangan nyata serta langkah-langkah yang dapat dilakukan bersama, untuk mewujudkan pendidikan yang merata. Ketika berbicara tentang pendidikan, banyak dari kita membayangkan bangunan sekolah yang bagus, guru yang ramah, dan ruang kelas yang layak. Namun kenyataannya, tidak semua anak Indonesia memiliki pengalaman tersebut. Di banyak daerah, sekolah masih jauh, fasilitas terbatas, dan bahkan tidak jarang anak harus berjalan berkilometer hanya untuk mencapai sekolah. Inilah alasan mengapa isu pemerataan akses pendidikan begitu penting. Pendidikan yang tidak merata bukan hanya menciptakan perbedaan pengetahuan, tetapi juga perbedaan kesempatan hidup, kualitas pekerjaan, dan masa depan generasi muda.
 
 ## **Partisipasi Pendidikan Masih Jauh dari Ideal**
