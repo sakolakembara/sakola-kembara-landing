@@ -256,8 +256,10 @@ export const portalFoundationChecks = [
   {
     name: "portal foundation: the portal's assets run the Worker for every /portal path (a page view costs a Worker request)",
     file: "wrangler.portal.jsonc",
-    from: '"run_worker_first": ["/portal/api/*"]',
-    to: '"run_worker_first": ["/portal/*"]',
+    // The staging block repeats this setting one level deeper (SAKEM-098): the newline and the four spaces before it
+    // single out the top-level block, so the pattern is found exactly once.
+    from: '\n    "run_worker_first": ["/portal/api/*"]',
+    to: '\n    "run_worker_first": ["/portal/*"]',
     tests: CONFIG,
   },
   {

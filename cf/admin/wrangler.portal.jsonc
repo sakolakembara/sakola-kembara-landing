@@ -10,7 +10,8 @@
   // Things that must stay equal to wrangler.jsonc (the admin's), and are checked by test/portal-foundation-config.test.ts:
   // the compatibility date and flags, the D1 database_name and migrations_dir, the private bucket's name, the limiter
   // numbers (the limit and the period of every binding both declare) and PRIVATE_FILES_BUDGET_BYTES. Migrations are
-  // applied once, from this folder (`pnpm db:migrate:local`), for both Workers.
+  // applied once, from this folder (`pnpm db:migrate:local`), for both Workers. The `env.staging` block at the end of
+  // the file (SAKEM-098) is the same Worker on workers.dev; test/portal-staging-config.test.ts keeps it the same shape.
   "name": "sakem-portal",
   "main": "src/portal/worker.ts",
   "compatibility_date": "2026-09-01",
@@ -27,7 +28,7 @@
   // https address, for the page after an application is sent): both are answered by GET /portal/api/config only when set
   // AND valid, are NEVER written in a tracked file (a real person's number, a real invitation), and are passed with
   // `--var` at deploy like the others (declared here, even empty, they would be reset to empty by any deploy that
-  // does not pass them),
+  // does not pass them; the staging block at the end of the file does declare them, empty, and says why),
   // TRUSTED_ORIGINS (normally unset: the apex's own origin is trusted), COOKIE_DOMAIN (leave unset).
   // Secrets, set with `wrangler secret put`: BETTER_AUTH_SECRET (a DIFFERENT value from the admin Worker's: a token of
   // one audience must not be valid for the other), RESEND_API_KEY, TURNSTILE_SECRET_KEY, GOOGLE_CLIENT_ID and
@@ -99,7 +100,72 @@
     { "name": "RL_PORTAL_SAVE", "namespace_id": "8032", "simple": { "limit": 30, "period": 60 } },
     { "name": "RL_PORTAL_UPLOAD", "namespace_id": "8033", "simple": { "limit": 20, "period": 60 } },
     { "name": "RL_PORTAL_SUBMIT", "namespace_id": "8034", "simple": { "limit": 3, "period": 60 } }
-  ]
+  ],
 
   // No `triggers.crons`: the daily cleanup, and the retention of applicants' files, run on the admin Worker.
+
+  // STAGING (SAKEM-098, docs/cloudflare/staging-runbook.md, steps 15 to 22): the same Worker, deployed as
+  // `sakem-portal-staging` on `*.workers.dev` in the organisation account. `wrangler ... -c wrangler.portal.jsonc --env staging`
+  // selects this block; every command of the runbook passes it, and `pnpm deploy:staging:dry` is the only script that
+  // touches it. A command WITHOUT `--env staging` is the production Worker: never type one against the account before
+  // the cutover. The pattern is the admin's staging block (wrangler.jsonc), so what is said there holds here:
+  //   - Bindings and vars are not inherited by an environment, so each is written out again. Tests keep this block and
+  //     the top level the same shape (test/portal-staging-config.test.ts here, tests/staging-config.test.ts in cf/web):
+  //     the same bindings, the same limiter names, limits and periods, the same assets setup and variable names.
+  //   - Still no ids and no secrets. The D1 database is the ADMIN STAGING's (`sakem-staging`: both Workers see one
+  //     database, as they do in production) and the bucket is named; wrangler finds both by NAME.
+  //   - The bucket is `sakem-private-staging`, PRIVATE: never a custom domain, never r2.dev, never the admin's public
+  //     staging bucket (the portal has no binding to that one). The runbook's step 16 proves it stays private.
+  //   - Rate limit namespaces: the top level's plus 100 (81xx), so no counter is shared with the portal's production
+  //     ones (80xx), the admin's (78xx) or the admin's staging ones (79xx): ids are per account.
+  //   - The public per-deploy values are DECLARED here, empty, so the names are visible and the dry run lists them; each
+  //     deploy passes the real ones with `--var` (`pnpm deploy:staging:portal:command` prints the command from an
+  //     untracked .staging.vars.portal), which win over these. Empty means "not configured" to the code: no site key, no
+  //     origin links, no WhatsApp values, no sender (a route that sends email answers 503). A deploy that forgets one of
+  //     them therefore blanks it, which is exactly what leaving it out of the file would do. Never a value in git.
+  //   - ENVIRONMENT is `staging`, not `development`: every fail-closed rule of production applies (email, Turnstile,
+  //     rate limiting), and the cookie keeps its `__Host-` prefix.
+  //   - No cron (the daily cleanup is the admin's), no routes (the apex routes are the cutover's), no Google (optional,
+  //     not used on staging).
+  "env": {
+    "staging": {
+      "name": "sakem-portal-staging",
+      // Only the `*.workers.dev` address, and no per-version preview addresses: fewer public hosts. The Worker serves the
+      // `/portal/...` paths directly at its own host (docs/cloudflare/portal-architecture.md, 3.3 item 5).
+      "workers_dev": true,
+      "preview_urls": false,
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "PRIVATE_FILES_BUDGET_BYTES": "8000000000",
+        "SITE_URL": "",
+        "ADMIN_URL": "",
+        "TURNSTILE_SITE_KEY": "",
+        "EMAIL_FROM": "",
+        "PORTAL_CONTACT_WHATSAPP": "",
+        "PORTAL_WHATSAPP_GROUP_URL": ""
+      },
+      "assets": {
+        "directory": "./dist/portal-spa",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "html_handling": "none",
+        "run_worker_first": ["/portal/api/*"]
+      },
+      "d1_databases": [{ "binding": "DB", "database_name": "sakem-staging", "migrations_dir": "migrations" }],
+      "r2_buckets": [{ "binding": "PRIVATE_FILES", "bucket_name": "sakem-private-staging" }],
+      "ratelimits": [
+        { "name": "RL_LOGIN", "namespace_id": "8101", "simple": { "limit": 5, "period": 60 } },
+        { "name": "RL_LOGIN_ACCOUNT", "namespace_id": "8102", "simple": { "limit": 20, "period": 60 } },
+        { "name": "RL_REGISTER", "namespace_id": "8103", "simple": { "limit": 10, "period": 60 } },
+        { "name": "RL_RESET", "namespace_id": "8104", "simple": { "limit": 5, "period": 60 } },
+        { "name": "RL_VERIFY_RESEND", "namespace_id": "8105", "simple": { "limit": 2, "period": 60 } },
+        { "name": "RL_MAIL_TARGET", "namespace_id": "8106", "simple": { "limit": 3, "period": 60 } },
+        { "name": "RL_TOKEN", "namespace_id": "8107", "simple": { "limit": 20, "period": 60 } },
+        { "name": "RL_PORTAL_READ", "namespace_id": "8131", "simple": { "limit": 60, "period": 60 } },
+        { "name": "RL_PORTAL_SAVE", "namespace_id": "8132", "simple": { "limit": 30, "period": 60 } },
+        { "name": "RL_PORTAL_UPLOAD", "namespace_id": "8133", "simple": { "limit": 20, "period": 60 } },
+        { "name": "RL_PORTAL_SUBMIT", "namespace_id": "8134", "simple": { "limit": 3, "period": 60 } }
+      ]
+    }
+  }
 }
