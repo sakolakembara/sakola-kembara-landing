@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/upload-client";
 import { API_PATH, PREVIEW_PATH, toBody, toValues } from "~/pages/blog/form";
-import { defaultAuthor, formatIsoDay, imageMarkdown, insertAtCursor } from "~/pages/blog/rules";
+import { describeCount } from "~/pages/blog/MetaDescriptionField";
+import { cleanMetaDescription, defaultAuthor, formatIsoDay, imageMarkdown, insertAtCursor } from "~/pages/blog/rules";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
 // The blog screens: the list, the editor with its two tabs, the preview, the image insertion, the draft and
@@ -18,6 +19,7 @@ function article(overrides: Record<string, unknown> = {}) {
     slug: "cara-belajar-efektif",
     title: "Cara Belajar Efektif",
     excerpt: "Ringkasan tentang cara belajar yang efektif untuk siswa.",
+    metaDescription: null,
     contentMarkdown: "## Mulai dari jadwal\n\nBuat jadwal belajar harian dan patuhi dengan **disiplin**. Istirahat itu penting.",
     category: "Tips",
     author: "Dzul",
@@ -34,7 +36,7 @@ function article(overrides: Record<string, unknown> = {}) {
 }
 
 function listItem(overrides: Record<string, unknown> = {}) {
-  const { contentMarkdown: _markdown, image: _image, imageWidth: _w, imageHeight: _h, ...rest } = article(overrides);
+  const { contentMarkdown: _markdown, metaDescription: _meta, image: _image, imageWidth: _w, imageHeight: _h, ...rest } = article(overrides);
   return rest;
 }
 
@@ -81,20 +83,44 @@ describe("the pure helpers", () => {
   });
 
   test("the form's values and the body of a save", () => {
-    expect(toValues(null, "dzul@sakolakembara.org")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
+    expect(toValues(null, "dzul@sakolakembara.org")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
     const item = article({ status: "published", date: "2026-05-21", image: "/uploads/blog-image/2026/a.png" }) as never;
     expect(toBody(toValues(item))).toEqual({
       title: "Cara Belajar Efektif",
       slug: "cara-belajar-efektif",
       category: "Tips",
       excerpt: "Ringkasan tentang cara belajar yang efektif untuk siswa.",
+      metaDescription: null,
       contentMarkdown: expect.stringContaining("## Mulai"),
       author: "Dzul",
       featured: false,
       date: "2026-05-21",
       image: "/uploads/blog-image/2026/a.png",
     });
-    expect(toBody(toValues(null))).toMatchObject({ date: null, image: null, slug: "" });
+    expect(toBody(toValues(null))).toMatchObject({ date: null, image: null, slug: "", metaDescription: null });
+    // A stored description goes back as it is, and an emptied field is `null`, never left out (the key is how a clear is told from "not sent").
+    expect(toBody(toValues(article({ metaDescription: "Teks untuk mesin pencari." }) as never)).metaDescription).toBe("Teks untuk mesin pencari.");
+    expect(toBody({ ...toValues(article({ metaDescription: "Teks." }) as never), metaDescription: "" })).toHaveProperty("metaDescription", null);
+  });
+
+  test("the meta description's counter: what is said, and in which tone, for each length", () => {
+    const ideal = "(disarankan 50-160, maksimal 300)";
+    expect(describeCount(0, false)).toEqual({ text: `0 karakter ${ideal}`, tone: "neutral" });
+    expect(describeCount(1, false)).toEqual({ text: `1 karakter ${ideal}`, tone: "warn" });
+    expect(describeCount(49, false).tone).toBe("warn");
+    expect(describeCount(50, false)).toEqual({ text: `50 karakter ${ideal}`, tone: "ok" });
+    expect(describeCount(160, false)).toEqual({ text: `160 karakter ${ideal}`, tone: "ok" });
+    expect(describeCount(161, false)).toEqual({ text: `161 karakter ${ideal}. Bagian akhir bisa terpotong di hasil pencarian.`, tone: "warn" });
+    expect(describeCount(300, false)).toEqual({ text: `300 karakter ${ideal}. Bagian akhir bisa terpotong di hasil pencarian.`, tone: "warn" });
+    // Over the hard limit it is an error only for a text the Worker would refuse; the one the article already has is allowed to stay.
+    expect(describeCount(301, false)).toEqual({ text: "301 karakter, melebihi maksimal 300", tone: "over" });
+    expect(describeCount(562, true)).toEqual({ text: `562 karakter ${ideal}. Bagian akhir bisa terpotong di hasil pencarian.`, tone: "warn" });
+  });
+
+  test("the cleaning the counter does is the Worker's: invisible characters go, whitespace is one space, the ends are trimmed", () => {
+    expect(cleanMetaDescription("  satu \t dua\n\ntiga​  ")).toBe("satu dua tiga");
+    expect(cleanMetaDescription("a b")).toBe("a b");
+    expect(cleanMetaDescription("​ \u0000")).toBe("");
   });
 });
 
@@ -262,6 +288,7 @@ describe("the form: create", () => {
       slug: "",
       category: "Tips",
       excerpt: "Ringkasan tentang cara belajar yang efektif.",
+      metaDescription: null,
       contentMarkdown: "Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.",
       author: "tester",
       featured: false,
@@ -435,8 +462,189 @@ describe("the form: edit", () => {
   });
 });
 
+describe("the form: the meta description (SAKEM-094)", () => {
+  const HINT = "Tampil di bawah judul pada hasil pencarian. Kosongkan untuk memakai Excerpt.";
+  const field = () => screen.getByLabelText("Deskripsi meta") as HTMLTextAreaElement;
+  const counter = () => document.getElementById("metaDescription-count")!;
+  const ideal = "(disarankan 50-160, maksimal 300)";
+  /** 562 characters, the longest of the migrated descriptions: over the limit, but the one the article has. */
+  const LONG = "Sakola Kembara membuka pintu pendidikan tinggi bagi siswa dari daerah terpencil. ".repeat(7).slice(0, 562).trim();
+  const typeIn = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+    await user.click(field());
+    await user.paste(text);
+  };
+
+  test("an optional textarea after the Excerpt, in Informasi Dasar, with the hint and a counter that read on focus", async () => {
+    await openForm(WRITER, "/blog/new");
+    const section = screen.getByRole("heading", { level: 2, name: "Informasi Dasar" }).closest("section")!;
+    expect(section.contains(field())).toBe(true);
+    // Right after the Excerpt.
+    expect(screen.getByLabelText(/^Excerpt/).compareDocumentPosition(field()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Optional: no asterisk on its label, no `required` on the control.
+    expect(screen.getByText("Deskripsi meta", { selector: "label" }).textContent).toBe("Deskripsi meta");
+    expect(field().required).toBe(false);
+    expect(field().tagName).toBe("TEXTAREA");
+    expect(field().value).toBe("");
+    expect(screen.getByText(HINT)).toBeTruthy();
+    expect(counter().textContent).toBe(`0 karakter ${ideal}`);
+    // Described by the hint and the counter, so a screen reader hears both when the field is focused.
+    const described = field().getAttribute("aria-describedby")!.split(" ");
+    expect(described).toEqual(["metaDescription-hint", "metaDescription-count"]);
+    for (const id of described) expect(document.getElementById(id)).toBeTruthy();
+    expect(counter().getAttribute("aria-live")).toBeNull(); // not announced on every key
+  });
+
+  test("the counter counts what the Worker will store, and says how that compares with a search result, in words as well as in colour", async () => {
+    const user = userEvent.setup();
+    await openForm(WRITER, "/blog/new");
+    await typeIn(user, "  halo   dunia \n ");
+    expect(counter().textContent).toBe(`10 karakter ${ideal}`); // trimmed, one space between the words
+    expect(counter().className).toContain("text-warning-fg"); // under 50
+
+    await user.clear(field());
+    await typeIn(user, "x".repeat(50));
+    expect(counter().textContent).toBe(`50 karakter ${ideal}`);
+    expect(counter().className).toContain("text-success-fg");
+
+    await user.clear(field());
+    await typeIn(user, "x".repeat(160));
+    expect(counter().className).toContain("text-success-fg");
+    await user.type(field(), "y");
+    expect(counter().textContent).toBe(`161 karakter ${ideal}. Bagian akhir bisa terpotong di hasil pencarian.`);
+    expect(counter().className).toContain("text-warning-fg");
+
+    await user.clear(field());
+    await typeIn(user, "x".repeat(300));
+    expect(counter().className).toContain("text-warning-fg");
+    await user.type(field(), "y");
+    expect(counter().textContent).toBe("301 karakter, melebihi maksimal 300");
+    expect(counter().className).toContain("text-danger-fg");
+    // Nothing stops the writer: the field keeps what was typed, and the Worker is the one that refuses.
+    expect(field().value).toHaveLength(301);
+
+    await user.clear(field());
+    expect(counter().textContent).toBe(`0 karakter ${ideal}`);
+    expect(counter().className).toContain("text-gray-500");
+  });
+
+  test("the text goes to the Worker as typed, and an emptied field as null; a new article sends it in the create", async () => {
+    const user = userEvent.setup();
+    const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
+    await user.type(screen.getByLabelText(/^Judul/), "Cara Belajar Efektif");
+    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
+    await user.click(screen.getByRole("tab", { name: /Konten/ }));
+    await user.click(bodyField());
+    await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await user.click(screen.getByRole("tab", { name: /Detail/ }));
+    await typeIn(user, "Cara belajar efektif untuk siswa.");
+    await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
+    await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1));
+    expect(api.last(`POST ${LIST}`)?.body).toMatchObject({ metaDescription: "Cara belajar efektif untuk siswa." });
+  });
+
+  test("an article opens with its description, saves it back as it is, and a cleared field is sent as null", async () => {
+    const user = userEvent.setup();
+    const loaded = article({ metaDescription: "Cara belajar efektif untuk siswa." });
+    const { api } = await openEdit(WRITER, loaded, {
+      [`PUT ${LIST}/b1`]: (call) => Promise.resolve(respond({ item: article({ ...(call.body as object), updatedAt: "2026-10-02T00:00:00.000Z" }) })),
+    });
+    expect(field().value).toBe("Cara belajar efektif untuk siswa.");
+    expect(counter().textContent).toBe(`33 karakter ${ideal}`);
+    // Nothing changed in it: the stored text goes back.
+    await user.clear(screen.getByLabelText(/^Judul/));
+    await user.type(screen.getByLabelText(/^Judul/), "Judul baru");
+    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    expect(await notice("Artikel berhasil disimpan.")).toBeTruthy();
+    expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ title: "Judul baru", metaDescription: "Cara belajar efektif untuk siswa." });
+
+    // Emptied: the key is there, null.
+    await user.clear(field());
+    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await waitFor(() => expect(api.count(`PUT ${LIST}/b1`)).toBe(2));
+    expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ metaDescription: null });
+    expect(api.last(`PUT ${LIST}/b1`)?.headers["if-match"]).toBe('"2026-10-02T00:00:00.000Z"');
+  });
+
+  test("a description over the maximum that the article already has is a warning, not an error; a different long text is the error", async () => {
+    const user = userEvent.setup();
+    const { api } = await openEdit(WRITER, article({ metaDescription: LONG }), {
+      [`PUT ${LIST}/b1`]: (call) => Promise.resolve(respond({ item: article({ ...(call.body as object), updatedAt: "2026-10-02T00:00:00.000Z" }) })),
+    });
+    expect(field().value).toBe(LONG);
+    expect(counter().textContent).toBe(`562 karakter ${ideal}. Bagian akhir bisa terpotong di hasil pencarian.`);
+    expect(counter().className).toContain("text-warning-fg");
+
+    await user.type(field(), " Tambahan.");
+    expect(counter().textContent).toContain("melebihi maksimal 300");
+    expect(counter().className).toContain("text-danger-fg");
+
+    // Back to the stored text (typed with other spacing: the cleaned text is what counts).
+    await user.clear(field());
+    await typeIn(user, `  ${LONG}  `);
+    expect(counter().className).toContain("text-warning-fg");
+
+    // And the form sends it untouched, which the Worker accepts for the stored one.
+    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await waitFor(() => expect(api.count(`PUT ${LIST}/b1`)).toBe(1));
+    expect(((api.last(`PUT ${LIST}/b1`)?.body as { metaDescription: string }).metaDescription).trim()).toBe(LONG);
+  });
+
+  test("the Worker's refusal is a message under the field in place of the hint, the summary links to it, and the counter stays", async () => {
+    const user = userEvent.setup();
+    await openEdit(WRITER, article(), {
+      [`PUT ${LIST}/b1`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { metaDescription: "Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML" } }, 400),
+    });
+    await typeIn(user, "<b>tebal</b>");
+    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    const summary = await screen.findByRole("alert");
+    expect(await screen.findByText("Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML", { selector: "p" })).toBeTruthy();
+    expect(field().getAttribute("aria-invalid")).toBe("true");
+    expect(field().getAttribute("aria-describedby")).toBe("metaDescription-error metaDescription-count");
+    expect(screen.queryByText(HINT)).toBeNull(); // the Field shows the error in its place
+    expect(counter().textContent).toBe(`12 karakter ${ideal}`);
+    expect(panel("Detail").hasAttribute("hidden")).toBe(false); // it is on the Detail tab, which is where the error opens
+    await user.click(within(summary).getByRole("link", { name: "Deskripsi meta: Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML" }));
+    expect(document.activeElement).toBe(field());
+  });
+
+  test("typing in it is a change: leaving asks first", async () => {
+    const user = userEvent.setup();
+    await openEdit(WRITER);
+    await typeIn(user, "Belum disimpan.");
+    await user.click(screen.getByRole("link", { name: "Batal" }));
+    expect(await screen.findByRole("alertdialog", { name: "Tinggalkan halaman?" })).toBeTruthy();
+  });
+
+  test("'Terbitkan' saves a description typed since the last save, then publishes", async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    const { api } = await openEdit(WRITER, article(), {
+      [`PUT ${LIST}/b1`]: (call) => {
+        order.push("PUT");
+        return Promise.resolve(respond({ item: article({ ...(call.body as object), updatedAt: "2026-10-03T00:00:00.000Z" }) }));
+      },
+      [`POST ${LIST}/b1/publish`]: () => {
+        order.push("POST");
+        return Promise.resolve(respond({ item: article({ status: "published", date: "2026-10-12", metaDescription: "Siap terbit.", updatedAt: "2026-10-04T00:00:00.000Z" }) }));
+      },
+    });
+    await typeIn(user, "Siap terbit.");
+    await user.click(screen.getByRole("button", { name: "Terbitkan" }));
+    expect(await notice("Artikel berhasil diterbitkan.")).toBeTruthy();
+    expect(order).toEqual(["PUT", "POST"]);
+    expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ metaDescription: "Siap terbit." });
+    expect(field().value).toBe("Siap terbit."); // the form starts again from what the Worker answered
+  });
+
+  test("a viewer sees it and cannot change it", async () => {
+    await openEdit(["viewer", []], article({ metaDescription: "Cara belajar efektif untuk siswa." }));
+    expect(field().value).toBe("Cara belajar efektif untuk siswa.");
+    expect(field().matches(":disabled")).toBe(true);
+  });
+});
+
 describe("the form: publish and unpublish", () => {
-  const published = (overrides: Record<string, unknown> = {}) => article({ status: "published", date: "2026-10-12", updatedAt: "2026-10-02T00:00:00.000Z", ...overrides });
+  const published =(overrides: Record<string, unknown> = {}) => article({ status: "published", date: "2026-10-12", updatedAt: "2026-10-02T00:00:00.000Z", ...overrides });
 
   test("'Terbitkan' on a clean form asks the Worker to publish the version that was loaded, once, and shows the result", async () => {
     const user = userEvent.setup();
