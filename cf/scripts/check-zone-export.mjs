@@ -163,7 +163,11 @@ export function parseZoneExport(text) {
 
 // ------------------------------------------------------------------------------------------------ the checks
 
-/** @returns {{ id: string, level: 'FAIL'|'WARN'|'INFO'|'PASS', text: string }[]} */
+/**
+ * @param {{ name: string, type: string, rdata: string, proxied: boolean | null }[]} records
+ * @param {{ allowWildcard?: boolean }} [options]
+ * @returns {{ id: string, level: 'FAIL'|'WARN'|'INFO'|'PASS', text: string }[]}
+ */
 export function checkZone(records, { allowWildcard = false } = {}) {
   const results = [];
   const add = (id, level, text) => results.push({ id, level, text });
@@ -251,7 +255,13 @@ export function render(results) {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../..');
 
-export function main(argv, { out = (s) => process.stdout.write(s), err = (s) => process.stderr.write(s) } = {}) {
+/**
+ * @param {string[]} argv
+ * @param {{ out?: (s: string) => unknown, err?: (s: string) => unknown }} [io]
+ * @returns {number} the exit code
+ */
+export function main(argv, io = {}) {
+  const { out = (s) => process.stdout.write(s), err = (s) => process.stderr.write(s) } = io;
   const files = argv.filter((a) => !a.startsWith('--'));
   const flags = argv.filter((a) => a.startsWith('--'));
   const unknown = flags.filter((f) => f !== '--allow-wildcard');

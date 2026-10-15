@@ -446,7 +446,7 @@ The commands are dashboard steps, written for Dzul:
 | Resend **for the portal** (registration, verification, status mails, `email_daily`) | no student accounts | Resend for the **admin** is a separate question: DA-2 |
 | The privacy policy page (SAKEM-056, P-06) | it was a blocker because of the portal's uploads and registration | **Dzul's decision (DA-1).** Phase A still collects names, emails and messages through `/kontak`, and the staff accounts of the admin; the page is not needed for uploads because there are none |
 | T-16, T-17, D-03, M4 | no portal | replaced by TA-07 (what `/login`, `/register` and `/portal` do is observed, not asserted) |
-| P-01 | the registration decision is taken | recorded 2026-10-15: portal later; sign-up through `/daftar` |
+| P-01 (A) | the registration decision is taken | recorded 2026-10-15: portal later; sign-up through `/daftar` |
 
 **Still needs:**
 
@@ -629,23 +629,23 @@ Of the Phase A tests the plan asked for, `www` to the apex is **T-03** (strict 3
 
 | ID | Check | Expected in Phase A | By |
 | --- | --- | --- | --- |
-| T-01 | `https://sakolakembara.org/` | **changed**: 200 html, `lang="id-ID"`, canonical itself, no cookie, no `wp-content`; the HSTS value is TA-01 | checker |
+| T-01 (A) | `https://sakolakembara.org/` | **changed**: 200 html, `lang="id-ID"`, canonical itself, no cookie, no `wp-content`; the HSTS value is TA-01 | checker |
 | TA-01 | **HSTS and the security headers** on `/` and on a static asset | `strict-transport-security: max-age=300` **exactly** (no `includeSubDomains`, no `preload`: D-04, F-01), `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`. **The code still sends the one-year value (F-18)** | checker |
-| T-02 | `http://sakolakembara.org/` | one permanent redirect to https | checker |
-| T-03 | `https://www.sakolakembara.org/blog?x=1` | one **301** to `https://sakolakembara.org/blog?x=1` (the zone rule; a WordPress `x-redirect-by` header is a TA-04 failure) | checker |
+| T-02 (A) | `http://sakolakembara.org/` | one permanent redirect to https | checker |
+| T-03 (A) | `https://www.sakolakembara.org/blog?x=1` | one **301** to `https://sakolakembara.org/blog?x=1` (the zone rule; a WordPress `x-redirect-by` header is a TA-04 failure) | checker |
 | T-04 to T-06 | robots, sitemap, `/blog` | as written; the sitemap lists about 96 URLs all on the apex; `/blog` twice shows `x-blog-source` network then cache (C-02, a warning if not: another data center) | checker |
-| T-07 | an article | canonical itself, absolute `og:image`, BlogPosting, **no image from `r2.dev`**; the images load from `files.sakolakembara.org` or `/blog/images` | checker (one article), Dzul (the rest) |
+| T-07 (A) | an article | canonical itself, absolute `og:image`, BlogPosting, **no image from `r2.dev`**; the images load from `files.sakolakembara.org` or `/blog/images` | checker (one article), Dzul (the rest) |
 | T-08, T-09 | the old WordPress URLs | `/cerita/<slug>/` and `/education/` are a 308 (the checker); every one of the 86 is proved by the parity run (SA-26); `/wp-content/uploads/...` redirects to `/blog/images/...` then 200 | checker, parity tool, Dzul |
-| T-10 | an unknown path | the new site's 404 with noindex. **Depends on SAKEM-103**: if unknown paths are meant to fall through to WordPress, the checker prints a warning that says so | checker |
+| T-10 (A) | an unknown path | the new site's 404 with noindex. **Depends on SAKEM-103**: if unknown paths are meant to fall through to WordPress, the checker prints a warning that says so | checker |
 | T-11, T-12, T-13 | `/tim`, `/laporan`, `/gabung-siswa/docs` have the entered content; `/kontak` on a **phone**: the real widget, a test message in the admin's Pesan; a shortlink's click counter | as written | Dzul |
-| T-14 | `/api/public/*` | a 404 JSON on the apex **and** on the admin host (the checker asks GET; the POST half of the contact route by hand) | checker, Dzul |
-| T-15 | `/admin` | **changed**: `/admin/blog?x=1` is a 308 to `https://admin.sakolakembara.org/blog?x=1`; the first super_admin signs in at the admin host (Dzul) | checker, Dzul |
+| T-14 (A) | `/api/public/*` | a 404 JSON on the apex **and** on the admin host (the checker asks GET; the POST half of the contact route by hand) | checker, Dzul |
+| T-15 (A) | `/admin` | **changed**: `/admin/blog?x=1` is a 308 to `https://admin.sakolakembara.org/blog?x=1`; the first super_admin signs in at the admin host (Dzul) | checker, Dzul |
 | T-16, T-17 | `/login`, `/register`, `/portal` | **deferred with the portal**; replaced by TA-07 | |
 | T-18 to T-21 | `/api/anything`, the trailing slash, assets, security headers | as written (T-19 is a 308 on the real zone or a warning with the reason) | checker |
 | T-22, T-23 | the old sitemap names, `/?p=<id>` | only if the F-08 and F-06 rules are in | Dzul |
 | T-24 to T-26, T-30 | no-JavaScript form, the beacon on both kinds of page, one hit in the dashboard, the Workers metrics | as written, for the production host | Dzul |
 | C-01 to C-03, C-06 | the cache checklist | on production at SA-25 (the checker asks `/blog` twice: C-02); C-04, C-05, C-07 and C-08 need the staging API broken on purpose and are SA-12 only | checker (C-02), Dzul |
-| C-09 | the cache status of static assets and files | **new**: `cf-cache-status` is noted (MISS then HIT is the sign it works), never judged | checker |
+| C-09 | the cache status of static assets and files | **new**: `cf-cache-status` is noted (MISS then HIT is the sign it works), never judged | checker (the run needs Dzul's approval) |
 | M-01 to M-04 | mail | as written; M-03 only with DA-2 | Dzul |
 | TA-02 | **`/daftar`** | a **307** to the registration form (a shortlink: the old static rule is a 308 to `/gabung-siswa`, F-17); `--daftar-target` pins the form's URL | checker |
 | TA-03 | **`/wp-login.php` and `/wp-admin` still reach WordPress** | the login form (200); `/wp-admin` a 301 or 302 to `/wp-admin/` or the login. A challenge rule makes it a warning | checker |

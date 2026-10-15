@@ -50,8 +50,16 @@ export class RefusedHost extends Error {}
 const realSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * @typedef {{ url: string, status: number, headers: Record<string,string>, body: string, error?: string }} Answer
+ * @typedef {{ get(url: string): Promise<Answer>, stats: { requests: number, errors: number } }} Client
+ * @typedef {{ id: string, level: 'PASS'|'FAIL'|'WARN'|'INFO', text: string }} Result
+ * @typedef {{ name: string, pattern: RegExp | null }} LegacyRule
+ */
+
+/**
  * The only way this tool asks anything. `fetchImpl`, `sleep` and `now` are injectable so a test needs no network.
- * @returns {{ get(url: string): Promise<Answer>, stats: { requests: number, errors: number } }}
+ * @param {{ fetchImpl?: typeof fetch, sleep?: (ms: number) => Promise<unknown>, now?: () => number, delayMs?: number, timeoutMs?: number }} [options]
+ * @returns {Client}
  */
 export function createClient({ fetchImpl = globalThis.fetch, sleep = realSleep, now = Date.now, delayMs = MIN_DELAY_MS, timeoutMs = 15_000 } = {}) {
   if (!Number.isFinite(delayMs) || delayMs < MIN_DELAY_MS) throw new RangeError(`the pause between requests cannot be below ${MIN_DELAY_MS} ms`);
@@ -159,11 +167,10 @@ const locOf = (response) => {
 // ------------------------------------------------------------------------------------------------ the checks
 
 /**
- * @typedef {{ id: string, level: 'PASS'|'FAIL'|'WARN'|'INFO', text: string }} Result
- * @typedef {{ url: string, status: number, headers: Record<string,string>, body: string, error?: string }} Answer
+ * Runs the checks of the chosen groups and returns the results. Pure around `client`: nothing here writes anything.
+ * @param {{ client: Client, only?: string[], legacy?: LegacyRule[], daftarTarget?: string | null, minSitemapUrls?: number }} options
+ * @returns {Promise<Result[]>}
  */
-
-/** Runs the checks of the chosen groups and returns the results. Pure around `client`: nothing here writes anything. */
 export async function runChecks({ client, only = ['site', 'www', 'admin', 'files'], legacy = [], daftarTarget = null, minSitemapUrls = EXPECT.minSitemapUrls }) {
   /** @type {Result[]} */
   const results = [];
@@ -657,7 +664,13 @@ export const PLAN = [
   ['files', ['/', '/uploads/check-x-missing.png', 'one uploaded file referenced by /tim or the first article (twice), when there is one']],
 ];
 
-export async function main(argv, { out = (s) => process.stdout.write(s), err = (s) => process.stderr.write(s), clientFactory = createClient } = {}) {
+/**
+ * @param {string[]} argv
+ * @param {{ out?: (s: string) => unknown, err?: (s: string) => unknown, clientFactory?: (options: { delayMs: number }) => Client }} [io]
+ * @returns {Promise<number>} the exit code
+ */
+export async function main(argv, io = {}) {
+  const { out = (s) => process.stdout.write(s), err = (s) => process.stderr.write(s), clientFactory = createClient } = io;
   let options;
   try {
     options = parseCli(argv);

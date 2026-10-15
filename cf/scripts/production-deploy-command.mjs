@@ -48,7 +48,10 @@ export const PRODUCTION_ORIGINS = {
 /** The domain a production sender address must be on (the Resend domain is verified for it). */
 const MAIL_DOMAIN = 'sakolakembara.org';
 
-/** Variables that never go through this printer, with the reason shown to the owner. Order matters: the first match wins. */
+/**
+ * Variables that never go through this printer, with the reason shown to the owner. Order matters: the first match wins.
+ * @type {[RegExp, string][]}
+ */
 export const NEVER = [
   [/^(CONTENT_API_URL|CONTACT_API_URL)$/, 'these move the reads and the contact form off the service binding onto public HTTP'],
   [/^LEGACY_ORIGIN_URL$/, 'unset in production: the pass-through is a plain fetch of the same hostname, which reaches the old origin behind the route (a value here would send it somewhere else; no-legacy-origin.invalid is the staging value)'],
@@ -65,11 +68,15 @@ export const NEVER = [
  * nor in SPECS: they belong to another Worker. (`ADMIN_URL` is the portal Worker's variable, declared in the shared env.ts of
  * cf/admin; the admin Worker does not read it.) The coverage test counts them as classified.
  */
-export const NOT_PRINTED = { admin: ['ADMIN_URL'], web: [] };
+export const NOT_PRINTED = /** @type {Record<'admin'|'web', string[]>} */ ({ admin: ['ADMIN_URL'], web: [] });
 
 /**
  * The per-deploy PUBLIC variables of each Worker. `required`: a deploy without it would leave the Worker broken or
  * would REMOVE it (the printer refuses a file that lacks it). `kind` picks the value check.
+ */
+/**
+ * @typedef {{ name: string, required: boolean, kind: 'origin'|'turnstile'|'beacon'|'seconds'|'email-from', min?: number, max?: number }} Spec
+ * @type {{ admin: Spec[], web: Spec[] }}
  */
 export const SPECS = {
   admin: [
@@ -92,9 +99,11 @@ export const SPECS = {
   ],
 };
 
+/** @type {Record<'admin'|'web', { name: string, deploy: string[], before: string, file: string, example: string, secrets: string[], allowed: string[] }>} */
 export const WORKERS = {
   admin: {
     name: 'sakem-admin',
+    allowed: [],
     // `--env=""` is wrangler's own way to say "the top level" (its warning recommends it): it wins over CLOUDFLARE_ENV.
     deploy: ['pnpm', 'exec', 'wrangler', 'deploy', '--env=""'],
     before: 'pnpm build:spa',
@@ -104,6 +113,7 @@ export const WORKERS = {
   },
   web: {
     name: 'sakola-kembara-web',
+    allowed: [],
     deploy: ['pnpm', 'exec', 'wrangler', 'deploy', '-c', 'dist/server/wrangler.json'],
     before: 'pnpm build:prod',
     file: '.production.vars',
@@ -111,7 +121,7 @@ export const WORKERS = {
     secrets: [],
   },
 };
-for (const [worker, config] of Object.entries(WORKERS)) config.allowed = SPECS[worker].map((spec) => spec.name);
+for (const worker of /** @type {('admin'|'web')[]} */ (['admin', 'web'])) WORKERS[worker].allowed = SPECS[worker].map((spec) => spec.name);
 
 /** Text that means a staging or local value, wherever it appears in a value. Cloudflare's Turnstile test keys are 1x, 2x and 3x followed by zeros. */
 const STAGING_LOOK = /workers\.dev|r2\.dev|staging|\.invalid\b|\blocalhost\b|127\.0\.0\.1|\[::1\]|resend\.dev|(^|[.@/])example\.(com|org|net)\b|\.test\b/i;

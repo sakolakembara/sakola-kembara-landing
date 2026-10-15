@@ -1,7 +1,6 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CLOUDFLARE_RANGES, ZONE, checkZone, isCloudflareAddress, main, parseZoneExport, render } from '../../scripts/check-zone-export.mjs';
 import { repoRoot } from './helpers';
@@ -43,7 +42,7 @@ _dmarc.sakolakembara.org.\t1\tIN\tTXT\t"v=DMARC1; p=none; rua=mailto:dmarc@sakol
 
 const levels = (results: { id: string; level: string }[], id: string) => results.filter((r) => r.id === id).map((r) => r.level);
 const check = (text: string, options?: { allowWildcard?: boolean }) => checkZone(parseZoneExport(text), options);
-const fails = (results: { level: string }[]) => results.filter((r) => r.level === 'FAIL');
+const fails = <T extends { level: string }>(results: T[]) => results.filter((r) => r.level === 'FAIL');
 const withLines = (...lines: string[]) => `${HEALTHY}${lines.join('\n')}\n`;
 
 describe('reading the export', () => {

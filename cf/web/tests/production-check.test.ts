@@ -21,7 +21,7 @@ import {
   runChecks,
   summarize,
 } from '../../scripts/check-production-site.mjs';
-import { FILE_URL, FORM_URL, SECURITY, SLUG, fakeFetch, healthySite, type Entry, type FakeFetchLog, type Recorded } from './production-site-fixture';
+import { FILE_URL, FORM_URL, SECURITY, SLUG, fakeFetch, healthySite, type Entry, type Recorded } from './production-site-fixture';
 import { repoRoot } from './helpers';
 
 // cf/scripts/check-production-site.mjs (SAKEM-104, cutover Phase A): the read-only check of the real site after the switch.
@@ -46,7 +46,7 @@ function setup(mutate: (site: Map<string, Entry>) => void = () => undefined) {
   });
   return { site, client, log: fake.log, counts: fake.counts, waits };
 }
-const run = async (mutate: (site: Map<string, Entry>) => void = () => undefined, options: Partial<Parameters<typeof runChecks>[0]> = {}) => {
+const run = async (mutate: (site: Map<string, Entry>) => void = () => undefined, options: Partial<Omit<Parameters<typeof runChecks>[0], 'client'>> = {}) => {
   const s = setup(mutate);
   const results = await runChecks({ client: s.client, ...options });
   return { ...s, results };
@@ -173,14 +173,14 @@ describe('what each failure looks like', () => {
   });
 
   it('http without a redirect, a redirect to http, a loop or a temporary redirect (T-02)', async () => {
-    for (const over of [{ status: 200, headers: {} }, { status: 301, headers: { location: 'http://sakolakembara.org/' } }, { status: 302, headers: { location: 'https://sakolakembara.org/' } }]) {
+    for (const over of [{ status: 200, headers: {} }, { status: 301, headers: { location: 'http://sakolakembara.org/' } }, { status: 302, headers: { location: 'https://sakolakembara.org/' } }] as Recorded[]) {
       const { results } = await run((site) => site.set('http://sakolakembara.org/', { status: over.status, headers: over.headers }));
       expect(one(results, 'T-02', 'FAIL').length, JSON.stringify(over)).toBe(1);
     }
   });
 
   it('www: a 302, a lost query, another target, a loop (T-03)', async () => {
-    for (const over of [{ status: 302, headers: { location: 'https://sakolakembara.org/blog?x=1' } }, { status: 301, headers: { location: 'https://sakolakembara.org/blog' } }, { status: 301, headers: { location: 'https://www.sakolakembara.org/blog?x=1' } }, { status: 200, headers: {} }]) {
+    for (const over of [{ status: 302, headers: { location: 'https://sakolakembara.org/blog?x=1' } }, { status: 301, headers: { location: 'https://sakolakembara.org/blog' } }, { status: 301, headers: { location: 'https://www.sakolakembara.org/blog?x=1' } }, { status: 200, headers: {} }] as Recorded[]) {
       const { results } = await run((site) => site.set('https://www.sakolakembara.org/blog?x=1', over));
       expect(one(results, 'T-03', 'FAIL').length, JSON.stringify(over)).toBe(1);
     }
@@ -237,7 +237,7 @@ describe('what each failure looks like', () => {
   });
 
   it('old WordPress URLs: a 307, a wrong target, a 404 (T-08)', async () => {
-    for (const over of [{ status: 307, headers: { location: `/blog/${SLUG}` } }, { status: 308, headers: { location: '/blog' } }, { status: 404, headers: {} }]) {
+    for (const over of [{ status: 307, headers: { location: `/blog/${SLUG}` } }, { status: 308, headers: { location: '/blog' } }, { status: 404, headers: {} }] as Recorded[]) {
       const { results } = await run((site) => site.set(`${SITE}/cerita/${SLUG}/`, over));
       expect(one(results, 'T-08', 'FAIL').length, JSON.stringify(over)).toBe(1);
     }
@@ -247,7 +247,7 @@ describe('what each failure looks like', () => {
 
   it('an unknown path: a 200 or a 500 fails; a 404 without noindex fails; the old origin\'s own 404 is a warning that says whose call it is (T-10)', async () => {
     const url = `${SITE}/no-such-page-check-1f3a`;
-    for (const over of [{ status: 200 }, { status: 500 }]) {
+    for (const over of [{ status: 200 }, { status: 500 }] as Recorded[]) {
       const { results } = await run((site) => patch(site, url, over));
       expect(one(results, 'T-10', 'FAIL').length, JSON.stringify(over)).toBe(1);
     }
@@ -268,7 +268,7 @@ describe('what each failure looks like', () => {
   });
 
   it('/admin: a 404, a redirect that loses the query or goes elsewhere (T-15); /donasi/ with a 307 (T-19)', async () => {
-    for (const over of [{ status: 404, headers: {} }, { status: 308, headers: { location: 'https://admin.sakolakembara.org/blog' } }, { status: 308, headers: { location: 'https://sakem-admin-staging.acme.workers.dev/blog?x=1' } }]) {
+    for (const over of [{ status: 404, headers: {} }, { status: 308, headers: { location: 'https://admin.sakolakembara.org/blog' } }, { status: 308, headers: { location: 'https://sakem-admin-staging.acme.workers.dev/blog?x=1' } }] as Recorded[]) {
       const { results } = await run((site) => site.set(`${SITE}/admin/blog?x=1`, over));
       expect(one(results, 'T-15', 'FAIL').length, JSON.stringify(over)).toBe(1);
     }
@@ -286,7 +286,7 @@ describe('what each failure looks like', () => {
   });
 
   it('/daftar: the old 308 to /gabung-siswa, a target on workers.dev, a target that is not the one named, no redirect (TA-02)', async () => {
-    for (const over of [{ status: 308, headers: { location: '/gabung-siswa' } }, { status: 307, headers: { location: 'https://sakem-web-staging.acme.workers.dev/form' } }, { status: 307, headers: {} }, { status: 404, headers: {} }, { status: 307, headers: { location: 'http://registrasi.example.test/form' } }]) {
+    for (const over of [{ status: 308, headers: { location: '/gabung-siswa' } }, { status: 307, headers: { location: 'https://sakem-web-staging.acme.workers.dev/form' } }, { status: 307, headers: {} }, { status: 404, headers: {} }, { status: 307, headers: { location: 'http://registrasi.example.test/form' } }] as Recorded[]) {
       const { results } = await run((site) => site.set(`${SITE}/daftar`, over));
       expect(one(results, 'TA-02', 'FAIL').length, JSON.stringify(over)).toBe(1);
     }
