@@ -5,6 +5,8 @@ import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { marked } from "marked";
 import matter from "gray-matter";
+import { findGpsMetadata } from "./image-gps.mjs";
+import { isJpeg, stripJpegMetadata } from "./strip-jpeg-metadata.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const BLOG_JSON = path.join(ROOT, "lib/blog-posts.json");
@@ -205,14 +207,45 @@ export function replaceUrlsInText(text, urlMapOrEntries) {
   return out;
 }
 
-async function downloadFile(url, destPath) {
+// ---------------------------------------------------------------------------
+// Image metadata (SAKEM-099)
+// ---------------------------------------------------------------------------
+// This repository is public. A photo straight from a phone carries Exif (camera, owner, time, GPS position),
+// XMP and IPTC, and the importer used to commit the files as WordPress served them. Every image now goes
+// through here before it is written under public/blog/images.
+
+/**
+ * The bytes to write for a downloaded image. A JPEG loses its Exif, XMP and IPTC segments without being
+ * decoded or re-encoded (lib/strip-jpeg-metadata.mjs: the scan data, dimensions, colour profile and
+ * orientation stay as they were). A file that still carries GPS afterwards, such as a PNG or WebP with an
+ * Exif chunk, is refused instead of committed: it throws, and the download counts as failed.
+ */
+export function sanitizeImportedImage(bytes, label = "image") {
+  let out = bytes;
+  // Sniffed by content, not by extension: some migrated ".jpg" files are PNG data.
+  if (isJpeg(bytes)) {
+    const result = stripJpegMetadata(bytes);
+    out = result.data;
+    for (const warning of result.warnings) console.warn(`  ! ${label}: ${warning}`);
+    for (const kept of result.keptUnknown) {
+      console.warn(`  ! ${label}: kept ${kept.marker} "${kept.id}" (${kept.bytes} bytes), which is not a known metadata block: look at it`);
+    }
+  }
+  const { hits } = findGpsMetadata(out);
+  if (hits.length > 0) {
+    throw new Error(`${label} carries GPS metadata that the importer cannot strip (${hits.join("; ")}). Remove it from the file, then import again.`);
+  }
+  return out;
+}
+
+export async function downloadFile(url, destPath) {
   if (fs.existsSync(destPath)) return false;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   const res = await fetch(normalizeRemoteUrl(url), {
     headers: { "User-Agent": "SakolaKembara-BlogImporter/1.0" },
   });
   if (!res.ok) throw new Error(`Download failed ${res.status}: ${url}`);
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = sanitizeImportedImage(Buffer.from(await res.arrayBuffer()), url);
   fs.writeFileSync(destPath, buf);
   return true;
 }
