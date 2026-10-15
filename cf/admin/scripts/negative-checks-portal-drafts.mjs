@@ -85,7 +85,7 @@ export const portalDraftsChecks = [
     tests: MAIN,
   },
   {
-    name: "portal drafts: a draft changed yesterday is looked at no differently (the check before the writes removed; the writes still refuse, but the answer is no longer a 409)",
+    name: "portal drafts: a draft changed yesterday goes to the batch of writes (the check before it removed: the guard still refuses, but four statements are sent for nothing)",
     file: DRAFTS,
     from: "  if (!isDraftPurgeable(draft.updated_at, now)) return { ok: false, refusal: draftActive(DRAFT_PURGE_MIN_INACTIVE_DAYS, purgeableFrom(draft.updated_at)) };\n",
     to: "",

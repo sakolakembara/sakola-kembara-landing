@@ -386,6 +386,20 @@ describe("the purge (POST /api/admin/applications/drafts/:id/files/purge)", () =
     expect(await auditRows()).toEqual([]);
   });
 
+  test("a draft that is too young is refused after one read of it: no write is even sent to D1 (the check before the batch spares four statements)", async () => {
+    const draft = await draftWithFiles({ ageDays: 3, slots: ["family-card", "self-photo"] });
+    let sent = false;
+    const db = racing(env.DB, /UPDATE application_files SET deleted_at/, async () => void (sent = true));
+    const res = await purgeDraft(draft.id, await editor(), { confirm: true }, { env: { DB: db } });
+    expect(res.status).toBe(409);
+    expect(sent).toBe(false);
+    // And for an old draft the same probe does see the batch, so the probe is not blind.
+    const old = await draftWithFiles({ slots: ["family-card"] });
+    const db2 = racing(env.DB, /UPDATE application_files SET deleted_at/, async () => void (sent = true));
+    expect((await purgeDraft(old.id, await editor(), { confirm: true }, { env: { DB: db2 } })).status).toBe(200);
+    expect(sent).toBe(true);
+  });
+
   test("what the student does moves the clock: a step save, an upload, a replace and a delete each make the draft active again", async () => {
     await openBatch();
     const s = await student();
