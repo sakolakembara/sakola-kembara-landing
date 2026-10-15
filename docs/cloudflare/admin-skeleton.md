@@ -13,7 +13,7 @@ One Worker (`sakem-admin`, future host `admin.<domain>`):
 | API | Hono, JSON, everything under `/api/*` |
 | SPA | Vite + React 19 + react-router, built to `dist/spa`, served by the assets layer |
 | Database | D1 through Drizzle (SQLite), migrations in `cf/admin/migrations` |
-| Auth | Better Auth 1.7, email + password and Google, per-request factory |
+| Auth | Better Auth 1.7, email + password and Google, one shared instance per isolate (a per-request factory in this first slice; SAKEM-091) |
 | Password hash | PBKDF2-SHA256, 100,000 iterations, WebCrypto |
 | Email | Resend REST API through `fetch`, sent with `ctx.waitUntil` |
 | Throttling | Cloudflare rate limit bindings (3 buckets) |
@@ -48,7 +48,7 @@ Gates: `pnpm typecheck` (worker and SPA), `pnpm test` (Worker suite in workerd, 
 
 ## Decisions
 
-**Per-request Better Auth.** A D1 binding exists only inside a request, so `createAuth(env, { baseURL, waitUntil })` runs per request (Ruang Bakat pattern), lazily: a request that never touches auth never builds it. Cost is in the results below.
+**Better Auth, built once per isolate (changed by SAKEM-091; this slice built it per request).** A D1 binding exists only once a request has arrived, so `createAuth(env, { baseURL, waitUntil })` cannot run at module level; it ran per request (Ruang Bakat pattern), lazily. The first staging measurement showed that to be the main CPU cost of every signed-in route, so `sharedAuth` (`src/auth/session.ts`) now builds it on first use and the isolate reuses it, keyed by the D1 binding, every text variable and secret, and the request's origin (at most 8 per binding). Per-request state is not in the instance: sessions are read from D1 on every call, and `waitUntil` is looked up per call in an `AsyncLocalStorage` scope that `authContext` opens around the rest of the request, so the email of request A is never handed to request B's context. A request whose Cookie header names no `session_token` is answered "no session" without asking Better Auth (`mayCarrySession`). Numbers and reasoning: [`free-plan-audit.md`](free-plan-audit.md#10-cpu-on-the-hot-routes-sakem-091); tests: `test/auth-shared.test.ts`.
 
 **Password hash** (`src/auth/password.ts`). Stored as one string, `pbkdf2-sha256$<iterations>$<salt>$<hash>` (base64). Verification reads the iteration count from the string, so older hashes keep working if the default changes. 100,000 is also treated as the ceiling: Workers is understood to cap PBKDF2 there (not enforced by the local runtime; confirm on the real account), so a stored count above it fails verification, which also keeps a tampered row from becoming a CPU bomb. Random 16-byte salt, 32-byte output, NFKC normalization (as Better Auth's own hash), constant-time XOR compare over the fixed-length digest, never throws on a malformed or tampered string. 100k is below the 600k OWASP guidance for PBKDF2-SHA256; that is the price of the Free budget (see risks).
 
@@ -263,7 +263,7 @@ Shared groundwork (SPA shell with sidebar and page header, form helpers, R2 uplo
 ## What only a real Free account can settle
 
 - Real CPU per route, in particular sign-in, sign-up and reset (hash plus the rest) against 10 ms. Read it from the dashboard or `wrangler tail`.
-- Better Auth CPU in production: per-request construction, cold start, and a bundle that parses 2.9 MB.
+- Better Auth CPU in production: cold start and a bundle that parses 3.5 MB (per-request construction was the first finding of the staging measurement and was removed in SAKEM-091, see [`free-plan-audit.md`](free-plan-audit.md#10-cpu-on-the-hot-routes-sakem-091)).
 - Resend: domain verification (SPF, DKIM), real delivery to school and Gmail addresses, sender name, the 100/day cap in practice.
 - Cookie behaviour across subdomains: the `.sakolakembara.org` domain attribute with the `__Secure-` prefix, `SameSite=Lax`, what the public site and the LMS can and cannot read, and logout propagation.
 - Rate limit bindings at the edge (per-location counters) and real client IPs in `cf-connecting-ip`.

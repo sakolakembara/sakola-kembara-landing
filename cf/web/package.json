@@ -21,11 +21,13 @@
     "test:e2e": "node scripts/e2e.mjs",
     "test:e2e:uploads": "node scripts/e2e-uploads.mjs",
     "test:negative:shortlink": "node scripts/negative-checks-shortlink.mjs",
+    "test:negative:page-cache": "node scripts/negative-checks-page-cache.mjs",
     "seo:parity": "node scripts/seo-parity.mjs",
     "seo:parity:local": "node scripts/seo-parity-local.mjs",
     "serve:candidate": "node scripts/serve-candidate.mjs",
     "measure": "node scripts/measure.mjs",
     "measure:staging": "node scripts/measure-staging.mjs",
+    "measure:cpu": "node scripts/measure-cpu.mjs",
     "fixture-api": "node scripts/fixture-api.mjs",
     "stub-origin": "node scripts/stub-origin.mjs",
     "check:dist": "node scripts/check-dist.mjs"

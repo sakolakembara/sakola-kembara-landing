@@ -1,5 +1,4 @@
 import { and, count, eq, gte, inArray, lt } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import { requireArea } from "../auth/guard";
@@ -54,6 +53,7 @@ import {
   withAudit,
   type CrudDeps,
 } from "./crud";
+import { getDb } from "../db/client";
 
 // Blog (area `konten`): /api/admin/blog, SAKEM-082. The legacy admin wrote markdown files to the container disk
 // (app/(admin)/admin/blog/actions.ts, lib/blog-writer.ts); here an article is a row of `blog_posts`, and the
@@ -349,7 +349,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
 
   async function findRow(c: Context<AppEnv>, id: string): Promise<Row | null> {
     if (id.length === 0 || id.length > 128) return null;
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const rows = await db.select().from(schema.blogPosts).where(eq(schema.blogPosts.id, id)).limit(1);
     return rows[0] ?? null;
   }
@@ -370,7 +370,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     const parsed = parseListQuery(c, listSpec);
     if (!parsed.ok) return parsed.response;
     const { query } = parsed;
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     // One round trip: the page and the total over the same WHERE. Only short columns: never the markdown or the HTML.
     const [rows, totals] = await db.batch([
       db.select(listColumns).from(schema.blogPosts).where(query.where).orderBy(...query.order).limit(query.pageSize).offset(query.offset),
@@ -393,7 +393,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     if (!body.ok) return body.response;
     const markdown = normaliseNewlines(body.data.contentMarkdown).trim();
     if (markdown === "") return c.json({ html: "" });
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const sizes = await uploadSizes(db, uploadPathsIn(markdown));
     return c.json({ html: renderArticle(markdown, { images: imageLookup(sizes) }).html });
   });
@@ -403,7 +403,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     if (!body.ok) return body.response;
     const form = body.data;
     const user = c.get("user");
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
 
     const prepared = await prepare(db, form, null);
     if (!prepared.ok) return validationError(c, prepared.fields);
@@ -471,7 +471,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     if (Object.keys(problems).length > 0) return validationError(c, problems);
 
     const user = c.get("user");
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const prepared = await prepare(db, form, before);
     if (!prepared.ok) return validationError(c, prepared.fields);
 
@@ -532,7 +532,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     }
 
     const user = c.get("user");
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     // Publishing dates the article now unless the writer already gave it a day; unpublishing keeps the day.
     const publishedAt = to === "published" ? (before.publishedAt ?? new Date()) : before.publishedAt;
     let updated: Row | undefined;

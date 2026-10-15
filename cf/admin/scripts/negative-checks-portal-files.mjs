@@ -126,8 +126,8 @@ export const portalFilesChecks = [
   {
     name: "portal files: an open is not audited",
     file: "src/api/application-files.ts",
-    from: "await auditStatement(drizzle(c.env.DB, { schema }), user, {",
-    to: "await ((_db: unknown, _actor: unknown, _entry: unknown) => Promise.resolve())(drizzle(c.env.DB, { schema }), user, {",
+    from: "await auditStatement(getDb(c.env.DB), user, {",
+    to: "await ((_db: unknown, _actor: unknown, _entry: unknown) => Promise.resolve())(getDb(c.env.DB), user, {",
     tests: ADMIN,
   },
   {

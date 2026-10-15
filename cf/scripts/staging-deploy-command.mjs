@@ -37,7 +37,7 @@ export const WORKERS = {
     // legacy origin behind its hostname, so the pass-through of a path nobody serves (/_next/*, /images/team/*) would
     // fetch the Worker's own workers.dev address again, up to Cloudflare's loop limit of 16 invocations for one request;
     // a host that cannot resolve makes it fail at once instead, with no code change. Never the live site.
-    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS'],
+    allowed: ['TURNSTILE_SITE_KEY', 'UPLOADS_BASE_URL', 'ADMIN_URL', 'LEGACY_ORIGIN_URL', 'CONTENT_CACHE_FRESH_SECONDS', 'TEAM_CACHE_FRESH_SECONDS', 'PAGE_CACHE_SECONDS'],
     before: 'pnpm build:staging',
   },
 };

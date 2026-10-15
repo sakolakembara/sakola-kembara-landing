@@ -18,6 +18,8 @@ Every Cloudflare feature, binding and limit that `cf/web` and `cf/admin` rely on
 2. **Admin sign-in CPU.** PBKDF2-SHA256 at 100,000 iterations took 8.1 ms of wall time in Node for the hash alone; the route measured 13 ms of wall time through a local `wrangler dev`. Cloudflare says authentication and server-side rendering "typically use 10-20 ms" and does not say whether native WebCrypto time counts as CPU. It probably does. Registration and the password reset do the same hash. Likely a failure on Free; the measurement settles it ([2.3](#23-cpu-time-per-request)). **Decided fallback order (PM, 2026-10-13): fewer iterations first (the stored hash carries its own count, so it is safe to change), then sign-in with Google (already wired), then the Paid plan.** The hash in a second Worker behind a service binding is not part of that order (the documentation does not say whether the CPU limit applies to each Worker or to the sum).
 3. **A fresh isolate.** The first request into a cold isolate pays for module start-up (local profile: 85 ms of CPU for the admin, 52 ms for the site, against a 1 s start-up limit) and, for the blog save, the first markdown render (two to three times a warm one). Whether start-up counts against the 10 ms of a request is not stated. The measurement tool reports the first invocation after an idle gap apart for this reason.
 
+**Update, 2026-10-14 (SAKEM-091).** The first CPU measurement on a real Worker came back with the admin's 401 routes at 5 to 18 ms, the site's pages at 5 to 13 ms (maximum 56) and a sign-in at 89 ms, none of them killed. [Section 10](#10-cpu-on-the-hot-routes-sakem-091) has the numbers, a local before/after harness for both Workers, where the CPU goes (Better Auth built per request, Drizzle's builder, Astro's renderer, compilation on a first call) and what was changed; the sign-in item below (2) and the CPU row of the table are not settled by it.
+
 **Other RISKs that need a decision or a watch** (each in its section):
 
 | Where | RISK | Fallback in one line |
@@ -41,7 +43,7 @@ Every Cloudflare feature, binding and limit that `cf/web` and `cf/admin` rely on
 | --- | --- | --- | --- |
 | 2.1 | Worker size | 64 MiB uncompressed, no compressed limit | OK |
 | 2.2 | Worker start-up time | 1 s | OK |
-| 2.3 | CPU per request | 10 ms | **RISK** (sign-in likely over; the rest unmeasured) |
+| 2.3 | CPU per request | 10 ms | **RISK** (measured on staging 2026-10-14: [section 10](#10-cpu-on-the-hot-routes-sakem-091); sign-in, the site's pages and the first request of an isolate are above the target) |
 | 2.4 | Requests per day | 100,000, account-wide | RISK (low), watch |
 | 2.5 | Subrequests per request | 50 (1,000 to internal services) | OK |
 | 2.6 | Memory, connections, body size, variables | 128 MB, 6, 100 MB, 64 x 5 KB | OK (25 MB upload: watch) |
@@ -97,7 +99,7 @@ Source: [Workers limits](https://developers.cloudflare.com/workers/platform/limi
 | `POST /api/auth/sign-in/email`, `register`, `reset-password` | PBKDF2-SHA256, 100,000 iterations, in native WebCrypto | hash 8.1 ms (Node, [`auth.md`](auth.md#results)); route 13.1 ms through `wrangler dev` | **Decided order (PM, 2026-10-13):** 1. fewer iterations (hash format `pbkdf2-sha256$<n>$...` is self-describing, so old hashes still verify); 2. Google sign-in, no hash; 3. Workers Paid, which is not $0. Not in the order: the hash in a second Worker through a service binding (billing sums the CPU of both Workers; whether the limit does is not documented). The 100,000 cap the code assumes is **not on the WebCrypto page** (only "PBKDF2 supported"); confirm on the account |
 | `POST /api/admin/blog` (save) and `/preview` | markdown render and sanitiser on the Worker, up to 12,000 characters | about 0.45 ms per 1,000 characters warm; 4.1 ms (wall) for 12,000; two to three times that in a fresh isolate ([`admin-blog.md`](admin-blog.md#11-measured)) | lower `BODY_MAX`, render once at module load, render in the browser (documented there) |
 | `POST /api/admin/uploads`, 20 and 25 MB kinds | multipart parse of a body held in memory | 225 to 263 ms wall locally, CPU unknown ([`uploads.md`](uploads.md#what-was-not-verified)) | lower limits for those kinds, or a raw-body `PUT` streamed to R2 with no parse |
-| `GET /blog`, `/blog/<slug>`, `/tim`, `/laporan`, `/gabung-siswa/docs`, `/sitemap.xml` | Astro render plus a `JSON.parse` of the API answer; no cache on staging | wall 1.4 to 3.2 ms warm through `wrangler dev` ([`web-skeleton.md`](web-skeleton.md)) | drop `contentMarkdown` from the public article payload, cache the rendered HTML, prerender the 80 migrated articles again |
+| `GET /blog`, `/blog/<slug>`, `/tim`, `/laporan`, `/gabung-siswa/docs`, `/sitemap.xml` | Astro render plus a `JSON.parse` of the API answer; no cache on staging | wall 1.4 to 3.2 ms warm through `wrangler dev` ([`web-skeleton.md`](web-skeleton.md)); **measured on staging: 5 to 13 ms of CPU (section 10)** | `PAGE_CACHE_SECONDS` (done, off by default); drop `contentMarkdown` from the public article payload, cache the rendered HTML, prerender the 80 migrated articles again |
 | `GET /portal/api/auth/get-session` (navbar) | a full 404 page render on every first visit, because the portal Worker is not on staging | | route it to a cheap JSON 404 when the portal is not deployed |
 | The first request into a new isolate | start-up of a 3.5 MiB (admin) or 0.8 MiB (site) bundle | 85 ms and 52 ms of local CPU | see item 3 of [section 1](#1-result) |
 | A `waitUntil` job (cache write, click count, purge notice) | counts: a 200 response can still end with outcome `exceededCpu` | | keep jobs I/O-bound |
@@ -325,6 +327,122 @@ In the order a staging run answers them ([`staging-runbook.md`](staging-runbook.
 11. Turnstile: the real widget, Siteverify, hostname `workers.dev`; Resend: a real mail to the account owner.
 12. `__Host-` cookies on the two `workers.dev` hosts, sign-in across the SPA and the API.
 13. The self-fetch loop of 7.1 (do not provoke it on purpose; look at the request count after a scanner visits).
+
+## 10. CPU on the hot routes (SAKEM-091)
+
+First measurement of CPU on a real Worker (the staging probe of 2026-10-14, step 13 of [`staging-runbook.md`](staging-runbook.md#13-measure-cpu-per-route)), what it showed, where the CPU goes according to a profile, what was changed, and what is left. Ticket SAKEM-091. Everything under "local" below is a measurement on a laptop and **not Cloudflare CPU**; the PM re-runs the staging probe after the merge and that, not this section, is the verdict.
+
+### 10.1 What the staging probe measured
+
+Cloudflare's own `cpuTime`, 307 invocations, 12 rounds of 27 GET routes 600 ms apart, warm, no Cache API (it does not work on `workers.dev`, so these are uncached numbers), Free plan, every outcome `ok`. Medians and maxima over 12 samples, in ms (so the maximum stands in for p99). The probe has no session, so the admin rows are the 401 paths.
+
+| Worker, route | p50 | max | Gate (p99 under 5 OK, 5 to 8 RISK, over 8 FAIL) |
+| --- | ---: | ---: | --- |
+| site `GET /blog` (and `?page=2`) | 13 | 56 | FAIL |
+| site `GET /blog/<slug>` | 7 to 9 | 12 to 18 | FAIL |
+| site `/sitemap.xml`, `/tim` | 7 | 14, 13 | FAIL |
+| site `/kontak`, `/laporan`, `/gabung-siswa/docs` | 5, 5, 6 | 12, 9, 8 | FAIL, FAIL, RISK |
+| admin `GET /api/me`, no cookie (401) | 18 | 38 | FAIL |
+| admin `/api/dashboard`, `/api/admin/blog` (401) | 5, 6 | 11, 12 | FAIL |
+| admin `GET /api/config` | 4 | 9 | FAIL |
+| admin `PublicApi`, per read (a second invocation behind every page): blog list, article, short link, team/reports/resources | 7, 5, 4, 2 to 3 | 30, 14, 22, - | |
+| 308 redirects, 404, `/uploads/*`, `/api/public/*` from the internet | 0 to 2 | | OK |
+
+A second set of single samples (one request each, 2026-10-14): sign-in with the right password 89 ms (wall 290 ms); `/api/me` 30 ms with a session and 39 ms without; authenticated reads 8 to 25 ms (`/api/admin/messages` 25, `/api/dashboard` 19, `/api/admin/shortlinks` 19, `/api/admin/announcements` 17, `/api/admin/blog` 15, `/api/admin/team` 8); writes 14 to 24 ms; `/api/config` 1 ms once warm. Nothing was killed. Why nothing was is not known (see 10.6).
+
+### 10.2 How it was measured locally, and how far to trust it
+
+Two scripts, `pnpm measure:cpu` in `cf/admin` and in `cf/web`. They run the **real code** in plain Node, where timers are real (workerd freezes its timers during synchronous code, so a Worker cannot time itself):
+
+- **admin**: the Hono apps (the default export and the `PublicApi` entrypoint's app), Better Auth, Drizzle and the serializers, on a D1-shaped shim over `node:sqlite` (`scripts/lib/node-d1.ts`) holding the seed, the 86 real articles and school-sized lists. The time SQLite spends is subtracted (on Cloudflare a query costs the Worker no CPU, only the JavaScript around it does), and so is the native PBKDF2 of a sign-in (reported apart).
+- **site**: the **built** Worker (`dist/server/entry.mjs`: Astro, the middleware, the pages) with a stand-in for `cloudflare:workers`, a static-assets binding that finds nothing and an `API` binding that answers from a recording of the content API at school volume (86 articles, 24 team members, 16 reports, 25 documents). Astro streams its body, so the page is rendered while the body is read: that is inside the timed region.
+- **Two regimes**, because a Free Worker is mostly cold JavaScript. *Edge-like*: a fresh process per scenario with `node --jitless` (V8's interpreter only: a low-traffic Worker rarely runs a function often enough to be optimised), twelve requests; the first one (every function it touches is compiled on first use) and the median of requests 3 to 12, the median of three such processes. *Warm*: the normal JIT, 50 warm-up requests, then 300.
+- **Before and after are measured in turns**, process by process (`--compare`, `--compare-server`), so the load of the machine falls on both alike.
+
+How far to trust it: only the **relative change** between two runs on one machine is a result. Against the staging numbers: the single-sample authenticated reads of 10.1 (8 to 25 ms) sit close to the local *first-request* cost of the same routes (13 to 14 ms before this change) and far above the local *steady* cost (1.8 to 2.4 ms), which is what a cold first call of each route in an isolate would look like; the steady 401 routes (5 to 6 ms) are 6 to 8 times the local steady cost (0.8 ms). For the site, the ranking of the pages locally matches the edge's except `/blog`, which the edge puts at about twice what the local ranking predicts; the cause was not found. Not modelled at all: the D1 binding's own JavaScript, the service binding call, workerd's per-request overhead.
+
+### 10.3 Where the CPU goes: what was proved by a profile, and what is only suspected
+
+Proved (V8 CPU profiles of the real code, the interpreter regime, requests only, and the before/after tables of 10.5):
+
+1. **Better Auth was built and initialised on every request** (`createAuth` per request: the auth context, the table definitions, about forty endpoints with their schemas, the Drizzle adapter), and **a request without a session cookie built it too**, only to answer 401. Local, edge-like: the 401 routes cost 0.8 ms each against 0.08 for `/api/config`, and the first one of an isolate 8 to 10 ms against 1.6.
+2. **Drizzle's query builder is more than half of a public read**: `entity.is`, the SQL chunks, `extractTablesRelationalConfig` on every `drizzle(binding, { schema })` call (a walk over every table and relation of the schema), none of which changes between requests. 73% of the blog index (24 of 33 ms over 40 requests) before any change, still 52% (37 of 71 ms over 100 requests) once the instance was shared.
+3. **An SSR page is mostly Astro's renderer**: 53% of `/blog` and 67% of `/tim` (24 members, 116 KB of HTML) in the compiled runtime and the Astro app, about a tenth (12% and 9%) in this repository's code (the loaders, the blog helpers, the SEO graph, the middleware), the rest the platform's Request, Response and stream objects (JavaScript in Node, native in workerd). Nothing a page's own code does changes what the renderer costs per component: removing the `Tag` and `Icon` component of the 15 cards of `/blog` entirely, a crude upper bound that changes the HTML, saves 27%; Astro's `experimental.queuedRendering` gives no measurable gain (identical HTML, `/blog` 2.13 and 1.93 ms); non-streaming rendering saves 10 to 20% but needs a custom entry that copies the adapter's handler (not done).
+4. **The first request of an isolate costs several times a later one**: 8 to 14 ms against 0.8 to 2 ms for the admin routes, 12 to 16 ms against 1 to 4 ms for a page, because V8 compiles each function on its first call. Rendering one page first takes `/blog`'s first request from 15.8 to 5.8 ms locally. **Where the 89 ms of the first sign-in goes, as far as a laptop can say:** the hash is 8.3 ms of native PBKDF2; the JavaScript around it (the auth gate, Better Auth's HTTP router, the sign-in endpoint, the session and its cookie) is 18.2 ms on the first call of a process, 3.1 ms on the next ones and 1.5 ms once warm. So a cold sign-in is mostly JavaScript, not hash, and a second sign-in in the same isolate is the figure to read for the hash (10.8). This is an inference from one staging sample and local ratios, not a measurement of the edge.
+5. **What a guard adds**: a signed-in `/api/me` is 0.72 ms locally after the changes, of which the session read (two D1 statements decoded by Better Auth's adapter, the user mapping) is about 0.63; the guard itself (`requireAdmin`, `requireArea`, `can`) is microseconds; `/api/dashboard` adds 0.2 ms of its own statements and an editor's list one statement for their grants (built once per isolate now). A request without a session cookie adds nothing: 0.09 ms, the cost of a 404.
+
+Suspected, not provable here:
+
+- **The edge multiplier** (the staging figures are 4 to 10 times the local steady figures): not a constant, so no local number converts to an edge number.
+- **Whether Cloudflare counts start-up and first-call compilation as CPU of the request** (the first-call figures above say it may), **and whether the tail's `cpuTime` is the figure the limit is enforced on** (sign-in at 89 ms was not killed).
+- **Whether the start-up warm-up of 10.4 moves the first-call cost out of the request** (it can only do so if start-up CPU is not charged to it).
+- **The share of the D1 binding's JavaScript** in an authenticated read, and the two sequential D1 round trips of Better Auth's session lookup (a session, then its user).
+
+### 10.4 What changed
+
+| Change | Where | Effect (local, edge-like) | Risk and how it is kept safe |
+| --- | --- | --- | --- |
+| One Better Auth per isolate, keyed by the D1 binding, the audience, every text variable and secret, and the origin (at most 8 per binding); `waitUntil` looked up per call in an `AsyncLocalStorage` scope. The student portal Worker mounts the same context for its audience (`createAuthContext(STUDENT_AUDIENCE)`, after the portal foundation merged: it had its own per-request copy) | `src/auth/session.ts`, `src/portal/auth-context.ts` | signed-in admin routes -44 to -57% steady, first request -59 to -68% (with the warm-up); the portal's routes run the same code and were not measured separately | a shared instance must hold nothing of a request: sessions are still read from D1 on every call, background work goes to the right request (a test runs two overlapping requests with two contexts, for each Worker), a changed variable is a different instance, and so is the other audience (its mount point and cookie name); `test/auth-shared.test.ts`, five negative checks; validated in `wrangler dev` with 40 concurrent signed-in requests of three roles (admin Worker only: the portal Worker was run through the test suite, not through `wrangler dev`) |
+| A request whose Cookie header names no `session_token` is answered "no session" without asking Better Auth | `src/auth/session.ts` (`mayCarrySession`) | the 401 routes: 0.80 to 0.09 ms, first request 9.8 to 0.6 ms | the answer is the one Better Auth gives; a cookie that is only shaped like a session cookie still goes to Better Auth; tests and two negative checks (always ask, never ask) |
+| One Drizzle instance per D1 binding | `src/db/client.ts` and every route | about 0.2 ms off every request that built one | the instance holds no request state |
+| The public reads and an editor's grants built once per isolate (`sql.placeholder`), the blog index still one D1 batch | `src/public/prepared.ts`, `src/db/grants.ts` | public reads -61 to -79% steady, first request -52 to -65% | same SQL text and plans (compared statement by statement), same rows (compared with the builder's), same round trips (`public-budget.test.ts`), same answers (every read and parity test unchanged) |
+| Start-up warm-up of the library code (Hono's router lookups, Better Auth and its HTTP router, the prepared queries, the serializers) against a stand-in environment | `src/warmup.ts` | first signed-in request: about 14 ms with the shared instance alone, 4.6 to 6 ms with the warm-up (locally) | reads no real binding, writes and sends nothing, unawaited, guarded per group, one fixed log line on failure; Workers refuses a `Response`, I/O, a timer or a random number in global scope, so no route can be warmed; `WARM_UP_ENABLED` switches it off |
+| An optional copy of the rendered page in the isolate's memory | `src/lib/page-cache.ts`, `src/middleware.ts` | a view of a list or article page -68 to -89% (see 10.5) | **off unless `PAGE_CACHE_SECONDS` is set**; with it unset the HTML and headers of 15 routes are byte for byte what they were; with it on, an allow-list of pages, only a fresh 200, the query reduced to what the page reads, bounded; unit tests, 3 e2e checks, 14 negative checks. Adds that many seconds of staleness; nothing purges it |
+
+### 10.5 Before and after, per route
+
+Local, edge-like regime, ms of the Worker's own JavaScript per request, median of three fresh processes; `first` is the first request of the process; `before > after`. 86 articles; PBKDF2 of a sign-in (8.3 ms, native) not included.
+
+**Admin Worker**
+
+| Route | first | p50 (requests 3 to 12) | warm p50 |
+| --- | --- | --- | --- |
+| `GET /api/config` | 1.58 > 0.67 | 0.08 > 0.08 | 0.01 > 0.02 |
+| `GET /api/me`, no cookie (401) | 9.78 > 0.59 | 0.80 > 0.09 | 0.22 > 0.02 |
+| `GET /api/dashboard`, no cookie (401) | 9.32 > 0.54 | 0.81 > 0.09 | 0.23 > 0.02 |
+| `GET /api/admin/blog`, no cookie (401) | 8.30 > 0.56 | 0.78 > 0.09 | 0.23 > 0.02 |
+| `GET /api/me`, signed in | 12.47 > 3.94 | 1.29 > 0.72 | 0.44 > 0.22 |
+| `GET /api/dashboard`, signed in | 13.08 > 4.85 | 1.98 > 0.90 | 0.58 > 0.30 |
+| `GET /api/admin/blog`, an editor | 13.99 > 5.56 | 2.36 > 1.01 | 0.74 > 0.38 |
+| `GET /api/admin/messages` | 13.52 > 5.60 | 1.82 > 0.88 | 0.58 > 0.28 |
+| `GET /api/admin/shortlinks` | 14.21 > 4.78 | 1.95 > 0.88 | 0.57 > 0.27 |
+| `GET /api/admin/announcements` | 13.43 > 5.16 | 1.99 > 1.11 | 0.62 > 0.35 |
+| `GET /api/admin/team` | 13.63 > 5.48 | 1.85 > 0.98 | 0.61 > 0.33 |
+| `POST /api/auth/sign-in/email`, right password (+ 8.3 native hash) | 18.16 > 10.56 | 3.14 > 2.50 | 1.51 > 1.27 |
+| the same, wrong password | 16.95 > 10.01 | 2.56 > 2.04 | 1.32 > 1.20 |
+| `PublicApi` blog list | 3.87 > 1.80 | 0.70 > 0.19 | 0.24 > 0.06 |
+| `PublicApi` article | 3.54 > 1.70 | 0.68 > 0.17 | 0.21 > 0.06 |
+| `PublicApi` team (24 members) | 3.02 > 1.44 | 0.51 > 0.20 | 0.17 > 0.06 |
+| `PublicApi` reports, documents | 3.05 > 1.27, 3.41 > 1.20 | 0.45 > 0.13, 0.49 > 0.16 | 0.12 > 0.02, 0.14 > 0.03 |
+| `PublicApi` short link, unknown short link | 2.90 > 1.29, 2.82 > 1.19 | 0.40 > 0.11, 0.39 > 0.08 | 0.11 > 0.02, 0.10 > 0.01 |
+
+**Site Worker** (built `dist/server`). With `PAGE_CACHE_SECONDS` unset nothing changed (the figures are within the noise of the method: `/blog` 2.08 and 1.91 ms, `/tim` 3.96 and 4.13, every page's first request 12 to 17 ms) and **the HTML and headers of all 15 routes are byte for byte equal** (`--dump`, `diff -r`). With the copy on (`PAGE_CACHE_SECONDS=30`; the first request renders and stores, the next ones are copies):
+
+| Page | p50 render > copy | warm p50 render > copy | the miss costs |
+| --- | --- | --- | --- |
+| `/blog`, `/blog?page=2` | 1.99 > 0.42, 1.93 > 0.39 | 0.71 > 0.17, 0.67 > 0.16 | about 1 ms more on first sight, locally |
+| `/blog/<slug>` (three articles) | 1.55 > 0.38, 1.34 > 0.36, 1.23 > 0.37 | 0.52 > 0.14 | |
+| `/tim` (24 members) | 4.10 > 0.46 | 1.16 > 0.22 | |
+| `/laporan`, `/gabung-siswa/docs` | 2.15 > 0.38, 2.48 > 0.38 | 0.59 > 0.15, 0.71 > 0.18 | |
+| `/sitemap.xml` | 1.02 > 0.33 | 0.56 > 0.13 | |
+| `/kontak`, the 404 pages, the redirects | unchanged (not copied) | | |
+
+### 10.6 What is left, and why
+
+- **The uncached render of a page is unchanged**, and it is the main cost of the site Worker: 13 ms at the edge for `/blog`, 7 to 9 for an article, 5 to 7 for the other pages, against a gate of 5 at p99. Only the page copy changes that, and only where it is on and the copy is warm. Beyond it: the Cache API on the production zone (a data-centre-wide copy, not testable on `workers.dev`, and the first thing to try at the cutover), a custom entry with non-streaming rendering (10 to 20%, copies the adapter's handler), and turning repeated card markup into strings (about 20% on `/blog`, at the price of keeping the design in TypeScript templates): not done. The first request of a cold isolate on the site cannot be warmed: rendering a page needs a `Response`.
+- **Sign-in**: the hash (100,000 iterations of PBKDF2-SHA256, untouched) is 8.3 ms natively on a fast laptop; the JavaScript around it is about 1.5 ms warm, 3 ms on the next calls of a cold process and 18 ms on a first call (10.6 ms after the warm-up), because Better Auth's HTTP router and the sign-in endpoint are built on every call (`handler` calls `router(ctx, options)` each time, inside Better Auth) and the sign-in code is compiled on its first call. The warm-up compiles the router, not the endpoint (it would draw a random number, which global scope refuses). Whether sign-in fits 10 ms on Free is for a warm second sign-in on staging to say; measuring it is the follow-up named in the ticket.
+- **The authenticated CRUD routes** still run Drizzle's query builder per request (a list is dynamic: filters, search, sort, page): about 30% of a list route locally after the changes. The shared instance and the one-time grants query took the fixed part.
+- **Better Auth reads a session in two sequential D1 round trips** (the session, then its user); a join would make it one (`experimental.joins` needs Drizzle relations in the schema it is given). Not done.
+- **The public article answer still carries `contentMarkdown`** (half of its bytes, never read by the site). Dropping it is a change of the contract in [`content-api.md`](content-api.md) and the saving is JSON work in two Workers; not done.
+- Not measured: the real edge, a custom zone, the Cache API, the share of D1 and binding JavaScript, writes and uploads, the cron.
+
+### 10.7 What was not tested here
+
+Everything on a real zone or the edge (the Cache API, `workers.dev` against a route, Cloudflare's accounting of start-up and of first calls); visual and interaction QA (no page's markup changed, and with the copy off the bytes are equal; with it on a page is the stored bytes); the real Turnstile and the real rate limit bindings (the tests use doubles, as before). What was verified in a real workerd (`wrangler dev`, local D1, fake values): the shared Better Auth and the prepared reads across many separate requests, 40 concurrent signed-in requests of three roles, two overlapping reset requests each delivering its own email, sign-out, the site reading through a real service binding five rounds and 30 concurrent requests, no error in either log, and that the warm-up runs in global scope without a refusal.
+
+### 10.8 How to check it on staging
+
+[`staging-runbook.md`](staging-runbook.md#13-measure-cpu-per-route), step 13g: re-run the probe and compare with the table of 10.1; the 401 routes should now cost about what `/api/config` costs; look at the first invocation after idle (the warm-up); sign in twice; try `PAGE_CACHE_SECONDS=30` on the site as an A/B. The local harness (`pnpm measure:cpu`, `--compare` / `--compare-server` against a copy of an earlier commit, `--page-cache 30`, `--dump` for a byte comparison) is the way to measure a further change before deploying it.
 
 ## Sources
 

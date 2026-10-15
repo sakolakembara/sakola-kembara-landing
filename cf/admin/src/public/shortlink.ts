@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, type Placeholder } from "drizzle-orm";
 import type { Db } from "../db/audit";
 import { shortlinks } from "../db/schema";
 
@@ -12,7 +12,7 @@ import { shortlinks } from "../db/schema";
  * (legacy `resolveShortlink`). The plan is a seek on the unique index `shortlinks_slug_idx`; `active` is checked
  * on the row it finds.
  */
-export const shortlinkQuery = (db: Db, slug: string) =>
+export const shortlinkQuery = (db: Db, slug: string | Placeholder) =>
   db
     .select({ id: shortlinks.id, targetUrl: shortlinks.targetUrl })
     .from(shortlinks)

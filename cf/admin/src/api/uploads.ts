@@ -1,5 +1,4 @@
 import { and, count, desc, gte, lt } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { loadAccess, type Access } from "../auth/guard";
 import { can } from "../auth/permissions";
@@ -10,6 +9,7 @@ import { keyRange } from "../uploads/key";
 import { areaOfPurpose, isUploadKind, KIND_RULES, MAX_UPLOAD_BYTES, megabytes, MULTIPART_OVERHEAD_BYTES, uploadAreas, type UploadKind } from "../uploads/kinds";
 import { FILE_TYPES, MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE, SNIFF_WINDOW, sniff, type FileType } from "../uploads/sniff";
 import { deleteUnusedUpload, findMedia, storeUpload } from "../uploads/store";
+import { getDb } from "../db/client";
 
 // Uploads to R2 (SAKEM-082, docs/cloudflare/uploads.md). Admin only. Three
 // routes, none of them public:
@@ -126,7 +126,7 @@ uploadRoutes.post("/", uploadWriter, async (c) => {
     return refuse(c, 415, "unsupported_type", MESSAGES.type(rule.types), { allowed: rule.types.map((type) => FILE_TYPES[type].contentType) });
   }
 
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const upload = await storeUpload(c.env, db, access.user, { kind, file, type: found.type, width: found.width, height: found.height });
   return c.json(upload, 201);
 });
@@ -149,7 +149,7 @@ uploadRoutes.get("/", async (c) => {
 
   const page = positiveInt(c.req.query("page"), 1, 100_000);
   const pageSize = positiveInt(c.req.query("pageSize"), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const range = keyRange(kind);
   const inKind = and(gte(schema.media.key, range.from), lt(schema.media.key, range.to));
 

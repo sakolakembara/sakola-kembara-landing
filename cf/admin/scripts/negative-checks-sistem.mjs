@@ -221,9 +221,9 @@ export const sistemChecks = [
         from: `    return fail(c, 409, "last_super_admin", LAST_SUPER_ADMIN_DEMOTE, { fields: { role: "Minimal satu super admin harus tersedia" } });
   }
 
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const version = nextVersion(target.updatedAt);`,
-        to: "  }\n\n  const db = drizzle(c.env.DB, { schema });\n  const version = nextVersion(target.updatedAt);",
+        to: "  }\n\n  const db = getDb(c.env.DB);\n  const version = nextVersion(target.updatedAt);",
       },
       {
         file: "src/api/admin-users.ts",

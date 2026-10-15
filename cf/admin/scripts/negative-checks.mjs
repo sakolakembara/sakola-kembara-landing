@@ -634,6 +634,66 @@ const checks = [
     tests: "test/admin-users.test.ts",
   },
 
+  // The shared Better Auth and the no-cookie shortcut (SAKEM-091, test/auth-shared.test.ts).
+  {
+    name: "every request is sent to Better Auth, cookie or not (the no-cookie shortcut is gone)",
+    file: "src/auth/session.ts",
+    from: 'return headers.get("cookie")?.includes("session_token") === true;',
+    to: "return true;",
+    tests: "test/auth-shared.test.ts",
+  },
+  {
+    name: "no request is ever sent to Better Auth (the shortcut answers 'no session' to a real session cookie)",
+    file: "src/auth/session.ts",
+    from: 'return headers.get("cookie")?.includes("session_token") === true;',
+    to: "return false;",
+    tests: "test/auth-shared.test.ts test/auth.test.ts",
+  },
+  {
+    name: "the shared Better Auth gives all background work to the first request's context",
+    edits: [
+      { file: "src/auth/session.ts", from: "const requestScope = new AsyncLocalStorage<RequestScope>();", to: "const requestScope = new AsyncLocalStorage<RequestScope>();\nlet sticky: RequestScope | undefined;" },
+      { file: "src/auth/session.ts", from: "if (scope) return scope.waitUntil(promise);", to: "if (scope) return (sticky ??= scope).waitUntil(promise);" },
+    ],
+    tests: "test/auth-shared.test.ts",
+  },
+  {
+    name: "the shared Better Auth ignores the environment (a changed secret, mail key or cookie domain would not apply)",
+    file: "src/auth/session.ts",
+    from: 'for (const [name, value] of Object.entries(env)) if (typeof value === "string") key += `\\0${name}=${value}`;',
+    to: "",
+    tests: "test/auth-shared.test.ts test/gate.test.ts",
+  },
+  {
+    name: "the shared Better Auth leaves the audience out of its key (the portal would be answered by the admin's instance, mount point and cookie name)",
+    file: "src/auth/session.ts",
+    from: "let key = `${audience.name}\\0${origin}`;",
+    to: "let key = origin;",
+    tests: "test/auth-shared.test.ts test/portal-auth.test.ts",
+  },
+
+  {
+    name: "a failing warm-up puts the error's message in the log",
+    file: "src/warmup.ts",
+    from: 'error instanceof Error ? error.name : "error"',
+    to: 'error instanceof Error ? error.message : "error"',
+    tests: "test/warmup-failure.test.ts",
+  },
+  {
+    name: "a failing warm-up is no longer swallowed",
+    file: "src/warmup.ts",
+    from: 'failed.push(error instanceof Error ? error.name : "error");',
+    to: "throw error;",
+    tests: "test/warmup-failure.test.ts",
+  },
+  {
+    name: "a warm-up whose Better Auth cannot be built is a rejection, not a skipped group",
+    file: "src/warmup.ts",
+    from: "const auth = Promise.resolve().then(() => sharedAuth(env, ORIGIN));",
+    to: "const auth = Promise.resolve(sharedAuth(env, ORIGIN));",
+    tests: "test/warmup-failure.test.ts",
+  },
+
   // ------------------------------------------------------- admin users API
   {
     name: "the last super_admin trigger does nothing",
@@ -879,8 +939,8 @@ const checks = [
   {
     name: "blog index queries run one after the other instead of in one batch (round trips triple)",
     file: "src/api/public/read.ts",
-    from: "const [featuredRows, countRows, guessedRows] = await db.batch([\n    featuredPostQuery(db),\n    publishedCountQuery(db),\n    blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize),\n  ]);",
-    to: "const featuredRows = await featuredPostQuery(db);\n  const countRows = await publishedCountQuery(db);\n  const guessedRows = await blogPageQuery(db, pageSize, (guessedPage - 1) * pageSize);",
+    from: "const [featuredRows, countRows, guessedRows] = await batchAll(c.env.DB, [\n    [queries.featured],\n    [queries.count],\n    [queries.page, { limit: pageSize, offset: (guessedPage - 1) * pageSize }],\n  ]);",
+    to: "const featuredRows = await queries.featured.all();\n  const countRows = await queries.count.all();\n  const guessedRows = await queries.page.all({ limit: pageSize, offset: (guessedPage - 1) * pageSize });",
     tests: PUBLIC_BUDGET,
   },
   {

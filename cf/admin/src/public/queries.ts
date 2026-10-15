@@ -10,8 +10,15 @@
 //
 // The builders (`*Query`) return unexecuted Drizzle queries, so the plan test
 // can run EXPLAIN QUERY PLAN on exactly what the endpoints run.
+//
+// A value that changes per request (a slug, a page size, an offset, a date window) may be given as a
+// `sql.placeholder("name")` instead of the value: the SQL text is the same, and src/public/prepared.ts builds each
+// query ONCE per isolate that way and binds the values per request. The query builder is the heaviest part of a read
+// on a cold isolate (docs/cloudflare/free-plan-audit.md, "CPU on the hot routes"), and it has nothing to say that
+// the first request has not already said. A request-time `Date` or number and a placeholder are interchangeable
+// here: `test/public-prepared.test.ts` pins that both give the same SQL.
 
-import { and, asc, count, desc, eq, gte, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, lt, lte, ne, or, sql, type Placeholder, type SQL } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { Db } from "../db/audit";
 import { announcements, blogPosts, reports, resourceCategory, siteResources, teamCategory, teamMembers, type BlogCategory } from "../db/schema";
@@ -155,7 +162,7 @@ export const publishedCountQuery = (db: Db) => db.select({ n: count() }).from(bl
  * `featuredPostQuery`, so the page can be fetched in the same batch as the
  * featured article and the count.
  */
-export const blogPageQuery = (db: Db, pageSize: number, offset: number) => {
+export const blogPageQuery = (db: Db, pageSize: number | Placeholder, offset: number | Placeholder) => {
   const featuredId = db
     .select({ id: blogPosts.id })
     .from(blogPosts)
@@ -172,29 +179,41 @@ export const blogPageQuery = (db: Db, pageSize: number, offset: number) => {
 };
 
 /** One published article with both bodies and the dates the page needs. */
-export const articleQuery = (db: Db, slug: string) =>
+export const articleQuery = (db: Db, slug: string | Placeholder) =>
   db
     .select({ ...summaryColumns, id: blogPosts.id, updatedAt: blogPosts.updatedAt, metaDescription: blogPosts.metaDescription, contentMarkdown: blogPosts.contentMarkdown, contentHtml: blogPosts.contentHtml })
     .from(blogPosts)
     .where(and(published, eq(blogPosts.slug, slug)))
     .limit(1);
 
+/** What `relatedQuery` needs of an article; each may be a placeholder (values in ms for the two dates, see src/public/prepared.ts). */
+export interface RelatedTarget {
+  id: string | Placeholder;
+  category: BlogCategory | Placeholder;
+  /** The window's two ends: `[from, to)`, instants in ms (`relatedWindow`). */
+  from: number | Placeholder;
+  to: number | Placeholder;
+}
+
+/** The bound of a date window: a real instant becomes a Date (Drizzle writes it as ms), a placeholder is filled with ms. */
+const instant = (value: number | Placeholder) => (typeof value === "number" ? new Date(value) : value);
+
 /**
  * "Artikel Lainnya": up to three others in the same category or dated within
  * 180 days (range on `published_at`, see `relatedWindow`), newest first.
  */
-export const relatedQuery = (db: Db, article: { id: string; category: BlogCategory; publishedAtMs: number }) => {
-  const { from, to } = relatedWindow(article.publishedAtMs);
+export const relatedQuery = (db: Db, article: { id: string; category: BlogCategory; publishedAtMs: number } | RelatedTarget) => {
+  const { id, category, from, to } = "publishedAtMs" in article ? { id: article.id, category: article.category, ...relatedWindow(article.publishedAtMs) } : article;
   return db
     .select(summaryColumns)
     .from(blogPosts)
-    .where(and(published, ne(blogPosts.id, article.id), or(eq(blogPosts.category, article.category), and(gte(blogPosts.publishedAt, new Date(from)), lt(blogPosts.publishedAt, new Date(to))))))
+    .where(and(published, ne(blogPosts.id, id), or(eq(blogPosts.category, category), and(gte(blogPosts.publishedAt, instant(from)), lt(blogPosts.publishedAt, instant(to))))))
     .orderBy(...newestFirst)
     .limit(RELATED_LIMIT);
 };
 
 /** The fallback when nothing is related: the newest other articles. */
-export const newestOthersQuery = (db: Db, id: string) =>
+export const newestOthersQuery = (db: Db, id: string | Placeholder) =>
   db
     .select(summaryColumns)
     .from(blogPosts)

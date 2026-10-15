@@ -2,7 +2,6 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { accountExistsEmail, passwordResetEmail, verificationEmail } from "../email/templates";
 import { sendEmail } from "../email/send";
 import { isProduction, type Bindings } from "../env";
@@ -11,6 +10,7 @@ import * as schema from "../db/schema";
 import { parseOrigins } from "../security/csrf";
 import { ADMIN_AUDIENCE, type AuthAudience } from "./audience";
 import { hashPassword, verifyPassword } from "./password";
+import { getDb } from "../db/client";
 
 /** Better Auth's mount point. The SPA and the email links use this prefix. */
 export const AUTH_BASE_PATH = "/api/auth";
@@ -84,17 +84,22 @@ function cookieSettings(env: Bindings, prefix: string = ADMIN_AUDIENCE.cookiePre
 }
 
 /**
- * Better Auth, built once per request. A D1 binding only exists inside a
- * request, so the instance cannot live at module level (same pattern as the
- * Ruang Bakat worker). Its cost per request is measured in
- * docs/cloudflare/admin-skeleton.md.
+ * Builds a Better Auth instance. Routes do not call this: `sharedAuth` in ./session.ts builds one per (D1 binding,
+ * configuration, origin) and the isolate reuses it, because building it and initialising it were the main per-request
+ * CPU cost (docs/cloudflare/free-plan-audit.md, "CPU on the hot routes"; the first measurement of it is in
+ * docs/cloudflare/admin-skeleton.md). It needs the D1 binding, which only exists once a request has arrived, so it
+ * cannot be built at module level.
+ *
+ * `waitUntil` is called for everything that must outlive the response (emails, audit rows). An instance that serves
+ * many requests must pass a function that finds the CURRENT request's `waitUntil` at call time (./session.ts does);
+ * one built for a single request may pass that request's own.
  */
 export function createAuth(env: Bindings, { baseURL, waitUntil, audience = ADMIN_AUDIENCE }: AuthRequestContext) {
   if (!env.BETTER_AUTH_SECRET) {
     // Never fall back to a built-in secret: sessions would be forgeable.
     throw new Error("BETTER_AUTH_SECRET is not set");
   }
-  const db = drizzle(env.DB, { schema });
+  const db = getDb(env.DB);
   const google =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, prompt: "select_account" as const }

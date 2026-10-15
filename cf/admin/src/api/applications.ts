@@ -1,12 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { REVIEW_FIELDS, REVIEW_MESSAGES, reviewAction, reviewInput, revocationProblem } from "../admission/review";
 import { applicantPrefix, applicationDetailQuery, applicationsPageQuery, applicationsTotalQuery } from "../admission/queries";
 import { requireArea } from "../auth/guard";
 import { can } from "../auth/permissions";
 import type { AppEnv } from "../context";
-import * as schema from "../db/schema";
 import { applicationStatus, studentApplications, type StudentApplicationFormData } from "../db/schema";
 import {
   enumFilter,
@@ -25,6 +23,7 @@ import {
   withAudit,
   type Filter,
 } from "./crud";
+import { getDb } from "../db/client";
 import { applicationFilesQuery, presentListedFile } from "../private-files/list";
 
 // Pendaftar (area `pendaftaran`): the applications students submit to a batch. A port of
@@ -118,7 +117,7 @@ export function createApplicationRoutes() {
     if (!parsed.ok) return parsed.response;
     const prefix = applicantPrefix(parsed.query.q);
     const query = { ...parsed.query, where: prefix ? (parsed.query.where ? and(parsed.query.where, prefix) : prefix) : parsed.query.where };
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     // One round trip: the page and the total over the same WHERE.
     const [rows, totals] = await db.batch([applicationsPageQuery(db, query), applicationsTotalQuery(db, query)]);
     return c.json(pageOf(rows.map(presentListed), query, totals[0]?.total ?? 0));
@@ -127,7 +126,7 @@ export function createApplicationRoutes() {
   app.get("/:id", read, async (c) => {
     const id = c.req.param("id");
     if (!validId(id)) return notFound(c);
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     // One round trip: the application and the list of its files (SAKEM-083, docs/cloudflare/portal-api.md, 12.1).
     const [rows, files] = await db.batch([applicationDetailQuery(db, id), applicationFilesQuery(db, id)]);
     const row = rows[0];
@@ -156,7 +155,7 @@ export function createApplicationRoutes() {
     if (!body.ok) return body.response;
     if (!validId(id)) return fail(c, 404, "not_found", REVIEW_MESSAGES.notFound);
 
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const before = (await applicationDetailQuery(db, id))[0];
     if (!before) return fail(c, 404, "not_found", REVIEW_MESSAGES.notFound);
     if (!matches(precondition, before.updatedAt)) return stale(c);

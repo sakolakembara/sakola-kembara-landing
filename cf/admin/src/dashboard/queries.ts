@@ -16,13 +16,12 @@
 // exactly what the route runs.
 
 import { count, desc, inArray, isNull, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { AdminArea } from "../auth/permissions";
 import type { Db } from "../db/audit";
-import * as schema from "../db/schema";
 import { admissionBatches, contactMessages, studentApplications } from "../db/schema";
 import { buildDashboard, type BatchRow, type Dashboard, type UndecidedRow } from "./payload";
+import { getDb } from "../db/client";
 
 /** How many of the newest batches are looked at (see `pickBatch`). Admission is yearly. */
 export const BATCH_CANDIDATES = 3;
@@ -70,7 +69,7 @@ export const recentBatchesQuery = (db: Db) =>
  * messages (one); `konten` and `sistem` have nothing on the dashboard.
  */
 export async function loadDashboard(d1: D1Database, visible: readonly AdminArea[], now: Date): Promise<Dashboard> {
-  const db = drizzle(d1, { schema });
+  const db = getDb(d1);
   const wantsAdmission = visible.includes("pendaftaran");
   const wantsMessages = visible.includes("komunikasi");
 

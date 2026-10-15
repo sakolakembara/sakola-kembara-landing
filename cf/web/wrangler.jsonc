@@ -69,6 +69,10 @@
   //   Empty or unset (local, CI, today) changes nothing. Set it with the deploy (`wrangler deploy
   //   --var UPLOADS_BASE_URL:https://...` or the deploy config), never in git. Steps for the owner:
   //   docs/cloudflare/uploads.md.
+  // - PAGE_CACHE_SECONDS (a "vars" entry too, optional, public): seconds a rendered page that depends only on the
+  //   API's data (/blog, an article, /tim, /laporan, /gabung-siswa/docs, /sitemap.xml) is kept in the isolate's memory
+  //   and answered from there, with no render. Unset or 0: every request renders (what the site did before SAKEM-091).
+  //   At most 120; 30 is the value to start with. src/lib/page-cache.ts, docs/cloudflare/web-skeleton.md.
   // - "ratelimits": the rate-limit binding of the contact form, binding name CONTACT_LIMITER:
   //     "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "<a positive integer you choose>",
   //                      "simple": { "limit": 5, "period": 60 } }]

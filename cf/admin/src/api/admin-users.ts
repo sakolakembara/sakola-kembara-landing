@@ -1,5 +1,4 @@
 import { and, asc, count, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -38,6 +37,7 @@ import {
   type ListSpec,
 } from "./crud";
 import { readJson } from "./json";
+import { getDb } from "../db/client";
 
 // Pengaturan: who the admins are and what each may do (SAKEM-081). Everything
 // here is the `sistem` area: super_admin only. The legacy page
@@ -179,7 +179,7 @@ const HAS_ACCOUNT = sql<number>`exists (select 1 from account where account.user
 const lastSessionSql = (now: number) => sql<number | null>`(select max(created_at) from session where session.user_id = users.id and session.expires_at > ${now})`;
 
 async function loadAdmins(c: Context<AppEnv>, only?: string): Promise<AdminUserRow[]> {
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const rows = await db
     .select({
       id: schema.users.id,
@@ -355,7 +355,7 @@ adminUserRoutes.get("/", requireArea("sistem", "read"), async (c) => {
   const { query } = parsed;
   const range = emailPrefixRange(parseSearch(read("q")));
 
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const [rows, counted] = await db.batch(adminListStatements(db, query, range, Date.now()));
 
   const items = rows.map((row) => {
@@ -418,7 +418,7 @@ adminUserRoutes.post("/", requireArea("sistem", "write"), async (c) => {
   }
 
   const actor = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const id = crypto.randomUUID();
   // `emailVerified` is the whole of SAKEM-089 for a password: the flag `requireEmailVerification` reads is set where the
   // row is made, so the global requirement stays on for students. An invitation starts unverified and its link fixes that.
@@ -468,7 +468,7 @@ adminUserRoutes.patch("/:id", requireArea("sistem", "write"), async (c) => {
   if (!parsed.success) return invalidBody(c, parsed.error);
 
   const actor = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const id = c.req.param("id");
   const target = (await loadAdmins(c, id))[0];
   if (!target) return notFound(c);
@@ -548,7 +548,7 @@ adminUserRoutes.put("/:id", requireArea("sistem", "write"), async (c) => {
     return fail(c, 409, "last_super_admin", LAST_SUPER_ADMIN_DEMOTE, { fields: { role: "Minimal satu super admin harus tersedia" } });
   }
 
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const version = nextVersion(target.updatedAt);
   // What the table holds, not what the role makes of it: a viewer's old leftover rows go when they become an editor.
   const removed = target.storedAreas.filter((area) => !wanted.includes(area));
@@ -606,7 +606,7 @@ adminUserRoutes.put("/:id", requireArea("sistem", "write"), async (c) => {
  */
 adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"), async (c) => {
   const actor = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const id = c.req.param("id");
   const target = (await loadAdmins(c, id))[0];
   if (!target) return notFound(c);
@@ -636,7 +636,7 @@ adminUserRoutes.post("/:id/deactivate", requireArea("sistem", "write"), async (c
 /** Lets a deactivated account sign in again. Sessions are not restored; they sign in anew. Idempotent. */
 adminUserRoutes.post("/:id/reactivate", requireArea("sistem", "write"), async (c) => {
   const actor = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const id = c.req.param("id");
   const target = (await loadAdmins(c, id))[0];
   if (!target) return notFound(c);
@@ -655,7 +655,7 @@ adminUserRoutes.post("/:id/reactivate", requireArea("sistem", "write"), async (c
  */
 adminUserRoutes.post("/:id/resend-invite", requireArea("sistem", "write"), async (c) => {
   const actor = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const id = c.req.param("id");
   const target = (await loadAdmins(c, id))[0];
   if (!target) return notFound(c);
@@ -690,7 +690,7 @@ adminUserRoutes.put("/:id/areas", requireArea("sistem", "write"), async (c) => {
   if (!parsed.success) return invalidBody(c, parsed.error);
 
   const actor = c.get("user");
-  const db = drizzle(c.env.DB, { schema });
+  const db = getDb(c.env.DB);
   const targetId = c.req.param("id");
 
   const target = await db.query.users.findFirst({

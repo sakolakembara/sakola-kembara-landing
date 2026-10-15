@@ -2335,6 +2335,100 @@ await check('binding', 'a binding whose Worker is gone is an outage, not a crash
   }
 });
 
+// ---------------------------------------------------------------- the page copy in memory (SAKEM-091, src/lib/page-cache.ts)
+// Off unless PAGE_CACHE_SECONDS is set: the whole run above is the proof that nothing changed when it is not. These
+// checks start a Worker with it on and look at what a copy may and may not be.
+await check('page-cache', 'off by default: no page carries x-page-cache, and every request renders', async () => {
+  for (const p of ['/blog', '/tim', '/laporan']) assert.equal((await get(p)).headers.get('x-page-cache'), null, p);
+});
+
+await check('page-cache', 'on: the first render says miss and is kept; the next request is a copy (no API call, same bytes, same headers), then it expires', async () => {
+  const s = await startStack({ port: 8809, stubPort: 4427, fixturePort: 4428, inspectorPort: 9349, vars: { PAGE_CACHE_SECONDS: '3', CONTENT_CACHE_FRESH_SECONDS: '60', TEAM_CACHE_FRESH_SECONDS: '60' } });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 500));
+  const hits = async () => (await (await fetch(`${f}/__hits`)).json()).byEndpoint;
+  try {
+    const slug = slugs[0];
+    const pages = ['/blog', '/blog?page=2', `/blog/${slug}`, '/tim', '/laporan', '/gabung-siswa/docs', '/sitemap.xml'];
+    for (const p of pages) {
+      const first = await fetch(`${s.base}${p}`);
+      assert.equal(first.status, 200, p);
+      assert.equal(first.headers.get('x-page-cache'), 'miss', `${p} is rendered and kept`);
+      const rendered = await first.text();
+      await settle(); // the copy is made after the answer has gone
+      const before = await hits();
+      const second = await fetch(`${s.base}${p}`);
+      assert.equal(second.status, 200, p);
+      assert.equal(second.headers.get('x-page-cache'), 'hit', `${p} is a copy`);
+      assert.equal(await second.text(), rendered, `${p}: the copy is the page that was rendered, byte for byte`);
+      for (const name of ['content-type', 'cache-control', 'x-blog-source', 'x-team-source', 'strict-transport-security', 'x-content-type-options', 'x-frame-options']) {
+        assert.equal(second.headers.get(name), first.headers.get(name), `${p}: ${name}`);
+      }
+      assert.deepEqual(await hits(), before, `${p}: a copy asks nobody`);
+      if (p === '/blog') {
+        // A query string nobody reads does not make a new page: it is the same copy.
+        assert.equal((await fetch(`${s.base}/blog?x=1&y=2`)).headers.get('x-page-cache'), 'hit', 'a query nobody reads shares the copy');
+      }
+    }
+
+    // The page that IS read in the query is another page: page 3 was never rendered. Its copy ends after the
+    // configured seconds (3), and the next request renders it again.
+    assert.equal((await fetch(`${s.base}/blog?page=3`)).headers.get('x-page-cache'), 'miss');
+    await settle();
+    assert.equal((await fetch(`${s.base}/blog?page=3`)).headers.get('x-page-cache'), 'hit');
+    await new Promise((resolve) => setTimeout(resolve, 3200));
+    assert.equal((await fetch(`${s.base}/blog?page=3`)).headers.get('x-page-cache'), 'miss', 'expired: rendered again');
+    assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('page-cache', 'on: what must not be copied is not: a 404, a stale or failed answer, a form, a short link, other pages', async () => {
+  const s = await startStack({ port: 8810, stubPort: 4429, fixturePort: 4430, inspectorPort: 9350, vars: { PAGE_CACHE_SECONDS: '30', CONTENT_CACHE_FRESH_SECONDS: '1', TEAM_CACHE_FRESH_SECONDS: '1' } });
+  const f = `http://127.0.0.1:${s.fixture.port}`;
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 500));
+  try {
+    // An unknown article is a 404 each time (the API is asked again), never a copy.
+    const asked = async () => (await (await fetch(`${f}/__requests?for=blog`)).json()).filter((p) => p.includes('no-such-article')).length;
+    const miss = await fetch(`${s.base}/blog/no-such-article`);
+    assert.equal(miss.status, 404);
+    assert.equal(miss.headers.get('x-page-cache'), null);
+    await settle();
+    const again = await fetch(`${s.base}/blog/no-such-article`);
+    assert.equal(again.status, 404);
+    assert.equal(again.headers.get('x-page-cache'), null);
+    assert.ok((await asked()) >= 1);
+
+    // Pages that are not on the list never carry the header.
+    for (const p of ['/kontak', '/gabung-siswa', '/donasi', '/tim/extra', '/no/such/page']) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      assert.equal(res.headers.get('x-page-cache'), null, p);
+    }
+
+    // The API fails and nothing is stored for /laporan: a 503 is not copied, so recovery shows at once.
+    await setFixtureMode(f, 'reports', '500');
+    const down = await fetch(`${s.base}/laporan`);
+    assert.equal(down.status, 503);
+    assert.equal(down.headers.get('x-page-cache'), null);
+    await settle();
+    await setFixtureMode(f, 'reports', 'ok');
+    const back = await fetch(`${s.base}/laporan`);
+    assert.equal(back.status, 200, 'the outage page was not kept');
+    assert.equal(back.headers.get('x-page-cache'), 'miss');
+
+    // A copy is of the data as it was: an outage after the copy was made does not touch it until it expires.
+    await settle();
+    await setFixtureMode(f, 'reports', '500');
+    const served = await fetch(`${s.base}/laporan`);
+    assert.equal(served.status, 200);
+    assert.equal(served.headers.get('x-page-cache'), 'hit');
+    assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
+  } finally {
+    await s.stop();
+  }
+});
+
 // ---------------------------------------------------------------- report
 await stack.stop();
 

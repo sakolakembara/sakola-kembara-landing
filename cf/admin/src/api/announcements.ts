@@ -1,5 +1,4 @@
 import { count, eq, getTableColumns, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { announcementIsLive, announcementNewestFirst } from "../public/queries";
@@ -9,6 +8,7 @@ import type { AppEnv } from "../context";
 import * as schema from "../db/schema";
 import { announcementSeverity } from "../db/schema";
 import { booleanFilter, crudHandlers, enumFilter, pageOf, parseListQuery, type CrudDeps } from "./crud";
+import { getDb } from "../db/client";
 
 // Pengumuman (area `komunikasi`), the first screen built on the admin CRUD convention
 // (docs/cloudflare/admin-crud.md) and the reference for the others. Behaviour, rules and endpoints:
@@ -120,7 +120,7 @@ function listHandler(clock: () => Date) {
     if (!parsed.ok) return parsed.response;
     const { query } = parsed;
     const now = clock();
-    const db = drizzle(c.env.DB, { schema });
+    const db = getDb(c.env.DB);
     const [rows, totals, shown] = await db.batch([
       db
         .select({ ...getTableColumns(schema.announcements), phase: phase(now) })
