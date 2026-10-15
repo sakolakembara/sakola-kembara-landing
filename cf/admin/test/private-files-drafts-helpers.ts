@@ -54,6 +54,8 @@ export interface DraftFixture {
  */
 export async function draftWithFiles(
   options: {
+    /** The draft's id; a random UUID when left out. Plant one when the test is about an order that `id` can break a tie in. */
+    id?: string;
     slots?: SlotId[];
     size?: number;
     ageDays?: number;
@@ -65,7 +67,7 @@ export async function draftWithFiles(
 ): Promise<DraftFixture> {
   const batch = options.batch ?? (await addBatch());
   const student = options.student ?? (await bareStudent());
-  const id = crypto.randomUUID();
+  const id = options.id ?? crypto.randomUUID();
   const updatedAt = options.updatedAt ?? Date.now() - (options.ageDays ?? 40) * DAY;
   await env.DB.prepare("INSERT INTO application_drafts (id, user_id, batch_id, form_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
     .bind(id, student.id, batch.id, JSON.stringify(options.formData ?? {}), updatedAt, updatedAt)
