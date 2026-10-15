@@ -49,6 +49,7 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | `EMAIL_FROM` | admin | public var | `Sakola Kembara Staging <onboarding@resend.dev>` | same |
 | `ADMIN_URL` | site | public var | the admin's `workers.dev` address | same |
 | `LEGACY_ORIGIN_URL` | site | public var | **`https://no-legacy-origin.invalid`**, exactly (see step 10) | same |
+| `PORTAL_ENABLED` | site | optional public var | **leave it out** (Phase A: the portal is off, the navbar offers "Daftar Sekarang" and has no session call); `true` only to look at the Phase B navbar, and then also `PORTAL_ENABLED=true pnpm build:staging` (the prerendered pages take the build's value, never the `--var`) | same |
 | `PAGE_CACHE_SECONDS` | site | optional public var | `30` to try the page copy in memory (step 13g); left out, every request renders | same |
 | `BETTER_AUTH_SECRET` | admin | secret | `openssl rand -base64 32` | you, `wrangler secret put` |
 | `RESEND_API_KEY` | admin | secret | the Resend key of step 7 | you, `wrangler secret put` |
@@ -276,7 +277,7 @@ pnpm deploy:staging:command      # prints:  pnpm exec wrangler deploy -c dist/se
 
 `cf/web/.staging.vars`: `TURNSTILE_SITE_KEY`, `ADMIN_URL` (the admin's address), `UPLOADS_BASE_URL`, and `LEGACY_ORIGIN_URL=https://no-legacy-origin.invalid`.
 
-- **Why that last one.** The site forwards `/_next/*`, `/images/team/*`, `/reports/*` and similar paths to "the legacy origin" with a plain `fetch`, which in production reaches the old server behind the same hostname. On `workers.dev` nothing is behind the hostname, so the fetch would go back into the same Worker, up to Cloudflare's loop limit of 16 invocations for one request, on a 100,000-a-day budget ([`free-plan-audit.md` 7.1](free-plan-audit.md#7-staging-findings)). A `*.invalid` host never resolves, so the forward fails at once. The printer accepts no other value for it.
+- **Why that last one.** The site forwards WordPress's own paths (`/wp-login.php`, `/wp-admin/*`, `/wp-content/*`, `/wp-includes/*`, `/wp-json/*`, `/xmlrpc.php`, `/login`; SAKEM-103) to "the legacy origin" with a plain `fetch`, which in production reaches the WordPress site behind the same hostname. On `workers.dev` nothing is behind the hostname, so the fetch would go back into the same Worker, up to Cloudflare's loop limit of 16 invocations for one request, on a 100,000-a-day budget ([`free-plan-audit.md` 7.1](free-plan-audit.md#7-staging-findings)). A `*.invalid` host never resolves, so the forward fails at once. The printer accepts no other value for it.
 - **Creates:** the Worker `sakem-web-staging`, its `API` service binding to `sakem-admin-staging#PublicApi` (the admin Worker must exist: that is why it came first), the static assets (about 1,000 files, 137 MiB), its `workers.dev` address. No cron, no database.
 - **Your OK:** yes.
 - **Verify:** the output lists `env.API (sakem-admin-staging#PublicApi)`; the smoke tests of step 11.
@@ -288,7 +289,7 @@ pnpm deploy:staging:command      # prints:  pnpm exec wrangler deploy -c dist/se
 ```bash
 W=https://sakem-web-staging.<account-subdomain>.workers.dev
 A=https://sakem-admin-staging.<account-subdomain>.workers.dev
-for p in / /blog /tim /laporan /gabung-siswa /gabung-siswa/docs /kontak /donasi /program/prapembinaan /robots.txt /sitemap.xml /feed /no/such/page /api/x /admin /_next/x; do
+for p in / /blog /tim /laporan /gabung-siswa /gabung-siswa/docs /kontak /donasi /program/prapembinaan /robots.txt /sitemap.xml /feed /no/such/page /api/x /admin /_next/x /daftar /register /wp-login.php; do
   printf '%-26s ' "$p"; curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' "$W$p"; done
 ```
 
@@ -302,7 +303,9 @@ for p in / /blog /tim /laporan /gabung-siswa /gabung-siswa/docs /kontak /donasi 
 | `W/no/such/page` | 404 (the site's 404 page) |
 | `W/api/x` | 404 JSON `{"error":"not_found"}` |
 | `W/admin` | 308 to the admin's address |
-| `W/_next/x` | fails **fast** with a 5xx (the `.invalid` origin), never slowly, never a loop |
+| `W/_next/x` | 404 (the site's page: the old Next prefixes are not forwarded any more) |
+| `W/wp-login.php`, `W/login`, `W/wp-admin/`, `W/wp-content/x` | fail **fast** with a 5xx (the `.invalid` origin), never slowly, never a loop (they are WordPress's paths, and staging has no WordPress) |
+| `W/daftar` | the polite 404 page "Formulir pendaftaran belum tersedia" until you create a `daftar` shortlink in the staging admin (Konten situs, Shortlink; use an invented target, never the real form), then a 307 to its target; `W/register` and `W/portal`: the site's 404 |
 | `A/`, `A/login` | 200 (the SPA) |
 | `A/api/config`, `A/api/me` | 200 JSON, 401 |
 | `A/api/public/team` | **404** (the reads exist on the service-binding entrypoint only) |
@@ -698,7 +701,7 @@ The portal on `workers.dev` serves its own paths at its own host, with no zone, 
 | --- | --- | --- |
 | The routes `sakolakembara.org/portal` and `/portal/*` reaching `sakem-portal`: precedence against the site's route or Custom Domain, `/portal` against `/portal/`, `/portalx`, `/Portal/x`, the known trailing-`/*` bug, the failure mode (closed) at the day's limit | There is no zone and no route on `workers.dev` | cutover, S-33 and T-17, R-26 |
 | The apex cookie: `__Host-` on the apex sent to **every** path, including the public pages the site's Worker serves (it must never read it), and the Google callback on the apex | Staging's cookie lives on the portal's own host, which no public page shares; Google is off on staging | cutover |
-| The pass-through of the site: `/login`, `/register` and the navbar's session call going to `/portal/...` **on the same host**, "Masuk" and "Daftar Sekarang" landing in the portal | On staging they point at the site's own host, where nothing answers | cutover, T-16, F-02 and F-11 |
+| The pass-through of the site to **WordPress** (sign-in through the route, cookies, `wp-admin`, the uploads hotlinked from outside), `/login` and the registration link `/daftar` on the real host, and the portal switch (`PORTAL_ENABLED`) on both kinds of page | There is no WordPress behind a `workers.dev` hostname, and the real form is not behind the staging `daftar` | cutover, T-31 to T-36, P-25 (Phase A, SAKEM-103) |
 | Cache: whether anything at the apex caches `/portal/api/*` (it must stay `no-store`, `cf-cache-status` never `HIT`), and whether a Cache Rule on the zone catches the portal's files | The Cache API does not work on `workers.dev`, as for the site's own cache | cutover, the cache checklist |
 | Turnstile for the apex hostname, and Resend with the production sender domain (SPF, DKIM, deliverability of the verification mail to other people's mailboxes) | The staging widget covers `workers.dev` only; the sandbox sender reaches one address | cutover, P-09 |
 | Real R2 costs and limits under a season's load (many students, 10 MB files at once), and the CPU of an upload at that scale | One invented applicant is one data point | the first season |
