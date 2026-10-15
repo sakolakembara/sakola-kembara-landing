@@ -17,6 +17,7 @@ import {
   buildLine,
   builtBeaconProblems,
   builtConfigProblems,
+  builtPortalProblems,
   describeResources,
   missingRequired,
   readJsonc,
@@ -24,6 +25,7 @@ import {
 } from '../../scripts/production-deploy-command.mjs';
 import { TARGETS, checkProductionDryRun, productionDryRunEnv } from '../../scripts/production-dry-run.mjs';
 import { parseBeaconId } from '../web-analytics.config.mjs';
+import { parsePortalEnabled } from '../portal-enabled.config.mjs';
 import { readRoot, repoRoot, webRoot } from './helpers';
 
 // cf/scripts/production-deploy-command.mjs and cf/scripts/production-dry-run.mjs (SAKEM-104, cutover Phase A). Like their staging
@@ -87,7 +89,8 @@ describe('production-deploy-command: what it accepts', () => {
       const entries = parseVarsFile(filled);
       expect(() => validateVars(worker, entries), worker).not.toThrow();
       expect(missingRequired(worker, entries), worker).toEqual([]);
-      expect(entries.map((e) => e.name).sort()).toEqual(SPECS[worker].filter((s) => s.required).map((s) => s.name).sort());
+      // every required name, and PORTAL_ENABLED=false in the site's example (optional: Phase A may also leave it out)
+      expect(entries.map((e) => e.name).sort()).toEqual([...SPECS[worker].filter((s) => s.required).map((s) => s.name), ...(worker === 'web' ? ['PORTAL_ENABLED'] : [])].sort());
       expect(buildCommand(worker, entries)).toMatch(/^pnpm exec wrangler deploy /);
     }
   });
@@ -205,6 +208,35 @@ describe('production-deploy-command: what it refuses', () => {
     expect(() => validate('admin', 'EMAIL_FROM=no-reply@notsakolakembara.org')).toThrow(/must be on sakolakembara.org/);
   });
 
+  it('PORTAL_ENABLED (SAKEM-103): `false` is accepted, `true` is refused in Phase A with its reason, anything else is "exactly true or false", and the admin has no such variable', () => {
+    expect(() => validate('web', `${GOOD.web}\nPORTAL_ENABLED=false`)).not.toThrow();
+    expect(() => validate('web', `${GOOD.web}\nPORTAL_ENABLED=true`)).toThrow(/Phase A: `true` would show "Masuk"/);
+    for (const bad of ['TRUE', 'False', '1', '0', 'yes', 'on', 'enabled', 'true;', 'falsey', '"false"x']) {
+      expect(() => validate('web', `${GOOD.web}\nPORTAL_ENABLED=${bad}`), bad).toThrow(/exactly true or false/);
+    }
+    expect(() => validate('web', `${GOOD.web}\nPORTAL_ENABLED=`)).toThrow(/empty/);
+    expect(() => validate('admin', `${GOOD.admin}\nPORTAL_ENABLED=false`)).toThrow(/not a variable of sakem-admin/);
+    // it is optional: Phase A may leave it out (the portal is off by default), so a file without it is complete
+    expect(missingRequired('web', parseVarsFile(GOOD.web))).toEqual([]);
+    expect(SPECS.web.find((spec) => spec.name === 'PORTAL_ENABLED')!.required).toBe(false);
+  });
+
+  it("PORTAL_ENABLED is read as the site reads it (portal-enabled.config.mjs): the same text is off, on or invalid in both; the printer refuses `true` on top", () => {
+    for (const value of ['true', 'false', ' true ', 'TRUE', '1', 'yes', 'on', 'maybe', '']) {
+      let message = '';
+      try {
+        validate('web', `${GOOD.web}\nPORTAL_ENABLED=${value}`);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      const site = parsePortalEnabled(value.trim());
+      if (site === null) expect(message, JSON.stringify(value)).toMatch(/exactly true or false/);
+      else if (value.trim() === '') expect(message, JSON.stringify(value)).toMatch(/empty/);
+      else if (site === true) expect(message, JSON.stringify(value)).toMatch(/Phase A/);
+      else expect(message, JSON.stringify(value)).toBe('');
+    }
+  });
+
   it('a name set twice, and a line that is not KEY=VALUE, with its number', () => {
     expect(() => validate('web', `TURNSTILE_SITE_KEY=${KEY}\nTURNSTILE_SITE_KEY=${KEY}x`)).toThrow(/line 2 .*set twice/);
     expect(() => parseVarsFile('TURNSTILE_SITE_KEY=abc\nnot a line')).toThrow('line 2');
@@ -225,12 +257,15 @@ describe('production-deploy-command: what it refuses', () => {
 });
 
 describe('production-deploy-command: the lists', () => {
-  it('hold no secret, no API URL, no ENVIRONMENT, no legacy origin and no portal variable', () => {
+  it('hold no secret, no API URL, no ENVIRONMENT, no legacy origin and no portal contact variable (the site has the one switch, PORTAL_ENABLED)', () => {
     for (const worker of Object.values(WORKERS)) {
-      for (const name of worker.allowed) expect(name).not.toMatch(/SECRET|TOKEN|PASSWORD|API_KEY|CONTENT_API_URL|CONTACT_API_URL|^ENVIRONMENT$|^LEGACY_ORIGIN_URL$|^PORTAL_|^GOOGLE_CLIENT_|COOKIE_DOMAIN|TRUSTED_ORIGINS/);
+      for (const name of worker.allowed) expect(name).not.toMatch(/SECRET|TOKEN|PASSWORD|API_KEY|CONTENT_API_URL|CONTACT_API_URL|^ENVIRONMENT$|^LEGACY_ORIGIN_URL$|^PORTAL_(CONTACT_WHATSAPP|WHATSAPP_GROUP_URL)$|^GOOGLE_CLIENT_|COOKIE_DOMAIN|TRUSTED_ORIGINS/);
     }
     expect(WORKERS.admin.allowed).not.toContain('ADMIN_URL');
     expect(WORKERS.web.allowed).not.toContain('SITE_URL');
+    // the one switch of SAKEM-103 belongs to the site only
+    expect(WORKERS.web.allowed).toContain('PORTAL_ENABLED');
+    expect(WORKERS.admin.allowed).not.toContain('PORTAL_ENABLED');
   });
 
   it("the three public origins are the host plan's and nothing else", () => {
@@ -281,6 +316,11 @@ describe('production-deploy-command: the printed command', () => {
     expect(command).toContain(`--var 'WEB_ANALYTICS_BEACON_ID:${BEACON}'`);
     expect(buildLine('web', entries)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
     expect(buildLine('admin', parseVarsFile(GOOD.admin))).toBe('pnpm build:spa');
+    // PORTAL_ENABLED, when the file has it, is on the build line from the same file as the --var
+    const withPortal = parseVarsFile(`${GOOD.web}\nPORTAL_ENABLED=false`);
+    expect(buildLine('web', withPortal)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} PORTAL_ENABLED=false pnpm build:prod`);
+    expect(buildCommand('web', withPortal)).toContain("--var 'PORTAL_ENABLED:false'");
+    expect(buildCommand('web', withPortal)).toContain(`--var 'WEB_ANALYTICS_BEACON_ID:${BEACON}'`);
   });
 
   it('never prints a command that is not a deploy of a production Worker', () => {
@@ -315,7 +355,7 @@ describe('production-deploy-command: the program', () => {
     throw new Error(`expected a failure: ${args.join(' ')}`);
   };
   /** A fake `dist/` of the site: the config the build writes, and the home page with (or without) the beacon. */
-  const writeDist = (dir: string, over: { name?: string; service?: string; vars?: object; workersDev?: boolean; beacon?: string | null; tags?: number } = {}) => {
+  const writeDist = (dir: string, over: { name?: string; service?: string; vars?: object; workersDev?: boolean; beacon?: string | null; tags?: number; portal?: boolean } = {}) => {
     mkdirSync(path.join(dir, 'dist/server'), { recursive: true });
     mkdirSync(path.join(dir, 'dist/client'), { recursive: true });
     writeFileSync(
@@ -325,7 +365,8 @@ describe('production-deploy-command: the program', () => {
     const tag = (id: string) => `<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon="{&quot;token&quot;:&quot;${id}&quot;}"></script>`;
     const beacon = over.beacon === undefined ? BEACON : over.beacon;
     const body = beacon === null ? '' : Array.from({ length: over.tags ?? 1 }, () => tag(beacon)).join('');
-    writeFileSync(path.join(dir, 'dist/client/index.html'), `<html lang="id-ID"><body>home${body}</body></html>`);
+    const portal = over.portal ? '<a href="/portal/login" data-auth-link>Masuk</a><script>fetch("/portal/api/auth/get-session")</script>' : '';
+    writeFileSync(path.join(dir, 'dist/client/index.html'), `<html lang="id-ID"><body><nav>menu${portal}</nav>home${body}</body></html>`);
   };
 
   it('admin: prints the command on standard output and the notes on standard error, and exits 0', async () => {
@@ -426,6 +467,44 @@ describe('production-deploy-command: the program', () => {
       expect(failure.stderr, label).toMatch(why);
       expect(failure.stderr, label).toContain(`Build with: WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
     }
+  });
+
+  it('web: PORTAL_ENABLED=false in the file is on the printed build line and the --var; a dist/ whose home page offers the portal is refused with or without the line; `true` is refused before anything is read', async () => {
+    const dir = fresh();
+    writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\nPORTAL_ENABLED=false\n`);
+    writeDist(dir);
+    const ok = await exec(dir, ['web']);
+    expect(ok.stdout).toContain("--var 'PORTAL_ENABLED:false'");
+    expect(ok.stderr).toContain(`# 2. WEB_ANALYTICS_BEACON_ID=${BEACON} PORTAL_ENABLED=false pnpm build:prod`);
+    expect(ok.stderr).toContain('the portal is OFF there as the file says');
+    writeDist(dir, { portal: true });
+    const on = await fails(dir, ['web']);
+    expect(on.code).toBe(1);
+    expect(on.stdout).toBe('');
+    expect(on.stderr).toContain('offers the student portal');
+    expect(on.stderr).toContain('PORTAL_ENABLED=false pnpm build:prod');
+    // without the line the portal is off by default, so a dist/ with the portal on is just as wrong
+    writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\n`);
+    const noLine = await fails(dir, ['web']);
+    expect(noLine.stderr).toContain('offers the student portal');
+    expect(noLine.stderr).toContain(`Build with: WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
+    writeDist(dir);
+    const clean = await exec(dir, ['web']);
+    expect(clean.stderr).toContain("PORTAL_ENABLED is not in the file: the portal is OFF (the default)");
+    expect(clean.stdout).not.toContain('PORTAL_ENABLED');
+    writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\nPORTAL_ENABLED=true\n`);
+    const refused = await fails(dir, ['web']);
+    expect(refused.stderr).toContain('line 6 (PORTAL_ENABLED)');
+    expect(refused.stdout).toBe('');
+  });
+
+  it('the portal check of a built dist/ as a function: off needs none of the three markers, on needs the link and the session call', () => {
+    expect(builtPortalProblems('<nav>menu</nav>', false)).toEqual([]);
+    for (const marker of ['<a href="/portal/login">Masuk</a>', '<a data-auth-link>x</a>', "<script>fetch('/portal/api/auth/get-session')</script>"]) {
+      expect(builtPortalProblems(`<nav>${marker}</nav>`, false)[0], marker).toMatch(/offers the student portal/);
+    }
+    expect(builtPortalProblems('<nav>menu</nav>', true)[0]).toMatch(/no "Masuk" link or session call/);
+    expect(builtPortalProblems('<a href="/portal/login" data-auth-link>Masuk</a><script>get-session</script>', true)).toEqual([]);
   });
 
   it('the checks of a built dist/ as functions: the config and the beacon', () => {

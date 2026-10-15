@@ -21,6 +21,11 @@ UPLOADS_BASE_URL=https://files.sakolakembara.org
 # prerendered pages have it too. Public, but still not written in a ticket or a chat.
 WEB_ANALYTICS_BEACON_ID=<32 hexadecimal characters of the site token>
 
+# Whether the navbar offers "Masuk" and its session call (SAKEM-103). Phase A: the student portal is not deployed, so exactly `false`
+# (or delete the line: the portal is OFF by default). `true` is refused here until Phase B changes the printer. Like the beacon id it
+# has two sources, the shell of the build (the printer prints it on the build line) and this --var, from this one line.
+PORTAL_ENABLED=false
+
 # Seconds a rendered page is kept in the isolate's memory (the CPU work of SAKEM-091). Required for production: /blog
 # measured above the 10 ms CPU gate without it. 30 is the value to start with; the most it takes is 120.
 PAGE_CACHE_SECONDS=30

@@ -28,11 +28,16 @@
 //     deploy or build the staging Worker. (The printed admin command carries `--env=""`, which selects the top level
 //     whatever the variable says; the web build is `pnpm build:prod`, which unsets it.)
 //   - for the site, a `dist/` that is not the production build of the beacon id in the file (a stale staging build, or a
-//     build made without WEB_ANALYTICS_BEACON_ID, which would leave the prerendered pages without the beacon).
+//     build made without WEB_ANALYTICS_BEACON_ID, which would leave the prerendered pages without the beacon) or whose
+//     prerendered home page disagrees with the file about the student portal (PORTAL_ENABLED, SAKEM-103: Phase A is off; a
+//     build made with it on, in a shell that still had it, would show "Masuk" on the static pages and call a Worker that is
+//     not deployed).
+//   - PORTAL_ENABLED=true: Phase A accepts `false` or no line. Like the beacon id it has two sources (the shell of the build
+//     for the prerendered pages, the `--var` for the rendered ones), and the printed build line carries it from the same file.
 //
-// To add a variable of the site that a later change introduces (SAKEM-103's, for the Phase A pass-through), add ONE entry
-// to `SPECS.web` below; tests/production-scripts.test.ts then fails for any variable of src/env.d.ts that is neither
-// there nor in NEVER, so a new variable cannot be forgotten.
+// To add a variable of the site that a later change introduces, add ONE entry to `SPECS.web` below;
+// tests/production-scripts.test.ts then fails for any variable of src/env.d.ts that is neither there nor in NEVER, so a new
+// variable cannot be forgotten (PORTAL_ENABLED, SAKEM-103, is the first one it caught).
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -75,7 +80,7 @@ export const NOT_PRINTED = /** @type {Record<'admin'|'web', string[]>} */ ({ adm
  * would REMOVE it (the printer refuses a file that lacks it). `kind` picks the value check.
  */
 /**
- * @typedef {{ name: string, required: boolean, kind: 'origin'|'turnstile'|'beacon'|'seconds'|'email-from', min?: number, max?: number }} Spec
+ * @typedef {{ name: string, required: boolean, kind: 'origin'|'turnstile'|'beacon'|'seconds'|'email-from'|'portal-switch', min?: number, max?: number }} Spec
  * @type {{ admin: Spec[], web: Spec[] }}
  */
 export const SPECS = {
@@ -92,6 +97,10 @@ export const SPECS = {
     { name: 'UPLOADS_BASE_URL', required: true, kind: 'origin' },
     // Public (it is in every page), and needed twice: here, and in the shell of the BUILD for the prerendered pages.
     { name: 'WEB_ANALYTICS_BEACON_ID', required: true, kind: 'beacon' },
+    // SAKEM-103: whether the navbar offers "Masuk" and its session call. OFF by default and in Phase A (unset or `false`); like the
+    // beacon id it has TWO sources, the shell of the BUILD (prerendered pages) and the `--var` (pages the Worker renders), printed
+    // from this one value. Strictly `true` or `false`; Phase A accepts `false` only (the portal Worker is Phase B).
+    { name: 'PORTAL_ENABLED', required: false, kind: 'portal-switch' },
     // Required: the staging probe put /blog above the CPU gate without the page copy (free-plan-audit.md, section 10).
     { name: 'PAGE_CACHE_SECONDS', required: true, kind: 'seconds', min: 1, max: 120 },
     { name: 'CONTENT_CACHE_FRESH_SECONDS', required: false, kind: 'seconds', min: 1, max: 3600 },
@@ -176,6 +185,10 @@ function checkValue(spec, name, value) {
     case 'beacon':
       // The same shape as cf/web/web-analytics.config.mjs (a test keeps the two equal). The message does not repeat the value.
       return /^[0-9a-fA-F]{32}$/.test(value) ? null : 'not a Web Analytics beacon id (exactly 32 hexadecimal characters)';
+    case 'portal-switch':
+      // The same rule as cf/web/portal-enabled.config.mjs (a test keeps the two equal): exactly true or false. The message does not repeat the value.
+      if (value === 'true') return 'refused in Phase A: `true` would show "Masuk" and call a portal Worker that is not deployed (Phase B changes this list); use `false` or leave the line out';
+      return value === 'false' ? null : 'exactly true or false';
     case 'seconds': {
       if (!/^\d{1,5}$/.test(value)) return 'a whole number of seconds';
       const n = Number(value);
@@ -202,11 +215,17 @@ export function buildCommand(worker, entries) {
   return [...WORKERS[worker].deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
 }
 
-/** The build line of the site: the beacon id on the command line (never exported), one value for the build and the `--var`. */
+/**
+ * The build line of the site: the values the PRERENDERED pages need on the command line (never exported), from the same file as
+ * the `--var`s: the beacon id and, when the file sets it, PORTAL_ENABLED. One value, two places, for each.
+ */
 export function buildLine(worker, entries) {
   if (worker !== 'web') return WORKERS[worker].before;
-  const id = entries.find((e) => e.name === 'WEB_ANALYTICS_BEACON_ID')?.value;
-  return id ? `WEB_ANALYTICS_BEACON_ID=${id} ${WORKERS.web.before}` : WORKERS.web.before;
+  const prefix = ['WEB_ANALYTICS_BEACON_ID', 'PORTAL_ENABLED']
+    .map((name) => [name, entries.find((e) => e.name === name)?.value])
+    .filter(([, value]) => value)
+    .map(([name, value]) => `${name}=${value}`);
+  return [...prefix, WORKERS.web.before].join(' ');
 }
 
 // ------------------------------------------------------------------------------------------------ JSONC and resources
@@ -281,7 +300,24 @@ export function builtBeaconProblems(html, beaconId) {
   return [];
 }
 
-function checkBuilt(dir, beaconId) {
+/**
+ * Problems with a prerendered page of the build as the home page of a build whose portal switch was `enabled` (SAKEM-103): with it
+ * off (Phase A, and unset) the page has no "Masuk" link, no session address and no auth link at all; with it on, it has them.
+ * @param {string} html
+ * @param {boolean} enabled
+ * @returns {string[]}
+ */
+export function builtPortalProblems(html, enabled) {
+  const hasSession = html.includes('get-session');
+  const hasLink = /href="\/portal\/login"|data-auth-link/.test(html);
+  if (!enabled && (hasSession || hasLink)) return ['the prerendered home page offers the student portal ("Masuk" or its session call): the build was made with PORTAL_ENABLED=true, which Phase A must not have (rebuild with the line above)'];
+  if (enabled && !(hasSession && hasLink)) return ['the prerendered home page has no "Masuk" link or session call: the build was made without PORTAL_ENABLED=true, the --var alone reaches only the pages the Worker renders'];
+  return [];
+}
+
+function checkBuilt(dir, entries) {
+  const beaconId = entries.find((e) => e.name === 'WEB_ANALYTICS_BEACON_ID').value;
+  const portalOn = entries.find((e) => e.name === 'PORTAL_ENABLED')?.value === 'true';
   const notes = [];
   const problems = [];
   const configFile = path.join(dir, 'dist/server/wrangler.json');
@@ -295,9 +331,12 @@ function checkBuilt(dir, beaconId) {
   } catch (error) {
     problems.push(`dist/server/wrangler.json: not readable (${error.message})`);
   }
-  if (existsSync(homeFile)) problems.push(...builtBeaconProblems(readFileSync(homeFile, 'utf8'), beaconId).map((p) => `dist/client/index.html: ${p}`));
-  else problems.push('dist/client/index.html is missing: the build is incomplete');
-  if (problems.length === 0) notes.push('dist/ checked: the production build, the beacon id of the vars file is in the prerendered home page');
+  if (existsSync(homeFile)) {
+    const html = readFileSync(homeFile, 'utf8');
+    problems.push(...builtBeaconProblems(html, beaconId).map((p) => `dist/client/index.html: ${p}`));
+    problems.push(...builtPortalProblems(html, portalOn).map((p) => `dist/client/index.html: ${p}`));
+  } else problems.push('dist/client/index.html is missing: the build is incomplete');
+  if (problems.length === 0) notes.push(`dist/ checked: the production build, the beacon id of the vars file is in the prerendered home page, and the portal is ${portalOn ? 'ON' : 'OFF'} there as the file says`);
   return { notes, problems };
 }
 
@@ -334,7 +373,7 @@ function main(argv) {
   }
   let built = { notes: [], problems: [] };
   if (worker === 'web') {
-    built = checkBuilt(cwd, entries.find((e) => e.name === 'WEB_ANALYTICS_BEACON_ID').value);
+    built = checkBuilt(cwd, entries);
     if (built.problems.length > 0) {
       process.stderr.write(`${built.problems.map((p) => `${p}`).join('\n')}\nNothing was printed. Build with: ${buildLine(worker, entries)}\n`);
       return 1;
@@ -359,6 +398,9 @@ function main(argv) {
         ? [
             '#    the beacon id goes in the BUILD (prerendered pages: /, /donasi, /gabung-siswa, /program/<id>) and in the --var below (pages the Worker renders): one value, from the vars file.',
             '#    typed on the build line, never exported: a later staging build in the same shell would pick it up.',
+            ...(entries.some((e) => e.name === 'PORTAL_ENABLED')
+              ? ['#    the same goes for PORTAL_ENABLED (the prerendered pages take it from the shell of the BUILD, the --var reaches the rendered pages only): Phase A is `false`.']
+              : ['#    PORTAL_ENABLED is not in the file: the portal is OFF (the default) in the build and on the Worker, which is Phase A.']),
           ]
         : []),
       `# 3. read the command below, then run it. A value that is not passed is REMOVED from the Worker by the deploy; secrets are never removed.`,

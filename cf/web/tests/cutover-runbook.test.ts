@@ -205,7 +205,61 @@ describe('section 14 says what the code does', () => {
     for (const id of emitted) expect(documented.has(id), `${id} is printed by the checker but the table does not give it to the checker`).toBe(true);
     // the TA family exactly: every TA test the table gives to the checker is printed, and every printed TA test is in the table
     expect([...emitted].filter((id) => id.startsWith('TA-')).sort()).toEqual([...documented].filter((id) => id.startsWith('TA-')).sort());
-    expect(rows(smoke, /^TA-0[1-7]$/).length).toBe(7);
+    expect(rows(smoke, /^TA-0[1-6]$/).length).toBe(6);
+    expect(rows(smoke, /^TA-07$/).length).toBe(0);
+  });
+
+  it("section 7's rows that SAKEM-103 wrote (T-09, T-16, T-31, T-34, T-35, T-36) say what the checker expects, so the two documents do not contradict", () => {
+    const section7 = lines.slice(0, start).join('\n');
+    const row = (id: string) => rows(section7, new RegExp(`^${id}$`))[0]?.join(' | ') ?? '';
+    expect(row('T-36')).toContain(`strict-transport-security: ${EXPECT.hsts}`);
+    for (const path of ['`/`', '`/blog`', '`/daftar`', '`/no-such-page`', '`/robots.txt`']) expect(row('T-36'), path).toContain(path);
+    expect(row('T-01')).toContain(`strict-transport-security: ${EXPECT.hsts}`);
+    // T-31: the registration link and WordPress's own paths
+    expect(row('T-31')).toContain('**307** to the registration form, `cache-control: no-store`');
+    expect(row('T-31')).toContain('**308** to `/daftar`');
+    expect(row('T-31')).toContain('`/Daftar`: 307');
+    expect(row('T-31')).toContain('`/wp-login.php` 200');
+    expect(row('T-31')).toContain('`/wp-admin/` 302 to the sign-in');
+    expect(row('T-31')).toContain('`/login` 302 to `/wp-login.php`');
+    expect(row('T-31')).toContain('`/wp-json/` 200 JSON');
+    expect(row('T-31')).toContain(`none carries \`strict-transport-security: ${EXPECT.hsts}\` from the Worker`);
+    // T-34: the five look-alikes the checker asks
+    for (const lookAlike of ['/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']) expect(row('T-34'), lookAlike).toContain(`\`${lookAlike}\``);
+    expect(row('T-34')).toContain("the **site's 404 page**");
+    // T-35: the three greps and the empty slot
+    expect(row('T-35')).toContain('get-session');
+    expect(row('T-35')).toContain('href="/portal/login"');
+    expect(row('T-35')).toContain('justify-self-end');
+    // T-16 and T-17: Phase A
+    expect(row('T-16')).toContain('`/login` reaches **WordPress** (a 302 to `/wp-login.php`');
+    expect(row('T-16')).toContain("`/register` and `/forgot-password` are the site's **404 page**");
+    expect(row('T-17')).toContain("web Worker's **404 page**");
+    // T-09: a copied upload is one hop
+    expect(row('T-09')).toContain('**308** straight to `/blog/images/...`');
+    // and the checker's own source says the same numbers
+    const source = readFileSync(path.join(repoRoot, 'cf/scripts/check-production-site.mjs'), 'utf8');
+    expect(source).toContain("daftar.headers['cache-control'] !== 'no-store'");
+    expect(source).toContain('daftarSlash.status !== 308');
+    expect(source).toContain('daftarCaps.status !== 307');
+  });
+
+  it('PORTAL_ENABLED is in the variables table as optional and `false`, the build line of the commands carries it, and the production example sets it to false', () => {
+    expect(phaseA).toContain('WEB_ANALYTICS_BEACON_ID=<the id> PORTAL_ENABLED=false pnpm build:prod');
+    const row = rows(phaseA).find((cells) => cells[0] === '`PORTAL_ENABLED`')!;
+    expect(row[1]).toBe('site');
+    expect(row[2]).toBe('public var, optional');
+    expect(row[3]).toContain('exactly `false` in Phase A');
+    expect(readFileSync(path.join(repoRoot, 'cf/web/production.vars.example'), 'utf8')).toMatch(/^PORTAL_ENABLED=false$/m);
+    expect(readFileSync(path.join(repoRoot, 'cf/admin/production.vars.example'), 'utf8')).not.toContain('PORTAL_ENABLED');
+  });
+
+  it('F-17 and F-18 are written as resolved, and no document of the repository calls the production site Worker `sakem-web`', () => {
+    for (const id of ['F-17', 'F-18']) expect(rows(phaseA, new RegExp(`^${id}$`))[0]!.join(' '), id).toMatch(/^F-1[78] \*\*Resolved by SAKEM-103/);
+    for (const rel of ['docs/cloudflare/cutover-runbook.md', 'docs/cloudflare/portal-architecture.md', 'docs/cloudflare/account-setup.md', 'docs/cloudflare/staging-runbook.md', 'docs/cloudflare/README.md', 'docs/cloudflare/web-skeleton.md']) {
+      expect(readRoot(rel), rel).not.toMatch(/sakem-web([^-]|$)/);
+    }
+    expect(rows(phaseA, /^DA-7$/)[0]!.join(' ')).toContain('`sakola-kembara-web`');
   });
 
   it('the documented variables and dashboard rules never mention a staging value as a thing to set', () => {

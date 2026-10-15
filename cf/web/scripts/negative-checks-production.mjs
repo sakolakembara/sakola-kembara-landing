@@ -5,6 +5,7 @@
 //
 //   node scripts/negative-checks-production.mjs                       (pnpm test:negative:production)
 //   node scripts/negative-checks-production.mjs --only "checker:"     only the checks whose name contains the text
+//   node scripts/negative-checks-production.mjs --patterns-only       only prove that every pattern is found exactly once (no test is run)
 //
 // Run it on a clean tree. A pattern found other than exactly once is reported as FAIL and nothing is written, so a refactor
 // that moves the code cannot silently turn a check into a no-op; the replacement goes in as a function (a `$&` in it is text).
@@ -61,7 +62,6 @@ const checks = [
   { name: 'printer: it prints while CLOUDFLARE_ENV is set', file: PRINTER, from: '  if (process.env.CLOUDFLARE_ENV) {', to: '  if (false) {', tests: SCRIPTS },
   { name: 'printer: the admin command does not select the top level (a CLOUDFLARE_ENV left in the shell would decide)', file: PRINTER, from: "deploy: ['pnpm', 'exec', 'wrangler', 'deploy', '--env=\"\"'],", to: "deploy: ['pnpm', 'exec', 'wrangler', 'deploy'],", tests: SCRIPTS },
   { name: 'printer: a value is not quoted for the shell', file: PRINTER, from: "['--var', shellQuote(`${name}:${value}`)]", to: "['--var', `${name}:${value}`]", tests: SCRIPTS },
-  { name: 'printer: the site build line has no beacon id (the prerendered pages would have none)', file: PRINTER, from: "return id ? `WEB_ANALYTICS_BEACON_ID=${id} ${WORKERS.web.before}` : WORKERS.web.before;", to: 'return WORKERS.web.before;', tests: SCRIPTS },
   { name: 'printer: the production build line is the plain build (a CLOUDFLARE_ENV left in the shell would decide)', file: PRINTER, from: "    before: 'pnpm build:prod',", to: "    before: 'pnpm build',", tests: SCRIPTS },
   { name: 'printer: a dist/ that is not the production site is accepted', file: PRINTER, from: '  if (config.name !== WORKERS.web.name) problems.push(', to: '  if (false) problems.push(', tests: SCRIPTS },
   { name: 'printer: a dist/ bound to another admin Worker is accepted', file: PRINTER, from: '  if (services !== JSON.stringify(', to: '  if (false && services !== JSON.stringify(', tests: SCRIPTS },
@@ -71,6 +71,14 @@ const checks = [
   { name: 'printer: a dist/ built with another beacon id is accepted', file: PRINTER, from: '  if (!tags[0].includes(', to: '  if (false && !tags[0].includes(', tests: SCRIPTS },
   { name: 'printer: a dist/ with two beacon tags is accepted', file: PRINTER, from: '  if (tags.length > 1) return [', to: '  if (false) return [', tests: SCRIPTS },
   { name: 'printer: the site is deployed from anything but the built config', file: PRINTER, from: "deploy: ['pnpm', 'exec', 'wrangler', 'deploy', '-c', 'dist/server/wrangler.json'],", to: "deploy: ['pnpm', 'exec', 'wrangler', 'deploy'],", tests: SCRIPTS },
+
+  { name: 'printer: PORTAL_ENABLED=true is accepted in Phase A', file: PRINTER, from: '      if (value === \'true\') return \'refused in Phase A:', to: '      if (false) return \'refused in Phase A:', tests: SCRIPTS },
+  { name: 'printer: PORTAL_ENABLED may be any text', file: PRINTER, from: '      return value === \'false\' ? null : \'exactly true or false\';', to: '      return null;', tests: SCRIPTS },
+  { name: 'printer: the build line carries the beacon id only (PORTAL_ENABLED is left out of it)', file: PRINTER, from: '[\'WEB_ANALYTICS_BEACON_ID\', \'PORTAL_ENABLED\']\n', to: '[\'WEB_ANALYTICS_BEACON_ID\']\n', tests: SCRIPTS },
+  { name: 'printer: the build line carries the portal switch only (the beacon id is left out of it)', file: PRINTER, from: '[\'WEB_ANALYTICS_BEACON_ID\', \'PORTAL_ENABLED\']\n', to: '[\'PORTAL_ENABLED\']\n', tests: SCRIPTS },
+  { name: 'printer: a dist/ whose home page offers the portal is accepted', file: PRINTER, from: '  if (!enabled && (hasSession || hasLink)) return [', to: '  if (false) return [', tests: SCRIPTS },
+  { name: 'printer: a dist/ without the portal is accepted when the file says true', file: PRINTER, from: '  if (enabled && !(hasSession && hasLink)) return [', to: '  if (false) return [', tests: SCRIPTS },
+  { name: 'printer: the portal switch of dist/ is not compared with the file', file: PRINTER, from: '    problems.push(...builtPortalProblems(html, portalOn).map(', to: '    problems.push(...[].map(', tests: SCRIPTS },
 
   // ---------------------------------------------------------------- the dry run
   { name: 'dry run: the admin dry run selects no top level (a CLOUDFLARE_ENV would decide)', file: DRY_RUN, from: "args: ['deploy', '--dry-run', '--env=', '--outdir', 'dist/worker-production'],", to: "args: ['deploy', '--dry-run', '--outdir', 'dist/worker-production'],", tests: SCRIPTS },
@@ -111,10 +119,7 @@ const checks = [
   { name: 'checker: the sitemap may be short', file: CHECKER, from: '        if (locs.length < minSitemapUrls) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: an image on r2.dev is accepted in an article', file: CHECKER, from: '        const bad = images.filter((host) => /(^|\\.)(r2\\.dev|workers\\.dev)$/.test(host));', to: '        const bad = [];', tests: CHECK },
   { name: 'checker: www may redirect with any status', file: CHECKER, from: '    expectRedirect(www, [301], ', to: '    expectRedirect(www, [301, 302, 307, 308], ', tests: CHECK },
-  { name: 'checker: an unknown path that answers 200 is accepted', file: CHECKER, from: '        if (unknown.status !== 404) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: /daftar may be the old 308', file: CHECKER, from: '        if (daftar.status !== 307) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
-  { name: "checker: the new site's 404 passes for WordPress's login", file: CHECKER, from: '          if (wpLogin.status !== 200) problems.push(', to: '          if (false) problems.push(', tests: CHECK },
-  { name: 'checker: a Cloudflare challenge in front of WordPress is no longer a warning', file: CHECKER, from: "      if (!wpLogin.error && wpLogin.headers['cf-mitigated']) {", to: '      if (false) {', tests: CHECK },
   { name: 'checker: the admin config may name another files host', file: CHECKER, from: '          if (json.uploadsBaseUrl !== `https://${HOSTS.files}`) problems.push(', to: '          if (false) problems.push(', tests: CHECK },
   { name: "checker: Cloudflare's Turnstile test key is accepted on the admin host", file: CHECKER, from: '          else if (/^[1-9]x0{4,}/i.test(key)) problems.push(', to: '          else if (false) problems.push(', tests: CHECK },
   { name: 'checker: the admin may answer /api/me with something else than 401', file: CHECKER, from: '        if (me.status !== 401) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
@@ -122,7 +127,29 @@ const checks = [
   { name: 'checker: a bucket that lists its objects is accepted', file: CHECKER, from: '        if (/<ListBucketResult|<Contents>/i.test(root.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: an uploaded file without the immutable cache-control is accepted', file: CHECKER, from: "        if (file.headers['cache-control'] !== EXPECT.immutable) problems.push(", to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: the blog cache-control is not compared', file: CHECKER, from: "        if (blog.headers['cache-control'] !== EXPECT.blogCacheControl) problems.push(", to: '        if (false) problems.push(', tests: CHECK },
-  { name: 'checker: the paths left to SAKEM-103 can fail the run', file: CHECKER, from: "      if (answer.error) add('TA-07', 'INFO',", to: "      if (answer.error) add('TA-07', 'FAIL',", tests: CHECK },
+
+  { name: 'checker: an unknown path or a look-alike that answers 200 is accepted', file: CHECKER, from: '    if (answer.status !== 404) problems.push(`status ${answer.status}, expected 404`);', to: '    if (false) problems.push(`status ${answer.status}, expected 404`);', tests: CHECK },
+  { name: 'checker: a 404 without noindex is accepted', file: CHECKER, from: '    else if (!hasNoindex(answer.body)) problems.push(', to: '    else if (false) problems.push(', tests: CHECK },
+  { name: 'checker: WordPress\'s own 404 passes for the new site\'s', file: CHECKER, from: '    if (looksLikeWordPress(answer.body) || legacyHeaders(answer.headers, legacy).length > 0) problems.push(\'the old origin answered\');', to: '    if (false) problems.push(\'the old origin answered\');', tests: CHECK },
+  { name: 'checker: the new site\'s 404 passes for WordPress\'s login', file: CHECKER, from: '[\'/wp-login.php\', wpLogin, (a, problems) => {\n        if (a.status !== 200) problems.push(', to: '[\'/wp-login.php\', wpLogin, (a, problems) => {\n        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a JSON that is not WordPress\'s /wp-json/ is accepted', file: CHECKER, from: '        if (!/json/i.test(a.headers[\'content-type\'] ?? \'\')) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a WordPress path answered with the Worker\'s own HSTS is accepted', file: CHECKER, from: '        if (workerHsts(answer)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a Cloudflare challenge in front of WordPress is no longer a warning', file: CHECKER, from: '      if (!answer.error && answer.headers[\'cf-mitigated\']) {', to: '      if (false) {', tests: CHECK },
+  { name: 'checker: /login may be a 308 into the portal or anything else', file: CHECKER, from: '        if (![301, 302].includes(login.status)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /login answered with the Worker\'s HSTS is accepted', file: CHECKER, from: '        if (workerHsts(login)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: the look-alikes of WordPress paths are not asked', file: CHECKER, from: 'for (const lookAlike of [\'/wp-adminx\', \'/wp-login\', \'/wp-login.php.bak\', \'/login/x\', \'/Login\']) {', to: 'for (const lookAlike of []) {', tests: CHECK },
+  { name: 'checker: a copied upload may take two hops', file: CHECKER, from: '        expectRedirect(upload, [308], ', to: '        expectRedirect(upload, [308, 307, 301], ', tests: CHECK },
+  { name: 'checker: /daftar may be kept by a browser (no no-store)', file: CHECKER, from: '          if (daftar.headers[\'cache-control\'] !== \'no-store\') problems.push(', to: '          if (false) problems.push(', tests: CHECK },
+  { name: 'checker: the polite page of a missing shortlink is reported as a plain wrong status', file: CHECKER, from: '        if (daftar.status === 404 && /Formulir pendaftaran belum tersedia/.test(daftar.body)) {', to: '        if (false) {', tests: CHECK },
+  { name: 'checker: /daftar/ may be anything', file: CHECKER, from: '        if (daftarSlash.status !== 308 || locOf(daftarSlash) !== site(\'/daftar\')) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /Daftar may be anything', file: CHECKER, from: '        if (daftarCaps.status !== 307) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /gabung-siswa may lack the link to /daftar', file: CHECKER, from: '        if (!/href=["\']\\/daftar["\']/.test(gabung.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /gabung-siswa may link into /portal', file: CHECKER, from: '        if (/href=["\']\\/portal/.test(gabung.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: the session address on a page is accepted', file: CHECKER, from: '        if (/get-session/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: the Masuk link on a page is accepted', file: CHECKER, from: '        if (/href=["\']\\/portal\\/login["\']|data-auth-link/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a registration button in the navbar is accepted', file: CHECKER, from: '        if (/Daftar Sekarang|\\/daftar/.test(nav)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a filled navbar slot is accepted', file: CHECKER, from: '        if (/justify-self-end/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a wrong HSTS value on a Worker answer is accepted (T-36)', file: CHECKER, from: '        if (value !== EXPECT.hsts) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
 
   // ---------------------------------------------------------------- the zone-export check
   { name: 'zone: a Cloudflare range is missing from the list', file: ZONE, from: "'104.16.0.0/13', ", to: '', tests: ZONE_TESTS },
@@ -139,6 +166,7 @@ const checks = [
 
 // `--only <text>` runs the checks whose name contains <text>.
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : undefined;
+const patternsOnly = process.argv.includes('--patterns-only');
 
 let bad = 0;
 let ran = 0;
@@ -152,6 +180,8 @@ for (const check of checks) {
     bad++;
     continue;
   }
+  // `--patterns-only`: only prove that every pattern is found exactly once (a second, instant pass after moving code); no test is run.
+  if (patternsOnly) continue;
   try {
     writeFileSync(check.file, original.replace(check.from, () => check.to));
     const run = spawnSync('pnpm', ['exec', 'vitest', 'run', ...check.tests.split(' ')], { encoding: 'utf8' });
@@ -165,5 +195,5 @@ for (const check of checks) {
     writeFileSync(check.file, original);
   }
 }
-console.log(bad === 0 ? `\nAll ${ran} safeguards are covered by tests.` : `\n${bad} of ${ran} checks did not behave.`);
+console.log(bad === 0 ? (patternsOnly ? `\nAll ${ran} patterns are found exactly once.` : `\nAll ${ran} safeguards are covered by tests.`) : `\n${bad} of ${ran} checks did not behave.`);
 process.exit(bad === 0 ? 0 : 1);

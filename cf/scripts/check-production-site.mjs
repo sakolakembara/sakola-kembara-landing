@@ -11,9 +11,10 @@
 // file, no report (`--json` prints to standard output). Running it against the real site needs Dzul's approval; the flag
 // `--allow-network` is the reminder, as in the SEO parity tool.
 //
-// What it compares with: the Phase A expectations, listed below as constants and in the runbook (the smoke tests T-xx and the
-// new TA-xx). Every line of the output carries the ID of the runbook test it answers. Anything the plan leaves to a decision
-// that is not final (what `/login` and `/portal` do in Phase A, which depends on SAKEM-103) is printed as INFO and never fails.
+// What it compares with: the Phase A expectations, listed below as constants and in the runbook (the smoke tests T-xx, among
+// them T-16, T-17, T-31 and T-34 to T-36 that SAKEM-103 wrote, and the TA-xx of section 14). Every line of the output carries
+// the ID of the runbook test it answers. It is the GET half of those tests: what needs a browser or the admin (a sign-in, a
+// click counter, the real form behind /daftar) stays by hand.
 //
 //   0 every check passed (warnings may exist)   1 at least one check failed   2 refused or bad arguments   3 nothing answered
 import path from 'node:path';
@@ -196,6 +197,16 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
     const where = locOf(answer);
     if (where !== to) problems.push(`location ${where ?? 'missing'}, expected ${to}`);
   };
+  /** Problems of an answer that must be the NEW site's own 404 (SAKEM-103: /register, /portal*, a look-alike of a WordPress path), never WordPress's. */
+  const siteNotFound = (answer) => {
+    const problems = [];
+    if (!ok(answer, problems)) return problems;
+    if (answer.status !== 404) problems.push(`status ${answer.status}, expected 404`);
+    else if (!hasNoindex(answer.body)) problems.push('a 404 without <meta name="robots" content="noindex">');
+    if (answer.status === 404 && !/<html[^>]*\blang=["']id-ID["']/i.test(answer.body)) problems.push("not the new site's 404 page (no lang=\"id-ID\"): is it WordPress's?");
+    if (looksLikeWordPress(answer.body) || legacyHeaders(answer.headers, legacy).length > 0) problems.push('the old origin answered');
+    return problems;
+  };
   const site = (p) => `https://${HOSTS.site}${p}`;
   const admin = (p) => `https://${HOSTS.admin}${p}`;
   const files = (p) => `https://${HOSTS.files}${p}`;
@@ -257,6 +268,7 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
     const sitemap = await client.get(site('/sitemap.xml'));
     examine(sitemap);
     let articlePaths = [];
+    let articleBody = '';
     {
       const problems = [];
       if (ok(sitemap, problems)) {
@@ -296,9 +308,28 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       else add('C-02', 'WARN', `/blog twice: x-blog-source ${first} then ${second}${copy}: the second answer was not from a copy (another data center, or the cache does not work: look at cf-ray and run C-01 to C-03 by hand)`);
     }
 
+    // ---- the portal switch agrees on both kinds of page, and the navbar has no "Masuk" and no "Daftar Sekarang" (T-35, Phase A)
+    {
+      const problems = [];
+      for (const [label, answer] of [['/', home], ['/blog', blog]]) {
+        if (answer.error) {
+          problems.push(`${label}: no answer (${answer.error})`);
+          continue;
+        }
+        const nav = answer.body.slice(Math.max(0, answer.body.indexOf('<nav')), Math.max(0, answer.body.indexOf('</nav>')));
+        if (/get-session/.test(answer.body)) problems.push(`${label} calls the portal's session address`);
+        if (/href=["']\/portal\/login["']|data-auth-link/.test(answer.body)) problems.push(`${label} has the "Masuk" link`);
+        if (/>\s*Masuk\s*</.test(nav)) problems.push(`${label}: the navbar says "Masuk"`);
+        if (/Daftar Sekarang|\/daftar/.test(nav)) problems.push(`${label}: the navbar has a registration button`);
+        if (/justify-self-end/.test(answer.body)) problems.push(`${label}: the navbar slot of the button is not empty`);
+      }
+      verdict('T-35', 'the portal is OFF on a prerendered page (/) and a rendered one (/blog): no "Masuk", no session call, no button in the navbar', problems);
+    }
+
     if (found.slug) {
       const article = await client.get(site(`/blog/${found.slug}`));
       examine(article);
+      articleBody = article.body ?? '';
       const problems = [];
       if (ok(article, problems)) {
         if (article.status !== 200) problems.push(`status ${article.status}`);
@@ -321,23 +352,24 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       expectRedirect(old, [308], site(`/blog/${found.slug}`), problems8);
       expectRedirect(archive, [308], site('/blog'), problems8);
       verdict('T-08', 'old WordPress URLs redirect: /cerita/<slug>/ and /education/ (308 to the new address)', problems8);
+
+      // T-09, first half: an upload an article uses is ONE hop to its copy (SAKEM-103: the other uploads are WordPress's)
+      const copied = articleBody.match(/\/blog\/images\/([^"'\s?#@%]+\.(?:jpe?g|png|webp|gif))/i)?.[1];
+      if (copied) {
+        const upload = await client.get(site(`/wp-content/uploads/${copied}`));
+        examine(upload);
+        const problems9 = [];
+        expectRedirect(upload, [308], site(`/blog/images/${copied}`), problems9);
+        verdict('T-09', '/wp-content/uploads/<an image of an article> is one 308 straight to /blog/images/<it>', problems9);
+      } else add('T-09', 'WARN', 'skipped: no migrated image (/blog/images/...) found in the first article');
     } else {
       add('T-07', 'WARN', 'skipped: no article URL could be read from the sitemap');
     }
 
-    // Not examined for the old stack's headers: an unknown path is the one that may reach the origin by SAKEM-103's design.
+    // An unknown path is the new site's own 404 and never WordPress's (SAKEM-103: only WordPress's own paths are forwarded; T-34).
     const unknown = await client.get(site('/no-such-page-check-1f3a'));
-    {
-      const problems = [];
-      if (ok(unknown, problems)) {
-        if (unknown.status !== 404) problems.push(`status ${unknown.status}, expected 404`);
-        else if (!hasNoindex(unknown.body)) problems.push('a 404 without <meta name="robots" content="noindex">');
-      }
-      const reachedOrigin = !unknown.error && (looksLikeWordPress(unknown.body) || legacyHeaders(unknown.headers, legacy).length > 0);
-      if (problems.length === 0) add('T-10', 'PASS', "an unknown path is the new site's 404 with noindex");
-      else if (reachedOrigin && unknown.status === 404) add('T-10', 'WARN', "an unknown path was answered by the old origin's 404: whether that is intended is SAKEM-103's call (docs/cloudflare/cutover-runbook.md, TA-04)");
-      else add('T-10', 'FAIL', `an unknown path: ${problems.join('; ')}`);
-    }
+    examine(unknown);
+    verdict('T-10', "an unknown path is the new site's 404 with noindex", siteNotFound(unknown));
 
     const apiPublic = await client.get(site('/api/public/blog'));
     const apiOther = await client.get(site('/api/check-x'));
@@ -370,6 +402,7 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
     }
 
     // ---- static assets found in the home page: immutable, no cookie, the same security headers (T-20, T-21), cache status noted
+    let imageAnswer = null;
     for (const [label, assetPath] of [['css', found.css], ['image', found.img]]) {
       if (!assetPath) {
         add('T-20', 'WARN', `skipped: no ${label} asset found in the home page`);
@@ -377,6 +410,7 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       }
       const first = await client.get(site(assetPath));
       const second = await client.get(site(assetPath));
+      if (label === 'image') imageAnswer = first;
       examine(first);
       examine(second);
       const problems = [];
@@ -391,59 +425,119 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       if (!first.error && !second.error) add('C-09', 'INFO', `${assetPath.split('/').slice(0, 2).join('/')}/... cf-cache-status ${first.headers['cf-cache-status'] ?? 'none'} then ${second.headers['cf-cache-status'] ?? 'none'}`);
     }
 
-    // ---- sign-up and WordPress (TA-02, TA-03)
+    // ---- the registration link (TA-02, the GET half of T-31): /daftar is an admin shortlink, every "Daftar Sekarang" goes there
     const daftar = await client.get(site('/daftar'));
-    examine(daftar);
+    const daftarSlash = await client.get(site('/daftar/'));
+    const daftarCaps = await client.get(site('/Daftar'));
+    const gabung = await client.get(site('/gabung-siswa'));
+    for (const answer of [daftar, daftarSlash, daftarCaps, gabung]) examine(answer);
     {
       const problems = [];
       let formHost = null;
       if (ok(daftar, problems)) {
-        if (daftar.status !== 307) problems.push(`status ${daftar.status}, expected 307 (a shortlink; a 308 is the old static rule to /gabung-siswa)`);
-        const where = locOf(daftar);
-        if (!where || !where.startsWith('https://')) problems.push(`location ${where ?? 'missing'}, expected an https URL`);
-        else if (/(^|\.)(workers\.dev|r2\.dev)$/.test(new URL(where).hostname)) problems.push('location is on workers.dev or r2.dev');
-        else if (daftarTarget && where !== daftarTarget) problems.push('location is not the registration form named with --daftar-target');
-        else formHost = new URL(where).host;
+        if (daftar.status === 404 && /Formulir pendaftaran belum tersedia/.test(daftar.body)) {
+          problems.push('the shortlink `daftar` does not exist or is switched off: visitors get the polite page, not the form (P-25)');
+        } else {
+          if (daftar.status !== 307) problems.push(`status ${daftar.status}, expected 307 (the admin shortlink to the registration form)`);
+          if (daftar.headers['cache-control'] !== 'no-store') problems.push(`cache-control is "${daftar.headers['cache-control'] ?? 'missing'}", expected no-store`);
+          const where = locOf(daftar);
+          if (!where || !where.startsWith('https://')) problems.push(`location ${where ?? 'missing'}, expected an https URL`);
+          else if (/(^|\.)(workers\.dev|r2\.dev)$/.test(new URL(where).hostname)) problems.push('location is on workers.dev or r2.dev');
+          else if (daftarTarget && where !== daftarTarget) problems.push('location is not the registration form named with --daftar-target');
+          else formHost = new URL(where).host;
+        }
       }
-      verdict('TA-02', '/daftar is a 307 to the registration form', problems);
+      if (!daftarSlash.error) {
+        if (daftarSlash.status !== 308 || locOf(daftarSlash) !== site('/daftar')) problems.push(`/daftar/ is ${daftarSlash.status}${locOf(daftarSlash) ? ` to ${locOf(daftarSlash)}` : ''}, expected a 308 to /daftar`);
+      } else problems.push(`/daftar/: no answer (${daftarSlash.error})`);
+      if (!daftarCaps.error) {
+        if (daftarCaps.status !== 307) problems.push(`/Daftar is ${daftarCaps.status}, expected 307 (the name is not case sensitive)`);
+      } else problems.push(`/Daftar: no answer (${daftarCaps.error})`);
+      if (ok(gabung, problems)) {
+        if (!/href=["']\/daftar["']/.test(gabung.body)) problems.push('/gabung-siswa has no "Daftar Sekarang" link to /daftar');
+        if (/href=["']\/portal/.test(gabung.body)) problems.push('/gabung-siswa still links into /portal');
+      }
+      verdict('TA-02', '/daftar is a 307 (no-store) to the registration form, /daftar/ a 308, /Daftar a 307, and /gabung-siswa links to /daftar and not to /portal', problems);
       if (formHost) add('TA-02', 'INFO', `/daftar goes to ${formHost}: is that the form WordPress uses today?`);
     }
 
+    // ---- WordPress behind the route (TA-03, the GET half of T-31): WordPress's own paths answer as WordPress does, and not from the Worker
+    const workerHsts = (answer) => answer.headers['strict-transport-security'] === EXPECT.hsts;
     const wpLogin = await client.get(site('/wp-login.php'));
-    const wpAdmin = await client.get(site('/wp-admin'));
-    {
-      const problems = [];
-      if (!wpLogin.error && wpLogin.headers['cf-mitigated']) {
-        // A WAF rule of the zone (a managed challenge, SA-23) answers a script before WordPress does: not a failure of the route.
-        add('TA-03', 'WARN', `/wp-login.php was answered by a Cloudflare ${wpLogin.headers['cf-mitigated']} (a zone rule), not by WordPress: open it by hand in a browser`);
-      } else {
-        if (ok(wpLogin, problems)) {
-          if (wpLogin.status !== 200) problems.push(`status ${wpLogin.status}`);
-          if (!looksLikeWordPress(wpLogin.body) && !/wordpress_test_cookie/i.test(wpLogin.headers['set-cookie'] ?? '')) problems.push("the answer is not WordPress's login page (the new site's 404? a customised login URL?)");
-        }
-        verdict('TA-03', '/wp-login.php still reaches WordPress (its login form)', problems);
-      }
-    }
-    if (!wpAdmin.error && wpAdmin.headers['cf-mitigated']) {
-      add('TA-03', 'WARN', `/wp-admin was answered by a Cloudflare ${wpAdmin.headers['cf-mitigated']} (a zone rule), not by WordPress: open it by hand in a browser`);
-    } else {
-      const problems = [];
-      let bare = false;
-      if (ok(wpAdmin, problems)) {
-        const where = locOf(wpAdmin);
-        if (![301, 302].includes(wpAdmin.status)) problems.push(`status ${wpAdmin.status}, expected WordPress's 301 or 302`);
+    const wpAdmin = await client.get(site('/wp-admin/'));
+    const wpJson = await client.get(site('/wp-json/'));
+    const login = await client.get(site('/login'));
+    for (const [path, answer, verify] of [
+      ['/wp-login.php', wpLogin, (a, problems) => {
+        if (a.status !== 200) problems.push(`status ${a.status}`);
+        if (!looksLikeWordPress(a.body) && !/wordpress_test_cookie/i.test(a.headers['set-cookie'] ?? '')) problems.push("the answer is not WordPress's login page (the new site's 404? a customised login URL?)");
+      }],
+      ['/wp-admin/', wpAdmin, (a, problems) => {
+        const where = locOf(a);
+        if (![301, 302].includes(a.status)) problems.push(`status ${a.status}, expected WordPress's 302 to its sign-in`);
         else if (!where || new URL(where).host !== HOSTS.site || !/^\/(wp-admin\/|wp-login\.php)/.test(new URL(where).pathname)) problems.push(`location ${where ?? 'missing'}, expected /wp-admin/ or /wp-login.php on ${HOSTS.site}`);
-        else bare = legacyHeaders(wpAdmin.headers, legacy).length === 0;
+      }],
+      ['/wp-json/', wpJson, (a, problems) => {
+        if (a.status !== 200) problems.push(`status ${a.status}`);
+        if (!/json/i.test(a.headers['content-type'] ?? '')) problems.push(`content-type ${a.headers['content-type'] ?? 'missing'}, expected JSON`);
+      }],
+    ]) {
+      if (!answer.error && answer.headers['cf-mitigated']) {
+        // A WAF rule of the zone (a managed challenge, SA-23) answers a script before WordPress does: not a failure of the route.
+        add('TA-03', 'WARN', `${path} was answered by a Cloudflare ${answer.headers['cf-mitigated']} (a zone rule), not by WordPress: open it by hand in a browser`);
+        continue;
       }
-      verdict('TA-03', '/wp-admin still reaches WordPress (a redirect to /wp-admin/ or its login)', problems);
-      if (bare) add('TA-03', 'INFO', '/wp-admin answered with a redirect that carries no WordPress header (Cloudflare may strip some): the location above is what says it is WordPress');
+      const problems = [];
+      if (ok(answer, problems)) {
+        verify(answer, problems);
+        if (workerHsts(answer)) problems.push(`it carries the Worker's strict-transport-security (${EXPECT.hsts}): the Worker answered, not WordPress`);
+      }
+      verdict('TA-03', `${path} reaches WordPress and not the Worker`, problems);
     }
 
-    // ---- what the plan leaves to SAKEM-103: observed, never failed (TA-07)
-    for (const p of ['/login', '/register', '/portal', '/portal/status']) {
-      const answer = await client.get(site(p));
-      if (answer.error) add('TA-07', 'INFO', `${p}: no answer (${answer.error})`);
-      else add('TA-07', 'INFO', `${p}: ${answer.status}${locOf(answer) ? ` to ${locOf(answer)}` : ''}${legacyHeaders(answer.headers, legacy).length > 0 ? ' (answered by the old origin)' : ''}`);
+    // ---- the sign-in and the portal in Phase A (T-16, T-17): /login is WordPress's, the rest is the new site's 404
+    {
+      const problems = [];
+      if (ok(login, problems)) {
+        const where = locOf(login);
+        if (![301, 302].includes(login.status)) problems.push(`status ${login.status}, expected WordPress's 302 to /wp-login.php (a 308 into /portal is the old rule)`);
+        else if (!where || new URL(where).host !== HOSTS.site || new URL(where).pathname !== '/wp-login.php') problems.push(`location ${where ?? 'missing'}, expected /wp-login.php on ${HOSTS.site}`);
+        if (workerHsts(login)) problems.push("it carries the Worker's strict-transport-security: the Worker answered, not WordPress");
+      }
+      verdict('T-16', '/login is WordPress: a 302 to /wp-login.php (not a 308 into /portal)', problems);
+    }
+    const register = await client.get(site('/register'));
+    const forgot = await client.get(site('/forgot-password'));
+    const portal = await client.get(site('/portal'));
+    const portalStatus = await client.get(site('/portal/status'));
+    for (const answer of [register, forgot, portal, portalStatus]) examine(answer);
+    verdict('T-16', "/register and /forgot-password are the new site's 404 page (no redirect)", [...siteNotFound(register).map((p) => `/register: ${p}`), ...siteNotFound(forgot).map((p) => `/forgot-password: ${p}`)]);
+    verdict('T-17', "/portal and /portal/status are the new site's 404 page (no portal Worker is attached in Phase A)", [...siteNotFound(portal).map((p) => `/portal: ${p}`), ...siteNotFound(portalStatus).map((p) => `/portal/status: ${p}`)]);
+
+    // ---- a look-alike of a WordPress path is NOT WordPress (T-34)
+    {
+      const problems = [];
+      for (const lookAlike of ['/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']) {
+        const answer = await client.get(site(lookAlike));
+        examine(answer);
+        problems.push(...siteNotFound(answer).map((p) => `${lookAlike}: ${p}`));
+      }
+      verdict('T-34', "a look-alike of a WordPress path (/wp-adminx, /wp-login, /wp-login.php.bak, /login/x, /Login) is the new site's 404, not WordPress's", problems);
+    }
+
+    // ---- HSTS is the staged value on every answer of the Worker (T-36)
+    {
+      const problems = [];
+      const worker = [['/', home], ['/blog', blog], ['/daftar', daftar], ['/no-such-page-check-1f3a', unknown], ['/robots.txt', robots], [found.img ?? '(image)', imageAnswer]];
+      for (const [path, answer] of worker) {
+        if (!answer || answer.error) {
+          problems.push(`${path}: no answer`);
+          continue;
+        }
+        const value = answer.headers['strict-transport-security'];
+        if (value !== EXPECT.hsts) problems.push(`${path}: ${value ? `"${value}"` : 'no strict-transport-security'}`);
+      }
+      verdict('T-36', `HSTS is exactly ${EXPECT.hsts} on /, /blog, /daftar, a 404, robots.txt and an image (no includeSubDomains, no preload)`, problems);
     }
   }
 
@@ -583,7 +677,7 @@ export function render(results, { requests, seconds }) {
 // ------------------------------------------------------------------------------------------------ the program
 
 const HELP = `usage:
-  node ../scripts/check-production-site.mjs --allow-network [options]    ask the four hosts (about 40 GET requests, about a minute)
+  node ../scripts/check-production-site.mjs --allow-network [options]    ask the four hosts (about 47 GET requests, about a minute)
   node ../scripts/check-production-site.mjs --plan                      print what would be asked; nothing is sent
 
 options:
@@ -658,7 +752,7 @@ export function parseCli(argv) {
 
 /** The URLs the plan names (the discovered ones are added at run time and are on these hosts too). */
 export const PLAN = [
-  ['site', ['/', 'http://sakolakembara.org/', '/robots.txt', '/sitemap.xml', '/blog (twice)', '/blog/<first article of the sitemap>', '/cerita/<that slug>/', '/education/', '/no-such-page-check-1f3a', '/api/public/blog', '/api/check-x', '/admin/blog?x=1', '/donasi/', 'the first /_astro/*.css and /_img/*.webp of the home page (twice each)', '/daftar', '/wp-login.php', '/wp-admin', '/login', '/register', '/portal', '/portal/status']],
+  ['site', ['/', 'http://sakolakembara.org/', '/robots.txt', '/sitemap.xml', '/blog (twice)', '/blog/<first article of the sitemap>', '/cerita/<that slug>/', '/education/', '/no-such-page-check-1f3a', '/api/public/blog', '/api/check-x', '/admin/blog?x=1', '/donasi/', 'the first /_astro/*.css and /_img/*.webp of the home page (twice each)', '/wp-content/uploads/<the first migrated image of that article>', '/daftar', '/daftar/', '/Daftar', '/gabung-siswa', '/wp-login.php', '/wp-admin/', '/wp-json/', '/login', '/register', '/forgot-password', '/portal', '/portal/status', '/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']],
   ['www', ['/blog?x=1']],
   ['admin', ['/', '/api/config', '/api/me', '/api/public/team', '/uploads/check-x', '/api/dev/mailbox']],
   ['files', ['/', '/uploads/check-x-missing.png', 'one uploaded file referenced by /tim or the first article (twice), when there is one']],
@@ -692,7 +786,7 @@ export async function main(argv, io = {}) {
     return 0;
   }
   if (!options.allowNetwork) {
-    err('refused: this sends about 40 GET requests to the real site. Add --allow-network once Dzul has approved the run (or --plan to see them). Nothing was contacted.\n');
+    err('refused: this sends about 47 GET requests to the real site. Add --allow-network once Dzul has approved the run (or --plan to see them). Nothing was contacted.\n');
     return 2;
   }
   const started = Date.now();

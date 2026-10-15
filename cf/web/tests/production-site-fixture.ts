@@ -1,11 +1,12 @@
 // A stand-in for the four hosts of the plan, for tests/production-check.test.ts: recorded, invented responses.
 //
-// The SHAPES come from the built Worker answering on loopback on 2026-10-15 (the headers `_headers` and the middleware add, the
-// 308 and 307 answers, `x-blog-source`, the 404 page with its noindex, the JSON 404 of /api, the sitemap with 96 URLs, the
-// immutable assets), with two differences made on purpose: the hostnames are the plan's, and HSTS is the Phase A value
-// (`max-age=300`), which the code does not send yet. The answers of WordPress, the admin and the files host are invented in
-// the same style (WordPress's login form and its 302, the admin's `/api/config` and 401, R2's 404). Nothing here is a real
-// key, address or answer of the live site.
+// The SHAPES come from the built Worker answering on loopback on 2026-10-15, recorded again after SAKEM-103 was merged (the
+// headers `_headers` and the middleware add, HSTS `max-age=300` on the Worker's own answers and none on the forwarded WordPress
+// ones, the `/daftar` shortlink's 307 with no-store, the 308 that folds its slash, the 404 page of /register and /portal, the
+// forwarded WordPress paths, the navbar with no "Masuk", `x-blog-source`, the JSON 404 of /api, the sitemap with 96 URLs, the
+// immutable assets), with one difference made on purpose: the hostnames are the plan's. The answers of WordPress itself, the
+// admin and the files host are invented in the same style (WordPress's login form and its 302, the admin's `/api/config` and
+// 401, R2's 404). Nothing here is a real key, address or answer of the live site.
 
 export interface Recorded {
   status: number;
@@ -29,8 +30,11 @@ export const SECURITY: Record<string, string> = {
 };
 const html = { 'content-type': 'text/html; charset=utf-8' };
 
+// The navbar of Phase A: the logo and the menu links, twice (bar and menu), and nothing in the slot of "Masuk".
+const menu = ['/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'].map((href) => `<a href="${href}">${href.slice(1)}</a>`).join('');
+const navbar = `<nav><a href="/">Sakola Kembara</a>${menu}<button id="nav-toggle">Menu</button>${menu}</nav>`;
 const page = (extra = '', head = '') =>
-  `<!doctype html><html lang="id-ID" class="scroll-smooth"><head><meta charset="utf-8">${head}</head><body><main>${extra}</main></body></html>`;
+  `<!doctype html><html lang="id-ID" class="scroll-smooth"><head><meta charset="utf-8">${head}</head><body>${navbar}<main>${extra}</main></body></html>`;
 
 const homeBody = page(
   '<img src="/_img/27f45874d486-480.webp" width="480" height="320" alt="">',
@@ -85,19 +89,25 @@ export function healthySite(): Map<string, Entry> {
   set('https://sakolakembara.org/_astro/Base.CYEQ0bMh.css', (nth) => ({ status: 200, headers: { ...SECURITY, 'content-type': 'text/css; charset=utf-8', 'cache-control': immutable, 'cf-cache-status': nth === 1 ? 'MISS' : 'HIT' }, body: 'body{}' }));
   set('https://sakolakembara.org/_img/27f45874d486-480.webp', (nth) => ({ status: 200, headers: { ...SECURITY, 'content-type': 'image/webp', 'cache-control': immutable, 'cf-cache-status': nth === 1 ? 'MISS' : 'HIT' } }));
   set('https://sakolakembara.org/tim', { status: 200, headers: { ...SECURITY, 'content-type': 'text/html' }, body: page(`<img src="${FILE_URL}">`) });
-  // the sign-up shortlink and the two WordPress paths that must still reach WordPress
-  set('https://sakolakembara.org/daftar', redirect(307, FORM_URL));
+  // the registration link: /daftar is an admin shortlink (307, never kept), its slash is folded, every "Daftar Sekarang" goes there
+  set('https://sakolakembara.org/daftar', redirect(307, FORM_URL, { 'cache-control': 'no-store' }));
+  set('https://sakolakembara.org/daftar/', redirect(308, '/daftar'));
+  set('https://sakolakembara.org/Daftar', redirect(307, FORM_URL, { 'cache-control': 'no-store' }));
+  set('https://sakolakembara.org/gabung-siswa', { status: 200, headers: { ...SECURITY, ...html, 'cache-control': 'public, max-age=0, must-revalidate' }, body: page('<a href="/daftar">Daftar Sekarang</a><a href="/gabung-siswa/docs">Pusat Dokumen</a>') });
+  // WordPress's own paths, forwarded to the origin behind the route: no HSTS from the Worker on any of them
   set('https://sakolakembara.org/wp-login.php', {
     status: 200,
     headers: { 'content-type': 'text/html; charset=UTF-8', server: 'cloudflare', 'x-frame-options': 'SAMEORIGIN', 'cache-control': 'no-cache, must-revalidate, max-age=0', 'cf-ray': '8f00000000000001-CGK' },
     body: wordpressLogin,
   });
-  set('https://sakolakembara.org/wp-admin', { status: 302, headers: { server: 'cloudflare', 'x-redirect-by': 'WordPress', location: 'https://sakolakembara.org/wp-login.php?redirect_to=https%3A%2F%2Fsakolakembara.org%2Fwp-admin%2F&reauth=1' } });
-  // what the plan leaves to SAKEM-103: only observed
-  set('https://sakolakembara.org/login', redirect(308, '/portal/login'));
-  set('https://sakolakembara.org/register', redirect(308, '/portal/register'));
-  set('https://sakolakembara.org/portal', { status: 404, headers: { ...SECURITY, 'content-type': 'text/html' }, body: notFoundBody });
-  set('https://sakolakembara.org/portal/status', { status: 404, headers: { ...SECURITY, 'content-type': 'text/html' }, body: notFoundBody });
+  set('https://sakolakembara.org/wp-admin/', { status: 302, headers: { server: 'cloudflare', 'x-redirect-by': 'WordPress', location: 'https://sakolakembara.org/wp-login.php?redirect_to=https%3A%2F%2Fsakolakembara.org%2Fwp-admin%2F&reauth=1' } });
+  set('https://sakolakembara.org/wp-json/', { status: 200, headers: { server: 'cloudflare', 'content-type': 'application/json; charset=UTF-8', link: '<https://sakolakembara.org/wp-json/>; rel="https://api.w.org/"' }, body: '{"name":"Sakola Kembara","routes":{}}' });
+  set('https://sakolakembara.org/login', { status: 302, headers: { server: 'cloudflare', 'x-redirect-by': 'WordPress', location: 'https://sakolakembara.org/wp-login.php' } });
+  // Phase A: the site's own 404 for what only the portal would answer, and for a look-alike of a WordPress path (never WordPress's)
+  const siteNotFound: Recorded = { status: 404, headers: { ...SECURITY, 'content-type': 'text/html' }, body: notFoundBody };
+  for (const path of ['/register', '/forgot-password', '/portal', '/portal/status', '/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']) set(`https://sakolakembara.org${path}`, siteNotFound);
+  // an upload an article uses: one hop to its copy
+  set('https://sakolakembara.org/wp-content/uploads/2026/08/photo-1.jpeg', redirect(308, '/blog/images/2026/08/photo-1.jpeg'));
 
   // ---- www
   set('https://www.sakolakembara.org/blog?x=1', { status: 301, headers: { location: 'https://sakolakembara.org/blog?x=1', server: 'cloudflare' } });

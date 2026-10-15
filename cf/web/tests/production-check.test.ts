@@ -75,7 +75,7 @@ describe('a healthy Phase A site', () => {
     expect(results.filter((r) => r.level === 'WARN')).toEqual([]);
     expect(log.unexpected).toEqual([]);
     const ids = new Set(results.map((r) => r.id));
-    for (const id of ['T-01', 'TA-01', 'T-02', 'T-03', 'T-04', 'T-05', 'T-06', 'C-02', 'T-07', 'T-08', 'T-10', 'T-14', 'T-15', 'T-18', 'T-19', 'T-20', 'TA-02', 'TA-03', 'TA-04', 'TA-05', 'TA-06', 'TA-07']) {
+    for (const id of ['T-01', 'TA-01', 'T-02', 'T-03', 'T-04', 'T-05', 'T-06', 'C-02', 'T-07', 'T-08', 'T-10', 'T-14', 'T-15', 'T-18', 'T-19', 'T-20', 'T-09', 'T-16', 'T-17', 'T-34', 'T-35', 'T-36', 'TA-02', 'TA-03', 'TA-04', 'TA-05', 'TA-06']) {
       expect(ids.has(id), id).toBe(true);
     }
     expect(summarize(results).fail).toBe(0);
@@ -83,7 +83,7 @@ describe('a healthy Phase A site', () => {
 
   it('asks a known number of URLs (a new request is a decision) and none twice by accident', async () => {
     const { log, counts } = await run();
-    expect(log.calls.length).toBe(36);
+    expect(log.calls.length).toBe(47);
     expect([...counts.entries()].filter(([, n]) => n > 1).map(([url]) => url).sort()).toEqual([
       'https://files.sakolakembara.org/uploads/blog/2026/10/cover-1a2b3c.webp',
       'https://sakolakembara.org/_astro/Base.CYEQ0bMh.css',
@@ -94,11 +94,11 @@ describe('a healthy Phase A site', () => {
 
   it('names the runbook test of every line, in a short report with a summary', async () => {
     const { results } = await run();
-    const text = render(results, { requests: 36, seconds: 38 });
+    const text = render(results, { requests: 47, seconds: 50 });
     expect(text.split('\n')[0]).toContain('Phase A');
     expect(text).toMatch(/^PASS T-01 /m);
     expect(text).toMatch(/^PASS TA-04 /m);
-    expect(text).toMatch(/-- \d+ passed, 0 failed, 0 warnings, \d+ notes; 36 requests in 38 s$/);
+    expect(text).toMatch(/-- \d+ passed, 0 failed, 0 warnings, \d+ notes; 47 requests in 50 s$/);
     expect(text.split('\n').length).toBeLessThan(60);
   });
 
@@ -245,7 +245,7 @@ describe('what each failure looks like', () => {
     expect(one(archive.results, 'T-08', 'FAIL').length).toBe(1);
   });
 
-  it('an unknown path: a 200 or a 500 fails; a 404 without noindex fails; the old origin\'s own 404 is a warning that says whose call it is (T-10)', async () => {
+  it("an unknown path: a 200 or a 500 fails; a 404 without noindex fails; the old origin's own 404 fails too, SAKEM-103 forwards only WordPress's own paths (T-10)", async () => {
     const url = `${SITE}/no-such-page-check-1f3a`;
     for (const over of [{ status: 200 }, { status: 500 }] as Recorded[]) {
       const { results } = await run((site) => patch(site, url, over));
@@ -254,8 +254,9 @@ describe('what each failure looks like', () => {
     const noindex = await run((site) => patch(site, url, { body: '<html lang="id-ID"><body>404</body></html>' }));
     expect(one(noindex.results, 'T-10', 'FAIL')[0]!.text).toContain('noindex');
     const origin = await run((site) => patch(site, url, { body: '<html lang="en-US"><body class="error404"><link href="/wp-content/themes/x/style.css"></body></html>', headers: { 'x-powered-by': 'PHP/8.2' } }));
-    expect(failures(origin.results)).toEqual([]);
-    expect(one(origin.results, 'T-10', 'WARN')[0]!.text).toContain('SAKEM-103');
+    const text = one(origin.results, 'T-10', 'FAIL')[0]!.text;
+    expect(text).toContain('the old origin answered');
+    expect(text).toContain('not the new site\'s 404 page');
   });
 
   it('/api: a JSON that is not the 404, a cached one, an HTML one (T-14, T-18)', async () => {
@@ -296,26 +297,60 @@ describe('what each failure looks like', () => {
     expect(one(other.results, 'TA-02', 'FAIL')[0]!.text).toContain('--daftar-target');
   });
 
+  it('/daftar before the shortlink exists is the polite 404 page: the failure says P-25, not "wrong status" (TA-02)', async () => {
+    const polite: Recorded = { status: 404, headers: { ...SECURITY, 'content-type': 'text/html', 'cache-control': 'no-store' }, body: '<html lang="id-ID"><body><h1>Formulir pendaftaran belum tersedia</h1></body></html>' };
+    const { results } = await run((site) => site.set(`${SITE}/daftar`, polite));
+    expect(one(results, 'TA-02', 'FAIL')[0]!.text).toContain('does not exist or is switched off');
+    expect(one(results, 'TA-02', 'FAIL')[0]!.text).toContain('P-25');
+  });
+
+  it('/daftar must never be kept (no-store), its slash is a 308 to /daftar, its capital form a 307, and /gabung-siswa links to it and not into /portal (TA-02)', async () => {
+    let r = await run((site) => patch(site, `${SITE}/daftar`, { drop: ['cache-control'] }));
+    expect(one(r.results, 'TA-02', 'FAIL')[0]!.text).toContain('expected no-store');
+    // a 308 to a real https form, even with no-store, is not the shortlink's 307 (the old static rule was a 308)
+    r = await run((site) => site.set(`${SITE}/daftar`, { status: 308, headers: { location: FORM_URL, 'cache-control': 'no-store' } }));
+    expect(one(r.results, 'TA-02', 'FAIL')[0]!.text).toContain('status 308, expected 307');
+    for (const over of [{ status: 307, headers: { location: '/daftar' } }, { status: 308, headers: { location: '/gabung-siswa' } }, { status: 404, headers: {} }] as Recorded[]) {
+      r = await run((site) => site.set(`${SITE}/daftar/`, over));
+      expect(one(r.results, 'TA-02', 'FAIL')[0]!.text, JSON.stringify(over)).toContain('expected a 308 to /daftar');
+    }
+    r = await run((site) => site.set(`${SITE}/Daftar`, { status: 404, headers: {} }));
+    expect(one(r.results, 'TA-02', 'FAIL')[0]!.text).toContain('/Daftar is 404, expected 307');
+    r = await run((site) => patch(site, `${SITE}/gabung-siswa`, { body: '<html lang="id-ID"><a href="/portal/daftar">Daftar Sekarang</a></html>' }));
+    const text = one(r.results, 'TA-02', 'FAIL')[0]!.text;
+    expect(text).toContain('no "Daftar Sekarang" link to /daftar');
+    expect(text).toContain('still links into /portal');
+  });
+
   it('WordPress paths: the new site answering them (its 404) fails TA-03; a redirect to somewhere else fails; WordPress itself passes', async () => {
     let r = await run((site) => site.set(`${SITE}/wp-login.php`, { status: 404, headers: { ...SECURITY, 'content-type': 'text/html' }, body: '<html lang="id-ID"><body>404</body></html>' }));
     expect(one(r.results, 'TA-03', 'FAIL')[0]!.text).toMatch(/status 404/);
     r = await run((site) => site.set(`${SITE}/wp-login.php`, { status: 200, headers: { 'content-type': 'text/html' }, body: '<html lang="id-ID">the home page</html>' }));
     expect(one(r.results, 'TA-03', 'FAIL')[0]!.text).toContain("not WordPress's login page");
-    r = await run((site) => site.set(`${SITE}/wp-admin`, { status: 404, headers: {} }));
+    r = await run((site) => site.set(`${SITE}/wp-admin/`, { status: 404, headers: {} }));
     expect(one(r.results, 'TA-03', 'FAIL').length).toBe(1);
-    r = await run((site) => site.set(`${SITE}/wp-admin`, { status: 301, headers: { location: 'https://admin.sakolakembara.org/' } }));
+    r = await run((site) => site.set(`${SITE}/wp-admin/`, { status: 301, headers: { location: 'https://admin.sakolakembara.org/' } }));
     expect(one(r.results, 'TA-03', 'FAIL')[0]!.text).toContain('expected /wp-admin/ or /wp-login.php');
     r = await run((site) => patch(site, `${SITE}/wp-login.php`, { body: '<html>nothing</html>', headers: { 'set-cookie': 'wordpress_test_cookie=WP%20Cookie%20check; path=/' } }));
     expect(one(r.results, 'TA-03', 'FAIL')).toEqual([]);
-    r = await run((site) => site.set(`${SITE}/wp-admin`, { status: 301, headers: { location: 'https://sakolakembara.org/wp-admin/' } }));
-    expect(one(r.results, 'TA-03', 'INFO').length).toBe(1);
+    r = await run((site) => site.set(`${SITE}/wp-json/`, { status: 404, headers: {} }));
+    expect(one(r.results, 'TA-03', 'FAIL')[0]!.text).toContain('/wp-json/');
+    r = await run((site) => patch(site, `${SITE}/wp-json/`, { headers: { 'content-type': 'text/html' } }));
+    expect(one(r.results, 'TA-03', 'FAIL')[0]!.text).toContain('expected JSON');
+  });
+
+  it("a WordPress path answered with the Worker's own HSTS was answered by the Worker, not WordPress (TA-03, T-31)", async () => {
+    for (const path of ['/wp-login.php', '/wp-admin/', '/wp-json/']) {
+      const { results } = await run((site) => patch(site, `${SITE}${path}`, { headers: { 'strict-transport-security': 'max-age=300' } }));
+      expect(one(results, 'TA-03', 'FAIL')[0]!.text, path).toContain("the Worker answered, not WordPress");
+    }
   });
 
   it('a Cloudflare challenge in front of WordPress (a zone rule) is a warning that says to look by hand, not a failure (TA-03)', async () => {
     const challenge = { status: 403, headers: { 'cf-mitigated': 'challenge', 'content-type': 'text/html', server: 'cloudflare' }, body: '<html>Just a moment...</html>' };
     const { results } = await run((site) => {
       site.set(`${SITE}/wp-login.php`, challenge);
-      site.set(`${SITE}/wp-admin`, challenge);
+      site.set(`${SITE}/wp-admin/`, challenge);
     });
     expect(failures(results)).toEqual([]);
     const warnings = one(results, 'TA-03', 'WARN');
@@ -333,23 +368,86 @@ describe('what each failure looks like', () => {
     expect(one(one_.results, 'TA-05', 'WARN')[0]!.text).toContain('no x-frame-options:');
   });
 
-  it('the paths the plan leaves to SAKEM-103 are only observed, whatever they answer (TA-07)', async () => {
+  it('/login is WordPress, not a 308 into /portal, not the site\'s 404, not the Worker (T-16)', async () => {
+    for (const over of [{ status: 308, headers: { location: '/portal/login' } }, { status: 308, headers: { location: 'https://sakolakembara.org/wp-login.php' } }, { status: 404, headers: {} }, { status: 302, headers: { location: 'https://sakolakembara.org/wp-admin/' } }, { status: 200, headers: {} }, { status: 302, headers: { location: 'https://sakolakembara.org/wp-login.php', 'strict-transport-security': 'max-age=300' } }] as Recorded[]) {
+      const { results } = await run((site) => site.set(`${SITE}/login`, over));
+      expect(one(results, 'T-16', 'FAIL').length, JSON.stringify(over)).toBe(1);
+    }
+    const ok = await run();
+    expect(one(ok.results, 'T-16', 'PASS').length).toBe(2);
+  });
+
+  it("/register, /forgot-password, /portal and /portal/status are the site's 404 page: a redirect, a 200 and WordPress's own 404 fail (T-16, T-17)", async () => {
+    for (const [id, path] of [['T-16', '/register'], ['T-16', '/forgot-password'], ['T-17', '/portal'], ['T-17', '/portal/status']] as const) {
+      for (const over of [{ status: 308, headers: { location: '/portal/login' } }, { status: 200, headers: { 'content-type': 'text/html' }, body: '<html lang="id-ID"></html>' }] as Recorded[]) {
+        const { results } = await run((site) => site.set(`${SITE}${path}`, over));
+        expect(one(results, id, 'FAIL')[0]!.text, `${path} ${JSON.stringify(over)}`).toContain(path);
+      }
+      const wordpress = await run((site) => site.set(`${SITE}${path}`, { status: 404, headers: { 'content-type': 'text/html', 'x-powered-by': 'PHP/8.2' }, body: '<html lang="en-US"><body class="error404"></body></html>' }));
+      expect(one(wordpress.results, id, 'FAIL')[0]!.text, path).toContain('the old origin answered');
+    }
+  });
+
+  it("a look-alike of a WordPress path that WordPress answers fails (T-34): /wp-adminx, /wp-login, /wp-login.php.bak, /login/x, /Login", async () => {
+    for (const path of ['/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']) {
+      const { results } = await run((site) => site.set(`${SITE}${path}`, { status: 404, headers: { 'content-type': 'text/html', server: 'LiteSpeed' }, body: '<html lang="en-US"><body class="error404"></body></html>' }));
+      expect(one(results, 'T-34', 'FAIL')[0]!.text, path).toContain(`${path}: `);
+    }
+    const ok = await run();
+    expect(one(ok.results, 'T-34', 'PASS').length).toBe(1);
+  });
+
+  it('the portal switch: "Masuk", the session address, the auth link, a registration button in the navbar or a filled slot, on the home page or on /blog, fails (T-35)', async () => {
+    const withIn = (html: string, extra: string) => html.replace('</nav>', `${extra}</nav>`);
+    const cases: [string, string, string][] = [
+      ['/', '<a href="/portal/login" data-auth-link>Masuk</a>', 'has the "Masuk" link'],
+      ['/blog', '<a href="/portal/login" data-auth-link>Masuk</a>', 'has the "Masuk" link'],
+      ['/', '<a href="/daftar">Daftar Sekarang</a>', 'the navbar has a registration button'],
+      ['/blog', '<span class="justify-self-end"></span>', 'the navbar slot of the button is not empty'],
+    ];
+    for (const [path, extra, why] of cases) {
+      const { results } = await run((site) => patch(site, `${SITE}${path}`, { body: withIn(entry(site, `${SITE}${path}`).body!, extra) }));
+      expect(one(results, 'T-35', 'FAIL')[0]!.text, `${path} ${extra}`).toContain(why);
+    }
+    const session = await run((site) => patch(site, `${SITE}/blog`, { body: entry(site, `${SITE}/blog`).body!.replace('</body>', "<script>fetch('/portal/api/auth/get-session')</script></body>") }));
+    expect(one(session.results, 'T-35', 'FAIL')[0]!.text).toContain("calls the portal's session address");
+    const masuk = await run((site) => patch(site, `${SITE}/`, { body: entry(site, `${SITE}/`).body!.replace('<button', '<span>Masuk</span><button') }));
+    expect(one(masuk.results, 'T-35', 'FAIL')[0]!.text).toContain('the navbar says "Masuk"');
+  });
+
+  it('HSTS must be exactly max-age=300 on the Worker\'s own answers: a long value, includeSubDomains, preload or none on /blog, /daftar, a 404, robots.txt or an image fails and names the path (T-36)', async () => {
+    const cases: [string, Record<string, string>, string[]][] = [
+      ['/blog', { 'strict-transport-security': 'max-age=31536000; includeSubDomains; preload' }, []],
+      ['/daftar', { 'strict-transport-security': 'max-age=300; includeSubDomains' }, []],
+      ['/no-such-page-check-1f3a', {}, ['strict-transport-security']],
+      ['/robots.txt', { 'strict-transport-security': 'max-age=300; preload' }, []],
+      ['/_img/27f45874d486-480.webp', { 'strict-transport-security': 'max-age=86400' }, []],
+    ];
+    for (const [path, headers, drop] of cases) {
+      const { results } = await run((site) => patch(site, `${SITE}${path}`, { headers, drop }));
+      expect(one(results, 'T-36', 'FAIL')[0]!.text, path).toContain(`${path}: `);
+    }
+    const ok = await run();
+    expect(one(ok.results, 'T-36', 'PASS').length).toBe(1);
+  });
+
+  it('an upload an article uses is ONE 308 to its copy; a two-hop chain, a 404 or a 200 fails; no migrated image in the article is a warning (T-09)', async () => {
+    const url = `${SITE}/wp-content/uploads/2026/08/photo-1.jpeg`;
+    for (const over of [{ status: 307, headers: { location: '/blog/images/2026/08/photo-1.jpeg' } }, { status: 308, headers: { location: '/wp-content/uploads/2026/08/photo-1-1024x768.jpeg' } }, { status: 404, headers: {} }, { status: 200, headers: {} }] as Recorded[]) {
+      const { results } = await run((site) => site.set(url, over));
+      expect(one(results, 'T-09', 'FAIL').length, JSON.stringify(over)).toBe(1);
+    }
+    const none = await run((site) => patch(site, `${SITE}/blog/${SLUG}`, { body: entry(site, `${SITE}/blog/${SLUG}`).body!.replaceAll('/blog/images/2026/08/photo-1.jpeg', '/other.png') }));
+    expect(one(none.results, 'T-09', 'WARN').length).toBe(1);
+  });
+
+  it('a request that fails on /portal is a failure of T-17, with the reason (no answer), never a pass', async () => {
     const { results } = await run((site) => {
-      for (const p of ['/login', '/register', '/portal', '/portal/status']) site.set(`${SITE}${p}`, { status: 500, headers: {} });
-    });
-    expect(failures(results)).toEqual([]);
-    const info = one(results, 'TA-07', 'INFO');
-    expect(info.map((r) => r.text)).toEqual(['/login: 500', '/register: 500', '/portal: 500', '/portal/status: 500']);
-    const redirected = await run();
-    expect(one(redirected.results, 'TA-07', 'INFO')[0]!.text).toBe('/login: 308 to https://sakolakembara.org/portal/login');
-    // even a request that fails is only a note for these four paths (the run's other checks decide whether the site is up)
-    const down = await run((site) => {
       site.set(`${SITE}/portal`, () => {
         throw new Error('boom');
       });
     });
-    expect(failures(down.results)).toEqual([]);
-    expect(one(down.results, 'TA-07', 'INFO').map((r) => r.text)).toContain('/portal: no answer (Error)');
+    expect(one(results, 'T-17', 'FAIL')[0]!.text).toContain('no answer (Error)');
   });
 
   it('the admin host: a test key, a key that is not set, files or site URLs of staging, a config that is not JSON (TA-05)', async () => {
