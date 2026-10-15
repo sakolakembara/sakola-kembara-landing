@@ -1,17 +1,19 @@
 // End-to-end checks against the BUILT Worker running under `wrangler dev` (local
-// mode, workerd), with the stub legacy origin and the fixture content API behind it.
+// mode, workerd), with the stub origin (a stand-in for the WordPress site behind the route) and the fixture content API behind it.
 //
 //   pnpm build && pnpm test:e2e
 //
 // Covers: status codes of every page type, the real 404, all 80 WordPress
-// redirects, the other redirect rules, pass-through (method, headers, body,
+// redirects, the other redirect rules, pass-through to the WordPress origin (method, headers, body,
 // cookies, redirects not followed), Astro paths NOT reaching the origin, /tim
 // timeout / cache / stale-if-error (also /laporan and /gabung-siswa/docs: grouping, anchors, copy
 // buttons run in a DOM, degraded and empty states), the blog read from the content API (cache,
 // stale-if-error, outage pages, 404, sitemap), the /kontak form without JavaScript (every status
 // code of the contract, IP forwarding, no personal data in the log), SEO tags in the served HTML,
 // security headers, images and PDFs served as static assets (never through the origin), and the shortlink
-// redirect (`/<slug>` looked up through the API: 307, 404, 503, one call per visit, no cache).
+// redirect (`/<slug>` looked up through the API: 307, 404, 503, one call per visit, no cache), the registration link /daftar
+// (a shortlink, SAKEM-103, with a polite page of its own when it has none), WordPress as the origin behind the route (only its own paths
+// are forwarded, none of the new site's), and the student portal switch (PORTAL_ENABLED, off by default).
 // Prints a summary and exits non-zero on any failure.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -21,7 +23,7 @@ import http from 'node:http';
 import { Window } from 'happy-dom';
 import { PORT_OFFSET, TURNSTILE_TEST_SITE_KEY, startStack, webRoot } from './lib/harness.mjs';
 import { STUB_TOKEN, turnstileStubSource } from './lib/turnstile-stub.mjs';
-import { SAMPLE_REPORTS, SAMPLE_RESOURCES } from './fixture-api.mjs';
+import { SAMPLE_REPORTS, SAMPLE_RESOURCES, SAMPLE_SHORTLINKS } from './fixture-api.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
 import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
 import { checkImgTag, localUrls, parseAttrs } from './lib/dist-audit.mjs';
@@ -66,6 +68,21 @@ const tag = (html, re) => html.match(re)?.[1];
 const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
 const graphNodes = (html) => ldBlocks(html)[0]?.['@graph'] ?? [];
 const nodeOf = (html, type) => graphNodes(html).find((n) => [].concat(n['@type']).includes(type));
+/**
+ * The navbar of a page while the portal is off (SAKEM-103; Dzul, 2026-10-15), as a list of problems (empty: as it should be): the logo and the
+ * menu links, twice (the bar, the mobile menu), and NOTHING in the slot of the old "Masuk" button: no link or button, no wrapper, no text of a
+ * sign-in or a registration. (The menu links are the labels of src/lib/site.ts; this script is plain JavaScript and cannot import them.)
+ */
+function navbarProblems(html) {
+  const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
+  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'];
+  const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
+  const problems = [];
+  if (JSON.stringify(hrefs) !== JSON.stringify(['/', ...menu, ...menu])) problems.push(`links: ${hrefs.join(' ')}`);
+  for (const bad of ['Daftar Sekarang', 'Masuk', '/daftar', '/portal', 'data-auth-link', 'justify-self-end', 'mt-6']) if (nav.includes(bad)) problems.push(`the navbar has ${bad}`);
+  if ((nav.match(/<button\b/g) ?? []).length !== 1) problems.push('more than the menu toggle in the navbar');
+  return problems;
+}
 const onlySiteGraph = (html) => {
   assert.equal(ldBlocks(html).length, 1, "only the site graph, no block of the page's own");
   assert.ok(nodeOf(html, 'WebPage') || nodeOf(html, 'CollectionPage'), 'the graph has the page');
@@ -138,7 +155,7 @@ for (const slug of slugs) {
 }
 
 // ---------------------------------------------------------------- 404
-for (const p of ['/blog/does-not-exist', '/blog/DOES-NOT-EXIST', '/blog/a/b', '/a/b/c', '/404', '/_astro/missing.css', '/wp-admin/install.php', '/%E0%A4%A']) {
+for (const p of ['/blog/does-not-exist', '/blog/DOES-NOT-EXIST', '/blog/a/b', '/a/b/c', '/404', '/_astro/missing.css', '/wp-admin-old/install.php', '/%E0%A4%A', '/_next/static/a.js', '/files/a.pdf', '/images/team/a.jpg']) {
   await check('404', `GET ${p} is a real 404 with the 404 page`, async () => {
     clearStub();
     const res = await get(p);
@@ -162,19 +179,18 @@ for (const a of articles) {
 const other = [
   ['/cerita', 308, '/blog'], ['/cerita/', 308, '/blog'], ['/education', 308, '/blog'], ['/news', 308, '/blog'],
   ['/tips', 308, '/blog'], ['/testimonials', 308, '/blog'], ['/career', 308, '/blog'], ['/kiat-kiat', 308, '/blog'],
-  ['/daftar', 308, '/gabung-siswa'], ['/apply', 308, '/gabung-siswa'],
-  ['/gabung-siswa/form', 308, '/portal/daftar'],
-  // M4: the legacy auth pages moved into the student portal (a Worker of its own on the route <apex>/portal/*).
-  ['/login', 308, '/portal/login'], ['/login/', 308, '/portal/login'], ['/register', 308, '/portal/register'],
-  ['/forgot-password', 308, '/portal/forgot-password'], ['/reset-password', 308, '/portal/reset-password'],
-  ['/verify-email', 308, '/portal/verify-email'],
-  ['/login?from=%2Fportal%2Fstatus', 308, '/portal/login?from=%2Fportal%2Fstatus'],
+  ['/apply', 308, '/gabung-siswa'],
+  // SAKEM-103 (Phase A): the old registration form goes to the registration shortlink. /daftar itself is NOT a rule (group `registration`), and
+  // neither are the auth names (/login is WordPress's, group `pass-through`; the others are the site's 404, group `portal-paths`).
+  ['/gabung-siswa/form', 308, '/daftar'], ['/gabung-siswa/form?utm_source=ig', 308, '/daftar?utm_source=ig'],
   ['/tentang-kami', 308, '/tim'], ['/about', 308, '/tim'],
   ['/impact-reports', 308, '/laporan'], ['/impact-reports/2025/foo', 308, '/laporan'],
   ['/blog/page/3', 308, '/blog?page=3'], ['/blog/page/3/', 308, '/blog?page=3'],
   ['/feed', 308, '/blog'], ['/feed/atom', 308, '/blog'],
   ['/index.php', 308, '/'],
-  ['/wp-content/uploads/2026/05/foto.jpg', 308, '/blog/images/2026/05/foto.jpg'],
+  // SAKEM-103: a WordPress upload this build copied is one 308 to its copy (a rule per file, written at build time)
+  ['/wp-content/uploads/2025/10/1.png', 308, '/blog/images/2025/10/1.png'],
+  ['/wp-content/uploads/2025/10/1.png?ver=3', 308, '/blog/images/2025/10/1.png?ver=3'],
   ['/program', 307, '/program/prapembinaan'],
   ['/cerita/some-slug?utm_source=x', 308, '/blog/some-slug?utm_source=x'],
   ['/blog/page/2?utm_source=x', 308, '/blog?page=2'], // the destination has its own query: the incoming one is dropped
@@ -259,9 +275,9 @@ for (const page of ['/donasi', '/gabung-siswa', '/program/prapembinaan', '/progr
     assert.equal((await get(page)).status, 200);
   });
 }
-await check('canonical-url', 'a legacy path with a trailing slash is not touched: the origin decides (Next redirects it itself)', async () => {
+await check('canonical-url', 'a WordPress path with a trailing slash is not touched: the origin decides (WordPress redirects it itself)', async () => {
   clearStub();
-  const res = await get('/files/a/');
+  const res = await get('/wp-content/themes/astra/');
   assert.notEqual(res.status, 308);
   assert.equal(res.headers.get('x-stub-origin'), '1');
   assert.equal(stubHits().length, 1);
@@ -273,9 +289,11 @@ await check('canonical-url', 'an article with a trailing slash: the Worker sends
 });
 
 // ---------------------------------------------------------------- pass-through
-// M4 (SAKEM-083): the signed-in and auth surface is no longer forwarded to the old app. The student portal is a Worker of its own on the
-// route <apex>/portal/* (not part of this stack: here /portal is this Worker's 404), the old auth pages are redirects (group
-// `redirects`), /admin is a 308 to the admin host and /api is a JSON 404. None of it reaches the origin.
+// SAKEM-103 (Phase A of the cutover): WordPress is the origin behind the Worker's route, so what is forwarded to it (here: the stub origin,
+// scripts/stub-origin.mjs) is WordPress's own paths and nothing else: /wp-admin, /wp-login.php, /wp-content, /wp-includes, /wp-json,
+// /xmlrpc.php and /login (src/lib/legacy-paths.ts). Everything the new site serves never reaches it, and the old Next paths (/_next, /images,
+// /files, /reports, /resources) are not forwarded any more. The admin and the API are the Worker's own answers (a 308, a JSON 404), and the
+// student portal's names are the site's 404 in Phase A (the portal is not live; Phase B attaches a Worker to /portal/*).
 const ADMIN_URL = 'https://admin.example.test';
 for (const [from, to] of [
   ['/admin', `${ADMIN_URL}/`],
@@ -331,66 +349,143 @@ await check('portal-paths', '/apis and /api-docs are not /api: the site\'s own 4
     assert.match(await text(res), /Halaman tidak ditemukan/, p);
   }
 });
-for (const p of ['/portal', '/portal/status', '/portal/daftar', '/portal/api/me']) {
-  await check('portal-paths', `GET ${p}: in production another Worker answers it; here it is this Worker's 404 and it never reaches the origin`, async () => {
+// SAKEM-103, the choice for Phase A (recorded in docs/cloudflare/web-skeleton.md, "Phase A"): the student portal is not live, so /portal and
+// below, /register and the three other auth names answer the site's own polite 404 page (the same words as every unknown URL, noindex, a real
+// 404 status). They are not looked up as shortlinks (the names are reserved), never reach the origin, and are not redirected anywhere.
+const apiAsked = async () => (await fetch(`${fixtureBase}/__requests?for=shortlink`)).json();
+for (const p of ['/portal', '/portal/', '/portal/status', '/portal/daftar', '/portal/login', '/portal/api/me', '/portal/api/auth/get-session', '/register', '/register/', '/forgot-password', '/reset-password', '/verify-email', '/register?x=1']) {
+  await check('portal-paths', `GET ${p}: the portal is not live, so it is the site's own 404 page (noindex); no redirect, no shortlink lookup, nothing reaches the origin`, async () => {
     clearStub();
+    const askedBefore = (await apiAsked()).length;
     const res = await get(p);
-    assert.equal(res.status, 404);
+    // a trailing slash is folded first (308), and then the same 404
+    const final = res.status === 308 ? await get(res.headers.get('location')) : res;
+    assert.equal(final.status, 404, `${p}: ${final.status}`);
+    const html = await text(final);
+    assert.match(html, /Halaman tidak ditemukan/);
+    assert.match(html, /<meta name="robots" content="noindex">/);
+    assert.ok(!/portal|daftar/i.test(html.slice(html.indexOf('<div id="konten-utama">'), html.indexOf('</main>'))), 'the page body does not promise a portal or a form');
+    assert.equal(final.headers.get('location'), null);
+    assert.equal((await apiAsked()).length, askedBefore, 'the API is not asked for a shortlink');
     assert.equal(stubHits().length, 0);
-    assert.equal(res.headers.get('x-stub-origin'), null);
+    assert.equal(final.headers.get('x-stub-origin'), null);
   });
 }
-await check('pass-through', 'a legacy path\'s cookie is preserved: the origin sees it and answers 200', async () => {
+await check('portal-paths', '/login and the five other auth paths of the old Next app are NOT redirects any more: no 308 into /portal anywhere', async () => {
   clearStub();
-  const res = await get('/files/a.pdf', { headers: { cookie: 'stub-session=1; other=2' } });
-  assert.equal(res.status, 200);
-  assert.equal(stubHits()[0].headers.cookie, 'stub-session=1; other=2');
+  for (const p of ['/register', '/forgot-password', '/reset-password', '/verify-email', '/gabung-siswa/form']) {
+    const res = await get(p);
+    assert.ok(!(res.headers.get('location') ?? '').includes('/portal'), `${p} -> ${res.headers.get('location')}`);
+  }
+  const login = await get('/login');
+  assert.ok(!(login.headers.get('location') ?? '').includes('/portal'), `/login -> ${login.headers.get('location')}`);
 });
-await check('pass-through', 'two Set-Cookie headers from the origin arrive as two', async () => {
-  const res = await get('/files/cookies');
-  const cookies = res.headers.getSetCookie();
+
+// WordPress paths: forwarded untouched. The stand-in origin (scripts/stub-origin.mjs) answers like WordPress and echoes what it received.
+const WORDPRESS_PATHS = [
+  '/wp-admin', '/wp-admin/', '/wp-admin/install.php', '/wp-admin/admin-ajax.php', '/wp-login.php', '/wp-content/themes/astra/style.css',
+  '/wp-content/plugins/elementor/assets/a.js', '/wp-content/uploads/2099/01/not-copied.jpg', '/wp-includes/js/jquery/jquery.min.js', '/wp-json/',
+  '/wp-json/wp/v2/posts', '/xmlrpc.php', '/login', '/login/',
+];
+for (const p of WORDPRESS_PATHS) {
+  await check('pass-through', `GET ${p} is WordPress's: it reaches the origin (same path, no rewrite, no render by the Worker), and the answer is the origin's`, async () => {
+    clearStub();
+    const res = await get(p);
+    assert.equal(res.headers.get('x-stub-origin'), '1', `${p}: the answer is not the origin's (${res.status})`);
+    const hits = stubHits();
+    assert.equal(hits.length, 1, `${p}: ${hits.length} requests reached the origin`);
+    assert.equal(hits[0].path, p.split('?')[0]);
+    assert.equal(hits[0].method, 'GET');
+    assert.notEqual(res.status, 404, `${p} is a path of the origin: the stub answers it`);
+  });
+}
+await check('pass-through', 'the query string goes along, byte for byte, and a trailing slash is the origin\'s business, not folded by the Worker', async () => {
+  clearStub();
+  const res = await get('/wp-content/themes/astra/?ver=6.4&x=%20y');
+  assert.equal(res.status, 200);
+  assert.equal(stubHits()[0].path, '/wp-content/themes/astra/');
+  assert.equal(stubHits()[0].search, '?ver=6.4&x=%20y');
+  clearStub();
+  const login = await get('/login/');
+  assert.equal(login.status, 302, 'the Worker did not fold /login/ with a 308 of its own');
+  assert.equal(stubHits().length, 1);
+});
+await check('pass-through', 'a redirect of the origin is NOT followed: the browser gets it, and its Location points at the host the browser used (/login -> /wp-login.php, /wp-admin/ -> the sign-in form)', async () => {
+  clearStub();
+  const login = await get('/login');
+  assert.equal(login.status, 302);
+  assert.equal(login.headers.get('location'), `${base}/wp-login.php`, 'the origin\'s own address is not leaked');
+  assert.equal(stubHits().length, 1, 'only the first request went to the origin: the Worker did not follow the redirect');
+  clearStub();
+  const admin = await get('/wp-admin/');
+  assert.equal(admin.status, 302);
+  assert.equal(admin.headers.get('location'), '/wp-login.php?redirect_to=%2Fwp-admin%2F&reauth=1');
+  assert.equal(stubHits().length, 1);
+});
+await check('pass-through', 'a cookie is preserved: the origin sees it exactly, and answers 200', async () => {
+  clearStub();
+  const res = await get('/wp-admin/admin-ajax.php', { headers: { cookie: 'stub_auth=1; other=2' } });
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), '0');
+  assert.equal(stubHits()[0].headers.cookie, 'stub_auth=1; other=2');
+});
+await check('pass-through', 'two Set-Cookie headers from the origin arrive as two (the sign-in form sets its test cookie), and a POST sign-in answers a 302 with two more, none followed', async () => {
+  const form = await get('/wp-login.php');
+  const cookies = form.headers.getSetCookie();
   assert.equal(cookies.length, 2);
-  assert.match(cookies[0], /^stub-one=1/);
-  assert.match(cookies[1], /^stub-two=2/);
+  assert.match(cookies[0], /^stub_test_cookie=check/);
+  assert.match(cookies[1], /^stub_other=2/);
+  clearStub();
+  const post = await get('/wp-login.php', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'log=invented&pwd=invented' });
+  assert.equal(post.status, 302);
+  assert.equal(post.headers.get('location'), '/wp-admin/');
+  assert.equal(post.headers.getSetCookie().length, 2);
+  assert.equal(stubHits()[0].method, 'POST');
+  assert.equal(stubHits()[0].body, 'log=invented&pwd=invented');
+  assert.equal(stubHits().length, 1);
 });
 await check('pass-through', 'POST: method, query, body and custom headers arrive unchanged', async () => {
   clearStub();
-  const payload = JSON.stringify({ email: 'tes@example.com', n: 'α β ✓' });
-  const res = await get('/files/echo/credentials?x=1&y=%20z', {
+  const payload = JSON.stringify({ title: 'tes', n: 'α β ✓' });
+  const res = await get('/wp-json/stub/echo/posts?x=1&y=%20z', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-custom': 'abc', 'next-action': 'deadbeef', authorization: 'Bearer fake', cookie: 'a=b' },
+    headers: { 'content-type': 'application/json', 'x-custom': 'abc', 'x-wp-nonce': 'deadbeef', authorization: 'Bearer fake', cookie: 'a=b' },
     body: payload,
   });
   assert.equal(res.status, 200);
   const seen = stubHits()[0];
   assert.equal(seen.method, 'POST');
-  assert.equal(seen.path, '/files/echo/credentials');
+  assert.equal(seen.path, '/wp-json/stub/echo/posts');
   assert.equal(seen.search, '?x=1&y=%20z');
   assert.equal(seen.body, payload);
-  for (const [k, v] of Object.entries({ 'content-type': 'application/json', 'x-custom': 'abc', 'next-action': 'deadbeef', authorization: 'Bearer fake', cookie: 'a=b' })) {
+  for (const [k, v] of Object.entries({ 'content-type': 'application/json', 'x-custom': 'abc', 'x-wp-nonce': 'deadbeef', authorization: 'Bearer fake', cookie: 'a=b' })) {
     assert.equal(seen.headers[k], v, k);
   }
   const echoed = await res.json();
   assert.equal(echoed.body, payload);
 });
-await check('pass-through', 'POST to a legacy path (a Next server action) reaches the origin', async () => {
+await check('pass-through', 'POST to /xmlrpc.php reaches the origin (an XML body), and a GET gets WordPress\'s own 405', async () => {
   clearStub();
-  const res = await get('/files/echo/action', { method: 'POST', headers: { 'next-action': 'abc', 'content-type': 'text/plain' }, body: '["a"]' });
-  assert.equal(res.status, 200);
+  const xml = '<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName></methodCall>';
+  const post = await get('/xmlrpc.php', { method: 'POST', headers: { 'content-type': 'text/xml' }, body: xml });
+  assert.equal(post.status, 200);
   assert.equal(stubHits()[0].method, 'POST');
-  assert.equal(stubHits()[0].body, '["a"]');
+  assert.equal(stubHits()[0].body, xml);
+  const getRes = await get('/xmlrpc.php');
+  assert.equal(getRes.status, 405);
+  assert.match(await text(getRes), /XML-RPC server accepts POST requests only/);
 });
 await check('pass-through', 'a 1 MB POST body goes through intact', async () => {
   clearStub();
   const big = 'x'.repeat(1_000_000);
-  const res = await get('/files/echo/upload', { method: 'POST', body: big, headers: { 'content-type': 'text/plain' } });
+  const res = await get('/wp-json/stub/echo/upload', { method: 'POST', body: big, headers: { 'content-type': 'text/plain' } });
   assert.equal(res.status, 200);
   assert.equal(stubHits()[0].body.length, 1_000_000);
 });
 await check('pass-through', 'PUT, PATCH, DELETE and HEAD keep their method', async () => {
   for (const method of ['PUT', 'PATCH', 'DELETE', 'HEAD']) {
     clearStub();
-    const res = await get('/files/echo/x', { method, ...(method === 'HEAD' || method === 'DELETE' ? {} : { body: 'b' }) });
+    const res = await get('/wp-json/stub/echo/x', { method, ...(method === 'HEAD' || method === 'DELETE' ? {} : { body: 'b' }) });
     assert.equal(res.status, 200, method);
     assert.equal(stubHits()[0].method, method);
   }
@@ -400,7 +495,7 @@ await check('pass-through', 'hop-by-hop request headers (te, keep-alive, proxy-a
   // fetch() refuses to send some of these, so use a raw request.
   const status = await new Promise((resolve, reject) => {
     const req = http.request(
-      `${base}/files/echo/x`,
+      `${base}/wp-json/stub/echo/x`,
       { headers: { te: 'trailers', 'keep-alive': 'timeout=5', 'proxy-authorization': 'x', connection: 'close, x-drop-me', 'x-drop-me': '1', 'x-keep-me': '1' } },
       (res) => {
         res.resume();
@@ -420,41 +515,90 @@ await check('pass-through', 'hop-by-hop request headers (te, keep-alive, proxy-a
   assert.equal(h['x-keep-me'], '1');
 });
 await check('pass-through', 'hop-by-hop response headers from the origin do not reach the client', async () => {
-  const res = await get('/files/a.pdf');
+  const res = await get('/wp-content/uploads/2099/01/not-copied.jpg');
   assert.equal(res.headers.get('keep-alive'), null);
   assert.equal(res.headers.get('transfer-encoding') === null || res.headers.get('transfer-encoding') === 'chunked', true);
 });
 await check('pass-through', 'the origin sees the original host as X-Forwarded-Host (local mode)', async () => {
   clearStub();
-  await get('/files/echo/x');
+  await get('/wp-json/stub/echo/x');
   assert.equal(stubHits()[0].headers['x-forwarded-host'], new URL(base).host);
   assert.equal(stubHits()[0].headers['x-forwarded-proto'], 'http');
 });
-await check('pass-through', 'static files of the legacy pages are forwarded (/_next, /images, /blog/images, /files, /reports)', async () => {
-  for (const p of ['/_next/static/chunks/app.js', '/_next/image?url=%2Fimages%2Fx.png&w=640&q=75', '/images/team/a.jpg', '/blog/images/2026/05/a.jpg', '/files/a.pdf', '/reports/2025/a.pdf']) {
-    clearStub();
-    const res = await get(p);
-    assert.equal(res.status, 200, p);
-    assert.equal(res.headers.get('x-stub-origin'), '1', p);
+await check('pass-through', 'origin cache headers survive, and the Worker adds none of its own to an origin answer (the origin\'s headers are untouched, security headers included)', async () => {
+  const res = await get('/wp-includes/js/a.js');
+  assert.match(res.headers.get('cache-control'), /immutable/);
+  const upload = await get('/wp-content/uploads/2099/01/not-copied.jpg');
+  assert.equal(upload.headers.get('cache-control'), 'public, max-age=0, must-revalidate');
+  assert.equal(upload.headers.get('content-type'), 'image/jpeg');
+  for (const name of ['strict-transport-security', 'x-frame-options', 'x-content-type-options', 'permissions-policy', 'referrer-policy']) {
+    assert.equal(upload.headers.get(name), null, `${name} is the origin's to set on its own answers`);
   }
 });
-await check('pass-through', 'origin cache headers survive (immutable for /_next)', async () => {
-  const res = await get('/_next/static/a.js');
-  assert.match(res.headers.get('cache-control'), /immutable/);
-});
-await check('portal-paths', 'the navbar script asks the portal Worker for the session (/portal/api/auth/get-session, a path this stack does not serve: the answer is a 404 and the button stays "Masuk")', async () => {
+
+// Strictness, from the other side: a name that merely LOOKS like a WordPress path is the Worker's. It never reaches the origin, so a page of the
+// new site can never be mistaken for WordPress (and WordPress can never be mistaken for a page of the new site).
+for (const p of [
+  '/wp-adminx', '/wp-admin-old/install.php', '/wp-login', '/wp-login.phpx', '/wp-login.php.bak', '/wp-login.php/x', '/wp-contentx/a.css', '/wp-contents/a.css', '/wp-includesx/a.js',
+  '/wp-jsonx', '/xmlrpc', '/xmlrpc.phpx', '/xmlrpc.php/x', '/login/x', '/login-help', '/loginx', '/Login', '/WP-ADMIN/', '/Wp-Content/a.css', '/blog/wp-admin', '/x/login',
+]) {
+  await check('pass-through', `${p} only looks like WordPress: it never reaches the origin (the Worker's own 404 or shortlink lookup)`, async () => {
+    clearStub();
+    const res = await get(p);
+    assert.equal(stubHits().length, 0, `${p} reached the origin`);
+    assert.equal(res.headers.get('x-stub-origin'), null);
+    assert.ok([404, 308].includes(res.status), `${p}: ${res.status}`);
+  });
+}
+await check('pass-through', 'the new site never reaches the origin: every page, redirect, shortlink, the admin and the API, the portal names and every old Next path', async () => {
   clearStub();
-  const html = await text(await get('/blog'));
-  assert.ok(html.includes('/portal/api/auth/get-session'), 'the script asks the portal');
-  assert.ok(!html.includes('/api/auth/session'), 'and no longer the apex /api');
-  assert.equal((await get('/portal/api/auth/get-session')).status, 404);
+  const paths = [
+    // (not /tim, /laporan, /gabung-siswa/docs or /sitemap.xml: the groups after this one expect their first request to reach the API; the e2e checks them one by one
+    // for "never reaches the origin" in their own groups)
+    '/', '/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/gabung-siswa', '/gabung-siswa/form', '/donasi', '/kontak',
+    '/program/prapembinaan', '/program', '/robots.txt', '/404', '/no-such-page', '/no-such/page/deep', '/cerita/some-slug', '/category/news', '/feed', '/index.php',
+    '/daftar', '/daftar/', '/daftar-2026', '/gabung', '/unduh-panduan', '/no-such-link',
+    '/portal', '/portal/status', '/register', '/forgot-password', '/reset-password', '/verify-email',
+    '/admin', '/admin/blog', '/api', '/api/anything',
+    '/_next/static/a.js', '/_next/image', '/images/team/a.jpg', '/blog/images/2099/01/not-copied.jpg', '/files/a.pdf', '/reports/2025/a.pdf', '/resources/a.pdf',
+    '/wp-content/uploads/2025/10/1.png', // a copied upload: one 308 to its copy, answered before the Worker
+    '/wp-content/uploads/2025/10/1.png?x=1',
+  ];
+  for (const p of paths) await get(p);
+  assert.deepEqual(stubHits().map((h) => h.path), [], 'a request of the new site reached the origin');
+});
+await check('pass-through', 'an upload the build copied is a 308 to its copy and one the build did not copy is WordPress\'s (the choice behind F-05: no splat over /wp-content/uploads), and an @ in a name is one hop', async () => {
+  clearStub();
+  const copied = await get('/wp-content/uploads/2025/10/1.png');
+  assert.equal(copied.status, 308);
+  assert.equal(copied.headers.get('location'), '/blog/images/2025/10/1.png');
+  assert.equal((await get(copied.headers.get('location'))).status, 200, 'the copy is a static asset');
+  assert.equal(stubHits().length, 0);
+  const at = await get('/wp-content/uploads/2026/04/IMG_9167@-1353469099-Azkiya-Najwah-3-scaled.jpg');
+  assert.equal(at.status, 308);
+  assert.equal(at.headers.get('location'), '/blog/images/2026/04/IMG_9167%40-1353469099-Azkiya-Najwah-3-scaled.jpg', 'the %40 form directly, so no second hop');
+  assert.equal((await get(at.headers.get('location'))).status, 200, 'the %40 address is served as it is, with no redirect of its own');
+  assert.equal(stubHits().length, 0);
+  const other = await get('/wp-content/uploads/2099/01/not-copied.jpg');
+  assert.equal(other.status, 200);
+  assert.equal(other.headers.get('x-stub-origin'), '1');
+  assert.equal(stubHits().length, 1);
+});
+await check('portal-paths', 'no navbar of any kind of page asks the portal Worker for a session while the portal is off: no script has the address, no page has it', async () => {
+  clearStub();
+  for (const p of ['/', '/blog', '/gabung-siswa', '/kontak', '/no-such-page', '/daftar']) {
+    const html = await text(await get(p));
+    assert.ok(!html.includes('get-session'), `${p}: the session call is in the page`);
+    assert.ok(!html.includes('/portal'), `${p}: a path of the portal is in the page`);
+    assert.ok(!html.includes('data-auth-link'), p);
+  }
   assert.equal(stubHits().length, 0);
 });
-await check('portal-paths', 'the navbar\'s "Masuk" is /portal/login in the bar and in the mobile menu, on every kind of page', async () => {
-  for (const p of ['/', '/blog', '/tim', '/gabung-siswa', '/kontak']) {
+await check('portal-paths', 'the slot of the old "Masuk" button is EMPTY while the portal is off, in the bar and in the mobile menu, on every kind of page: only the logo and the menu links, no button, no wrapper, no "Daftar Sekarang", no "Masuk"', async () => {
+  for (const p of ['/', '/blog', '/gabung-siswa', '/kontak', '/donasi', '/program/pembinaan', '/no-such-page']) {
     const html = await text(await get(p));
-    assert.equal((html.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length, 2, p);
-    assert.ok(!/href="\/login"/.test(html), p);
+    assert.deepEqual(navbarProblems(html), [], p);
+    assert.ok(!/href="\/(portal\/)?login"/.test(html), p);
   }
 });
 
@@ -480,7 +624,7 @@ await check('shortlinks', '/daftar-2026 is a 307 to its target: Location, not ca
   assert.equal(res.status, 307);
   assert.equal(res.headers.get('location'), 'https://example.org/form');
   assert.equal(res.headers.get('cache-control'), 'no-store');
-  assert.match(res.headers.get('strict-transport-security') ?? '', /max-age=31536000/);
+  assert.equal(res.headers.get('strict-transport-security'), 'max-age=300', 'HSTS is staged: five minutes, no includeSubDomains, no preload');
   assert.equal(await res.text(), '');
   assert.deepEqual(asked, ['/api/public/shortlinks/daftar-2026']);
   assert.deepEqual(counted, { 'daftar-2026': 1 });
@@ -551,7 +695,7 @@ for (const p of ['/no_such_link', '/a--b', '/-a', `/${'a'.repeat(65)}`, '/has.do
 await check('shortlinks', 'static pages and the pages of the Worker win over the catch-all: they never ask the API for a shortlink', async () => {
   clearStub();
   const { asked } = await visiting(async () => {
-    for (const p of ['/', '/blog', '/tim', '/laporan', '/kontak', '/donasi', '/gabung-siswa', '/robots.txt', '/program/pembinaan', '/daftar']) await get(p);
+    for (const p of ['/', '/blog', '/tim', '/laporan', '/kontak', '/donasi', '/gabung-siswa', '/robots.txt', '/program/pembinaan']) await get(p);
   });
   assert.deepEqual(asked, []);
   assert.equal(stubHits().length, 0);
@@ -559,10 +703,22 @@ await check('shortlinks', 'static pages and the pages of the Worker win over the
 await check('shortlinks', 'the names the portal owns (/portal, /admin, /api, the old auth pages) are reserved: they never ask the API for a shortlink either', async () => {
   clearStub();
   const { asked } = await visiting(async () => {
-    for (const p of ['/portal', '/admin', '/api', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email']) await get(p);
+    for (const p of ['/portal', '/admin', '/api', '/register', '/forgot-password', '/reset-password', '/verify-email']) await get(p);
   });
   assert.deepEqual(asked, []);
   assert.equal(stubHits().length, 0);
+});
+await check('shortlinks', 'the names WordPress owns are reserved too (SAKEM-103): the forwarded ones never ask the API, and neither does another spelling of them (/Login, /WP-ADMIN, /Wp-Json lower-case to a reserved name)', async () => {
+  clearStub();
+  const { asked } = await visiting(async () => {
+    for (const p of ['/wp-admin', '/wp-json', '/wp-content', '/wp-includes', '/login', '/wp-login.php', '/xmlrpc.php']) await get(p);
+    for (const p of ['/Login', '/LOGIN', '/WP-ADMIN', '/Wp-Json', '/WP-CONTENT', '/Wp-Includes']) {
+      const res = await get(p);
+      assert.equal(res.status, 404, p);
+    }
+  });
+  assert.deepEqual(asked, []);
+  assert.equal(stubHits().filter((h) => /^\/(Login|LOGIN|WP-|Wp-)/.test(h.path)).length, 0, 'another spelling is not WordPress\'s');
 });
 await check('shortlinks', 'when the API cannot answer the visitor gets a 503 (never a 404, never a redirect), told to retry, and nothing is cached', async () => {
   try {
@@ -595,6 +751,144 @@ await check('shortlinks', 'an API that is too slow is cut off after about 2 s: 5
 await check('shortlinks', 'the log of a failed lookup holds a fixed reason and never the slug', async () => {
   assert.match(stack.output(), /shortlink api: status 500/);
   assert.doesNotMatch(stack.output(), /shortlink api:[^\n]*(daftar-2026|no-such-link|unduh-panduan)/);
+});
+
+// ---------------------------------------------------------------- the registration shortlink (SAKEM-103, Phase A of the cutover)
+// Every "Daftar Sekarang" goes to /daftar, an ADMIN shortlink (D1, looked up through the API Worker like any other): a 307 to the form of
+// the current cohort, so a new cohort changes the shortlink's target in the admin and nothing is deployed. The address of the form is in no
+// file of this repository: the fixture API stands in for the admin's D1 here, with an invented target. When no shortlink answers, the visitor
+// gets a polite page of its own (a real 404 status, noindex, never cached) instead of the generic 404.
+await check('registration', '/daftar is a 307 to the form the admin pointed it at: Location, no-store, the staged HSTS, one call to the API, one click; the origin is not asked, and no redirect rule of the Worker is involved', async () => {
+  clearStub();
+  const { result: res, asked, counted } = await visiting(() => get('/daftar'));
+  assert.equal(res.status, 307);
+  assert.equal(res.headers.get('location'), SAMPLE_SHORTLINKS.daftar);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  assert.equal(res.headers.get('strict-transport-security'), 'max-age=300');
+  assert.equal(await res.text(), '');
+  assert.deepEqual(asked, ['/api/public/shortlinks/daftar']);
+  assert.deepEqual(counted, { daftar: 1 });
+  assert.equal(stubHits().length, 0);
+  assert.equal(matchRedirect('/daftar'), null);
+});
+await check('registration', '/daftar/ (the address WordPress used, with the slash) is folded with a 308 to /daftar without a call to the API, the query kept; then the link opens (a 307)', async () => {
+  const folded = await visiting(() => get('/daftar/'));
+  assert.equal(folded.result.status, 308);
+  assert.equal(folded.result.headers.get('location'), '/daftar');
+  assert.deepEqual(folded.asked, []);
+  const withQuery = await get('/daftar/?utm_source=ig');
+  assert.equal(withQuery.status, 308);
+  assert.equal(withQuery.headers.get('location'), '/daftar?utm_source=ig');
+  const opened = await visiting(() => get('/daftar?utm_source=ig'));
+  assert.equal(opened.result.status, 307);
+  assert.equal(opened.result.headers.get('location'), SAMPLE_SHORTLINKS.daftar);
+  assert.deepEqual(opened.counted, { daftar: 1 });
+});
+await check('registration', 'upper case is the same link (/Daftar, /DAFTAR/), HEAD is a visit (a 307 and a click), and a POST is not (the generic 404, no call)', async () => {
+  const upper = await visiting(() => get('/Daftar'));
+  assert.equal(upper.result.status, 307);
+  assert.deepEqual(upper.asked, ['/api/public/shortlinks/daftar']);
+  const slashed = await get('/DAFTAR/');
+  assert.equal(slashed.status, 308);
+  assert.equal((await get(slashed.headers.get('location'))).status, 307);
+  const head = await visiting(() => get('/daftar', { method: 'HEAD' }));
+  assert.equal(head.result.status, 307);
+  assert.equal(head.result.headers.get('location'), SAMPLE_SHORTLINKS.daftar);
+  assert.deepEqual(head.counted, { daftar: 1 });
+  const post = await visiting(() => get('/daftar', { method: 'POST', headers: { origin: base }, body: 'x' }));
+  assert.equal(post.result.status, 404);
+  assert.deepEqual(post.asked, []);
+});
+await check('registration', 'the old registration form address /gabung-siswa/form goes to /daftar (a 308), and from there to the form (a 307): two hops, no /portal anywhere', async () => {
+  clearStub();
+  const first = await get('/gabung-siswa/form');
+  assert.equal(first.status, 308);
+  assert.equal(first.headers.get('location'), '/daftar');
+  const second = await get(first.headers.get('location'));
+  assert.equal(second.status, 307);
+  assert.equal(second.headers.get('location'), SAMPLE_SHORTLINKS.daftar);
+  assert.equal(stubHits().length, 0);
+});
+await check('registration', 'no shortlink for /daftar (never created, or switched off: the API says the same): a polite page of its own, a real 404, noindex, never cached; the generic 404 is not shown, and nothing reaches the origin', async () => {
+  try {
+    await shortlinkMode('empty');
+    clearStub();
+    const { result: res, asked, counted } = await visiting(() => get('/daftar'));
+    assert.equal(res.status, 404);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.equal(res.headers.get('location'), null);
+    assert.match(res.headers.get('content-type') ?? '', /text\/html/);
+    const html = await res.text();
+    assert.match(html, /<meta name="robots" content="noindex">/);
+    assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), 'Formulir pendaftaran belum tersedia - Yayasan Sakola Kembara Indonesia');
+    assert.equal(html.match(/<link rel="canonical"/g) ?? null, null, 'no canonical: it is not a page to index');
+    assert.equal(ldBlocks(html).length, 0, 'no structured data on a page that says "not available"');
+    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+    const body = html.slice(html.indexOf('<div id="konten-utama">'), html.indexOf('</main>'));
+    assert.match(body, /Formulir pendaftaran belum tersedia/);
+    assert.ok(decodeEntities(body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).includes('Saat ini formulir pendaftaran belum dapat dibuka. Silakan coba lagi nanti, atau hubungi kami untuk informasi pendaftaran terbaru.'));
+    assert.doesNotMatch(body, /Halaman tidak ditemukan|tidak ada atau sudah dipindahkan/);
+    assert.deepEqual([...body.matchAll(/<a href="([^"]+)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2].trim()]), [['/kontak', 'Hubungi Kami'], ['/', 'Kembali ke Beranda']]);
+    assert.deepEqual(asked, ['/api/public/shortlinks/daftar']);
+    assert.deepEqual(counted, {});
+    assert.equal(stubHits().length, 0);
+    // other unknown links keep the generic page, and the registration link is a 307 again the moment the shortlink is back (nothing was kept)
+    const generic = await get('/no-such-link');
+    assert.equal(generic.status, 404);
+    assert.match(await generic.text(), /Halaman tidak ditemukan/);
+    await shortlinkMode('ok');
+    const back = await get('/daftar');
+    assert.equal(back.status, 307);
+    assert.equal(back.headers.get('location'), SAMPLE_SHORTLINKS.daftar);
+  } finally {
+    await shortlinkMode('ok');
+  }
+});
+await check('registration', 'the polite page is the site\'s shell: navbar and footer, the security headers, no script of its own; HEAD gets the status and no body', async () => {
+  try {
+    await shortlinkMode('empty');
+    const res = await get('/daftar');
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(res.headers.get('strict-transport-security'), 'max-age=300');
+    const html = await res.text();
+    assert.ok(html.includes('<nav'), 'the navbar');
+    assert.ok(html.includes('<footer'), 'the footer');
+    assert.equal([...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json')).length, 1, 'the navbar script is the only script');
+    const head = await get('/daftar', { method: 'HEAD' });
+    assert.equal(head.status, 404);
+    assert.equal(head.headers.get('cache-control'), 'no-store');
+    assert.equal(await head.text(), '');
+  } finally {
+    await shortlinkMode('ok');
+  }
+});
+await check('registration', 'an API that cannot answer is a 503 for /daftar like for any link (the plain Indonesian sentence, retry, never cached): a working link is not made to look closed', async () => {
+  try {
+    for (const mode of ['500', 'badjson', 'html404']) {
+      await shortlinkMode(mode);
+      const res = await get('/daftar');
+      assert.equal(res.status, 503, mode);
+      assert.equal(res.headers.get('retry-after'), '30');
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.match(await res.text(), /^Tautan ini belum dapat dibuka saat ini\./);
+    }
+  } finally {
+    await shortlinkMode('ok');
+  }
+});
+await check('registration', 'the address of the form is in no page of the site: not in the polite page, not in a navbar, not in /gabung-siswa (only the fixture API, standing in for the admin\'s D1, knows it)', async () => {
+  const target = new URL(SAMPLE_SHORTLINKS.daftar);
+  // (not /tim, /laporan or /gabung-siswa/docs: the groups after this one expect their first request to reach the API)
+  for (const p of ['/', '/gabung-siswa', '/donasi', '/program/pembinaan', '/no-such-page']) {
+    const html = await text(await get(p));
+    assert.ok(!html.includes(target.host + target.pathname), p);
+  }
+  try {
+    await shortlinkMode('empty');
+    assert.ok(!(await text(await get('/daftar'))).includes(target.host), 'the polite page');
+  } finally {
+    await shortlinkMode('ok');
+  }
 });
 
 // ---------------------------------------------------------------- /program/<id> and /donasi
@@ -889,7 +1183,8 @@ await check('resources', '/gabung-siswa/docs: SSR 200, five categories in order,
   const t = mainText(html);
   assert.ok(t.includes('Panduan lengkap, poin-poin penting, dan alur pendaftaran Sakola Kembara.'));
   assert.ok(t.includes('Dokumen tambahan yang tidak masuk kategori di atas.'));
-  assert.ok(html.includes('<a href="/portal/daftar"'));
+  assert.ok(html.includes('<a href="/daftar"'));
+  assert.ok(!html.includes('/portal/daftar'));
   assert.ok(html.includes('<a href="/gabung-siswa"'));
 });
 await check('resources', '/gabung-siswa/docs: files and links open in a new tab with rel noopener noreferrer (files also download); a text entry has a hidden copy button that points at its <pre>', async () => {
@@ -1001,7 +1296,7 @@ await check('gabung-siswa', '/gabung-siswa: 200 html from the assets layer, one 
   for (const step of ['01', '02', '03', '04']) assert.ok(t.includes(` ${step} `), step);
   assert.equal((html.match(/<h3 class="font-bold text-gray-900 mb-2">/g) ?? []).length, 4, 'four steps');
   const links = anchorTags(html);
-  assert.equal(links.filter((a) => attrOf(a, 'href') === '/portal/daftar').length, 2, 'the two Daftar Sekarang buttons');
+  assert.equal(links.filter((a) => attrOf(a, 'href') === '/daftar').length, 2, 'the two Daftar Sekarang buttons of the page (the navbar has none: its slot is empty)');
   assert.equal(links.filter((a) => attrOf(a, 'href') === '/gabung-siswa/docs').length, 1);
   assert.ok(links.some((a) => attrOf(a, 'href') === '#manfaat'));
   assert.ok(html.includes('<section id="manfaat"'));
@@ -1242,7 +1537,7 @@ for (const p of ['/', '/tim', '/blog', '/blog/nope', `/blog/${slugs[0]}`, '/robo
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(res.headers.get('x-frame-options'), 'DENY');
     assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
-    assert.match(res.headers.get('strict-transport-security'), /max-age=31536000/);
+    assert.equal(res.headers.get('strict-transport-security'), 'max-age=300', 'HSTS is staged: five minutes, no includeSubDomains, no preload');
     assert.match(res.headers.get('permissions-policy'), /camera=\(\)/);
   });
 }
@@ -1392,7 +1687,7 @@ await check('home', '/ content counts: 3 figures, 4 metrics, 8 branches, 7 testi
   assert.equal((html.match(/<li class="bg-white rounded-xl shadow-sm"/g) ?? []).length, 8);
   assert.equal((html.match(/<li class="snap-start/g) ?? []).length, 7);
   assert.equal((html.match(/<li class="w-\[136px\]/g) ?? []).length, 6);
-  assert.equal((html.match(/<a href="\/(?:gabung-siswa|donasi|kontak)" class="mt-auto/g) ?? []).length, 4);
+  assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="mt-auto/g) ?? []).length, 4);
   const news = html.slice(html.indexOf('id="blog"'));
   assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group block/g) ?? []).length, 3);
 });
@@ -2533,6 +2828,114 @@ await check('analytics', 'an invalid Worker variable is ignored: no tag on any r
 
 await check('analytics', 'unset is silent: the default stack\'s Worker output has no line about the beacon', async () => {
   assert.doesNotMatch(stack.output(), /WEB_ANALYTICS_BEACON_ID|beacon/i, 'nothing to say when it is unset');
+});
+
+// ---------------------------------------------------------------- the student portal switch (SAKEM-103, Phase A of the cutover)
+// The navbar's "Masuk" link and its session script exist only while PORTAL_ENABLED says the portal is live. Default OFF: the plain stack above
+// has neither anywhere (group `portal-paths`). A page gets the value from its own source: the pages the Worker renders from the Worker variable
+// (checked here, with a `--var`), the prerendered ones from the build's environment (checked by scripts/e2e-portal.mjs against two more
+// builds). This group runs the plain build, so a Worker variable alone cannot reach a static file. Only strict values count.
+const PORTAL_PRERENDERED = ['/', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+const PORTAL_RENDERED = ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/kontak?terkirim=1', '/no-such-page', '/blog/no-such-article'];
+const portalNav = (html) => html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
+const portalScripts = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+
+await check('portal', 'the portal switch with the Worker variable true: every page the Worker renders has "Masuk" in the bar and in the menu (/portal/login), one inline session script and no "Daftar Sekarang" in the navbar; status and cache headers are as without it', async () => {
+  const s = await startStack({ port: 8816, stubPort: 4439, fixturePort: 4440, inspectorPort: 9355, vars: { PORTAL_ENABLED: 'true', ADMIN_URL: 'https://admin.example.test' } });
+  const plain = (p) => fetch(`${stack.base}${p}`, { redirect: 'manual' });
+  try {
+    for (const p of PORTAL_RENDERED) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      const html = await res.text();
+      const nav = portalNav(html);
+      assert.equal((nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length, 2, `${p}: Masuk in the bar and in the menu`);
+      assert.ok(!nav.includes('Daftar Sekarang'), `${p}: the registration button is not in the navbar while the portal is on`);
+      const session = portalScripts(html).filter((code) => code.includes('get-session'));
+      assert.equal(session.length, 1, `${p}: one session script`);
+      assert.ok(session[0].includes('/portal/api/auth/get-session') && session[0].includes('sk:session') && session[0].includes('super_admin'), `${p}: it is the whole session script`);
+      assert.ok(!session[0].includes('announcement'), `${p}: it is a script of its own, apart from the navbar's`);
+      assert.equal((html.match(/get-session/g) ?? []).length, 1, p);
+      assert.deepEqual([...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]).filter((src) => !src.startsWith('https://challenges.cloudflare.com/')), [], `${p}: the script is inline: no script file of ours (the contact form has Cloudflare's own)`);
+      // the navbar script itself is the same as without the portal (the announcement strip, the menu, the year)
+      assert.equal(portalScripts(html).filter((code) => code.includes('nav-toggle')).length, 1, p);
+      // nothing else about the answer changes
+      const without = await plain(p);
+      assert.equal(res.status, without.status, `${p}: status`);
+      assert.equal(res.headers.get('cache-control'), without.headers.get('cache-control'), `${p}: cache-control`);
+      assert.equal(res.headers.get('strict-transport-security'), without.headers.get('strict-transport-security'), p);
+      assert.equal(res.headers.get('set-cookie'), null, p);
+    }
+    assert.equal((await fetch(`${s.base}/no-such-page`)).status, 404);
+    assert.equal((await fetch(`${s.base}/kontak`)).status, 200);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('portal', 'with only the Worker variable the prerendered pages (static files) are unchanged: the empty slot, no "Masuk", no session script (a Worker variable cannot reach static HTML); the redirects, the admin and API answers do not change either', async () => {
+  const s = await startStack({ port: 8816, stubPort: 4439, fixturePort: 4440, inspectorPort: 9355, vars: { PORTAL_ENABLED: 'true', ADMIN_URL: 'https://admin.example.test' } });
+  try {
+    for (const p of PORTAL_PRERENDERED) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      assert.equal(res.status, 200, p);
+      const html = await res.text();
+      assert.ok(!html.includes('get-session'), `${p}: a Worker variable cannot put the session call in static HTML`);
+      assert.ok(!html.includes('/portal'), p);
+      assert.deepEqual(navbarProblems(html), [], `${p}: still the empty slot`);
+    }
+    // /portal itself is still the site's 404 in this stack: nothing attaches a portal Worker to the route here, whatever the switch says
+    const portal = await fetch(`${s.base}/portal`, { redirect: 'manual' });
+    assert.equal(portal.status, 404);
+    const admin = await fetch(`${s.base}/admin/blog`, { redirect: 'manual' });
+    assert.equal(admin.status, 308);
+    assert.equal(admin.headers.get('location'), 'https://admin.example.test/blog');
+    const api = await fetch(`${s.base}/api/anything`, { redirect: 'manual' });
+    assert.equal(api.status, 404);
+    assert.match(api.headers.get('content-type') ?? '', /json/);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('portal', 'PORTAL_ENABLED=false is off and silent: the same pages as unset, and no line in the Worker log', async () => {
+  const s = await startStack({ port: 8817, stubPort: 4441, fixturePort: 4442, inspectorPort: 9356, vars: { PORTAL_ENABLED: 'false' } });
+  try {
+    for (const p of ['/blog', '/tim', '/kontak', '/no-such-page']) {
+      const html = await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text();
+      assert.ok(!html.includes('get-session') && !html.includes('data-auth-link'), p);
+      assert.deepEqual(navbarProblems(html), [], p);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    assert.doesNotMatch(s.output(), /portal: PORTAL_ENABLED/, 'a valid false is not reported');
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('portal', 'a value that is not exactly true or false (TRUE, 1, yes, a hostile string) leaves the portal off: the page is the Phase A page, the value is in no page and no log line, and the Worker says once, in fixed words, that it is wrong', async () => {
+  const hostile = '"><img src=x onerror=alert(1)>true';
+  for (const [value, port] of [[hostile, 8818], ['TRUE', 8819], ['1', 8820]]) {
+    const s = await startStack({ port, stubPort: port - 8818 + 4443, fixturePort: port - 8818 + 4444, inspectorPort: port - 8818 + 9357, vars: { PORTAL_ENABLED: value } });
+    try {
+      for (const p of ['/blog', `/blog/${slugs[0]}`, '/tim', '/kontak', '/no-such-page', '/blog']) {
+        const html = await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text();
+        assert.ok(!html.includes('get-session') && !html.includes('data-auth-link'), `${JSON.stringify(value)} ${p}`);
+        assert.ok(!html.includes('onerror') && !html.includes('src=x'), `${p}: the value is not echoed`);
+        assert.deepEqual(navbarProblems(html), [], p);
+      }
+      for (let i = 0; i < 30 && !/PORTAL_ENABLED is set but is neither/.test(s.output()); i++) await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 300));
+      const out = s.output();
+      assert.equal(out.split('portal: PORTAL_ENABLED is set but is neither "true" nor "false"; the page is rendered with the portal off').length - 1, 1, `${JSON.stringify(value)}: one line per isolate`);
+      assert.doesNotMatch(out, /onerror|src=x|alert\(1\)/);
+    } finally {
+      await s.stop();
+    }
+  }
+});
+
+await check('portal', 'unset is silent: the default stack\'s Worker output has no line about the portal switch', async () => {
+  assert.doesNotMatch(stack.output(), /portal: PORTAL_ENABLED/, 'nothing to say when it is unset');
 });
 
 // ---------------------------------------------------------------- report

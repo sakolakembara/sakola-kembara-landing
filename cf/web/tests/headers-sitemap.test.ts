@@ -17,14 +17,38 @@ describe('security headers', () => {
     expect(parsed).toEqual(SECURITY_HEADERS);
   });
 
-  it('they are the headers the legacy Caddyfile sets on every response', () => {
+  it('they are the headers the legacy Caddyfile sets on every response, except HSTS, which is staged on purpose (below)', () => {
     const caddy = readRoot('Caddyfile');
     const block = caddy.match(/header \{([\s\S]*?)\n\t\}/)?.[1] ?? '';
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
       const line = block.split('\n').find((l) => l.trim().toLowerCase().startsWith(name.toLowerCase()));
       expect(line, name).toBeDefined();
+      if (name === 'Strict-Transport-Security') continue;
       expect(line!.trim().slice(name.length).trim().replace(/^"|"$/g, '')).toBe(value);
     }
+  });
+
+  // F-01 / D-04 / P-19 of docs/cloudflare/cutover-runbook.md (SAKEM-103): the Caddyfile's `max-age=31536000; includeSubDomains; preload` commits
+  // every subdomain to HTTPS for a year and blocks a rollback to anything without a valid certificate for the apex. Five minutes first, raised in
+  // steps (X-07). The value is pinned in BOTH places a response can get it from.
+  it('HSTS is staged: max-age=300, no includeSubDomains, no preload, in the middleware list and in public/_headers', () => {
+    expect(SECURITY_HEADERS['Strict-Transport-Security']).toBe('max-age=300');
+    const file = readWeb('public/_headers');
+    const block = file.split('\n\n').find((b) => b.startsWith('/*')) ?? '';
+    const line = block.split('\n').find((l) => l.trim().startsWith('Strict-Transport-Security')) ?? '';
+    expect(line.trim()).toBe('Strict-Transport-Security: max-age=300');
+    for (const text of [SECURITY_HEADERS['Strict-Transport-Security'], line]) {
+      expect(text).not.toMatch(/includeSubDomains/i);
+      expect(text).not.toMatch(/preload/i);
+      expect(text).not.toMatch(/31536000/);
+    }
+    // the Caddyfile still has the year-long value: it is the legacy stack's, never served by the Worker, and the one deliberate difference
+    expect(readRoot('Caddyfile')).toContain('max-age=31536000; includeSubDomains; preload');
+  });
+
+  it('a response of the Worker carries the staged value, and an origin answer that has its own HSTS keeps it (existing values win)', () => {
+    expect(withSecurityHeaders(new Response('x')).headers.get('strict-transport-security')).toBe('max-age=300');
+    expect(withSecurityHeaders(new Response('x', { headers: { 'strict-transport-security': 'max-age=63072000' } })).headers.get('strict-transport-security')).toBe('max-age=63072000');
   });
 
   it('withSecurityHeaders adds them, keeps status, body and existing values', async () => {

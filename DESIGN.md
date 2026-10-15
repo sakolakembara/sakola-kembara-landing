@@ -161,7 +161,7 @@ Never `rounded-full` on a button or input: this is not a pill-button brand. Don'
 - `fixed` white bar (`bg-white/95 backdrop-blur-md border-b border-gray-100`). Container `max-w-[1200px] mx-auto px-6 py-4`.
 - From `md`: a `grid-cols-[1fr_auto_1fr]` grid, so the menu sits centred on the page (not in the space the logo and button leave). Logo left (`h-10`), menu centre, auth button right.
 - Menu (`navLinks` in `lib/data.ts`): Home · Team · Siswa · Donasi · Laporan · Blog. Kontak lives in the footer. There is no donation button in the header.
-- Auth button (`AuthNavButton`, `components/layout/auth-nav-button.tsx`): `<Button variant="neutral">`, text only, `sm` (40px) on desktop and `md` (44px) in the mobile menu. *Masuk* when signed out, *Portal* or *Dashboard* once the session resolves.
+- Auth button (`AuthNavButton`, `components/layout/auth-nav-button.tsx`): `<Button variant="neutral">`, text only, `sm` (40px) on desktop and `md` (44px) in the mobile menu. *Masuk* when signed out, *Portal* or *Dashboard* once the session resolves. **On the Cloudflare site (`cf/web`) while the student portal is not live (Phase A of the cutover, SAKEM-103, the `PORTAL_ENABLED` switch is off) the slot is EMPTY (decided by Dzul, 2026-10-15): no *Masuk*, no session call and no other button, not even the wrapper of the button; the menu stays centred, and registration is reached from the pages' own *Daftar Sekarang* buttons.** The slot is *Masuk* again, with its session script, when the portal goes live (Phase B).
 
 ### Footer (`components/layout/footer.tsx`)
 

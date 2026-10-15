@@ -1,7 +1,8 @@
 // Redirect rules, ported from the root next.config.ts (`redirects()`) plus two
 // rules added by SAKEM-075, the five auth pages that moved into the portal
-// (SAKEM-083) and the WordPress pages and archives found by the SEO parity run
-// (SAKEM-090). One table, four consumers:
+// (SAKEM-083, taken out again for Phase A of the cutover by SAKEM-103) and the
+// WordPress pages and archives found by the SEO parity run (SAKEM-090). One table,
+// four consumers:
 //
 //   - astro.config.mjs → an integration writes it to dist/client/_redirects
 //     (toUnderscoreRedirects below). The Workers assets layer answers those
@@ -20,6 +21,8 @@
 //
 // Plain .mjs (not .ts) so astro.config.mjs can import it without a loader.
 // Pattern syntax is Astro's: [slug] is one segment, [...path] is the rest.
+
+import { assetUrl } from './assets.config.mjs';
 
 /** Legacy WordPress category permalinks (/cerita/<slug>/ and the /cerita/ archive). */
 export const WP_BLOG_CATEGORIES = [
@@ -48,21 +51,16 @@ export const REDIRECTS = {
   // Legacy category archive pages → /blog index.
   ...Object.fromEntries(WP_BLOG_CATEGORIES.map((cat) => [`/${cat}`, to('/blog')])),
 
-  // Old CTA destinations still linked from external sites, QR codes and bios.
-  '/daftar': to('/gabung-siswa'),
+  // Old CTA destinations still linked from external sites, QR codes and bios. `/daftar` is NOT here (SAKEM-103): it is an
+  // admin shortlink now (D1, a 307 to the registration form, src/pages/[...path].astro), so a new cohort changes the
+  // shortlink's target in the admin and nothing is deployed.
   '/apply': to('/gabung-siswa'),
-  // Registration form moved under /portal (auth-gated there).
-  '/gabung-siswa/form': to('/portal/daftar'),
-  // The legacy auth pages moved into the student portal (M4, SAKEM-083: a Worker of its own on the route <apex>/portal/*).
-  // Static rules, so the assets layer answers them without a Worker request. An old emailed link or bookmark ends up on
-  // the portal's page of the same name; a token in its query is a legacy one, which the portal refuses with its own
-  // "tautan tidak valid" page, and a legacy `from=/portal/status` is understood by the portal's sign-in (it accepts the
-  // path with or without its /portal prefix).
-  '/login': to('/portal/login'),
-  '/register': to('/portal/register'),
-  '/forgot-password': to('/portal/forgot-password'),
-  '/reset-password': to('/portal/reset-password'),
-  '/verify-email': to('/portal/verify-email'),
+  // The registration form of the abandoned portal address goes where every "Daftar Sekarang" goes: the shortlink.
+  '/gabung-siswa/form': to('/daftar'),
+  // `/login`, `/register`, `/forgot-password`, `/reset-password` and `/verify-email` are NOT here any more (SAKEM-103, Phase A of
+  // the cutover: the student portal is not live yet). They used to be 308s into /portal/<name> (SAKEM-083). `/login` is WordPress's
+  // now (src/lib/legacy-paths.ts forwards it), and the other four are the site's own 404, like on the live site. Phase B brings the
+  // 308s back (docs/cloudflare/web-skeleton.md, "The student portal switch").
   // "About" page rename: the public team page took over.
   '/tentang-kami': to('/tim'),
   '/about': to('/tim'),
@@ -77,9 +75,10 @@ export const REDIRECTS = {
   '/index.php': to('/'),
 
   // Added by SAKEM-075 (not in next.config.ts):
-  // Image URLs from the WordPress media library (SAKEM-060). The migrated
-  // files live under /blog/images/<yyyy>/<mm>/ with the same relative path.
-  '/wp-content/uploads/[...path]': to('/blog/images/[...path]'),
+  // Image URLs from the WordPress media library (SAKEM-060): the migrated files live under /blog/images/<yyyy>/<mm>/ with the
+  // same relative path. Since SAKEM-103 there is no splat rule for /wp-content/uploads/*: WordPress stays behind the same
+  // hostname (Phase A) and answers every upload this site did not mirror, so only the files that exist under /blog/images
+  // are redirected, one rule each, written at build time (mirroredUploadRules, toUnderscoreRedirects).
   // There is no /program index; send it to the first stage. Temporary on
   // purpose: an overview page may replace it.
   '/program': to('/program/prapembinaan', TEMPORARY),
@@ -174,25 +173,57 @@ export function matchRedirect(pathname, search = '') {
  * URLs end in "/".
  *
  * @param {typeof REDIRECTS} [table]
- * @param {{ slashFolds?: string[] }} [options]  slashFolds: paths of prerendered pages (see slashFoldPaths), each also
- *   written as `<path>/  <path>  308`, before every other rule
+ * @param {{ slashFolds?: string[], uploadMirrors?: { from: string, to: string }[] }} [options]  slashFolds: paths of
+ *   prerendered pages (see slashFoldPaths), each also written as `<path>/  <path>  308`, before every other rule;
+ *   uploadMirrors: one rule per WordPress upload this build ships (see mirroredUploadRules), written with the static rules
  */
-export function toUnderscoreRedirects(table = REDIRECTS, { slashFolds = [] } = {}) {
+export function toUnderscoreRedirects(table = REDIRECTS, { slashFolds = [], uploadMirrors = [] } = {}) {
   const isDynamic = (pattern) => pattern.includes('[');
   // Static rules first: Cloudflare evaluates them before placeholder/splat
   // rules anyway, and wrangler warns when the file is ordered otherwise.
   const entries = Object.entries(table).sort(([a], [b]) => Number(isDynamic(a)) - Number(isDynamic(b)));
+  const staticEntries = entries.filter(([pattern]) => !isDynamic(pattern));
+  const dynamicEntries = entries.filter(([pattern]) => isDynamic(pattern));
   const lines = [];
-  // The trailing-slash twin of every prerendered page, folded with a 308 (see slashFoldPaths): static rules, so they come first.
-  for (const path of slashFolds) lines.push(`${path}/  ${path}  ${PERMANENT}`);
-  for (const [pattern, { status, destination }] of entries) {
+  const emit = ([pattern, { status, destination }]) => {
     const source = pattern.replace(/\[\.\.\.(\w+)\]/g, '*').replace(/\[(\w+)\]/g, ':$1');
     const target = destination.replace(/\[\.\.\.(\w+)\]/g, ':splat').replace(/\[(\w+)\]/g, ':$1');
     const splat = source.endsWith('*');
     lines.push(`${source}  ${target}  ${status}`);
     if (!splat) lines.push(`${source}/  ${target}  ${status}`);
-  }
+  };
+  // The trailing-slash twin of every prerendered page, folded with a 308 (see slashFoldPaths): static rules, so they come first.
+  for (const path of slashFolds) lines.push(`${path}/  ${path}  ${PERMANENT}`);
+  staticEntries.forEach(emit);
+  // The WordPress uploads this site mirrors are static rules too (no placeholder): after the table's static rules, before its dynamic ones.
+  for (const { from, to: target } of uploadMirrors) lines.push(`${from}  ${target}  ${PERMANENT}`);
+  dynamicEntries.forEach(emit);
   return `${lines.join('\n')}\n`;
+}
+
+/**
+ * The WordPress upload addresses of the images this build ships under `blog/images/` (the migrated media library: the
+ * path below `/blog/images/` is the path below `/wp-content/uploads/`), each as a one-hop redirect to its copy. Used
+ * with `toUnderscoreRedirects(..., { uploadMirrors })`.
+ *
+ * Why a rule per file and not the splat `/wp-content/uploads/*` it replaced (SAKEM-103, Phase A of the cutover):
+ * WordPress stays behind the same hostname, and `/wp-content/*` is forwarded to it (src/lib/legacy-paths.ts), so an upload
+ * this site did NOT copy must reach WordPress and be answered there, instead of being sent to a /blog/images address that
+ * is a 404. A file this site did copy keeps its permanent redirect to the static copy, answered by the assets layer: no
+ * Worker request for the most requested images.
+ *
+ * A file name with an `@` (five migrated photos) gets the `%40` form as its target (`assetUrl`), so it is one hop and
+ * not the 308 plus the assets layer's own 307 it used to take.
+ *
+ * @param {string[]} files  paths relative to the client folder, with forward slashes (every file and folder, as readdir lists them)
+ * @returns {{ from: string, to: string }[]} sorted by address, so the file is the same on every build
+ */
+export function mirroredUploadRules(files) {
+  const PREFIX = 'blog/images/';
+  return files
+    .filter((file) => file.startsWith(PREFIX) && /[^/]\.[A-Za-z0-9]+$/.test(file.slice(PREFIX.length)))
+    .map((file) => ({ from: `/wp-content/uploads/${file.slice(PREFIX.length)}`, to: assetUrl(`/${file}`) }))
+    .sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
 }
 
 /**

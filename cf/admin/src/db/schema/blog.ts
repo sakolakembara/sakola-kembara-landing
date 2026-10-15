@@ -38,9 +38,10 @@ export const blogPosts = sqliteTable(
     excerpt: text("excerpt").notNull(),
     /**
      * The text of `<meta name="description">` (and og:description, the JSON-LD description) when it is not the excerpt.
-     * Optional: an article written in the admin has none and the page uses the excerpt. The 80 migrated articles and the 6
-     * imported on 2026-10-13 carry the description their WordPress page had (the SEO parity run of SAKEM-090), because that
-     * is the text search results show today. Public as `description` on the article answer only; no admin form field yet.
+     * Optional: an article whose editor leaves the blog form's "Deskripsi meta" field empty has none and the page uses the
+     * excerpt (the field, at most 300 characters, is SAKEM-094: docs/cloudflare/admin-blog.md). The 80 migrated articles and
+     * the 6 imported on 2026-10-13 carry the description their WordPress page had (the SEO parity run of SAKEM-090), because
+     * that is the text search results show today. Public as `description` on the article answer only.
      */
     metaDescription: text("meta_description"),
     contentMarkdown: text("content_markdown").notNull(),

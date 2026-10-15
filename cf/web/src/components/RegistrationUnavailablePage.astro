@@ -1,0 +1,34 @@
+---
+import Base from '~/layouts/Base.astro';
+import Button from './Button.astro';
+import Container from './Container.astro';
+import Eyebrow from './Eyebrow.astro';
+import Heading from './Heading.astro';
+
+/**
+ * What `/daftar` shows when no admin shortlink answers it (SAKEM-103, Phase A of the cutover): the shortlink was never created,
+ * or it is switched off between two cohorts. It is the site's 404 in status, `noindex` and layout (the page that renders it sets
+ * the status and `no-store`), with words of its own, because a visitor who pressed "Daftar Sekarang" should be told that the form
+ * is not open, not that the page does not exist. The copy is new (the legacy site never had this state): listed in the PR for
+ * Dzul to approve. The buttons are existing labels (the 404 page's).
+ */
+---
+
+<Base seo={{ kind: 'notfound', title: 'Formulir pendaftaran belum tersedia' }}>
+  <main
+    class="bg-gradient-to-b from-gray-50 to-white pt-[calc(var(--hero-top,8rem)_+_1.25rem)] pb-16 md:pt-[calc(var(--hero-top,8rem)_+_2.5rem)] md:pb-24"
+  >
+    <Container size="reading" class="text-center">
+      <Eyebrow class="mb-4">Daftar Siswa</Eyebrow>
+      <Heading level="page" class="mb-4 text-gray-900">Formulir pendaftaran belum tersedia</Heading>
+      <p class="mx-auto mb-8 max-w-[600px] text-base text-gray-600 md:text-lg">
+        Saat ini formulir pendaftaran belum dapat dibuka. Silakan coba lagi nanti, atau hubungi kami untuk informasi pendaftaran
+        terbaru.
+      </p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <Button href="/kontak">Hubungi Kami</Button>
+        <Button href="/" variant="outline">Kembali ke Beranda</Button>
+      </div>
+    </Container>
+  </main>
+</Base>

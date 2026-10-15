@@ -5,13 +5,15 @@ import Heading from '~/components/Heading.astro';
 import Icon, { type IconName } from '~/components/Icon.astro';
 import SectionHeader from '~/components/SectionHeader.astro';
 import Base from '~/layouts/Base.astro';
+import { REGISTRATION_PATH } from '~/lib/site';
 
 export const prerender = true;
 
 // Static at build time: served by the Workers assets layer, no Worker invocation. Ported from
 // app/(public)/gabung-siswa/page.tsx and layout.tsx; the copy is verbatim. The pages it links to
-// are plain links: "Daftar Sekarang" goes to /portal/daftar (the student portal, which lives at
-// the path /portal on this domain) and "Pusat Dokumen" to /gabung-siswa/docs.
+// are plain links: "Daftar Sekarang" goes to /daftar (SAKEM-103, Phase A of the cutover: an admin
+// shortlink that redirects to the registration form of the current cohort; the student portal at
+// /portal is not live yet) and "Pusat Dokumen" to /gabung-siswa/docs.
 
 const benefits: { icon: IconName; title: string; description: string }[] = [
   {
@@ -93,7 +95,7 @@ const flow = [
             melalui program pembinaan intensif gratis dari Sakola Kembara.
           </p>
           <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <Button href="/portal/daftar" variant="white-on-navy" size="lg">
+            <Button href={REGISTRATION_PATH} variant="white-on-navy" size="lg">
               <Icon name="clipboard-list" size={18} />
               Daftar Sekarang
             </Button>
@@ -163,17 +165,19 @@ const flow = [
       </Container>
     </section>
 
-    {/* Bottom CTA */}
+    {/* Bottom CTA. The legacy lead has a second sentence, about the form being split into parts and the progress being saved in the browser,
+        which describes the portal wizard. Dzul removed it for Phase A (SAKEM-103), while registration is an external form behind /daftar, and
+        nothing takes its place. It belongs back when the wizard is switched on (Phase B). */}
     <section class="py-16 bg-gradient-to-br from-primary-blue to-accent-navy text-white">
       <Container size="reading" class="text-center">
         <div class="anim-reveal">
           <SectionHeader
             tone="dark"
             title="Siap Bergabung dengan Sakola Kembara?"
-            lead="Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini."
+            lead="Isi formulir pendaftaran sekarang."
             class="mb-8"
           />
-          <Button href="/portal/daftar" variant="white-on-navy" size="lg">
+          <Button href={REGISTRATION_PATH} variant="white-on-navy" size="lg">
             <Icon name="clipboard-list" size={18} />
             Daftar Sekarang
           </Button>

@@ -1,0 +1,60 @@
+---
+/**
+ * The session script of the navbar: it turns "Masuk" into "Portal" or "Dashboard" once the student portal's Worker says someone
+ * is signed in. It is a component of its own, and the navbar renders it ONLY when the portal is switched on
+ * (src/lib/portal-enabled.ts, SAKEM-103): while the portal is off (Phase A of the cutover) a page has no "Masuk" link, no
+ * session call and not even the address `/portal/api/auth/get-session`, because there is nothing behind it to ask.
+ *
+ * The script cannot import `cachedJson` from the navbar's script: two scripts that share a module make Astro emit a script FILE
+ * for the shared part, and the navbar's script is inline on purpose (no extra request, tests/gabung-siswa-built.test.ts). So the
+ * helper is written out here as well, and tests/portal-enabled.test.ts keeps the two copies identical.
+ */
+---
+
+<script>
+  /** JSON from `url`, reused from sessionStorage while younger than `ttl(value)` ms. */
+  async function cachedJson<T>(key: string, url: string, ttl: (v: T | null) => number): Promise<T | null> {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (raw) {
+        const { at, v } = JSON.parse(raw) as { at: number; v: T | null };
+        if (Date.now() - at < ttl(v)) return v;
+      }
+    } catch {
+      // storage blocked or corrupt: fetch
+    }
+    let value: T | null = null;
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      value = res.ok ? ((await res.json()) as T) : null;
+    } catch {
+      return null; // offline or endpoint unreachable: keep the default
+    }
+    try {
+      sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), v: value }));
+    } catch {
+      // ignore
+    }
+    return value;
+  }
+
+  // --- auth button --------------------------------------------------------
+  // GET /portal/api/auth/get-session, the student portal's Worker (M4, SAKEM-083): Better Auth's answer is `null` without a
+  // cookie, so a visitor who never signed in costs one Worker request and no database read.
+  type Session = { user?: { role?: string } } | null;
+  const ADMIN_ROLES = ['viewer', 'editor', 'super_admin'];
+  // A signed-in answer is kept 5 minutes; a signed-out one only 30 seconds, so
+  // the button catches up soon after someone signs in on the portal. Better Auth answers `null`
+  // without a cookie and `{ session, user }` with one; `user.role` is the field read here. An admin
+  // account is sent to `/admin`, which this Worker answers with a 308 to the admin host (ADMIN_URL).
+  void cachedJson<Session>('sk:session', '/portal/api/auth/get-session', (s) => (s?.user ? 300_000 : 30_000)).then(
+    (session) => {
+      if (!session?.user) return;
+      const admin = ADMIN_ROLES.includes(session.user.role ?? '');
+      document.querySelectorAll<HTMLAnchorElement>('[data-auth-link]').forEach((a) => {
+        a.href = admin ? '/admin' : '/portal';
+        a.textContent = admin ? 'Dashboard' : 'Portal';
+      });
+    },
+  );
+</script>

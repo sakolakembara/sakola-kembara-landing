@@ -92,6 +92,25 @@ describe("shortlinks: creating one", () => {
     expect(audit[0]!.metadata).not.toContain("Instagram");
   });
 
+  test("the registration link `daftar` can be created and re-pointed for the next cohort (SAKEM-103: /daftar is served as a shortlink, not reserved)", async () => {
+    const { cookie } = await konten();
+    const created = await call(LIST, { method: "POST", cookie, json: valid({ slug: "daftar", targetUrl: "https://forms.example.org/gen-6", note: "Tombol Daftar Sekarang" }) });
+    expect(created.status).toBe(201);
+    const { item } = await body<{ item: { id: string; slug: string; targetUrl: string; updatedAt: number } }>(created);
+    expect(item).toMatchObject({ slug: "daftar", targetUrl: "https://forms.example.org/gen-6" });
+
+    // next cohort: only the target changes, no deploy
+    const repointed = await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: await ifMatch(item.id), json: valid({ slug: "daftar", targetUrl: "https://forms.example.org/gen-7", note: "Tombol Daftar Sekarang" }) });
+    expect(repointed.status).toBe(200);
+    expect(await body(repointed)).toMatchObject({ item: { slug: "daftar", targetUrl: "https://forms.example.org/gen-7" } });
+
+    // a link to itself is still refused (the form of /daftar may not be /daftar)
+    expect(await fieldsOf(await call(LIST, { method: "POST", cookie, json: valid({ slug: "daftar-lagi", targetUrl: "/daftar-lagi" }) }))).toEqual({ targetUrl: "Tujuan tidak boleh menunjuk ke shortlink itu sendiri." });
+    const loop = await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: await ifMatch(item.id), json: valid({ slug: "daftar", targetUrl: "/daftar" }) });
+    expect(loop.status).toBe(400);
+    expect(await fieldsOf(loop)).toEqual({ targetUrl: "Tujuan tidak boleh menunjuk ke shortlink itu sendiri." });
+  });
+
   test("the slug is stored the way the resolver looks it up: trimmed, lower case, no surrounding slashes", async () => {
     const { cookie } = await konten();
     const res = await call(LIST, { method: "POST", cookie, json: valid({ slug: "  /Rapat-Besar/ " }) });
@@ -137,7 +156,7 @@ describe("shortlinks: creating one", () => {
 
   test("a slug a page of the site already answers is refused when it is created, not left to fail silently", async () => {
     const { cookie } = await konten();
-    for (const slug of ["donasi", "tim", "/Blog/", "gabung-siswa", "kontak", "laporan", "program", "login", "api", "admin", "daftar", "404"]) {
+    for (const slug of ["donasi", "tim", "/Blog/", "gabung-siswa", "kontak", "laporan", "program", "login", "api", "admin", "apply", "404", "wp-admin", "wp-content", "wp-includes", "wp-json"]) {
       const res = await call(LIST, { method: "POST", cookie, json: valid({ slug }) });
       expect(res.status, slug).toBe(400);
       const normalised = slug.toLowerCase().replace(/^\/+|\/+$/g, "");

@@ -198,10 +198,24 @@ export const kontenMiscChecks = [
     tests: `${RULES} ${SHORTLINKS}`,
   },
   {
-    name: "konten: a redirect source of the new site is no longer reserved (daftar)",
+    name: "konten: a redirect source of the new site is no longer reserved (apply)",
     file: "src/shortlinks/reserved.ts",
-    from: '  "daftar",\n',
+    from: '  "apply",\n',
     to: "",
+    tests: `${RULES} ${SHORTLINKS}`,
+  },
+  {
+    name: "konten: a WordPress path the site forwards to its origin is no longer reserved (wp-admin)",
+    file: "src/shortlinks/reserved.ts",
+    from: '  "wp-admin",\n',
+    to: "",
+    tests: `${RULES} ${SHORTLINKS}`,
+  },
+  {
+    name: "konten: the registration link's name is reserved again (daftar): the Daftar Sekarang buttons could not be created",
+    file: "src/shortlinks/reserved.ts",
+    from: '  "apply",\n',
+    to: '  "apply",\n  "daftar",\n',
     tests: `${RULES} ${SHORTLINKS}`,
   },
   {
