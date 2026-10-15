@@ -34,7 +34,7 @@ const checks = [
   { name: "printer: the portal's two public values may be passed", file: PRINTER, from: '[/^PORTAL_(CONTACT_WHATSAPP|WHATSAPP_GROUP_URL)$/, ', to: '[/^NO_SUCH_NAME$/, ', tests: SCRIPTS },
   { name: 'printer: the fixed settings may be passed', file: PRINTER, from: '[/^PRIVATE_FILES_BUDGET_BYTES$|^AUDIT_RETENTION_DAYS$|', to: '[/^PRIVATE_FILES_BUDGET_BYTES_X$|', tests: SCRIPTS },
   { name: "printer: the admin's list holds the site's ADMIN_URL", file: PRINTER, from: "    { name: 'EMAIL_FROM', required: false, kind: 'email-from' },\n", to: "    { name: 'EMAIL_FROM', required: false, kind: 'email-from' },\n    { name: 'ADMIN_URL', required: false, kind: 'origin' },\n", tests: SCRIPTS },
-  { name: 'printer: a variable that belongs to another Worker is no longer classified (the coverage of the environment declarations)', file: PRINTER, from: "export const NOT_PRINTED = { admin: ['ADMIN_URL'], web: [] };", to: 'export const NOT_PRINTED = { admin: [], web: [] };', tests: SCRIPTS },
+  { name: 'printer: a variable that belongs to another Worker is no longer classified (the coverage of the environment declarations)', file: PRINTER, from: "({ admin: ['ADMIN_URL'], web: [] });", to: '({ admin: [], web: [] });', tests: SCRIPTS },
 
   // ---------------------------------------------------------------- the printer: values
   { name: 'printer: an empty value is accepted', file: PRINTER, from: "    if (value === '') throw new Error(", to: '    if (false) throw new Error(', tests: SCRIPTS },
