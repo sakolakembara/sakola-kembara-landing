@@ -6,7 +6,7 @@
 //
 // What it proves, with a made-up `.dev.vars`:
 //   Build A: PORTAL_ENABLED=true in the build's shell, and a decoy `.dev.vars` with PORTAL_ENABLED=false.
-//     1. every prerendered page has "Masuk" in the bar and in the menu, one inline session script, and no "Daftar Sekarang" in the navbar;
+//     1. every prerendered page has "Masuk" in the bar and in the menu and one inline session script;
 //        so the decoy file, which the prerender's `env` holds, did not decide (a local-development file never decides what static HTML says);
 //     2. the deployed config has no PORTAL_ENABLED var (it is a per-deploy value);
 //     3. with the Worker variable set from the same decision (the deploy of Phase B), the pages the Worker renders agree with the prerendered ones;
@@ -39,16 +39,18 @@ const INVALID = 'yes-please-0123';
 
 const navOf = (html) => html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
 const scriptsOf = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-/** What a page's navbar says: 'on' (Masuk twice, one session script), 'off' (Daftar Sekarang twice, no session address anywhere), or the problem. */
+/** What a page's navbar says: 'on' (Masuk twice, one session script), 'off' (the slot of the button EMPTY: only the logo and the menu links, no session address anywhere), or the problem. */
 function stateOf(html) {
   const nav = navOf(html);
   const masuk = (nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length;
-  const daftar = (nav.match(/<a href="\/daftar" class="[^"]*">Daftar Sekarang<\/a>/g) ?? []).length;
+  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'];
+  const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
+  const empty = JSON.stringify(hrefs) === JSON.stringify(['/', ...menu, ...menu]) && !/Masuk|Daftar Sekarang|\/daftar|\/portal|data-auth-link|justify-self-end|mt-6/.test(nav) && (nav.match(/<button\b/g) ?? []).length === 1;
   const sessions = scriptsOf(html).filter((code) => code.includes('get-session')).length;
   const mentions = (html.match(/get-session/g) ?? []).length;
-  if (masuk === 2 && daftar === 0 && sessions === 1 && mentions === 1) return 'on';
-  if (masuk === 0 && daftar === 2 && sessions === 0 && mentions === 0 && !html.includes('data-auth-link')) return 'off';
-  return `inconsistent (Masuk ${masuk}, Daftar Sekarang ${daftar}, session scripts ${sessions}, mentions ${mentions})`;
+  if (masuk === 2 && !nav.includes('Daftar Sekarang') && sessions === 1 && mentions === 1) return 'on';
+  if (masuk === 0 && empty && sessions === 0 && mentions === 0 && !html.includes('data-auth-link')) return 'off';
+  return `inconsistent (Masuk ${masuk}, empty slot ${empty}, session scripts ${sessions}, mentions ${mentions})`;
 }
 
 const results = [];
@@ -114,7 +116,7 @@ try {
     }
   });
 
-  await check('1. build A (shell true, decoy false): every prerendered page is ON: Masuk twice, one inline session script, no "Daftar Sekarang" in the navbar', () => {
+  await check('1. build A (shell true, decoy false): every prerendered page is ON: Masuk twice, one inline session script', () => {
     // (stateOf also proves the session script is inline: its address is in the page exactly once, inside a <script type="module"> with code in it)
     for (const p of PRERENDERED) assert.equal(stateOf(htmlOf(clientA, p)), 'on', p);
   });

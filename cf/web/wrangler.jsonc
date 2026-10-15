@@ -83,7 +83,7 @@
   //   is what local runs, tests and staging do. src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md ("Web Analytics").
   // - PORTAL_ENABLED (a "vars" entry too, optional, PUBLIC; SAKEM-103, Phase A of the cutover): whether the student portal is live.
   //   Exactly `true` puts the navbar's "Masuk" link and its session script on the page; unset, `false` or anything else (the Worker
-  //   says so once, without the value) leaves both out and the navbar offers "Daftar Sekarang" (`/daftar`) instead. The default
+  //   says so once, without the value) leaves both out and the slot of the link stays empty (no button in the navbar). The default
   //   is OFF and Phase A runs with it unset. Like the beacon it has two sources: `--var PORTAL_ENABLED:true` at deploy reaches the
   //   pages the WORKER renders, and `PORTAL_ENABLED=true pnpm build` in the shell of the BUILD reaches the prerendered ones (never
   //   .dev.vars). Set both, from one decision, when Phase B brings the portal. src/lib/portal-enabled.ts, docs/cloudflare/web-skeleton.md

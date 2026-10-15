@@ -25,6 +25,7 @@ const HEADERS = ['tests/headers-sitemap.test.ts'];
 const REGISTRATION = ['tests/registration-page.test.ts', 'tests/portal-links.test.ts'];
 const PRINTER = ['tests/portal-enabled.test.ts', 'tests/staging-scripts.test.ts'];
 const RESERVED = ['tests/shortlink-reserved.test.ts'];
+const COPY = ['tests/copy.test.ts', 'tests/public-pages.test.ts'];
 
 const config = 'portal-enabled.config.mjs';
 const lib = 'src/lib/portal-enabled.ts';
@@ -43,8 +44,9 @@ const printer = '../scripts/staging-deploy-command.mjs';
 const adminReserved = '../admin/src/shortlinks/reserved.ts';
 
 const WARN_LINE = 'warn(`portal: ${PORTAL_ENABLED_VARIABLE} is set but is neither "true" nor "false"; the page is rendered with the portal off`);';
-const BAR = `        portalOn ? (\n          <a href="/portal/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'sm' })}>Masuk</a>`;
-const MENU = `        portalOn ? (\n          <a href="/portal/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'md' })}>Masuk</a>`;
+const BAR = '{\n      portalOn && (\n        <div class="hidden md:flex items-center justify-self-end">';
+const MENU = '{\n      portalOn && (\n        <div class="flex flex-col mt-6">';
+const BUTTON = '<a href="/daftar" class="btn">Daftar Sekarang</a>';
 const LIST_HEAD = 'export const LEGACY_PATHS: readonly LegacyPath[] = [\n';
 
 const checks = [
@@ -68,8 +70,11 @@ const checks = [
   { name: 'an unset build variable switches the prerendered pages on', file: astroConfig, from: 'const portalEnabled = portalSetting === true;', to: 'const portalEnabled = portalSetting !== false;', tests: FLAG },
 
   // ---- the navbar
-  { name: 'the bar has "Masuk" whatever the switch says', file: navbar, from: BAR, to: BAR.replace('portalOn ? (', 'true ? ('), tests: NAVBAR },
-  { name: 'the mobile menu has "Masuk" whatever the switch says', file: navbar, from: MENU, to: MENU.replace('portalOn ? (', 'true ? ('), tests: NAVBAR },
+  { name: 'the bar has "Masuk" whatever the switch says', file: navbar, from: BAR, to: BAR.replace('portalOn && (', 'true && ('), tests: NAVBAR },
+  { name: 'the mobile menu has "Masuk" whatever the switch says', file: navbar, from: MENU, to: MENU.replace('portalOn && (', 'true && ('), tests: NAVBAR },
+  { name: 'the empty slot of the bar gets a registration button again (Dzul decided it stays empty)', file: navbar, from: BAR, to: `{\n      !portalOn && ${BUTTON}\n    }${BAR}`, tests: NAVBAR },
+  { name: 'the empty slot of the mobile menu gets a registration button again', file: navbar, from: MENU, to: `{\n      !portalOn && ${BUTTON}\n    }${MENU}`, tests: NAVBAR },
+  { name: 'the closing section of /gabung-siswa gets its second sentence back (about progress saved in the browser: the portal wizard)', file: 'src/pages/gabung-siswa.astro', from: 'lead="Isi formulir pendaftaran sekarang."', to: 'lead="Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini."', tests: COPY },
   { name: 'the session script is rendered on every page (the address of the portal is in a page of Phase A)', file: navbar, from: '</script>{portalOn && <NavbarSession />}', to: '</script><NavbarSession />', tests: NAVBAR },
   { name: 'the navbar no longer tells a page its own kind (a prerendered page would read the Worker variable)', file: navbar, from: 'prerendered: Astro.isPrerendered', to: 'prerendered: false', tests: NAVBAR },
   { name: 'the session is asked of an /api the apex does not have', file: session, from: "'/portal/api/auth/get-session'", to: "'/api/auth/session'", tests: NAVBAR },

@@ -228,7 +228,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Pengumuman & Onboarding',
       'Hasil seleksi diumumkan dan siswa terpilih memulai program bersama Gen 6.',
       'Siap Bergabung dengan Sakola Kembara?',
-      'Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini.',
+      'Isi formulir pendaftaran sekarang.',
       'Daftar Siswa',
       'Daftarkan diri sebagai siswa Sakola Kembara. Program bimbingan belajar gratis untuk persiapan UTBK dan masuk perguruan tinggi negeri bagi siswa dari keluarga kurang mampu di daerah terpencil.',
     ],
@@ -283,7 +283,19 @@ describe('copy parity: every phrase of the port exists verbatim in the legacy so
   }
 });
 
-describe('the one deliberate difference in the registration links (SAKEM-103, Phase A)', () => {
+describe('the deliberate differences of Phase A (SAKEM-103): the registration links, and one sentence of /gabung-siswa', () => {
+  // Dzul, 2026-10-15: while registration is an external form (`/daftar`), the closing section of /gabung-siswa drops its second sentence, which describes the
+  // portal wizard ("progres kamu akan tersimpan otomatis di browser ini"). Nothing takes its place. It belongs back when the wizard is switched on (Phase B).
+  it('the closing section of /gabung-siswa keeps its first sentence and no longer says the progress is saved in the browser; the legacy page still does', () => {
+    const sentence = 'Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini.';
+    expect(norm(readRoot('app/(public)/gabung-siswa/page.tsx'))).toContain(`Isi formulir pendaftaran sekarang. ${sentence}`);
+    const web = norm(readWeb('src/pages/gabung-siswa.astro'));
+    expect(web).toContain('lead="Isi formulir pendaftaran sekarang."');
+    expect(web).not.toContain(sentence);
+    expect(web).not.toMatch(/tersimpan otomatis|progres kamu/);
+  });
+
+
   it('the legacy pages link /portal/daftar; the port links REGISTRATION_PATH (/daftar, an admin shortlink) and names /portal/daftar nowhere', () => {
     for (const rel of ['app/(public)/gabung-siswa/page.tsx', 'app/(public)/gabung-siswa/docs/page.tsx']) expect(readRoot(rel), rel).toContain('/portal/daftar');
     for (const rel of ['src/pages/gabung-siswa.astro', 'src/pages/gabung-siswa/docs.astro']) {

@@ -13,17 +13,21 @@ describe('the navbar button follows the portal switch (SAKEM-103, Phase A)', () 
   const navbar = readWeb('src/components/Navbar.astro');
   const session = readWeb('src/components/NavbarSession.astro');
 
-  it('"Masuk" goes to /portal/login, in the desktop bar and in the mobile menu, and only in the branch of a portal that is on', () => {
+  it('"Masuk" goes to /portal/login, in the desktop bar and in the mobile menu, and each one, wrapper included, is rendered only when the portal is on', () => {
     expect(navbar.match(/<a href="\/portal\/login" data-auth-link/g)).toHaveLength(2);
-    expect(navbar.match(/portalOn \? \(\s*<a href="\/portal\/login" data-auth-link/g)).toHaveLength(2);
+    expect(navbar.match(/portalOn && \(\s*<div class="hidden md:flex items-center justify-self-end">\s*<a href="\/portal\/login" data-auth-link class=\{buttonClasses\(\{ variant: 'neutral', size: 'sm' \}\)\}>Masuk<\/a>\s*<\/div>\s*\)/g)).toHaveLength(1);
+    expect(navbar.match(/portalOn && \(\s*<div class="flex flex-col mt-6">\s*<a href="\/portal\/login" data-auth-link class=\{buttonClasses\(\{ variant: 'neutral', size: 'md' \}\)\}>Masuk<\/a>\s*<\/div>\s*\)/g)).toHaveLength(1);
     expect(navbar).not.toMatch(/href="\/login"/);
   });
 
-  it('while the portal is off the same two slots hold "Daftar Sekarang", a link to the registration shortlink', () => {
-    expect(navbar.match(/<a href=\{REGISTRATION_PATH\} class=\{buttonClasses\(\{ variant: 'neutral', size: '(sm|md)' \}\)\}>Daftar Sekarang<\/a>/g)).toHaveLength(2);
-    // the same variant and sizes as the "Masuk" button it stands in for (DESIGN.md: neutral, 40px on desktop, 44px in the menu)
-    expect(navbar).toContain("variant: 'neutral', size: 'sm'");
-    expect(navbar).toContain("variant: 'neutral', size: 'md'");
+  it('while the portal is off the slot is EMPTY (Dzul, 2026-10-15): no "Daftar Sekarang" and no other link or button in the navbar, in the bar or in the menu', () => {
+    // the markup of the navbar has exactly one other link source: the logo and the two navLinks lists; nothing of the registration link
+    expect(navbar).not.toContain('Daftar Sekarang');
+    expect(navbar).not.toContain('REGISTRATION_PATH');
+    expect(navbar).not.toMatch(/portalOn \?/);
+    expect(navbar).not.toContain('/daftar');
+    // the links of the source: the logo, the bar's navLinks list, the menu's navLinks list, and the two Masuk links (portal on only)
+    expect(navbar.match(/<a\b/g)).toHaveLength(1 + 1 + 1 + 2);
   });
 
   it('the portal switch is read the way the beacon is: the page\'s own kind decides which source, no fallback', () => {
@@ -57,7 +61,7 @@ describe('the navbar button follows the portal switch (SAKEM-103, Phase A)', () 
 });
 
 describe('the "Daftar Sekarang" buttons all go to the registration shortlink', () => {
-  it('/gabung-siswa (the two white buttons), its documents page (the "formulir pendaftaran" link), the home page\'s student card and the navbar use REGISTRATION_PATH, and none names /portal/daftar', () => {
+  it('/gabung-siswa (the two white buttons), its documents page (the "formulir pendaftaran" link) and the home page\'s student card use REGISTRATION_PATH, and none names /portal/daftar (the navbar has no registration button: its slot is empty)', () => {
     const page = readWeb('src/pages/gabung-siswa.astro');
     expect(page.match(/<Button href=\{REGISTRATION_PATH\} variant="white-on-navy" size="lg">/g)).toHaveLength(2);
     expect(page).not.toContain('href="/portal/daftar"');

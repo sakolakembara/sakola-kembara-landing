@@ -165,14 +165,16 @@ const flow = [
       </Container>
     </section>
 
-    {/* Bottom CTA */}
+    {/* Bottom CTA. The legacy lead has a second sentence, about the form being split into parts and the progress being saved in the browser,
+        which describes the portal wizard. Dzul removed it for Phase A (SAKEM-103), while registration is an external form behind /daftar, and
+        nothing takes its place. It belongs back when the wizard is switched on (Phase B). */}
     <section class="py-16 bg-gradient-to-br from-primary-blue to-accent-navy text-white">
       <Container size="reading" class="text-center">
         <div class="anim-reveal">
           <SectionHeader
             tone="dark"
             title="Siap Bergabung dengan Sakola Kembara?"
-            lead="Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini."
+            lead="Isi formulir pendaftaran sekarang."
             class="mb-8"
           />
           <Button href={REGISTRATION_PATH} variant="white-on-navy" size="lg">

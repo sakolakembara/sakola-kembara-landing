@@ -32,7 +32,7 @@ UPLOADS_BASE_URL=https://pub-<hash>.r2.dev
 # WEB_ANALYTICS_BEACON_ID=
 
 # Optional (SAKEM-103, Phase A of the cutover): whether the student portal is live, exactly true or false. Leave the line out: the
-# portal is OFF (the default) and the navbar has no "Masuk" link and no session call, and offers "Daftar Sekarang" (/daftar). Set
+# portal is OFF (the default) and the navbar has no "Masuk" link, no session call and no button at all (the slot stays empty). Set
 # to true to look at the Phase B navbar on staging: it is a --var and reaches the pages the Worker renders only, so also build with
 # PORTAL_ENABLED=true pnpm build:staging (the prerendered pages take the build's value, never the --var).
 # PORTAL_ENABLED=true

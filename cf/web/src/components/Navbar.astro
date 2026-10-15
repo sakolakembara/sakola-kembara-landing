@@ -2,22 +2,29 @@
 import { env } from 'cloudflare:workers';
 import logoUrl from '@root/public/images/logo-sakola-kembara.png?url';
 import { BUILD_PORTAL_ENABLED, portalEnabled } from '~/lib/portal-enabled';
-import { REGISTRATION_PATH, navLinks } from '~/lib/site';
+import { navLinks } from '~/lib/site';
 import { buttonClasses } from '~/lib/ui';
 import Container from './Container.astro';
 import Icon from './Icon.astro';
 import NavbarSession from './NavbarSession.astro';
 
 /**
- * Fixed site header: logo, menu, one button. Server-rendered HTML; one small
- * script (below) handles what cannot be static: the mobile menu toggle, the
- * announcement strip and the footer year.
+ * Fixed site header: logo, menu, and the sign-in button when the student portal is
+ * live. Server-rendered HTML; one small script (below) handles what cannot be
+ * static: the mobile menu toggle, the announcement strip and the footer year.
  *
- * The button depends on whether the student portal is live (SAKEM-103, Phase A
- * of the cutover; the PORTAL_ENABLED switch, src/lib/portal-enabled.ts):
- *  - OFF (the default, Phase A): "Daftar Sekarang", a link to the registration
- *    shortlink (`/daftar`). No "Masuk" link and no session call: there is no
- *    portal to sign in to, so the page does not carry its address at all.
+ * The button depends on whether the portal is live (SAKEM-103, Phase A of the
+ * cutover; the PORTAL_ENABLED switch, src/lib/portal-enabled.ts):
+ *  - OFF (the default, Phase A): NOTHING. The slot is empty (decided by Dzul,
+ *    2026-10-15): no "Masuk" link, no session call, not even the wrapper of
+ *    the button, because there is no portal to sign in to and the page must not
+ *    carry its address. The menu stays centred (the grid keeps its three
+ *    columns) and the mobile menu has no empty strip under its links.
+ *    Registration is reached from the call-to-action buttons of the pages themselves.
+ *    (The two blocks are laid out the way they are, a blank line around the first
+ *    and `</ul>{` for the second, because Astro then writes the same whitespace
+ *    around them as around the old button: a page with the portal off is the old
+ *    page minus the block, byte for byte.)
  *  - ON (Phase B): the auth-aware "Masuk" / "Portal" / "Dashboard" button. Its
  *    session script is a component of its own, NavbarSession, rendered only
  *    then. The session comes from the student portal's own Worker, which serves
@@ -52,15 +59,13 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
       }
     </ul>
 
-    <div class="hidden md:flex items-center justify-self-end">
-      {
-        portalOn ? (
+    {
+      portalOn && (
+        <div class="hidden md:flex items-center justify-self-end">
           <a href="/portal/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'sm' })}>Masuk</a>
-        ) : (
-          <a href={REGISTRATION_PATH} class={buttonClasses({ variant: 'neutral', size: 'sm' })}>Daftar Sekarang</a>
-        )
-      }
-    </div>
+        </div>
+      )
+    }
 
     <button
       id="nav-toggle"
@@ -89,16 +94,13 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
           </li>
         ))
       }
-    </ul>
-    <div class="flex flex-col mt-6">
-      {
-        portalOn ? (
+    </ul>{
+      portalOn && (
+        <div class="flex flex-col mt-6">
           <a href="/portal/login" data-auth-link class={buttonClasses({ variant: 'neutral', size: 'md' })}>Masuk</a>
-        ) : (
-          <a href={REGISTRATION_PATH} class={buttonClasses({ variant: 'neutral', size: 'md' })}>Daftar Sekarang</a>
-        )
-      }
-    </div>
+        </div>
+      )
+    }
   </div>
 </nav>
 

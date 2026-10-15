@@ -49,7 +49,7 @@ Names only. A `--var` value is **public** (the browser gets most of them anyway)
 | `EMAIL_FROM` | admin | public var | `Sakola Kembara Staging <onboarding@resend.dev>` | same |
 | `ADMIN_URL` | site | public var | the admin's `workers.dev` address | same |
 | `LEGACY_ORIGIN_URL` | site | public var | **`https://no-legacy-origin.invalid`**, exactly (see step 10) | same |
-| `PORTAL_ENABLED` | site | optional public var | **leave it out** (Phase A: the portal is off, the navbar offers "Daftar Sekarang" and has no session call); `true` only to look at the Phase B navbar, and then also `PORTAL_ENABLED=true pnpm build:staging` (the prerendered pages take the build's value, never the `--var`) | same |
+| `PORTAL_ENABLED` | site | optional public var | **leave it out** (Phase A: the portal is off, the navbar has no button at all and no session call); `true` only to look at the Phase B navbar, and then also `PORTAL_ENABLED=true pnpm build:staging` (the prerendered pages take the build's value, never the `--var`) | same |
 | `PAGE_CACHE_SECONDS` | site | optional public var | `30` to try the page copy in memory (step 13g); left out, every request renders | same |
 | `BETTER_AUTH_SECRET` | admin | secret | `openssl rand -base64 32` | you, `wrangler secret put` |
 | `RESEND_API_KEY` | admin | secret | the Resend key of step 7 | you, `wrangler secret put` |
@@ -443,7 +443,7 @@ The third Worker, `sakem-portal-staging` (`cf/admin`, its own configuration `wra
 
 - The session cookie is `__Host-sakem-student.session_token`, **host-only** on the portal host: signing in there does not sign in on the admin host (its cookie has another name and lives on another host), and the two Workers have different `BETTER_AUTH_SECRET`s.
 - The emailed links (verify, reset) are built from the origin of the request that asked for them, so they point at the portal host.
-- The public site's "Daftar Sekarang" and "Masuk" buttons and its navbar call `W/portal/...` on **the site's own host**, where nothing answers (a 404 page). On staging, open the portal address by hand. What this hides is listed in [What staging cannot show about the portal](#what-staging-cannot-show-about-the-portal).
+- The public site does not link the portal while `PORTAL_ENABLED` is off (Phase A: no "Masuk", no session call, an empty slot in the navbar); with it on, the navbar's "Masuk" and its session call go to `W/portal/...` on **the site's own host**, where nothing answers (a 404 page). On staging, open the portal address by hand. What this hides is listed in [What staging cannot show about the portal](#what-staging-cannot-show-about-the-portal).
 
 ## 15. Check the portal locally (no account)
 

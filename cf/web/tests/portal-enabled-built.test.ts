@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PORTAL_ENABLED_VARIABLE, parsePortalEnabled } from '../portal-enabled.config.mjs';
+import { navLinks } from '~/lib/site';
 import { webRoot } from './helpers';
 
 // The student portal switch in the PRERENDERED pages of the build in dist/ (SAKEM-103, Phase A of the cutover). They need `pnpm build`
@@ -36,15 +37,17 @@ describe.skipIf(!built)('the portal switch in the prerendered pages of dist/', (
       }
     });
 
-    it('the navbar offers "Daftar Sekarang" in both slots (the bar and the menu), a link to /daftar, in the style of the button it stands in for (neutral, 40 and 44 px)', () => {
+    it('the slot of the button is EMPTY in the bar and in the menu (Dzul, 2026-10-15): the navbar has the logo and the menu links, twice (bar, menu), and no other link, button, wrapper or text of a registration or sign-in', () => {
       for (const file of pages()) {
         const html = readFileSync(file, 'utf8');
         const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
-        const links = [...nav.matchAll(/<a href="\/daftar" class="([^"]*)">Daftar Sekarang<\/a>/g)].map((m) => m[1]);
-        expect(links, rel(file)).toHaveLength(2);
-        expect(links[0], rel(file)).toContain('min-h-10');
-        expect(links[1], rel(file)).toContain('min-h-11');
-        for (const cls of links) expect(cls, rel(file)).toContain('border-gray-200 text-gray-700');
+        const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
+        expect(hrefs, rel(file)).toEqual(['/', ...navLinks.map((l) => l.href), ...navLinks.map((l) => l.href)]);
+        expect(nav, rel(file)).not.toContain('Daftar Sekarang');
+        expect(nav, rel(file)).not.toContain('/daftar');
+        expect(nav, rel(file)).not.toContain('justify-self-end');
+        expect(nav, rel(file)).not.toContain('mt-6');
+        expect(nav.match(/<button\b/g) ?? [], rel(file)).toHaveLength(1); // the menu toggle, nothing else
       }
     });
 

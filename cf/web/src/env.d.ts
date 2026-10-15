@@ -49,8 +49,8 @@ declare namespace Cloudflare {
     /**
      * Whether the student portal is live (SAKEM-103, Phase A of the cutover). A PUBLIC variable, set per deploy with `--var`, never in
      * git. Exactly `true` shows the navbar's "Masuk" link and its session script on the pages the Worker renders; unset, `false`
-     * or anything else (one log line, no value in it) leaves both out, and the navbar offers "Daftar Sekarang" (`/daftar`)
-     * instead. It reaches those pages only: the prerendered ones are static files and take the same name from the BUILD's
+     * or anything else (one log line, no value in it) leaves both out, and the slot of the link stays empty (no
+     * button at all in the navbar). It reaches those pages only: the prerendered ones are static files and take the same name from the BUILD's
      * environment (astro.config.mjs). src/lib/portal-enabled.ts, docs/cloudflare/web-skeleton.md ("The student portal switch").
      */
     PORTAL_ENABLED?: string;

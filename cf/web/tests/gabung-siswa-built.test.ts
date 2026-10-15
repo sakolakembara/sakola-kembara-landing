@@ -95,11 +95,11 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     for (const [, step, title, body] of steps) expect(text).toContain(`${step} ${title} ${body}`);
   });
 
-  it('"Daftar Sekarang" (hero and closing section, and the navbar\'s button in the bar and in the menu) goes to /daftar, "Pelajari Program" to #manfaat, "Pusat Dokumen" to /gabung-siswa/docs', () => {
+  it('"Daftar Sekarang" (hero and closing section; the navbar has no such button) goes to /daftar, "Pelajari Program" to #manfaat, "Pusat Dokumen" to /gabung-siswa/docs', () => {
     const a = links(html);
     const hrefOf = (re: RegExp) => a.filter((tag) => re.test(tag)).map((tag) => attr(tag, 'href'));
-    expect(a.filter((tag) => attr(tag, 'href') === '/daftar')).toHaveLength(4);
-    expect(html.match(/Daftar Sekarang/g)).toHaveLength(4);
+    expect(a.filter((tag) => attr(tag, 'href') === '/daftar')).toHaveLength(2);
+    expect(html.match(/Daftar Sekarang/g)).toHaveLength(2);
     expect(hrefOf(/bg-white text-primary-blue/)).toEqual(['/daftar', '/daftar']);
     // SAKEM-103: the portal is off in a build with no PORTAL_ENABLED, so the page names it nowhere (no Masuk, no session address)
     expect(html).not.toContain('/portal');

@@ -68,6 +68,21 @@ const tag = (html, re) => html.match(re)?.[1];
 const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
 const graphNodes = (html) => ldBlocks(html)[0]?.['@graph'] ?? [];
 const nodeOf = (html, type) => graphNodes(html).find((n) => [].concat(n['@type']).includes(type));
+/**
+ * The navbar of a page while the portal is off (SAKEM-103; Dzul, 2026-10-15), as a list of problems (empty: as it should be): the logo and the
+ * menu links, twice (the bar, the mobile menu), and NOTHING in the slot of the old "Masuk" button: no link or button, no wrapper, no text of a
+ * sign-in or a registration. (The menu links are the labels of src/lib/site.ts; this script is plain JavaScript and cannot import them.)
+ */
+function navbarProblems(html) {
+  const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
+  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'];
+  const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
+  const problems = [];
+  if (JSON.stringify(hrefs) !== JSON.stringify(['/', ...menu, ...menu])) problems.push(`links: ${hrefs.join(' ')}`);
+  for (const bad of ['Daftar Sekarang', 'Masuk', '/daftar', '/portal', 'data-auth-link', 'justify-self-end', 'mt-6']) if (nav.includes(bad)) problems.push(`the navbar has ${bad}`);
+  if ((nav.match(/<button\b/g) ?? []).length !== 1) problems.push('more than the menu toggle in the navbar');
+  return problems;
+}
 const onlySiteGraph = (html) => {
   assert.equal(ldBlocks(html).length, 1, "only the site graph, no block of the page's own");
   assert.ok(nodeOf(html, 'WebPage') || nodeOf(html, 'CollectionPage'), 'the graph has the page');
@@ -579,12 +594,10 @@ await check('portal-paths', 'no navbar of any kind of page asks the portal Worke
   }
   assert.equal(stubHits().length, 0);
 });
-await check('portal-paths', 'the navbar offers "Daftar Sekarang" (/daftar) in the bar and in the mobile menu, on every kind of page, and no "Masuk"', async () => {
+await check('portal-paths', 'the slot of the old "Masuk" button is EMPTY while the portal is off, in the bar and in the mobile menu, on every kind of page: only the logo and the menu links, no button, no wrapper, no "Daftar Sekarang", no "Masuk"', async () => {
   for (const p of ['/', '/blog', '/gabung-siswa', '/kontak', '/donasi', '/program/pembinaan', '/no-such-page']) {
     const html = await text(await get(p));
-    const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
-    assert.equal((nav.match(/<a href="\/daftar" class="[^"]*">Daftar Sekarang<\/a>/g) ?? []).length, 2, p);
-    assert.ok(!/>\s*Masuk\s*</.test(nav), p);
+    assert.deepEqual(navbarProblems(html), [], p);
     assert.ok(!/href="\/(portal\/)?login"/.test(html), p);
   }
 });
@@ -1283,7 +1296,7 @@ await check('gabung-siswa', '/gabung-siswa: 200 html from the assets layer, one 
   for (const step of ['01', '02', '03', '04']) assert.ok(t.includes(` ${step} `), step);
   assert.equal((html.match(/<h3 class="font-bold text-gray-900 mb-2">/g) ?? []).length, 4, 'four steps');
   const links = anchorTags(html);
-  assert.equal(links.filter((a) => attrOf(a, 'href') === '/daftar').length, 4, 'the two Daftar Sekarang buttons of the page, and the navbar\'s in the bar and in the menu');
+  assert.equal(links.filter((a) => attrOf(a, 'href') === '/daftar').length, 2, 'the two Daftar Sekarang buttons of the page (the navbar has none: its slot is empty)');
   assert.equal(links.filter((a) => attrOf(a, 'href') === '/gabung-siswa/docs').length, 1);
   assert.ok(links.some((a) => attrOf(a, 'href') === '#manfaat'));
   assert.ok(html.includes('<section id="manfaat"'));
@@ -2859,7 +2872,7 @@ await check('portal', 'the portal switch with the Worker variable true: every pa
   }
 });
 
-await check('portal', 'with only the Worker variable the prerendered pages (static files) are unchanged: "Daftar Sekarang", no "Masuk", no session script (a Worker variable cannot reach static HTML); the redirects, the admin and API answers do not change either', async () => {
+await check('portal', 'with only the Worker variable the prerendered pages (static files) are unchanged: the empty slot, no "Masuk", no session script (a Worker variable cannot reach static HTML); the redirects, the admin and API answers do not change either', async () => {
   const s = await startStack({ port: 8816, stubPort: 4439, fixturePort: 4440, inspectorPort: 9355, vars: { PORTAL_ENABLED: 'true', ADMIN_URL: 'https://admin.example.test' } });
   try {
     for (const p of PORTAL_PRERENDERED) {
@@ -2868,7 +2881,7 @@ await check('portal', 'with only the Worker variable the prerendered pages (stat
       const html = await res.text();
       assert.ok(!html.includes('get-session'), `${p}: a Worker variable cannot put the session call in static HTML`);
       assert.ok(!html.includes('/portal'), p);
-      assert.equal((portalNav(html).match(/<a href="\/daftar" class="[^"]*">Daftar Sekarang<\/a>/g) ?? []).length, 2, `${p}: still the registration button`);
+      assert.deepEqual(navbarProblems(html), [], `${p}: still the empty slot`);
     }
     // /portal itself is still the site's 404 in this stack: nothing attaches a portal Worker to the route here, whatever the switch says
     const portal = await fetch(`${s.base}/portal`, { redirect: 'manual' });
@@ -2890,7 +2903,7 @@ await check('portal', 'PORTAL_ENABLED=false is off and silent: the same pages as
     for (const p of ['/blog', '/tim', '/kontak', '/no-such-page']) {
       const html = await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text();
       assert.ok(!html.includes('get-session') && !html.includes('data-auth-link'), p);
-      assert.equal((portalNav(html).match(/<a href="\/daftar" class="[^"]*">Daftar Sekarang<\/a>/g) ?? []).length, 2, p);
+      assert.deepEqual(navbarProblems(html), [], p);
     }
     await new Promise((r) => setTimeout(r, 300));
     assert.doesNotMatch(s.output(), /portal: PORTAL_ENABLED/, 'a valid false is not reported');
@@ -2908,7 +2921,7 @@ await check('portal', 'a value that is not exactly true or false (TRUE, 1, yes, 
         const html = await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text();
         assert.ok(!html.includes('get-session') && !html.includes('data-auth-link'), `${JSON.stringify(value)} ${p}`);
         assert.ok(!html.includes('onerror') && !html.includes('src=x'), `${p}: the value is not echoed`);
-        assert.equal((portalNav(html).match(/<a href="\/daftar" class="[^"]*">Daftar Sekarang<\/a>/g) ?? []).length, 2, p);
+        assert.deepEqual(navbarProblems(html), [], p);
       }
       for (let i = 0; i < 30 && !/PORTAL_ENABLED is set but is neither/.test(s.output()); i++) await new Promise((r) => setTimeout(r, 100));
       await new Promise((r) => setTimeout(r, 300));
