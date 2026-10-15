@@ -12,6 +12,7 @@ import { isFiltered } from "~/lib/crud/query";
 import type { ListPayload } from "~/lib/crud/types";
 import { useList } from "~/lib/crud/useList";
 import type { BatchItem } from "../batches/model";
+import { PendaftarTabs } from "./DraftFilesPage";
 import { ALL_BATCHES, API_PATH, APPLICATION_STATUS, type ApplicationListed, LIST_SPEC, needsDefaultBatch, newestBatch, ROUTE, STATUS_OPTIONS } from "./model";
 
 // The list of applicants (Pendaftar). A port of app/(admin)/admin/applications/page.tsx with the decisions of
@@ -152,6 +153,9 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
           )}
         </p>
       </PageHeader>
+
+      {/* For who may purge: the drafts that hold files (SAKEM-093). A viewer sees no tabs. */}
+      <PendaftarTabs current="applicants" />
 
       <FilterBar list={bar} search={{ label: "Cari", placeholder: "Awal nama atau email" }} filters={filters} />
 

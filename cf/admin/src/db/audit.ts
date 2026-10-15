@@ -24,7 +24,7 @@ export type AuditAction =
   | "application.revoke"
   // An applicant's uploaded file (SAKEM-083, docs/cloudflare/portal-architecture.md, 8.6 and 8.9): an admin opening one (resource `application_file`,
   // metadata: the application's id and the slot) and the manual purge of an application's files (resource `application`, metadata: a count and the file
-  // ids). Ids and counts only, never a name or an address.
+  // ids; or, for a draft that was never submitted, SAKEM-093: resource `application_draft`, the same metadata). Ids and counts only, never a name or an address.
   | "application_file.view"
   | "application_file.purge"
   | "batch.publish_results"
@@ -58,6 +58,7 @@ export type AuditResourceType =
   | "admin_user"
   | "user"
   | "application"
+  | "application_draft"
   | "application_file"
   | "batch"
   | "report"

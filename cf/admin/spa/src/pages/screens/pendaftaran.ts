@@ -1,5 +1,6 @@
 import { ApplicationDetailPage } from "../applications/ApplicationDetailPage";
 import { ApplicationsPage } from "../applications/ApplicationsPage";
+import { DraftFilesPage } from "../applications/DraftFilesPage";
 import { BatchDetailPage } from "../batches/BatchDetailPage";
 import { BatchFormPage } from "../batches/BatchFormPage";
 import { BatchesPage } from "../batches/BatchesPage";
@@ -19,7 +20,11 @@ export const pendaftaranScreens: Screens = {
   },
   "/applications": {
     index: ApplicationsPage,
-    routes: [{ path: ":id", Page: ApplicationDetailPage }],
+    // `drafts` is a tab of the list (SAKEM-093), before `:id` so it is not read as an application id.
+    routes: [
+      { path: "drafts", Page: DraftFilesPage },
+      { path: ":id", Page: ApplicationDetailPage },
+    ],
   },
   "/resources": {
     index: ResourcesPage,
