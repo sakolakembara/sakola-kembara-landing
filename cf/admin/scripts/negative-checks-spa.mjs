@@ -2,9 +2,14 @@
 // Each check breaks one safeguard in the source, runs the tests that should
 // notice, expects them to FAIL, and always restores the file.
 //
-//   node scripts/negative-checks-spa.mjs
+//   node scripts/negative-checks-spa.mjs        (pnpm test:negative:spa)
 //
-// Run it on a clean tree: it rewrites files under spa/src/ for a few seconds.
+// Run it on a clean tree: it rewrites files under spa/src/, shared/spa/ and
+// portal-spa/src/ for a few seconds each. A check whose pattern is not found
+// exactly once is reported as FAIL (as the Worker's runner does), so a second
+// copy of the same line, or a refactor that moves it, cannot silently turn a
+// check into a no-op or make it break the wrong copy. `from`/`to` may be lists,
+// for a safeguard that is built in more than one place of the same file.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
@@ -381,20 +386,33 @@ const checks = [
 const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1] : undefined;
 
 let bad = 0;
+let ran = 0;
 for (const check of checks) {
   if (only && !check.name.includes(only)) continue;
+  ran++;
   const original = readFileSync(check.file, "utf8");
-  // `from`/`to` may be lists, to break a safeguard that has more than one layer.
+  // `from`/`to` may be lists, to break a safeguard that has more than one layer. Each pattern must be found exactly once in
+  // the text it is applied to (the file as the earlier patterns of the same check left it); nothing is written otherwise.
   const froms = [check.from].flat();
   const tos = [check.to].flat();
-  const missing = froms.find((from) => !original.includes(from));
-  if (missing !== undefined) {
-    console.log(`SKIP  ${check.name}: pattern not found in ${check.file}`);
+  let broken = original;
+  let refused = null;
+  for (const [i, from] of froms.entries()) {
+    const occurrences = broken.split(from).length - 1;
+    if (occurrences !== 1) {
+      refused = `FAIL  ${check.name}: pattern found ${occurrences} times in ${check.file}, expected exactly once`;
+      break;
+    }
+    // A function, so a `$&` or `$'` in `to` is text, not a replacement pattern.
+    broken = broken.replace(from, () => tos[i]);
+  }
+  if (refused !== null) {
+    console.log(refused);
     bad++;
     continue;
   }
   try {
-    writeFileSync(check.file, froms.reduce((text, from, i) => text.replace(from, tos[i]), original));
+    writeFileSync(check.file, broken);
     // A check says which SPA's tests it runs with `config` (the portal's); the default is the admin's.
     const run = spawnSync("pnpm", ["exec", "vitest", "run", "--config", check.config ?? "spa/vitest.config.ts", ...check.tests.split(" ")], {
       encoding: "utf8",
@@ -409,4 +427,5 @@ for (const check of checks) {
     writeFileSync(check.file, original);
   }
 }
+console.log(bad === 0 ? `\nAll ${ran} safeguards are covered by tests.` : `\n${bad} of ${ran} checks did not behave.`);
 process.exit(bad === 0 ? 0 : 1);
