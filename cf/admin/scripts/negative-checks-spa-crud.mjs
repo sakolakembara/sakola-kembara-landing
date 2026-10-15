@@ -276,16 +276,18 @@ export const crudSpaChecks = [
     to: "accept=",
     tests: t(UPLOAD),
   },
+  // The request itself moved to the XMLHttpRequest both SPAs share (SAKEM-083, P4); the admin's uploader is a thin caller of
+  // it, and its test (upload.test.tsx) still drives the whole path, so both checks break the shared file.
   {
     name: "crud: the upload progress is not reported",
-    file: "spa/src/lib/crud/upload-client.ts",
+    file: "shared/spa/xhr.ts",
     from: "if (event.lengthComputable && event.total > 0) onProgress?.(Math.min(1, event.loaded / event.total));",
     to: "",
     tests: t(UPLOAD),
   },
   {
     name: "crud: an abort signal does not stop the upload",
-    file: "spa/src/lib/crud/upload-client.ts",
+    file: "shared/spa/xhr.ts",
     from: 'signal.addEventListener("abort", () => xhr.abort(), { once: true });',
     to: "",
     tests: t(UPLOAD),

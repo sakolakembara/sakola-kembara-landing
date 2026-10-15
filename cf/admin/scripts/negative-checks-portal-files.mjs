@@ -518,6 +518,7 @@ const PORTAL_SPA = (...names) => names.map((name) => `portal-spa/test/${name}`).
 const FILES_PAGE = "pendaftaran/files.test.tsx";
 const ANSWERS_FILES = "pendaftaran/answers-files.test.ts";
 const MOCK_FILES = "pendaftaran/mock-files.test.ts";
+const MOCK_DRAFTS = "pendaftaran/mock-drafts.test.ts";
 const XHR = "crud/xhr.test.ts";
 const UPLOAD_CLIENT = "crud/upload.test.tsx";
 const AUDIT_LABELS = "audit-labels.test.ts";
@@ -596,12 +597,21 @@ export const portalFilesSpaChecks = [
     to: "const reviewed = application;",
     tests: ADMIN_SPA(MOCK_FILES),
   },
+  // The mock has TWO purge handlers with the same confirmation line (the application's, and the draft's since SAKEM-093), so
+  // each check anchors on the line before it (the runner refuses a pattern found more than once) and runs the test of its own.
   {
-    name: "portal files: the mock purges without a confirmation",
+    name: "portal files: the mock purges an application's files without a confirmation",
     file: "spa/src/mock/resources/pendaftaran.ts",
-    from: "if (bodyOf(init)?.confirm !== true) return failure(",
-    to: "if (false) return failure(",
+    from: 'if (!application) return failure(404, "not_found");\n      if (bodyOf(init)?.confirm !== true) return failure(',
+    to: 'if (!application) return failure(404, "not_found");\n      if (false) return failure(',
     tests: ADMIN_SPA(MOCK_FILES),
+  },
+  {
+    name: "portal files: the mock purges a draft's files without a confirmation",
+    file: "spa/src/mock/resources/pendaftaran.ts",
+    from: 'if (access !== "write") return failure(403, "forbidden");\n      if (bodyOf(init)?.confirm !== true) return failure(',
+    to: 'if (access !== "write") return failure(403, "forbidden");\n      if (false) return failure(',
+    tests: ADMIN_SPA(MOCK_DRAFTS),
   },
   {
     name: "portal files: Aktivitas has no label for an admin opening an applicant's file",

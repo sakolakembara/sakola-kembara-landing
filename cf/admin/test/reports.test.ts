@@ -77,18 +77,37 @@ describe("reports: who may do what (the role matrix of the area konten)", () => 
 
 describe("reports: the list", () => {
   test("the default order is the public page's: newest year first, then newest upload, and it equals what /laporan is given", async () => {
+    // Nothing here depends on the clock or on luck: every upload time is planted, and so is every id. The kit breaks a tie on
+    // the sort key by `id` (ascending), and an `id` is a random UUID in real life, so a list that forgot the upload time would
+    // come out right whenever the random ids happened to agree with it (one run in four for two same-year pairs: the flake
+    // of the negative check "konten: the report list is not in the public page's order (the upload time is not the
+    // tie-break)"). Inside each year the ids below are in NEITHER the upload order nor its reverse, which is asserted
+    // underneath, so such a list is wrong on every run, whichever way a tie is broken.
     const t = (n: number) => new Date(Date.UTC(2026, 0, n));
-    await addReport({ title: "A 2024", year: "2024", uploadedAt: t(1) });
-    await addReport({ title: "B 2025 lama", year: "2025", uploadedAt: t(2) });
-    await addReport({ title: "C 2025/2026 lama", year: "2025/2026", uploadedAt: t(3) });
-    await addReport({ title: "D 2025 baru", year: "2025", uploadedAt: t(9) });
-    await addReport({ title: "E 2024/2025", year: "2024/2025", uploadedAt: t(4) });
-    await addReport({ title: "F 2025/2026 baru", year: "2025/2026", uploadedAt: t(8) });
+    const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+    const planted = [
+      { id: id(1), title: "A 2024", year: "2024", uploadedAt: t(1) },
+      { id: id(6), title: "B 2025 lama", year: "2025", uploadedAt: t(2) },
+      { id: id(9), title: "C 2025/2026 lama", year: "2025/2026", uploadedAt: t(3) },
+      { id: id(5), title: "D 2025 baru", year: "2025", uploadedAt: t(9) },
+      { id: id(2), title: "E 2024/2025", year: "2024/2025", uploadedAt: t(4) },
+      { id: id(8), title: "F 2025/2026 baru", year: "2025/2026", uploadedAt: t(8) },
+      { id: id(4), title: "G 2025 tengah", year: "2025", uploadedAt: t(5) },
+      { id: id(7), title: "H 2025/2026 tengah", year: "2025/2026", uploadedAt: t(6) },
+    ];
+    for (const row of planted) await addReport(row);
+    for (const year of ["2025", "2025/2026"]) {
+      const sameYear = planted.filter((row) => row.year === year);
+      const byUpload = [...sameYear].sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime()).map((row) => row.title);
+      const byId = [...sameYear].sort((a, b) => a.id.localeCompare(b.id)).map((row) => row.title);
+      expect(byId, `the planted ids of ${year} must not follow the upload order`).not.toEqual(byUpload);
+      expect([...byId].reverse(), `the planted ids of ${year} must not follow the upload order backwards`).not.toEqual(byUpload);
+    }
     const cookie = await signedInCookie(uniqueEmail("viewer"), "viewer");
 
     const admin = await body<{ items: { id: string; title: string }[]; page: number; pageSize: number; total: number }>(await call(LIST, { cookie }));
-    expect(admin.items.map((item) => item.title)).toEqual(["F 2025/2026 baru", "C 2025/2026 lama", "D 2025 baru", "B 2025 lama", "E 2024/2025", "A 2024"]);
-    expect(admin).toMatchObject({ page: 1, pageSize: 20, total: 6 });
+    expect(admin.items.map((item) => item.title)).toEqual(["F 2025/2026 baru", "H 2025/2026 tengah", "C 2025/2026 lama", "D 2025 baru", "G 2025 tengah", "B 2025 lama", "E 2024/2025", "A 2024"]);
+    expect(admin).toMatchObject({ page: 1, pageSize: 20, total: 8 });
 
     const pub = await json<{ reports: { id: string }[] }>(await internalFetch("/api/public/reports"));
     expect(admin.items.map((item) => item.id)).toEqual(pub.reports.map((report) => report.id));

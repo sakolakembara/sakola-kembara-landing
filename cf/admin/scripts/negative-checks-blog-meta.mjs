@@ -1,9 +1,9 @@
 // The negative checks of the blog's meta description (SAKEM-094), in their own file so the shared lists in
 // negative-checks.mjs and negative-checks-spa.mjs stay short: each imports this once and spreads `blogMetaChecks`
 // (the Worker's) or `blogMetaSpaChecks` (the SPA's). Same rules as there: each check breaks ONE safeguard in the source,
-// runs the tests that must notice, expects them to FAIL, and the runner restores the file. The Worker runner reports a
-// pattern found other than exactly once as FAIL, so a refactor cannot turn a check into a no-op; the SPA runner only
-// reports a pattern it cannot find, so the patterns below are written to occur once.
+// runs the tests that must notice, expects them to FAIL, and the runner restores the file. Both runners report a
+// pattern found other than exactly once as FAIL (the SPA's since SAKEM-100), so a refactor cannot turn a check into a
+// no-op, and a second copy of a line cannot make a check break the wrong one.
 //
 // This file is not a runner. Run them with:
 //   node scripts/negative-checks.mjs --only "blog meta"        (the Worker's)

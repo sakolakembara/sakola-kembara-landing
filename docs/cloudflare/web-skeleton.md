@@ -21,8 +21,8 @@ pnpm dev                        # terminal 3: astro dev on :4321 (the Worker run
 | `pnpm build` | `pnpm assets`, then `dist/client` (assets) and `dist/server` (Worker), then `check-dist` (the asset guard) |
 | `pnpm check:dist` | The guard alone, on an existing `dist/` (`-- --list` prints every `<img>` of the prerendered pages) |
 | `pnpm check` | `astro check` (types for `.astro` and `.ts`); it only builds the image manifest, not the images |
-| `pnpm test` | 641 unit tests (vitest, `pnpm assets` first); the ones that read `dist/` (`built`, `home-built`, `home-dom`, the dist audit in `assets`) need `pnpm build` first and are skipped without it |
-| `pnpm test:e2e` | 295 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
+| `pnpm test` | 1,632 unit tests (vitest, `pnpm assets` first); the ones that read `dist/` (`built`, `home-built`, `home-dom`, the dist audit in `assets`) need `pnpm build` first and are skipped without it |
+| `pnpm test:e2e` | 475 checks against the built Worker under `wrangler dev` (local mode) with the stub origin and the fixture API |
 | `pnpm measure [-- --next http://127.0.0.1:3055]` | Sizes, warm timings, and the "does the Worker run?" experiment; writes `.measure/results.json` |
 | `pnpm exec wrangler deploy --dry-run --outdir <dir> -c dist/server/wrangler.json` | Bundle size, no login needed |
 
@@ -104,7 +104,7 @@ Client JS has no framework. On every page: the **navbar script** (about 3.4 KB r
 
 Every image and file is a **static asset** (free and unlimited; anything that goes through the Worker counts against 100k requests per day). The root `public/` is the single source and is never modified; everything below is generated into gitignored folders of `cf/web` by `scripts/build-assets.mjs`, which `pnpm dev`, `pnpm test` and `pnpm build` run first. Numbers and settings live in `assets.config.mjs` (pure, shared by the script, the blog plugin, `src/lib/images.ts` and the guards).
 
-**What it makes, for every `jpg`, `jpeg`, `png` and `webp` under `public/images/**` and `public/blog/images/**` (273 files):**
+**What it makes, for every `jpg`, `jpeg`, `png` and `webp` under `public/images/**` and `public/blog/images/**` (288 files: 249 blog images and 39 site images, counted on 2026-10-15):**
 
 | Output | Path | What |
 | --- | --- | --- |
@@ -282,7 +282,7 @@ The e2e script repeats the eager-JS check on the bytes the Worker serves, and ch
 
 ## Results (local, this machine)
 
-**Tests.** `pnpm test`: 641 passed (19 files). `pnpm test:e2e`: 295 of 295 checks. `pnpm check`: 0 errors, 0 warnings (1 hint: the deprecated `document.execCommand` in `donasi.astro`). Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
+**Tests.** `pnpm test`: 1,632 passed (46 files). `pnpm test:e2e`: 475 of 475 checks. `pnpm check`: 0 errors, 0 warnings (2 hints: the deprecated `document.execCommand` in `donasi.astro` and in `src/scripts/copy-button.ts`). These three were recounted on 2026-10-15 on `cloudflare` at `4930eaa` (the first figures were 641 unit tests in 19 files, 295 e2e checks and 1 hint). The root figures that follow are the first measurement and were not recounted. Root: `tsc --noEmit` and `pnpm test` (229) pass with `cf/` present; `eslint eslint.config.mjs` is clean. A full root `pnpm lint` reports 5 errors and 2 warnings in legacy files this change does not touch (`app/(admin)`, `app/(portal)`, `app/(public)/donasi`, `components/Map`, `scripts/scrape-blog.mjs`); none from `cf/` (ignored).
 
 **What `/` loads** (JS means JS referenced by the HTML):
 
