@@ -2,6 +2,7 @@
 // Dry-run of the STAGING deploy of one Worker (SAKEM-084, docs/cloudflare/staging-runbook.md):
 //
 //   node ../scripts/staging-dry-run.mjs admin     (from cf/admin, after `pnpm build:spa`)
+//   node ../scripts/staging-dry-run.mjs portal    (from cf/admin, after `pnpm build:portal-spa`)
 //   node ../scripts/staging-dry-run.mjs web       (from cf/web, after `pnpm build:staging`)
 //
 // The package scripts `deploy:staging:dry` run the build and then this. It runs `wrangler deploy --dry-run`
@@ -12,7 +13,8 @@
 //
 // What it proves, beyond "wrangler exits 0": the bundle is the STAGING Worker (the name wrangler writes
 // into the output folder, the staging D1 database and R2 bucket, the staging environment variable, the
-// service binding of the site pointing at the staging admin Worker) and not the production one, and the
+// service binding of the site pointing at the staging admin Worker; for the portal, its own private bucket and
+// none of the admin's) and not the production one, and the
 // bundle is still far below the limit it would have had under the old 3 MiB compressed rule.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -41,18 +43,65 @@ const RATE_LIMITS = [
   'RL_ADMIN_FILE (120 requests/60s)',
 ].map((line) => `env.${line}`);
 
+// The portal's: written out in its own staging block, with its own namespaces (81xx). It has no RL_CONTACT, RL_UPLOAD,
+// RL_BLOG_PREVIEW or RL_ADMIN_FILE: those are the admin's concerns (a test of the portal config says so).
+const PORTAL_RATE_LIMITS = [
+  'RL_LOGIN (5 requests/60s)',
+  'RL_LOGIN_ACCOUNT (20 requests/60s)',
+  'RL_REGISTER (10 requests/60s)',
+  'RL_RESET (5 requests/60s)',
+  'RL_VERIFY_RESEND (2 requests/60s)',
+  'RL_MAIL_TARGET (3 requests/60s)',
+  'RL_TOKEN (20 requests/60s)',
+  'RL_PORTAL_READ (60 requests/60s)',
+  'RL_PORTAL_SAVE (30 requests/60s)',
+  'RL_PORTAL_UPLOAD (20 requests/60s)',
+  'RL_PORTAL_SUBMIT (3 requests/60s)',
+].map((line) => `env.${line}`);
+
 /** What each target must show. Kept apart from the wrangler files on purpose: the test of those files and this check read the same truth from two sides. */
 export const TARGETS = {
   admin: {
     dir: 'admin',
     workerName: 'sakem-admin-staging',
+    outdir: 'dist/worker-staging',
     args: ['deploy', '--dry-run', '--env', 'staging', '--outdir', 'dist/worker-staging'],
     mustContain: ['env.DB (sakem-staging)', 'env.UPLOADS (sakem-files-staging)', 'env.PRIVATE_FILES (sakem-private-staging)', 'env.ENVIRONMENT ("staging")', 'env.ASSETS', ...RATE_LIMITS],
     mustNotContain: ['env.DB (sakem-admin)', 'env.UPLOADS (sakem-files)', 'env.PRIVATE_FILES (sakem-private)', 'env.ENVIRONMENT ("production")'],
   },
+  // The student portal (SAKEM-098): the same package as the admin, its own configuration and its own output folder (the
+  // admin's dry run and this one may follow each other without one folder holding both). The per-deploy public values are
+  // declared empty in the staging block, so the listing must show every one of them as ("") when no --var was given.
+  portal: {
+    dir: 'admin',
+    workerName: 'sakem-portal-staging',
+    outdir: 'dist/portal-worker-staging',
+    args: ['deploy', '--dry-run', '-c', 'wrangler.portal.jsonc', '--env', 'staging', '--outdir', 'dist/portal-worker-staging'],
+    mustContain: [
+      'env.DB (sakem-staging)',
+      'env.PRIVATE_FILES (sakem-private-staging)',
+      'env.ENVIRONMENT ("staging")',
+      'env.PRIVATE_FILES_BUDGET_BYTES ("8000000000")',
+      'env.ASSETS',
+      ...['SITE_URL', 'ADMIN_URL', 'TURNSTILE_SITE_KEY', 'EMAIL_FROM', 'PORTAL_CONTACT_WHATSAPP', 'PORTAL_WHATSAPP_GROUP_URL'].map((name) => `env.${name} ("")`),
+      ...PORTAL_RATE_LIMITS,
+    ],
+    // The admin's database (production name), its two buckets, the public bucket's variable, and the admin's limiters.
+    mustNotContain: [
+      'env.DB (sakem-admin)',
+      'env.PRIVATE_FILES (sakem-private)',
+      'env.UPLOADS',
+      'env.ENVIRONMENT ("production")',
+      'env.RL_CONTACT',
+      'env.RL_UPLOAD',
+      'env.RL_BLOG_PREVIEW',
+      'env.RL_ADMIN_FILE',
+    ],
+  },
   web: {
     dir: 'web',
     workerName: 'sakem-web-staging',
+    outdir: 'dist/worker-staging',
     args: ['deploy', '--dry-run', '--outdir', 'dist/worker-staging', '-c', 'dist/server/wrangler.json'],
     mustContain: ['env.API (sakem-admin-staging#PublicApi)', 'env.ASSETS'],
     mustNotContain: ['env.API (sakem-admin#PublicApi)', 'env.API (sakem-admin)'],
@@ -91,7 +140,7 @@ export function dryRunEnv(base) {
 function main(argv) {
   const target = TARGETS[argv[0]];
   if (!target) {
-    process.stderr.write('usage: node ../scripts/staging-dry-run.mjs <admin|web>\n');
+    process.stderr.write('usage: node ../scripts/staging-dry-run.mjs <admin|portal|web>\n');
     return 2;
   }
   const cwd = path.join(cfRoot, target.dir);
@@ -99,7 +148,7 @@ function main(argv) {
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
   let readme = '';
   try {
-    readme = readFileSync(path.join(cwd, 'dist/worker-staging/README.md'), 'utf8');
+    readme = readFileSync(path.join(cwd, target.outdir, 'README.md'), 'utf8');
   } catch {
     // reported by the check below
   }

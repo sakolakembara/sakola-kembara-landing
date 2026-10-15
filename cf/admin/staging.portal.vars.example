@@ -1,0 +1,32 @@
+# Copy to .staging.vars.portal (untracked: `cf/**/.staging.vars*` is git-ignored; the admin's own file is .staging.vars)
+# and fill in the PUBLIC values of the staging Worker `sakem-portal-staging`. `pnpm deploy:staging:portal:command` reads it
+# and PRINTS the deploy command with every value passed as --var; it does not deploy. See docs/cloudflare/staging-runbook.md
+# (steps 15 to 22).
+#
+# Public values only. Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY, TURNSTILE_SECRET_KEY) are never written here: they go
+# in with `pnpm exec wrangler secret put <NAME> -c wrangler.portal.jsonc --env staging`, typed at its prompt. The
+# BETTER_AUTH_SECRET of the portal is a DIFFERENT value from the admin's.
+#
+# Everything below is answered to the browser by GET /portal/api/config (or used as the From of the emails), so none of it
+# is a secret, and none of it may be a real person's: the staging host is public.
+
+# The PUBLIC site key of the Turnstile widget. For the first deploy use Cloudflare's published always-pass TEST site key (it is
+# in cf/admin/dev.vars.example, with its matching test secret); for the end-to-end test, the key of the REAL widget you create
+# for the workers.dev hostname (runbook, step 19).
+TURNSTILE_SITE_KEY=<site key of the staging widget>
+
+# The origin of the staging public site (the portal links to /gabung-siswa, its documents and the privacy policy there).
+SITE_URL=https://sakem-web-staging.<account-subdomain>.workers.dev
+
+# The origin of the staging admin: the "this is an admin account" screen links there.
+ADMIN_URL=https://sakem-admin-staging.<account-subdomain>.workers.dev
+
+# The From of the emails. Without a verified Resend domain, `onboarding@resend.dev` only delivers to the address of the Resend
+# account itself (runbook, step 19: which address receives the verification mail).
+EMAIL_FROM=Sakola Kembara Staging <onboarding@resend.dev>
+
+# OPTIONAL, and only INVENTED values (the staging host is public, and so is its config answer): leave both lines out to see
+# the wizard's "Kontak" fallback and no invitation after sending. Digits only with the country code, 8 to 15 digits, no +
+# and no leading zero; an https address for the group, never a real WhatsApp invitation (the script refuses WhatsApp's hosts).
+# PORTAL_CONTACT_WHATSAPP=6281200000000
+# PORTAL_WHATSAPP_GROUP_URL=https://grup-uji.example.test/pendaftaran

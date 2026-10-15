@@ -25,8 +25,8 @@ interface WranglerConfig {
   r2_buckets: { binding: string; bucket_name: string }[];
   ratelimits: { name: string; namespace_id: string; simple: { limit: number; period: number } }[];
   triggers?: { crons: string[] };
-  /** The admin's staging block (SAKEM-084): it uses its own namespaces, which the portal's must not collide with. */
-  env?: { staging?: { ratelimits?: { name: string; namespace_id: string; simple: { limit: number; period: number } }[] } };
+  /** The staging block (SAKEM-084 for the admin's, SAKEM-098 for the portal's): it uses namespaces of its own, which no other block's may collide with. */
+  env?: { staging?: { vars?: Record<string, string>; ratelimits?: { name: string; namespace_id: string; simple: { limit: number; period: number } }[] } };
   [key: string]: unknown;
 }
 
@@ -56,7 +56,9 @@ describe("the portal's configuration", () => {
   });
 
   test("no routes, no ids, no accounts, no zone, no cron: nothing that belongs to a real Cloudflare account", () => {
-    expect(Object.keys(portal).sort()).toEqual(["$schema", "assets", "compatibility_date", "compatibility_flags", "d1_databases", "main", "name", "observability", "r2_buckets", "ratelimits", "vars"]);
+    // `env` is the staging block (SAKEM-098): test/portal-staging-config.test.ts holds it to the same rules.
+    expect(Object.keys(portal).sort()).toEqual(["$schema", "assets", "compatibility_date", "compatibility_flags", "d1_databases", "env", "main", "name", "observability", "r2_buckets", "ratelimits", "vars"]);
+    expect(Object.keys(portal.env ?? {})).toEqual(["staging"]);
     for (const config of [admin, portal]) {
       for (const forbidden of ["routes", "route", "account_id", "zone_id", "zone_name", "workers_dev", "kv_namespaces", "durable_objects", "services"]) expect(config, forbidden).not.toHaveProperty(forbidden);
       for (const database of config.d1_databases) expect(database.database_id, "a D1 id").toBeUndefined();
@@ -134,7 +136,9 @@ describe("the portal's configuration", () => {
     }
     expect(devVarsExample).not.toMatch(/chat\.whatsapp\.com|wa\.me\/\d/);
     for (const text of [portalConfigText, adminConfigText]) expect(text).not.toMatch(/chat\.whatsapp\.com|wa\.me\/\d/);
-    expect(portalConfigText).not.toMatch(/PORTAL_(CONTACT_WHATSAPP|WHATSAPP_GROUP_URL)["']?\s*[:=]\s*["']?\S/);
+    // No value after either name, anywhere in the file: the only thing that may follow one is an EMPTY string (the staging block declares both empty, SAKEM-098).
+    expect(portalConfigText).not.toMatch(/PORTAL_(CONTACT_WHATSAPP|WHATSAPP_GROUP_URL)["']?\s*[:=]\s*["']?[^"'\s,]/);
+    for (const name of names) expect(portal.env?.staging?.vars?.[name], `the staging block's ${name}`).toBe("");
   });
 
   test("no SSE-C (Dzul, 2026-10-13): no key is declared, and nothing in the source passes one to R2", () => {
@@ -184,14 +188,17 @@ describe("the portal's configuration", () => {
       for (const other of ["RL_CONTACT", "RL_UPLOAD", "RL_BLOG_PREVIEW", "RL_ADMIN_FILE"]) expect(namesOf(portal)).not.toContain(other);
     });
 
-    test("namespaces are numbers we choose, unique across BOTH files and the admin's staging block (ids are per account, and a shared id would share a counter): the portal's are its own, 80xx", () => {
+    test("namespaces are numbers we choose, unique across BOTH files and BOTH staging blocks (ids are per account, and a shared id would share a counter): the portal's are its own, 80xx, and its staging block's 81xx", () => {
       const staging = admin.env?.staging?.ratelimits ?? [];
+      const portalStaging = portal.env?.staging?.ratelimits ?? [];
       expect(staging.length).toBeGreaterThan(0);
-      const all = [...admin.ratelimits, ...staging, ...portal.ratelimits].map((entry) => entry.namespace_id);
+      expect(portalStaging.length).toBeGreaterThan(0);
+      const all = [...admin.ratelimits, ...staging, ...portal.ratelimits, ...portalStaging].map((entry) => entry.namespace_id);
       expect(new Set(all).size).toBe(all.length);
       for (const entry of portal.ratelimits) expect(entry.namespace_id, entry.name).toMatch(/^80\d\d$/);
       for (const entry of admin.ratelimits) expect(entry.namespace_id, entry.name).toMatch(/^78\d\d$/);
       for (const entry of staging) expect(entry.namespace_id, entry.name).toMatch(/^79\d\d$/);
+      for (const entry of portalStaging) expect(entry.namespace_id, entry.name).toMatch(/^81\d\d$/);
     });
 
     test("a limit is keyed by user id on the student routes, and the ones that count a minute are 60 s windows", () => {
