@@ -520,13 +520,20 @@ describe('aggregate over a made-up capture', () => {
 const run = promisify(execFile);
 const script = path.join(webRoot, 'scripts/measure-staging.mjs');
 const node = (args: string[], input?: string) =>
-  new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
+  new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(process.execPath, [script, ...args], { cwd: webRoot, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '' } });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => (stdout += d));
     child.stderr.on('data', (d) => (stderr += d));
     child.on('close', (code) => resolve({ code: code ?? -1, stdout, stderr }));
+    // A command that never reads its standard input (the usage line, a refusal before any request) may already be gone
+    // when the write lands: that is an EPIPE on the pipe, and with no listener Node throws it as an uncaught exception
+    // (vitest then fails the run although every test passed). It is not a failure of the test: what the command did is
+    // checked from its exit code and its output. Any other error of the pipe still fails.
+    child.stdin.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code !== 'EPIPE') reject(error);
+    });
     child.stdin.end(input ?? '');
   });
 

@@ -252,6 +252,14 @@ describe('the API client and the markdown adapter agree on every article', () =>
   beforeAll(async () => {
     fixture = await startFixtureApi({ port: 0 });
     base = `http://127.0.0.1:${(fixture.server.address() as AddressInfo).port}`;
+    // The fixture reads and renders the 80 articles on its first blog request (loadBlog in scripts/fixture-api.mjs):
+    // about 0.3 s alone, 1 s and more when other runs share the CPU. The client under test gives up after 2 s
+    // (loadContent), so the first `api.list` could answer "empty" for a fixture that was merely still starting. Wait for
+    // the fixture to be ready here, with a plain fetch that has no such timeout, then forget that request.
+    const warmUp = await fetch(`${base}/api/public/blog?page=1&pageSize=1`);
+    if (!warmUp.ok) throw new Error(`the fixture API did not start: ${warmUp.status} ${await warmUp.text()}`);
+    await warmUp.arrayBuffer();
+    await fetch(`${base}/__reset`, { method: 'POST' });
     api = createApiBlogSource({ target: contentApiTarget({ CONTENT_API_URL: base }) });
   });
   afterAll(async () => {
