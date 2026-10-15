@@ -336,7 +336,8 @@ describe("size limits", () => {
     expect(await over.json()).toEqual({ error: "too_large", message: "Ukuran file maksimal 20 MB.", maxBytes: 20_000_000 });
   });
 
-  test("resource and registration document: 25 MB, the largest of all", async () => {
+  // Four bodies of 25 MB go through the Worker: real work (3 s when other runs share the machine, against the default limit of 5 s).
+  test("resource and registration document: 25 MB, the largest of all", { timeout: 60_000 }, async () => {
     const cookie = await editor();
     for (const kind of ["resource", "registration-document"] as const) {
       expect((await upload({ kind, cookie, bytes: padTo(pdf(), 25_000_000), filename: "panduan.pdf" })).status, `${kind} at the limit`).toBe(201);

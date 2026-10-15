@@ -40,7 +40,7 @@ describe("login: the form", () => {
 
   test("the cursor starts in the email field", async () => {
     await openLogin();
-    expect(document.activeElement).toBe(email());
+    await waitFor(() => expect(document.activeElement).toBe(email()));
   });
 
   test("has the ways to the password reset and to registration, under /portal", async () => {
@@ -71,7 +71,7 @@ describe("login: the form", () => {
 
   test("sets the tab title", async () => {
     await openLogin();
-    expect(document.title).toBe("Masuk | Portal Siswa");
+    await waitFor(() => expect(document.title).toBe("Masuk | Portal Siswa"));
   });
 });
 
@@ -239,6 +239,7 @@ describe("login: an address that is not verified", () => {
     if (turnstile) {
       // With a site key the sign-in itself is behind the security check.
       await screen.findByRole("button", { name: "Memeriksa…" });
+      await turnstile.drawn("login");
       turnstile.solve("token-login");
     }
     await user.click(await screen.findByRole("button", { name: "Masuk" }));
@@ -265,6 +266,7 @@ describe("login: an address that is not verified", () => {
       turnstile,
     );
     await screen.findByRole("button", { name: "Memeriksa…" });
+    await turnstile.drawn("resend-verification");
     turnstile.solve("token-resend");
     await user.click(await screen.findByRole("button", { name: "Kirim ulang tautan" }));
     expect(await screen.findByText("Tautan baru sudah dikirim. Cek folder spam jika belum muncul.")).toBeTruthy();

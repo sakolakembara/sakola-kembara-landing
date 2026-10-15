@@ -285,7 +285,7 @@ describe("the form: create", () => {
     expect(screen.getByLabelText(/Aktifkan/)).toBeTruthy();
     expect(screen.getByLabelText(/Mulai/).getAttribute("type")).toBe("datetime-local");
     expect(screen.getByRole("button", { name: "Buat Pengumuman" })).toBeTruthy();
-    expect(document.title).toBe("Pengumuman Baru | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Pengumuman Baru | Admin Sakola Kembara"));
   });
 
   test("submitting sends the body the Worker takes, once, then opens the edit page with 'berhasil dibuat'", async () => {

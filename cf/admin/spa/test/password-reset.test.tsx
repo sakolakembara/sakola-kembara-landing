@@ -22,9 +22,9 @@ describe("forgot password", () => {
     expect(email().type).toBe("email");
     expect(email().autocomplete).toBe("email");
     expect(email().required).toBe(true);
-    expect(document.activeElement).toBe(email());
+    await waitFor(() => expect(document.activeElement).toBe(email()));
     expect(screen.getByRole("link", { name: "Kembali ke halaman masuk" }).getAttribute("href")).toBe("/login");
-    expect(document.title).toBe("Lupa Password | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Lupa Password | Admin Sakola Kembara"));
   });
 
   test("asks Better Auth for a link that lands on /reset-password", async () => {
@@ -165,7 +165,7 @@ describe("reset password", () => {
       expect(confirm().autocomplete).toBe("new-password");
       expect(screen.getByText("Minimal 8 karakter.")).toBeTruthy();
       expect(fresh().getAttribute("aria-describedby")).toBeTruthy();
-      expect(document.activeElement).toBe(fresh());
+      await waitFor(() => expect(document.activeElement).toBe(fresh()));
     });
 
     test("a short password is stopped, named, and focused", async () => {
@@ -279,7 +279,7 @@ describe("email verification result", () => {
     expect(await screen.findByRole("heading", { name: "Email kamu berhasil diverifikasi" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Akun kamu sekarang sudah aktif. Silakan masuk untuk melanjutkan.");
     expect(screen.getByRole("link", { name: "Masuk" }).getAttribute("href")).toBe("/login");
-    expect(document.title).toBe("Verifikasi Email | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Verifikasi Email | Admin Sakola Kembara"));
   });
 
   test.each(["TOKEN_EXPIRED", "INVALID_TOKEN"])("%s: tells how to get a new link", async (code) => {

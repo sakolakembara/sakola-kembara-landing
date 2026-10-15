@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
@@ -38,7 +38,7 @@ describe("dashboard: data", () => {
   test("greets by name and sets the tab title", async () => {
     await open("super_admin", [], respond(full));
     expect(await screen.findByRole("heading", { level: 1, name: "Halo, Tester" })).toBeTruthy();
-    expect(document.title).toBe("Dashboard | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Dashboard | Admin Sakola Kembara"));
   });
 
   test("Perlu perhatian: the counts, each a link to where the server says it leads", async () => {

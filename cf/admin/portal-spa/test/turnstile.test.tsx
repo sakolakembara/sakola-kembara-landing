@@ -26,8 +26,8 @@ describe("sign-in", () => {
     await type(user, "Email", "sari@contoh.test");
     await type(user, "Password", "x");
     expect(await screen.findByRole("button", { name: "Memeriksa…" })).toHaveProperty("disabled", true);
-    expect(turnstile.current().options.action).toBe("login");
-    expect(turnstile.current().options.sitekey).toBe("site-key");
+    const widget = await turnstile.drawn("login");
+    expect(widget.options.sitekey).toBe("site-key");
 
     turnstile.solve("token-1");
     await user.click(await screen.findByRole("button", { name: "Masuk" }));
@@ -44,6 +44,7 @@ describe("sign-in", () => {
     stubApi(withKey());
     renderApp("/portal/login");
     await screen.findByRole("button", { name: "Memeriksa…" });
+    await turnstile.drawn("login");
     turnstile.solve("token-1");
     await screen.findByRole("button", { name: "Masuk" });
     turnstile.expire();
@@ -124,7 +125,7 @@ describe("registration", () => {
     renderApp("/portal/register");
     await screen.findByRole("heading", { name: "Daftar akun baru" });
     expect(await screen.findByRole("button", { name: "Memeriksa…" })).toHaveProperty("disabled", true);
-    expect(turnstile.current().options.action).toBe("register");
+    await turnstile.drawn("register");
     turnstile.solve("token-reg");
     await type(user, "Nama lengkap", "Sari Dewi");
     await type(user, "Email", "sari@contoh.test");
@@ -142,6 +143,7 @@ describe("registration", () => {
     stubApi(withKey({ [`POST ${ENDPOINTS.register}`]: respond({ error: "captcha_failed" }, 403) }));
     renderApp("/portal/register");
     await screen.findByRole("button", { name: "Memeriksa…" });
+    await turnstile.drawn("register");
     turnstile.solve("token-reg");
     await type(user, "Nama lengkap", "Sari Dewi");
     await type(user, "Email", "sari@contoh.test");

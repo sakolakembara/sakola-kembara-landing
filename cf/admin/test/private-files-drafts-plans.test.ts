@@ -102,9 +102,13 @@ describe("round trips and rows read", () => {
     expect(first.stats.rowsRead).toBeLessThanOrEqual(140);
 
     // The files of three submitted applications, 90 in all, add nothing: the list never walks `application_files`.
+    // The ids are fixed, and sort before every draft's (a random UUID practically never starts with 8 zeros). On the
+    // files index the seek of the draft that sorts last reads one entry less, as long as nothing sorts after its files.
+    // When an added application got a random id above it, that one entry appeared (110 against 109, about one run in
+    // four) and the `toBe` below failed by chance. The check stays exact; a walk of the files would read 90 more.
     const batch = await addBatch();
     for (let i = 0; i < 3; i++) {
-      const application = await addApplication(batch.id, { userId: (await bareStudent()).id });
+      const application = await addApplication(batch.id, { id: `00000000-0000-4000-8000-00000000000${i + 1}`, userId: (await bareStudent()).id });
       for (let j = 0; j < 30; j++) await seedFile({ applicationId: application.id, year: batch.year, slot: "house-photos", size: 100 });
     }
     const second = instrumentD1(env.DB);

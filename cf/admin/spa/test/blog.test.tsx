@@ -261,7 +261,7 @@ describe("the form: create", () => {
     expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull(); // nothing to publish before it exists
     expect(panel("Detail").hasAttribute("hidden")).toBe(false);
     expect(panel("Konten").hasAttribute("hidden")).toBe(true);
-    expect(document.title).toBe("Tulis Artikel | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Tulis Artikel | Admin Sakola Kembara"));
   });
 
   test("submitting sends the body the Worker takes, once, then opens the edit page with 'berhasil dibuat'", async () => {

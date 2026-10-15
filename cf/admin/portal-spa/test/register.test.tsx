@@ -56,7 +56,7 @@ describe("register: the form", () => {
 
   test("the cursor starts in the first field; the honeypot is hidden from people and from assistive technology", async () => {
     await openRegister();
-    expect(document.activeElement).toBe(name());
+    await waitFor(() => expect(document.activeElement).toBe(name()));
     const trap = document.querySelector<HTMLInputElement>('input[name="website"]')!;
     expect(trap.tabIndex).toBe(-1);
     expect(trap.getAttribute("aria-hidden")).toBe("true");
@@ -71,7 +71,7 @@ describe("register: the form", () => {
 
   test("sets the tab title", async () => {
     await openRegister();
-    expect(document.title).toBe("Daftar Akun | Portal Siswa");
+    await waitFor(() => expect(document.title).toBe("Daftar Akun | Portal Siswa"));
   });
 });
 
@@ -148,14 +148,14 @@ describe("register: sending", () => {
       [`POST ${ENDPOINTS.sendVerification}`]: respond({ status: true }),
     });
     await screen.findByRole("button", { name: "Memeriksa…" });
-    expect(turnstile.current().options.action).toBe("register");
+    await turnstile.drawn("register");
     turnstile.solve("token-register");
     await fillIn(user);
     await user.click(await screen.findByRole("button", { name: "Daftar" }));
     await screen.findByRole("heading", { name: "Cek email kamu" });
 
     await screen.findByRole("button", { name: "Memeriksa…" });
-    expect(turnstile.current().options.action).toBe("resend-verification");
+    await turnstile.drawn("resend-verification");
     turnstile.solve("token-resend");
     await user.click(await screen.findByRole("button", { name: "Kirim ulang tautan" }));
     expect(await screen.findByText("Tautan baru sudah dikirim. Cek folder spam jika belum muncul.")).toBeTruthy();

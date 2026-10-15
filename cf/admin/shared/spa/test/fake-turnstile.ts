@@ -39,7 +39,7 @@ export function fakeTurnstile() {
   const script = () => document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR);
   const current = () => {
     const widget = widgets.at(-1);
-    if (!widget) throw new Error("no widget has been drawn");
+    if (!widget) throw new Error("no widget has been drawn (after `preload()`, `await turnstile.drawn()` first: the page draws it in an effect)");
     return widget;
   };
 
@@ -47,8 +47,24 @@ export function fakeTurnstile() {
     api,
     widgets,
     script,
-    /** The widget the page drew last. */
+    /** The widget the page drew last. Synchronous: after `preload()` or a page change, wait for it with `drawn()` first. */
     current,
+    /**
+     * Resolves with the widget once the page has drawn one that is still on the page (and, with `action`, one for that
+     * action). The page draws in an effect that runs after the button waiting for the token ("Memeriksa…") is on
+     * screen, so that button appearing does not mean the widget is there yet: under load the effect can run a moment
+     * later. A page that swaps one form for another (the registration, then the resend of the link) draws a second
+     * widget: name its `action`, or `current()` may still be the first one, which is gone.
+     */
+    async drawn(action?: string) {
+      await waitFor(() => {
+        const widget = widgets.at(-1);
+        expect(widget, "no widget has been drawn").toBeDefined();
+        expect(widget!.removed, "the last widget drawn has been removed").toBe(false);
+        if (action !== undefined) expect(widget!.options.action).toBe(action);
+      });
+      return current();
+    },
     /** The page asked for the script; run it. Resolves once the widget is drawn (`drawn: false` when `render` is made to fail). */
     async loadScript({ drawn = true } = {}) {
       await waitFor(() => expect(script()).not.toBeNull());

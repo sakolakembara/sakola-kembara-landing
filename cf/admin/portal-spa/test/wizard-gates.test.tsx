@@ -117,7 +117,7 @@ describe("while the page finds out, and when it cannot", () => {
     wizardServer();
     renderApp("/portal/daftar");
     await heading("Sebelum Mulai Pendaftaran");
-    expect(document.title).toBe("Daftar Sekarang | Portal Siswa");
+    await waitFor(() => expect(document.title).toBe("Daftar Sekarang | Portal Siswa"));
   });
 });
 

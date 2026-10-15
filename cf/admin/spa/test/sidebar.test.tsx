@@ -101,8 +101,8 @@ describe("sidebar", () => {
     await user.click(within(nav).getByRole("link", { name: "Pesan" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Pesan" })).toBeTruthy();
     expect(screen.getByTestId("location").textContent).toBe("/messages");
-    expect(document.activeElement).toBe(screen.getByRole("main"));
-    expect(document.title).toBe("Pesan | Admin Sakola Kembara");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("main")));
+    await waitFor(() => expect(document.title).toBe("Pesan | Admin Sakola Kembara"));
   });
 
   test("the skip link moves focus to the content", async () => {

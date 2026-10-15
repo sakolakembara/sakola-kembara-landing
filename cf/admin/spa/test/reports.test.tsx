@@ -193,7 +193,7 @@ describe("the form: create", () => {
     expect(screen.getByRole("group", { name: /File PDF/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pilih file" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Upload Laporan" })).toBeTruthy();
-    expect(document.title).toBe("Upload Laporan | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Upload Laporan | Admin Sakola Kembara"));
   });
 
   test("a PDF is picked, uploaded to the upload API's kind `report`, and its path and size go with the metadata; then the list says 'berhasil diupload'", async () => {

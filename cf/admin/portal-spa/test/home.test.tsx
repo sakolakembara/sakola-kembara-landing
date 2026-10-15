@@ -163,6 +163,7 @@ describe("home: an account whose email is not verified (defence in depth: the Wo
     expect(screen.getByText("sari@contoh.test")).toBeTruthy();
 
     await screen.findByRole("button", { name: "Memeriksa…" });
+    await turnstile.drawn("resend-verification");
     turnstile.solve("token-1");
     await user.click(await screen.findByRole("button", { name: "Kirim ulang tautan" }));
     expect(await screen.findByText("Tautan baru sudah dikirim. Cek folder spam jika belum muncul.")).toBeTruthy();

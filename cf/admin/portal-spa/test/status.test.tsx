@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { ENDPOINTS } from "~/lib/paths";
@@ -21,7 +21,7 @@ describe("status: the page", () => {
     await openStatus([]);
     expect(screen.getByText("Hasil hanya muncul setelah panitia mengumumkan keputusan seluruh batch.")).toBeTruthy();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(document.title).toBe("Status Pendaftaran | Portal Siswa");
+    await waitFor(() => expect(document.title).toBe("Status Pendaftaran | Portal Siswa"));
   });
 
   test("one call for the page", async () => {

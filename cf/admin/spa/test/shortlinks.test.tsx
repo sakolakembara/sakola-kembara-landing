@@ -199,7 +199,7 @@ describe("the form: create", () => {
     expect((screen.getByLabelText(/Aktifkan/) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByLabelText(/Slug/).getAttribute("aria-describedby")).toBe("slug-help");
     expect(screen.getByRole("button", { name: "Buat Shortlink" })).toBeTruthy();
-    expect(document.title).toBe("Shortlink Baru | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Shortlink Baru | Admin Sakola Kembara"));
   });
 
   test("submitting sends the body the Worker takes, once, then opens the edit page with 'berhasil dibuat'", async () => {

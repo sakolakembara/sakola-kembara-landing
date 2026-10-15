@@ -10,12 +10,16 @@ import { ARTICLE_COUNT } from "./helpers";
 
 const oracle = inject("blogOracle");
 
+// Two tests render all 86 articles in one synchronous loop: 0.3 to 0.5 s alone, and 5 s (the default limit) when the machine is
+// busy with other runs, where one of them ended 16 ms short of it. Real work, not a wait, so they carry an explicit limit.
+const LOTS_OF_WORK = { timeout: 60_000 };
+
 describe("renderArticle equals the build plugin on every article (80 migrated + 6 imported)", () => {
   it("has the articles to compare", () => {
     expect(oracle.articles).toHaveLength(ARTICLE_COUNT);
   });
 
-  it("renders every article to exactly the plugin's HTML", () => {
+  it("renders every article to exactly the plugin's HTML", LOTS_OF_WORK, () => {
     const different: string[] = [];
     for (const article of oracle.articles) {
       const { html, removed } = renderArticle(article.markdown);
@@ -25,7 +29,7 @@ describe("renderArticle equals the build plugin on every article (80 migrated + 
     expect(different).toEqual([]);
   });
 
-  it("keeps srcset, sizes, width and height on every inline image the build gave them", () => {
+  it("keeps srcset, sizes, width and height on every inline image the build gave them", LOTS_OF_WORK, () => {
     const withImages = oracle.articles.filter((article) => article.html.includes("<img "));
     expect(withImages.length).toBeGreaterThan(10);
     for (const article of withImages) {
