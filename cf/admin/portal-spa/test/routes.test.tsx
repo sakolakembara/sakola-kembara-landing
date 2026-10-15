@@ -133,7 +133,7 @@ describe("the routes", () => {
     stubApi({ ...SIGNED_IN, ...status });
     renderApp("/portal/");
     await screen.findByRole("heading", { name: "Selamat datang, Sari" });
-    expect(document.title).toBe("Beranda | Portal Siswa");
+    await waitFor(() => expect(document.title).toBe("Beranda | Portal Siswa"));
     await userEvent.setup().click(screen.getByRole("link", { name: "Status Pendaftaran" }));
     await waitFor(() => expect(document.title).toBe("Status Pendaftaran | Portal Siswa"));
   });

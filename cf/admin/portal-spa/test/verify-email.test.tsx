@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 import { renderApp, stubApi } from "./helpers";
 
@@ -15,7 +15,7 @@ describe("the page a verification link lands on", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Email kamu berhasil diverifikasi" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Akun kamu sekarang sudah aktif. Silakan masuk untuk melanjutkan.");
     expect(screen.getByRole("link", { name: "Masuk" }).getAttribute("href")).toBe("/portal/login");
-    expect(document.title).toBe("Verifikasi Email | Portal Siswa");
+    await waitFor(() => expect(document.title).toBe("Verifikasi Email | Portal Siswa"));
     expect(api.calls).toHaveLength(0); // it only reports; it calls nothing
   });
 

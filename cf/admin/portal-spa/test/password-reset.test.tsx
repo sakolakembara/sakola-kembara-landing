@@ -1,5 +1,5 @@
 import { fakeTurnstile } from "@shared/spa/test/fake-turnstile";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { ENDPOINTS } from "~/lib/paths";
@@ -26,8 +26,8 @@ describe("forgot password", () => {
     expect(screen.getByText("Masukkan email akun kamu. Kami akan mengirim tautan untuk mengatur ulang password ke inbox tersebut.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Kembali ke halaman masuk" }).getAttribute("href")).toBe("/portal/login");
     expect(email().autocomplete).toBe("email");
-    expect(document.activeElement).toBe(email());
-    expect(document.title).toBe("Lupa Password | Portal Siswa");
+    await waitFor(() => expect(document.activeElement).toBe(email()));
+    await waitFor(() => expect(document.title).toBe("Lupa Password | Portal Siswa"));
   });
 
   test("an empty or badly shaped address sends nothing", async () => {
@@ -83,7 +83,7 @@ describe("forgot password", () => {
     });
     await user.type(email(), "sari@contoh.test");
     expect(await screen.findByRole("button", { name: "Memeriksa…" })).toHaveProperty("disabled", true);
-    expect(turnstile.current().options.action).toBe("forgot-password");
+    await turnstile.drawn("forgot-password");
     turnstile.solve("token-forgot");
     await user.click(await screen.findByRole("button", { name: "Kirim tautan reset" }));
     await screen.findByRole("status");
@@ -120,7 +120,7 @@ describe("reset password", () => {
     expect(password().autocomplete).toBe("new-password");
     expect(confirm().autocomplete).toBe("new-password");
     expect(document.getElementById(password().getAttribute("aria-describedby")!)?.textContent).toBe("Minimal 8 karakter.");
-    expect(document.activeElement).toBe(password());
+    await waitFor(() => expect(document.activeElement).toBe(password()));
     expect(screen.getAllByRole("heading")).toHaveLength(1);
   });
 

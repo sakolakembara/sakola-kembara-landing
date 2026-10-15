@@ -32,7 +32,7 @@ describe("login: the form", () => {
 
   test("the cursor starts in the email field", async () => {
     await openLogin();
-    expect(document.activeElement).toBe(email());
+    await waitFor(() => expect(document.activeElement).toBe(email()));
   });
 
   test("has the way to the password reset, and no registration link", async () => {
@@ -54,7 +54,7 @@ describe("login: the form", () => {
 
   test("sets the tab title", async () => {
     await openLogin();
-    expect(document.title).toBe("Masuk | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Masuk | Admin Sakola Kembara"));
   });
 });
 

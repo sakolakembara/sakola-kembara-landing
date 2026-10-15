@@ -333,7 +333,7 @@ describe("the form: create", () => {
     expect(screen.getByText(/Sistem tidak bisa diberikan/)).toBeTruthy();
     expect(screen.getByText("Belum ada area dipilih: editor hanya akan melihat Dashboard.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Buat Admin" })).toBeTruthy();
-    expect(document.title).toBe("Admin Baru | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Admin Baru | Admin Sakola Kembara"));
   });
 
   test("the areas appear for an editor only, and a viewer or a super_admin sends none", async () => {

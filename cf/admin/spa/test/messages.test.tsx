@@ -219,7 +219,7 @@ describe("the detail page: what it shows", () => {
     expect(text.className).toContain("whitespace-pre-wrap");
     expect(text.textContent).toBe("Kami ingin bekerja sama mengadakan kelas membaca.\n\nBisakah kita berdiskusi?");
     // The tab title does not carry a visitor's name.
-    expect(document.title).toBe("Detail Pesan | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Detail Pesan | Admin Sakola Kembara"));
   });
 
   test("text from a visitor is text: markup in it is not run or drawn", async () => {

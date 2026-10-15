@@ -187,7 +187,7 @@ describe("the form: create", () => {
     expect(screen.getByLabelText("Institusi pendidikan 1")).toBeTruthy();
     expect(screen.getByLabelText("Organisasi pekerjaan 1")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Buat Anggota" })).toBeTruthy();
-    expect(document.title).toBe("Anggota Baru | Admin Sakola Kembara");
+    await waitFor(() => expect(document.title).toBe("Anggota Baru | Admin Sakola Kembara"));
   });
 
   test("submitting sends the body the Worker takes, once: blank history rows are left out; then the edit page says 'berhasil dibuat'", async () => {
