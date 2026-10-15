@@ -22,6 +22,12 @@
   // Not here, set per deploy: TURNSTILE_SITE_KEY (the widget's public key, for the apex host), EMAIL_FROM, SITE_URL
   // (the public site's origin: the links to /gabung-siswa and the privacy policy, served by GET /portal/api/config),
   // ADMIN_URL (the admin host's origin, where the "this is an admin account" screen links, also served by it),
+  // PORTAL_CONTACT_WHATSAPP (OPTIONAL: the admissions desk's WhatsApp number, digits only with the country code, for the
+  // wizard's "Butuh bantuan?") and PORTAL_WHATSAPP_GROUP_URL (OPTIONAL: the participants' WhatsApp group invitation, an
+  // https address, for the page after an application is sent): both are answered by GET /portal/api/config only when set
+  // AND valid, are NEVER written in a tracked file (a real person's number, a real invitation), and are passed with
+  // `--var` at deploy like the others (declared here, even empty, they would be reset to empty by any deploy that
+  // does not pass them),
   // TRUSTED_ORIGINS (normally unset: the apex's own origin is trusted), COOKIE_DOMAIN (leave unset).
   // Secrets, set with `wrangler secret put`: BETTER_AUTH_SECRET (a DIFFERENT value from the admin Worker's: a token of
   // one audience must not be valid for the other), RESEND_API_KEY, TURNSTILE_SECRET_KEY, GOOGLE_CLIENT_ID and

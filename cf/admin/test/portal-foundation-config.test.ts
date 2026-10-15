@@ -114,6 +114,29 @@ describe("the portal's configuration", () => {
     }
   });
 
+  test("the wizard's two contact values are optional public variables set per deploy: declared in env.ts, named in the portal config and the example, and NO value in any tracked file", () => {
+    const names = ["PORTAL_CONTACT_WHATSAPP", "PORTAL_WHATSAPP_GROUP_URL"];
+    for (const name of names) {
+      expect(envSources["../src/env.ts"], name).toMatch(new RegExp(`${name}\\?:\\s*string;`)); // optional
+      // Not in a `vars` block of any config (a declared one is reset by a deploy that does not pass it, and would be a value in git).
+      for (const config of [admin, portal, { vars: admin.env?.staging ? (admin.env.staging as { vars?: Record<string, string> }).vars ?? {} : {} }]) {
+        expect(config.vars, name).not.toHaveProperty(name);
+      }
+      // Documented by name where the portal's per-deploy variables are listed.
+      expect(portalConfigText, name).toContain(name);
+      // The example has the name and nothing after the equals sign.
+      expect(devVarsExample, name).toMatch(new RegExp(`^${name}=$`, "m"));
+    }
+    // No real value in the source or the example: no WhatsApp group address, no wa.me link with a number, no number
+    // written after either name.
+    for (const [file, source] of Object.entries(allSources)) {
+      expect(source, file).not.toMatch(/chat\.whatsapp\.com|wa\.me\/\d|api\.whatsapp\.com\/send\?phone=\d/);
+    }
+    expect(devVarsExample).not.toMatch(/chat\.whatsapp\.com|wa\.me\/\d/);
+    for (const text of [portalConfigText, adminConfigText]) expect(text).not.toMatch(/chat\.whatsapp\.com|wa\.me\/\d/);
+    expect(portalConfigText).not.toMatch(/PORTAL_(CONTACT_WHATSAPP|WHATSAPP_GROUP_URL)["']?\s*[:=]\s*["']?\S/);
+  });
+
   test("no SSE-C (Dzul, 2026-10-13): no key is declared, and nothing in the source passes one to R2", () => {
     expect(envSources["../src/env.ts"]).toBeDefined();
     expect(envSources["../src/env.ts"]).not.toMatch(/PRIVATE_FILES_KEY\??\s*:/); // not a binding or a variable of the Worker
@@ -284,6 +307,7 @@ describe("the documents the code points at", () => {
   });
 
   test("docs/cloudflare/portal-api.md says what GET /portal/api/config answers, adminUrl included", () => {
-    expect(portalApiDoc).toContain('`{ "google": boolean, "turnstileSiteKey": string | null, "siteUrl": string, "adminUrl": string }`');
+    expect(portalApiDoc).toContain('`{ "google": boolean, "turnstileSiteKey": string | null, "siteUrl": string, "adminUrl": string, "contactWhatsapp"?: string, "whatsappGroupUrl"?: string }`');
+    for (const name of ["PORTAL_CONTACT_WHATSAPP", "PORTAL_WHATSAPP_GROUP_URL"]) expect(portalApiDoc, name).toContain(name);
   });
 });

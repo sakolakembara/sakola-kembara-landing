@@ -81,6 +81,21 @@ export interface Bindings {
    * Empty, unset or not a plain http(s) origin = no link.
    */
   ADMIN_URL?: string;
+  /**
+   * OPTIONAL public variable, portal Worker: the WhatsApp number of the admissions desk (Kesiswaan) that the wizard's
+   * first screen offers for "Butuh bantuan?", digits only with the country code (`62...`, 8 to 15 digits, no `+`, no
+   * spaces, no leading zero). Set per deploy, never in a tracked file (it is a real person's number). Answered to the
+   * SPA by GET /portal/api/config as `contactWhatsapp` ONLY when it is valid; empty, unset or invalid = the key is
+   * absent and the SPA shows its "Kontak" fallback. The invalid value is never echoed or logged. src/portal/contact.ts.
+   */
+  PORTAL_CONTACT_WHATSAPP?: string;
+  /**
+   * OPTIONAL public variable, portal Worker: the invitation link of the participants' WhatsApp group, shown after an
+   * application is sent. An `https:` address with a host, no user name or password, at most 300 characters. Set per
+   * deploy, never in a tracked file. Answered as `whatsappGroupUrl` ONLY when valid; empty, unset or invalid = the key is
+   * absent and the SPA shows no invitation. The invalid value is never echoed or logged. src/portal/contact.ts.
+   */
+  PORTAL_WHATSAPP_GROUP_URL?: string;
   // There is no secret for the private bucket: Dzul decided on 2026-10-13 against SSE-C (customer-provided keys), so no
   // key is declared and nothing may depend on one. The bucket's protection is that it stays private, R2's encryption
   // at rest, and the Worker as the only reader.

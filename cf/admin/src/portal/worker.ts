@@ -8,6 +8,7 @@ import { mailbox } from "../email/send";
 import type { Bindings } from "../env";
 import { sameOriginGuard } from "../security/csrf";
 import { studentAuthContext } from "./auth-context";
+import { contactWhatsapp, whatsappGroupUrl } from "./contact";
 import { currentStudentUser, hasStudentSessionCookie } from "./guard";
 import { apiHeaders } from "./headers";
 // Route files, one import per line, alphabetical (docs/cloudflare/portal-architecture.md, 11.3). Each line below is
@@ -54,8 +55,12 @@ app.get(`${AUTH}/get-session`, (c, next) => (hasStudentSessionCookie(c) ? next()
 app.post(`${AUTH}/register`, createRegisterStudent(AUTH));
 app.on(["GET", "POST"], `${AUTH}/*`, (c) => c.get("auth")().handler(c.req.raw));
 
-app.get(`${API}/config`, (c) =>
-  c.json({
+app.get(`${API}/config`, (c) => {
+  // Deployment-specific contact values, kept out of the repository (src/portal/contact.ts): a key is in the answer only
+  // when its variable is set AND valid, so "absent" is the one way the SPA learns that the deployment has none.
+  const contact = contactWhatsapp(c.env.PORTAL_CONTACT_WHATSAPP);
+  const group = whatsappGroupUrl(c.env.PORTAL_WHATSAPP_GROUP_URL);
+  return c.json({
     google: Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET),
     // The widget's site key is public by design; the secret never leaves the Worker.
     turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
@@ -63,8 +68,10 @@ app.get(`${API}/config`, (c) =>
     siteUrl: publicOrigin(c.env.SITE_URL),
     // The admin host, where the "this is an admin account" screen links. "" = unset (docs/cloudflare/portal-api.md, 4.1).
     adminUrl: publicOrigin(c.env.ADMIN_URL),
-  }),
-);
+    ...(contact === undefined ? {} : { contactWhatsapp: contact }),
+    ...(group === undefined ? {} : { whatsappGroupUrl: group }),
+  });
+});
 
 // The signed-in account, whatever its role: the one route that does not check `student`, so the SPA can tell an admin
 // account (and show the screen that links to the admin) from a student. No limiter: it reads the session and nothing else,

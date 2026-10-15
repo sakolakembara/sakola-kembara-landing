@@ -11,6 +11,7 @@ const SCHEMA = "test/portal-foundation-schema.test.ts";
 const CONFIG = "test/portal-foundation-config.test.ts";
 const SKELETON = "test/portal-foundation.test.ts";
 const AUTH = "test/portal-auth.test.ts";
+const CONTACT = "test/portal-config-contact.test.ts";
 
 const MIGRATION = "migrations/0013_portal_applications.sql";
 
@@ -96,6 +97,78 @@ export const portalFoundationChecks = [
     from: "if (limit) {",
     to: "if (false as boolean) {",
     tests: SKELETON,
+  },
+
+  // ------------------------------------------------ the wizard's two contact values (src/portal/contact.ts)
+  {
+    name: "portal foundation: any digits are a WhatsApp number (a local 08.. number, 7 digits or 20 are served)",
+    file: "src/portal/contact.ts",
+    from: "const NUMBER = /^[1-9]\\d{7,14}$/;",
+    to: "const NUMBER = /^\\d+$/;",
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: the group link may carry a user name and a password",
+    file: "src/portal/contact.ts",
+    from: 'if (url.protocol !== "https:" || url.hostname === "" || url.username !== "" || url.password !== "") return undefined;',
+    to: 'if (url.hostname === "") return undefined;',
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: the group link is not checked for its https:// form first (https:/x and https:///x pass)",
+    file: "src/portal/contact.ts",
+    from: "if (!/^https:\\/\\/[^/\\s]/i.test(text)) return undefined;",
+    to: "",
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: the group link has no length bound",
+    file: "src/portal/contact.ts",
+    from: 'if (text === "" || text.length > GROUP_URL_MAX_LENGTH) return undefined;',
+    to: 'if (text === "") return undefined;',
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: the group link may hold quotes, angle brackets, spaces and control characters",
+    file: "src/portal/contact.ts",
+    from: "  if (/[\\s\\u0000-\\u001f\\u007f\"'<>`\\\\]/.test(text)) return undefined;\n",
+    to: "",
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: config answers the raw WhatsApp number variable, valid or not",
+    file: "src/portal/worker.ts",
+    from: "...(contact === undefined ? {} : { contactWhatsapp: contact }),",
+    to: "contactWhatsapp: c.env.PORTAL_CONTACT_WHATSAPP,",
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: config answers an empty whatsappGroupUrl when none is configured (the key must be absent)",
+    file: "src/portal/worker.ts",
+    from: "...(group === undefined ? {} : { whatsappGroupUrl: group }),",
+    to: 'whatsappGroupUrl: group ?? "",',
+    tests: `${CONTACT} ${SKELETON}`,
+  },
+  {
+    name: "portal foundation: the group link variable is written to the console",
+    file: "src/portal/worker.ts",
+    from: "const group = whatsappGroupUrl(c.env.PORTAL_WHATSAPP_GROUP_URL);",
+    to: "const group = whatsappGroupUrl(c.env.PORTAL_WHATSAPP_GROUP_URL);\n  console.log(c.env.PORTAL_WHATSAPP_GROUP_URL);",
+    tests: CONTACT,
+  },
+  {
+    name: "portal foundation: a WhatsApp number is declared with a value in the portal's configuration (a real one would be in git)",
+    file: "wrangler.portal.jsonc",
+    from: '"PRIVATE_FILES_BUDGET_BYTES": "8000000000"\n  },',
+    to: '"PRIVATE_FILES_BUDGET_BYTES": "8000000000",\n    "PORTAL_CONTACT_WHATSAPP": "6281200000001"\n  },',
+    tests: CONFIG,
+  },
+  {
+    name: "portal foundation: the example file carries a WhatsApp number",
+    file: "dev.vars.example",
+    from: "PORTAL_CONTACT_WHATSAPP=\n",
+    to: "PORTAL_CONTACT_WHATSAPP=6281200000001\n",
+    tests: CONFIG,
   },
 
   // ------------------------------------------------ nothing is built for a request without the portal's cookie
