@@ -16,13 +16,14 @@ description: >-
   Membuka pemikiran mengenai kesenjangan pendidikan, pahami definisi dan
   penyebab masalah dominan yang menghambat akses pendidikan
 featured: false
-image: >-
-  /blog/images/2025/11/Ironi-Aksara-Membongkar-Celah-Kesenjangan-Pendidikan-Indonesia-scaled.jpg
+image: /blog/images/2024/06/IMG_1101-scaled.jpg
 author: athalia
 sourceUrl: >-
   https://sakolakembara.org/education/ironi-aksara-membongkar-kesenjangan-pendidikan-indonesia/
-modifiedISO: '2025-12-01'
+modifiedISO: '2026-08-31'
 ---
+![](/blog/images/2024/06/IMG_1101-768x1024.jpg)
+
 Di tengah ramainya pembangunan dan masifnya era digital, masih banyak generasi muda yang sulit mewujudkan cita-cita karena kesenjangan pendidikan. Kontradiksi inilah bukti nyata atas ironi aksara, sebuah kesenjangan yang merampas potensi pemuda Indonesia di balik embel-embel kemajuan Indonesia.
 
 Kita tidak sepenuhnya dapat menyebutnya kemajuan jika, fondasi pemerataan hak atas belajar ternyata hanya ilusi bagi sebagian generasi muda di luar sana.

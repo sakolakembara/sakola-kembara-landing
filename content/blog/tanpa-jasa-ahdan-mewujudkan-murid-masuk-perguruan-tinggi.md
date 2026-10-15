@@ -1,7 +1,7 @@
 ---
 id: tanpa-jasa-ahdan-mewujudkan-murid-masuk-perguruan-tinggi
 wpId: 5802
-title: Tanpa Jasa Ahdan Mewujudkan Murid Masuk Perguruan Tinggi
+title: Jasa Ahdan Mewujudkan Murid Masuk Perguruan Tinggi
 category: Cerita
 date: 21 Mei 2026
 dateISO: '2026-05-21'
@@ -20,7 +20,7 @@ image: /blog/images/2026/05/IMG-20260102-WA0069-Ahdan-Darul-Mutaqin-scaled.jpg
 author: Deanita
 sourceUrl: >-
   https://sakolakembara.org/cerita/tanpa-jasa-ahdan-mewujudkan-murid-masuk-perguruan-tinggi/
-modifiedISO: '2026-05-21'
+modifiedISO: '2026-05-26'
 ---
 ### **Kenal Dengan Ahdan, Penyemangat Murid Sakola Kembara**
 
