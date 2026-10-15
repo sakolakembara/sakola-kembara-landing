@@ -1,0 +1,30 @@
+# Copy to .production.vars (untracked: `cf/**/.production.vars*` is git-ignored) and fill in the PUBLIC values of the
+# PRODUCTION site Worker `sakola-kembara-web` (cutover Phase A, docs/cloudflare/cutover-runbook.md section 14).
+# `pnpm deploy:prod:command` reads it and PRINTS the deploy command with every value passed as --var, and the build line;
+# it does not build or deploy. Copied as it is, this file is refused: the two placeholders must be replaced.
+#
+# Public values only. Never a secret, never CONTENT_API_URL or CONTACT_API_URL, never LEGACY_ORIGIN_URL (all refused by the
+# script). Nothing here may look like staging: no workers.dev, no r2.dev, no Turnstile TEST key (1x00...).
+
+# The PUBLIC site key of the REAL Turnstile widget (dashboard, Turnstile) whose hostname list includes sakolakembara.org.
+# The same widget serves /kontak here and the admin's sign-in. Cloudflare's always-pass test key is refused.
+TURNSTILE_SITE_KEY=<site key of the production widget>
+
+# The admin's origin: /admin on the site is a 308 to it. Exactly this host (the Custom Domain of the admin Worker).
+ADMIN_URL=https://admin.sakolakembara.org
+
+# The public origin of the files bucket (a custom domain on the PUBLIC bucket, never r2.dev), no trailing slash.
+UPLOADS_BASE_URL=https://files.sakolakembara.org
+
+# The Cloudflare Web Analytics beacon id (32 hexadecimal characters; what Cloudflare calls the site token), from the site
+# created for sakolakembara.org. The SAME value goes in the shell of the build (the printer prints that line) so the
+# prerendered pages have it too. Public, but still not written in a ticket or a chat.
+WEB_ANALYTICS_BEACON_ID=<32 hexadecimal characters of the site token>
+
+# Seconds a rendered page is kept in the isolate's memory (the CPU work of SAKEM-091). Required for production: /blog
+# measured above the 10 ms CPU gate without it. 30 is the value to start with; the most it takes is 120.
+PAGE_CACHE_SECONDS=30
+
+# Optional: seconds a fetched list, blog page or article is cached before the API is asked again (default 60 and 300).
+# CONTENT_CACHE_FRESH_SECONDS=60
+# TEAM_CACHE_FRESH_SECONDS=300

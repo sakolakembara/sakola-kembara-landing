@@ -59,3 +59,5 @@ cf/**/.astro
 cf/**/.dev.vars*
 # public per-deploy values of the staging Workers (cf/scripts/staging-deploy-command.mjs); never secrets
 cf/**/.staging.vars*
+# public per-deploy values of the PRODUCTION Workers (cf/scripts/production-deploy-command.mjs); never secrets
+cf/**/.production.vars*

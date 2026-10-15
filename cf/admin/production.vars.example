@@ -1,0 +1,22 @@
+# Copy to .production.vars (untracked: `cf/**/.production.vars*` is git-ignored) and fill in the PUBLIC values of the
+# PRODUCTION API and admin Worker `sakem-admin` (cutover Phase A, docs/cloudflare/cutover-runbook.md section 14).
+# `pnpm deploy:prod:command` reads it and PRINTS the deploy command with every value passed as --var; it does not deploy.
+# Copied as it is, this file is refused: the placeholder must be replaced.
+#
+# Public values only. Secrets (BETTER_AUTH_SECRET, TURNSTILE_SECRET_KEY, RESEND_API_KEY) are never written here: they go in
+# with `pnpm exec wrangler secret put <NAME> --env=""`, typed at its prompt. Nothing here may look like staging: no
+# workers.dev, no r2.dev, no resend.dev sender, no Turnstile TEST key (1x00...).
+
+# The PUBLIC site key of the REAL Turnstile widget (the same one the public site uses: its hostname list includes
+# sakolakembara.org, which covers admin.sakolakembara.org). The matching secret key is a secret of this Worker.
+TURNSTILE_SITE_KEY=<site key of the production widget>
+
+# The public origin of the files bucket (a custom domain on the PUBLIC bucket, never r2.dev), no trailing slash.
+UPLOADS_BASE_URL=https://files.sakolakembara.org
+
+# The origin of the public site, for the "Lihat di publik" link of a published article.
+SITE_URL=https://sakolakembara.org
+
+# Only if a Resend key is set (invitation, verification and reset mails): the From, on the domain verified in Resend.
+# Without a Resend key leave it out: those mails fail closed (503).
+# EMAIL_FROM=Sakola Kembara <no-reply@sakolakembara.org>
