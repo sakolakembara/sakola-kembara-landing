@@ -4,7 +4,7 @@ import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { matchRedirect } from '../redirects.config.mjs';
+import { matchRedirect, mirroredUploadRules, toUnderscoreRedirects } from '../redirects.config.mjs';
 import { FILES_DIR, IMAGE_DIRS, LIMITS, MAX_WIDTH, RASTER_RE, WIDTHS, assetUrl, rungsFor, srcsetFor, variantUrl } from '../assets.config.mjs';
 import { auditDist, checkImgTag, localUrls, parseAttrs, walkFiles } from '../scripts/lib/dist-audit.mjs';
 import { getImage, imgAttrs, listImages } from '~/lib/images';
@@ -144,13 +144,20 @@ describe('images referenced by the site', () => {
     }
   });
 
-  it('every blog image is reachable through the old WordPress path too (/wp-content/uploads/... -> /blog/images/...)', () => {
+  it('every blog image is reachable through the old WordPress path too: one 308 rule each, /wp-content/uploads/... -> /blog/images/... (the %40 form for an @), written at build time (SAKEM-103)', () => {
     const blog = entries.filter(([url]) => url.startsWith('/blog/images/'));
     expect(blog.length).toBeGreaterThan(200);
+    const rules = mirroredUploadRules(blog.map(([url]) => url.slice(1)));
+    const byFrom = new Map(rules.map((r) => [r.from, r.to]));
+    expect(rules).toHaveLength(blog.length);
     for (const [url] of blog) {
-      const hit = matchRedirect(url.replace('/blog/images/', '/wp-content/uploads/'));
-      expect(hit, url).toEqual({ status: 308, location: url });
+      expect(byFrom.get(url.replace('/blog/images/', '/wp-content/uploads/')), url).toBe(assetUrl(url));
     }
+    // the splat that used to answer every upload is gone from the table: an upload this site did not copy is WordPress's
+    expect(matchRedirect('/wp-content/uploads/2099/01/not-copied.jpg')).toBeNull();
+    const file = toUnderscoreRedirects(undefined, { uploadMirrors: rules });
+    expect(file).not.toMatch(/^\/wp-content\/uploads\/\*/m);
+    expect(file.split('\n').filter((l) => l.startsWith('/wp-content/uploads/'))).toHaveLength(blog.length);
   });
 
   it('no image path has a character other than letters, digits, / . _ - and @ (the assets layer answers @ with a redirect, so markup uses %40)', () => {

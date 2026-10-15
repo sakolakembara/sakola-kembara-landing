@@ -37,8 +37,8 @@
   //   - Per-deploy public values (TURNSTILE_SITE_KEY, ADMIN_URL, UPLOADS_BASE_URL) are not in git: they are passed
   //     with `--var` (cf/scripts/staging-deploy-command.mjs prints the command from an untracked file). NEVER set
   //     CONTENT_API_URL or CONTACT_API_URL, here or there: they would move the reads and the contact form off the
-  //     binding. Staging has no legacy origin behind its hostname, so a pass-through path such as /_next/* would
-  //     fetch the Worker's own address again (Cloudflare's loop limit is 16 invocations); the deploy command passes
+  //     binding. Staging has no origin behind its hostname (no WordPress), so a pass-through path such as /wp-login.php or
+  //     /wp-content/* would fetch the Worker's own address again (Cloudflare's loop limit is 16 invocations); the deploy command passes
   //     LEGACY_ORIGIN_URL as a `*.invalid` host, which never resolves, so it fails at once (docs/cloudflare/free-plan-audit.md).
   "env": {
     "staging": {
@@ -81,6 +81,16 @@
   //   are static files and take the same name from the shell environment of the BUILD: `WEB_ANALYTICS_BEACON_ID=<...> pnpm build`
   //   (never from .dev.vars). Set it in both places, from one value. Unset or invalid: no beacon script and no tag at all, which
   //   is what local runs, tests and staging do. src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md ("Web Analytics").
+  // - PORTAL_ENABLED (a "vars" entry too, optional, PUBLIC; SAKEM-103, Phase A of the cutover): whether the student portal is live.
+  //   Exactly `true` puts the navbar's "Masuk" link and its session script on the page; unset, `false` or anything else (the Worker
+  //   says so once, without the value) leaves both out and the navbar offers "Daftar Sekarang" (`/daftar`) instead. The default
+  //   is OFF and Phase A runs with it unset. Like the beacon it has two sources: `--var PORTAL_ENABLED:true` at deploy reaches the
+  //   pages the WORKER renders, and `PORTAL_ENABLED=true pnpm build` in the shell of the BUILD reaches the prerendered ones (never
+  //   .dev.vars). Set both, from one decision, when Phase B brings the portal. src/lib/portal-enabled.ts, docs/cloudflare/web-skeleton.md
+  //   ("The student portal switch").
+  // - LEGACY_ORIGIN_URL, in production: leave it unset. The Worker's route sits in front of the proxied WordPress record, so the
+  //   pass-through of `/wp-admin`, `/wp-login.php`, `/wp-content`, `/wp-includes`, `/wp-json`, `/xmlrpc.php` and `/login` is a plain
+  //   fetch of the same URL, which reaches WordPress behind the hostname (src/lib/legacy-paths.ts). Staging passes a `*.invalid` host.
   // - "ratelimits": the rate-limit binding of the contact form, binding name CONTACT_LIMITER:
   //     "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "<a positive integer you choose>",
   //                      "simple": { "limit": 5, "period": 60 } }]

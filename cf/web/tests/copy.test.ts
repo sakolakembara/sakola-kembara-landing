@@ -55,7 +55,14 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     name: 'navbar',
     web: 'src/components/Navbar.astro',
     root: ['components/layout/navbar.tsx', 'components/layout/auth-nav-button.tsx'],
-    phrases: ['Buka menu', 'Tutup menu', 'Masuk', 'Portal', 'Dashboard', '/api/announcements/current'],
+    phrases: ['Buka menu', 'Tutup menu', 'Masuk', '/api/announcements/current'],
+  },
+  {
+    // SAKEM-103: the auth-aware button is a script of its own, rendered only while the portal is switched on.
+    name: 'navbar session button',
+    web: 'src/components/NavbarSession.astro',
+    root: ['components/layout/auth-nav-button.tsx'],
+    phrases: ['Portal', 'Dashboard'],
   },
   {
     name: 'skip link',
@@ -198,7 +205,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Daftar Sekarang',
       'Pelajari Program',
       'Pusat Dokumen',
-      '/portal/daftar',
       '/gabung-siswa/docs',
       '#manfaat',
       'Manfaat Bergabung dengan Sakola Kembara',
@@ -237,7 +243,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Semua panduan, template berkas, poster, twibbon, dan bahan lain yang perlu kamu siapkan selama proses pendaftaran ada di sini. Kalau kamu baru mulai mendaftar, buka',
       'formulir pendaftaran',
       'di tab lain agar bisa lihat berkas + isi formulir bersamaan.',
-      '/portal/daftar',
       '/gabung-siswa',
       'Kategori dokumen',
       'Dokumen akan segera tersedia',
@@ -276,6 +281,16 @@ describe('copy parity: every phrase of the port exists verbatim in the legacy so
       });
     });
   }
+});
+
+describe('the one deliberate difference in the registration links (SAKEM-103, Phase A)', () => {
+  it('the legacy pages link /portal/daftar; the port links REGISTRATION_PATH (/daftar, an admin shortlink) and names /portal/daftar nowhere', () => {
+    for (const rel of ['app/(public)/gabung-siswa/page.tsx', 'app/(public)/gabung-siswa/docs/page.tsx']) expect(readRoot(rel), rel).toContain('/portal/daftar');
+    for (const rel of ['src/pages/gabung-siswa.astro', 'src/pages/gabung-siswa/docs.astro']) {
+      expect(readWeb(rel), rel).toContain('href={REGISTRATION_PATH}');
+      expect(readWeb(rel), rel).not.toContain('/portal/daftar');
+    }
+  });
 });
 
 describe('data copied from lib/data.ts and lib/team-types.ts', () => {

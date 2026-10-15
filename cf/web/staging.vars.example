@@ -4,8 +4,9 @@
 #
 # Public values only. Never CONTENT_API_URL or CONTACT_API_URL (refused by the script).
 
-# Staging has no legacy origin. Without this line a pass-through path (/_next/*, /images/team/*) would fetch the
-# Worker's own address again, up to Cloudflare's loop limit of 16 invocations for one request. A *.invalid host
+# Staging has no origin (no WordPress behind its hostname). Without this line a pass-through path (/wp-login.php, /wp-admin/*,
+# /wp-content/*, /wp-json/*, /login...) would fetch the Worker's own address again, up to Cloudflare's loop limit of 16
+# invocations for one request. A *.invalid host
 # never resolves, so the request fails at once. Keep it as it is; the script accepts no other host here.
 LEGACY_ORIGIN_URL=https://no-legacy-origin.invalid
 
@@ -29,3 +30,9 @@ UPLOADS_BASE_URL=https://pub-<hash>.r2.dev
 # address would only be refused there; staging stays clean with the line out. Set, it is a --var and reaches the pages the
 # Worker renders only: the prerendered pages take the same name from the shell environment of the build.
 # WEB_ANALYTICS_BEACON_ID=
+
+# Optional (SAKEM-103, Phase A of the cutover): whether the student portal is live, exactly true or false. Leave the line out: the
+# portal is OFF (the default) and the navbar has no "Masuk" link and no session call, and offers "Daftar Sekarang" (/daftar). Set
+# to true to look at the Phase B navbar on staging: it is a --var and reaches the pages the Worker renders only, so also build with
+# PORTAL_ENABLED=true pnpm build:staging (the prerendered pages take the build's value, never the --var).
+# PORTAL_ENABLED=true

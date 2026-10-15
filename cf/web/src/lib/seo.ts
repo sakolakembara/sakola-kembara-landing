@@ -163,7 +163,11 @@ export type SeoInput =
       /** schema.org type of the page node; default WebPage (the blog index is a CollectionPage, like the live archives). */
       pageType?: 'WebPage' | 'CollectionPage';
     }
-  | { kind: 'notfound' };
+  | {
+      kind: 'notfound';
+      /** Title WITHOUT the site suffix, for a 404 page that says something more specific than the default (`/daftar` without a shortlink). */
+      title?: string;
+    };
 
 /**
  * Head data for a page, mirroring what the Next app renders:
@@ -201,7 +205,7 @@ export function buildSeo(input: SeoInput): SeoData {
   }
 
   if (input.kind === 'notfound') {
-    const title = pageTitle('Halaman tidak ditemukan');
+    const title = pageTitle(input.title ?? 'Halaman tidak ditemukan');
     return {
       title,
       description: DEFAULT_DESCRIPTION,

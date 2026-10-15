@@ -1,6 +1,7 @@
-// Forwarding a request to the legacy Next app (the "old origin").
+// Forwarding a request to the origin behind the Worker's route (the "old origin"): the live WordPress site since SAKEM-103 (Phase A
+// of the cutover; before it the legacy Next app, which was never released). The names kept their old spelling: LEGACY_ORIGIN_URL, forwardToLegacy.
 //
-// Production (Workers ROUTES mode, route covers the whole site): the Worker
+// Production (Workers ROUTES mode, route covers the whole site, in front of the proxied WordPress record): the Worker
 // runs in front of the origin on the same hostname. `fetch()` of the same URL
 // from inside the Worker is sent to the origin, not back into the Worker, so
 // no origin hostname is configured anywhere. LEGACY_ORIGIN_URL stays unset.
@@ -75,7 +76,7 @@ export function rewriteLocation(location: string, originBase: string, requestUrl
 /**
  * Send the request to the legacy origin and return its answer untouched:
  * status, headers (several Set-Cookie included) and body stream. Redirects are
- * NOT followed, so a 307 to /login reaches the browser, not the Worker.
+ * NOT followed, so a 302 to /wp-login.php reaches the browser, not the Worker.
  */
 export async function forwardToLegacy(request: Request, originBase?: string): Promise<Response> {
   const local = Boolean(originBase);

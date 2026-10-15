@@ -115,10 +115,10 @@ describe('/gabung-siswa', () => {
     expect(web.slice(Math.max(0, at - 400), at)).toContain('SAKEM-059');
   });
 
-  it('"Daftar Sekarang" goes to /portal/daftar and "Pusat Dokumen" to /gabung-siswa/docs, as plain links, exactly where the legacy page has them', () => {
-    const hrefs = (src: string) => [...src.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
-    expect(hrefs(web)).toEqual(hrefs(legacy));
-    expect(hrefs(web)).toEqual(['/portal/daftar', '#manfaat', '/gabung-siswa/docs', '/portal/daftar']);
+  it('"Daftar Sekarang" goes to the registration shortlink and "Pusat Dokumen" to /gabung-siswa/docs, as plain links, exactly where the legacy page has them (the one deliberate difference, SAKEM-103: /portal/daftar is REGISTRATION_PATH, /daftar)', () => {
+    const hrefs = (src: string) => [...src.matchAll(/href=(?:"([^"]+)"|\{(\w+)\})/g)].map((m) => m[1] ?? (m[2] === 'REGISTRATION_PATH' ? '/daftar' : `{${m[2]}}`));
+    expect(hrefs(web)).toEqual(hrefs(legacy).map((h) => (h === '/portal/daftar' ? '/daftar' : h)));
+    expect(hrefs(web)).toEqual(['/daftar', '#manfaat', '/gabung-siswa/docs', '/daftar']);
     expect(web).not.toMatch(/fetch\(|window\.location/);
   });
 

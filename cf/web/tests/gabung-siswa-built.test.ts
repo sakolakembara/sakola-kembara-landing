@@ -95,28 +95,31 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     for (const [, step, title, body] of steps) expect(text).toContain(`${step} ${title} ${body}`);
   });
 
-  it('"Daftar Sekarang" (hero and closing section) goes to /portal/daftar, "Pelajari Program" to #manfaat, "Pusat Dokumen" to /gabung-siswa/docs', () => {
+  it('"Daftar Sekarang" (hero and closing section, and the navbar\'s button in the bar and in the menu) goes to /daftar, "Pelajari Program" to #manfaat, "Pusat Dokumen" to /gabung-siswa/docs', () => {
     const a = links(html);
     const hrefOf = (re: RegExp) => a.filter((tag) => re.test(tag)).map((tag) => attr(tag, 'href'));
-    expect(a.filter((tag) => attr(tag, 'href') === '/portal/daftar')).toHaveLength(2);
-    expect(html.match(/Daftar Sekarang/g)).toHaveLength(2);
-    expect(hrefOf(/bg-white text-primary-blue/)).toEqual(['/portal/daftar', '/portal/daftar']);
+    expect(a.filter((tag) => attr(tag, 'href') === '/daftar')).toHaveLength(4);
+    expect(html.match(/Daftar Sekarang/g)).toHaveLength(4);
+    expect(hrefOf(/bg-white text-primary-blue/)).toEqual(['/daftar', '/daftar']);
+    // SAKEM-103: the portal is off in a build with no PORTAL_ENABLED, so the page names it nowhere (no Masuk, no session address)
+    expect(html).not.toContain('/portal');
+    expect(html).not.toContain('get-session');
     expect(hrefOf(/border-\[1\.5px\] border-white\/60/)).toEqual(['#manfaat']);
     expect(html).toContain('<section id="manfaat"');
     expect(a.filter((tag) => attr(tag, 'href') === '/gabung-siswa/docs')).toHaveLength(1);
     // plain links: none of them opens a new tab or carries script
-    for (const tag of a.filter((t) => /href="(\/portal\/daftar|\/gabung-siswa\/docs|#manfaat)"/.test(t))) {
+    for (const tag of a.filter((t) => /href="(\/daftar|\/gabung-siswa\/docs|#manfaat)"/.test(t))) {
       expect(tag).not.toContain('target=');
       expect(tag).not.toContain('onclick');
     }
   });
 
-  it('every internal link of the page leads somewhere the Worker, the student portal or the legacy app answers', () => {
+  it('every internal link of the page leads somewhere the Worker, the registration shortlink or the origin answers', () => {
     const internal = links(html)
       .map((tag) => attr(tag, 'href'))
       .filter((href) => href.startsWith('/') && !href.startsWith('//'));
     expect(internal.length).toBeGreaterThan(5);
-    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak']);
+    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak', '/daftar']); // /daftar: the registration shortlink
     for (const href of internal) {
       const p = href.split(/[?#]/)[0];
       expect(known.has(p) || isLegacyPath(p) || isPortalOwnedPath(p), href).toBe(true);

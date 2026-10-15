@@ -41,7 +41,8 @@ const checks = [
   { name: 'a backslash or a tab in a target is allowed', file: lib, from: 'if (/[\\u0000-\\u001f\\u007f\\\\]/.test(target)) return false;', to: '' },
   { name: "an outage is reported as 'not found' (a failed lookup looks like a dead link)", file: lib, from: 'if (!res.ok) return fail(`status ${res.status}`);', to: "if (!res.ok) return { kind: 'not_found' };" },
   { name: 'the lookup is not bounded in time', file: lib, from: '      signal: AbortSignal.timeout(timeoutMs),\n', to: '' },
-  { name: "a slug of a redirect source of the site is not reserved by the admin (daftar)", file: reserved, from: '  "daftar",\n', to: '' },
+  // (`daftar` is the registration shortlink since SAKEM-103 and must NOT be reserved: scripts/negative-checks-phase-a.mjs breaks that side.)
+  { name: "a slug of a redirect source of the site is not reserved by the admin (apply)", file: reserved, from: '  "apply",\n', to: '' },
   { name: "the 404 page's slug is not reserved by the admin", file: reserved, from: '  "404",\n', to: '' },
 ];
 

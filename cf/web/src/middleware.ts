@@ -30,13 +30,16 @@ const apiNotFound = () =>
  *  1. Redirect table (redirects.config.mjs). In production the assets layer
  *     answers these from dist/client/_redirects before the Worker runs; this
  *     branch covers `astro dev` and keeps behaviour identical everywhere.
- *  2. The signed-in and auth surface moved out with M4 (SAKEM-083, PORTAL_OWNED_PATHS in
- *     src/lib/legacy-paths.ts): `/admin` and below is a 308 to the admin host (ADMIN_URL,
- *     src/lib/admin-redirect.ts), `/api` and below is a JSON 404. The old auth pages are static
- *     redirects of the table above, and /portal is another Worker's.
- *  3. Legacy paths (src/lib/legacy-paths.ts): the static files and uploads the old Next app still
- *     serves, forwarded untouched (see src/lib/legacy-proxy.ts). Nothing is rendered here, and
- *     the legacy app keeps deciding about its own trailing slashes.
+ *  2. The admin and the API: `/admin` and below is a 308 to the admin host (ADMIN_URL,
+ *     src/lib/admin-redirect.ts), `/api` and below is a JSON 404. The student portal's names
+ *     (PORTAL_OWNED_PATHS in src/lib/legacy-paths.ts) get no page of their own in Phase A (SAKEM-103,
+ *     the portal is not live yet): `/portal`, `/register` and the three other auth names end in the
+ *     site's own 404, through the catch-all, which does not look them up as shortlinks.
+ *  3. The origin's paths (src/lib/legacy-paths.ts): WordPress's own, `/wp-admin`, `/wp-login.php`,
+ *     `/wp-content`, `/wp-includes`, `/wp-json`, `/xmlrpc.php` and `/login`, forwarded untouched (see
+ *     src/lib/legacy-proxy.ts). Nothing is rendered here, and the origin keeps deciding about its own
+ *     trailing slashes. This is the only way a request reaches the origin: every page, redirect and
+ *     shortlink of the new site is answered before this step or after it, never by the origin.
  *  4. One URL per page: trailing slash and `.html` are folded with a 308, like
  *     the Next app does.
  *  5. Everything else is Astro's, with the security headers Caddy used to add. When `PAGE_CACHE_SECONDS` is set, a page

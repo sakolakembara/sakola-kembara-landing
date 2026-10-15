@@ -65,6 +65,9 @@ export const MAIN_PATHS = [
   '/program/prapembinaan/', '/program/pembinaan/', '/program/pasca-pembinaan/',
   ...Object.keys(REDIRECTS).filter((p) => !p.includes('[') && !['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/gabung-siswa/form'].includes(p)).map((p) => (/\.[a-z]+$/i.test(p) ? p : `${p}/`)),
   '/blog/page/2/', '/feed/atom/',
+  // The registration link (SAKEM-103, Phase A): not a rule of the redirect table any more (it is an admin shortlink: a 308 for the slash, then
+  // a 307 to the form), so it is listed here, in WordPress's spelling, to keep comparing it with the live 301 to the same form.
+  '/daftar/',
 ];
 
 export function parseCli(argv) {

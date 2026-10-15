@@ -1,9 +1,11 @@
 ---
 import { env } from 'cloudflare:workers';
 import NotFoundPage from '~/components/NotFoundPage.astro';
+import RegistrationUnavailablePage from '~/components/RegistrationUnavailablePage.astro';
 import { contentApiTarget } from '~/lib/api-client';
-import { isPortalOwnedPath, isShortlinkCandidate } from '~/lib/legacy-paths';
+import { isLegacyPath, isPortalOwnedPath, isShortlinkCandidate } from '~/lib/legacy-paths';
 import { redirectResponse, resolveShortlink, unavailableResponse } from '~/lib/shortlink';
+import { REGISTRATION_SLUG } from '~/lib/site';
 
 // Catch-all: every path no page, endpoint or static file claims ends up here.
 // Two reasons it exists:
@@ -17,10 +19,11 @@ import { redirectResponse, resolveShortlink, unavailableResponse } from '~/lib/s
 //     Static pages win over this route, exactly like Next's app/(public)/[slug]
 //     did. A single segment that fits the slug grammar is looked up through the
 //     API Worker, one call, which also counts the click: a 307 to the target,
-//     the site's 404 for an unknown or switched-off link, a 503 when the API
-//     cannot answer. Anything that cannot be a slug is a plain 404 here,
-//     without a call. (Until the cutover the legacy app resolved shortlinks
-//     from Postgres and this route forwarded to it; it no longer does.)
+//     the site's 404 for an unknown or switched-off link (for `/daftar`, the
+//     registration link, a 404 with a page of its own: RegistrationUnavailablePage),
+//     a 503 when the API cannot answer. Anything that cannot be a slug is a plain
+//     404 here, without a call. (Until the cutover the legacy app resolved
+//     shortlinks from Postgres and this route forwarded to it; it no longer does.)
 export const prerender = false;
 
 const path = Astro.params.path ?? '';
@@ -33,9 +36,12 @@ try {
 
 // Only a visit counts as one: GET, and HEAD (what a link checker or a preview bot sends).
 const visiting = Astro.request.method === 'GET' || Astro.request.method === 'HEAD';
+let registrationUnavailable = false;
 
-// A name the portal owns (portal, admin, api, the old auth pages) is reserved: no shortlink can have it, so asking the API would only cost a call.
-if (visiting && !slug.includes('/') && isShortlinkCandidate(slug) && !isPortalOwnedPath(`/${slug}`)) {
+// A name the portal owns (portal, admin, api, the old auth pages) or WordPress owns (wp-admin, wp-json, login...: the pass-through list,
+// which the middleware forwards before this route, so only another spelling of them, `/Login` or `/WP-ADMIN`, gets here) is reserved: no
+// shortlink can have it, so asking the API would only cost a call.
+if (visiting && !slug.includes('/') && isShortlinkCandidate(slug) && !isPortalOwnedPath(`/${slug}`) && !isLegacyPath(`/${slug}`)) {
   const target = contentApiTarget(env);
   const result = await resolveShortlink(slug, {
     baseUrl: target?.base,
@@ -45,9 +51,14 @@ if (visiting && !slug.includes('/') && isShortlinkCandidate(slug) && !isPortalOw
   });
   if (result.kind === 'redirect') return redirectResponse(result.target);
   if (result.kind === 'unavailable') return unavailableResponse();
+  // The registration link has a page of its own when no shortlink answers it (SAKEM-103). The API says "not found" for a
+  // link that was never created and for one that is switched off, and so does this page: both are "the form is not open".
+  registrationUnavailable = slug === REGISTRATION_SLUG;
 }
 
 Astro.response.status = 404;
+// Never kept by a browser or a cache: the moment an admin creates (or switches on) the shortlink, the next visit must be the 307.
+if (registrationUnavailable) Astro.response.headers.set('cache-control', 'no-store');
 ---
 
-<NotFoundPage />
+{registrationUnavailable ? <RegistrationUnavailablePage /> : <NotFoundPage />}
