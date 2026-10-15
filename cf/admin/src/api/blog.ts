@@ -15,10 +15,14 @@ import {
   BODY_MAX,
   BODY_MIN,
   cleanExcerpt,
+  cleanMetaDescription,
   EXCERPT_MAX,
   EXCERPT_MIN,
+  hasMarkup,
   IMAGE_PATH_MAX,
   isIsoDay,
+  META_DESCRIPTION_MAX,
+  META_DESCRIPTION_RAW_MAX,
   pickFreeSlug,
   SLUG_MAX,
   SLUG_PATTERN,
@@ -81,6 +85,26 @@ const MAX_BODY_BYTES = 128 * 1024;
 
 const bodyLimitLabel = BODY_MAX.toLocaleString("en-US").replace(",", ".");
 
+const META_DESCRIPTION_TOO_LONG = `Deskripsi meta maksimal ${META_DESCRIPTION_MAX} karakter`;
+const META_DESCRIPTION_MARKUP = "Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML";
+
+/**
+ * The meta description (SAKEM-094): plain text, cleaned here and nowhere else (the SPA only counts what this stores).
+ * The output is the text to store, `null` for "none" (empty, spaces only or `null`), or `undefined` when the key is
+ * not in the body at all. Absent is not the same as empty: a client that does not know the field (a browser tab of
+ * the SPA from before this field) must not wipe the description of an article it saves, so an update keeps what is
+ * stored for `undefined` and clears it for `null`; a create stores NULL for both.
+ *
+ * The hard length is NOT checked here but by the caller (`blogCreateInput` below, and the update handler, which lets
+ * a text equal to the stored one stay whatever its length). Only a raw text far over any limit is refused before cleaning.
+ */
+const metaDescriptionField = z
+  .string()
+  .max(META_DESCRIPTION_RAW_MAX, META_DESCRIPTION_TOO_LONG)
+  .nullish()
+  .transform((value) => (value === undefined || value === null ? value : cleanMetaDescription(value) || null))
+  .refine((value) => !value || !hasMarkup(value), { message: META_DESCRIPTION_MARKUP });
+
 const blogFields = {
   title: z.string().trim().min(TITLE_MIN, "Judul minimal 3 karakter").max(TITLE_MAX, "Judul maksimal 200 karakter"),
   // Optional: a new article gets one from its title, like the legacy admin did. Lower case is done for the writer.
@@ -114,6 +138,7 @@ const blogFields = {
     .nullish()
     .transform((value) => value || null)
     .refine((value) => value === null || isIsoDay(value), { message: "Format harus YYYY-MM-DD" }),
+  metaDescription: metaDescriptionField,
 };
 
 const EXCERPT_TOO_SHORT = `Excerpt minimal ${EXCERPT_MIN} karakter`;
@@ -122,10 +147,14 @@ const excerptField = z.string().trim().max(EXCERPT_MAX, "Maksimal 500 karakter")
 /** A new article: the legacy rules, the excerpt of at least 20 characters among them. */
 const blogInput = z.object({ ...blogFields, excerpt: excerptField.min(EXCERPT_MIN, EXCERPT_TOO_SHORT) });
 
+/** A new article also needs a meta description that fits: it has no stored text to keep (an update checks the maximum in the handler). */
+const blogCreateInput = blogInput.refine((form) => !form.metaDescription || form.metaDescription.length <= META_DESCRIPTION_MAX, { path: ["metaDescription"], message: META_DESCRIPTION_TOO_LONG });
+
 /**
  * A save of an existing article. The minimum of the excerpt depends on the stored row (an excerpt the article
  * already has stays valid as it is, whatever its length: `daffa-najwan` was imported with 14 characters), so it is
- * checked in the handler once the row is read, with the other rules that need it. Everything else is the same.
+ * checked in the handler once the row is read, with the other rules that need it. So is the maximum of the meta
+ * description (28 of the migrated ones are over it). Everything else is the same.
  */
 const blogUpdateInput = z.object({ ...blogFields, excerpt: excerptField.min(1, EXCERPT_TOO_SHORT) });
 
@@ -148,6 +177,8 @@ function present(row: Row) {
     slug: row.slug,
     title: row.title,
     excerpt: row.excerpt,
+    // As the public answer reads it: an empty string is none.
+    metaDescription: row.metaDescription || null,
     contentMarkdown: row.contentMarkdown,
     category: row.category,
     author: row.author,
@@ -399,7 +430,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
   });
 
   app.post("/", requireArea("konten", "write"), async (c) => {
-    const body = await parseBody(c, blogInput, { maxBytes: MAX_BODY_BYTES });
+    const body = await parseBody(c, blogCreateInput, { maxBytes: MAX_BODY_BYTES });
     if (!body.ok) return body.response;
     const form = body.data;
     const user = c.get("user");
@@ -414,6 +445,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
       slug,
       title: form.title,
       excerpt: form.excerpt,
+      metaDescription: form.metaDescription ?? null,
       contentMarkdown: prepared.markdown,
       contentHtml: prepared.html,
       image: prepared.image,
@@ -466,6 +498,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     const problems: Record<string, string> = {};
     // The minimum applies to a text the writer wrote, not to the one that was already there.
     if (form.excerpt.length < EXCERPT_MIN && form.excerpt !== before.excerpt.trim()) problems.excerpt = EXCERPT_TOO_SHORT;
+    // The same for the maximum of the meta description: the one the article has stays valid as it is.
+    if (form.metaDescription && form.metaDescription.length > META_DESCRIPTION_MAX && form.metaDescription !== before.metaDescription) problems.metaDescription = META_DESCRIPTION_TOO_LONG;
     if (form.slug !== null && form.slug !== before.slug && before.status === "published") problems.slug = SLUG_LOCKED;
     if (before.status === "published" && form.date === null) problems.date = DATE_REQUIRED;
     if (Object.keys(problems).length > 0) return validationError(c, problems);
@@ -479,6 +513,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
       slug: form.slug ?? before.slug,
       title: form.title,
       excerpt: form.excerpt,
+      // Absent keeps what is stored, `null` (or an empty text) clears it.
+      metaDescription: form.metaDescription === undefined ? before.metaDescription || null : form.metaDescription,
       contentMarkdown: prepared.markdown,
       contentHtml: prepared.html,
       image: prepared.image,
@@ -489,7 +525,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
       featured: form.featured,
       publishedAt: publishedAtFor(form.date, before),
     };
-    const fields = changedFields(before, values);
+    // An empty string in the column (never written by this API) is none, so saving it as none is not a change.
+    const fields = changedFields({ ...before, metaDescription: before.metaDescription || null }, values);
     if (fields.length === 0) {
       // Nothing to save: no write, no audit row, the version stays.
       withEtag(c, before);

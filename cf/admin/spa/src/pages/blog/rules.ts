@@ -17,7 +17,29 @@ export const LIMITS = {
   authorMin: 2,
   authorMax: 120,
   slugMax: 160,
+  /** The hard limit of the meta description (SAKEM-094), counted on the cleaned text. */
+  metaDescriptionMax: 300,
 } as const;
+
+/** What the form tells the writer to aim for in a meta description: about what a search result shows before it cuts the text. Guidance only: nothing is refused for it. */
+export const META_DESCRIPTION_IDEAL = { min: 50, max: 160 } as const;
+
+/**
+ * The meta description as the Worker stores it (a copy of `cleanMetaDescription` in the Worker's `src/blog/rules.ts`; a
+ * Worker test compares the two on a matrix): invisible characters removed, every run of whitespace one space, trimmed.
+ * The form counts this, so the number it shows is the number that will be stored.
+ */
+export function cleanMetaDescription(raw: string): string {
+  return raw
+    .replace(/[\p{Cc}\p{Cf}\p{Cs}]/gu, (char) => (/^[\t\n\v\f\r\u0085]$/.test(char) ? " " : ""))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** A copy of the Worker's `hasMarkup`: true when a cleaned text holds what the HTML tokenizer reads as a tag, a comment or a doctype. Used by the mock; the form only counts. */
+export function hasMarkup(cleaned: string): boolean {
+  return /<[A-Za-z/!?]/.test(cleaned);
+}
 
 /** "12.000", the way the Worker's message writes the limit. */
 export const BODY_LIMIT_LABEL = String(LIMITS.bodyMax).replace(/\B(?=(\d{3})+(?!\d))/g, ".");

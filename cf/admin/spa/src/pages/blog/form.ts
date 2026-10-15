@@ -37,6 +37,8 @@ export interface BlogListItem {
 
 /** One article as the form needs it (`present` in src/api/blog.ts). */
 export interface BlogItem extends BlogListItem {
+  /** The text for search results (SAKEM-094), or null when the article has none and the site uses the excerpt. */
+  metaDescription: string | null;
   contentMarkdown: string;
   image: string | null;
   imageWidth: number | null;
@@ -48,6 +50,8 @@ export interface BlogValues extends Record<string, string | boolean> {
   slug: string;
   category: string;
   excerpt: string;
+  /** "" for none. */
+  metaDescription: string;
   contentMarkdown: string;
   author: string;
   featured: boolean;
@@ -65,6 +69,7 @@ export function toValues(item: BlogItem | null, email?: string | null): BlogValu
     // The legacy form started on "Cerita".
     category: item?.category ?? "Cerita",
     excerpt: item?.excerpt ?? "",
+    metaDescription: item?.metaDescription ?? "",
     contentMarkdown: item?.contentMarkdown ?? "",
     author: item?.author ?? defaultAuthor(email),
     featured: item?.featured ?? false,
@@ -73,13 +78,17 @@ export function toValues(item: BlogItem | null, email?: string | null): BlogValu
   };
 }
 
-/** The body of `POST` and `PUT`. An empty date or image is "none"; a blank slug asks for the automatic one. */
+/**
+ * The body of `POST` and `PUT`. An empty date, image or meta description is "none" (null: the key is always sent, so
+ * emptying the field clears it); a blank slug asks for the automatic one.
+ */
 export function toBody(values: BlogValues) {
   return {
     title: values.title,
     slug: values.slug,
     category: values.category,
     excerpt: values.excerpt,
+    metaDescription: values.metaDescription === "" ? null : values.metaDescription,
     contentMarkdown: values.contentMarkdown,
     author: values.author,
     featured: values.featured,
@@ -93,6 +102,7 @@ export const FIELD_LABELS: Record<string, string> = {
   title: "Judul",
   slug: "Slug",
   excerpt: "Excerpt",
+  metaDescription: "Deskripsi meta",
   category: "Kategori",
   date: "Tanggal Publikasi",
   author: "Penulis",
@@ -108,6 +118,7 @@ export const FIELD_TAB: Record<string, EditorTab> = {
   title: "detail",
   slug: "detail",
   excerpt: "detail",
+  metaDescription: "detail",
   category: "detail",
   date: "detail",
   author: "detail",

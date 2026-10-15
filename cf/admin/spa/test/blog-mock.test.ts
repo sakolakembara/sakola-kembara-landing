@@ -4,6 +4,7 @@ import { ifMatch } from "~/lib/crud/etag";
 import blog from "~/mock/resources/blog";
 import { createMockResources } from "~/mock/resources";
 import { LIMITS } from "~/pages/blog/rules";
+import { META_CASES } from "./blog-meta-cases";
 
 // The blog mock (`pnpm dev:spa:mock`): it must behave like the Worker's routes, or a screen built against it would be
 // wrong on the real thing. The Worker's own behaviour is proved in test/blog.test.ts; this is the mock in miniature.
@@ -70,6 +71,81 @@ describe("the blog mock", () => {
     const fresh = await call("POST", PATH, { ...valid, excerpt: "Manajemen, UGM" });
     expect(fresh.status).toBe(400);
     expect(fresh.body.fields).toEqual({ excerpt: "Excerpt minimal 20 karakter" });
+  });
+
+  // SAKEM-094: the SAME table of cases the Worker's tests run against the real routes (blog-meta-cases.ts), so the mock
+  // cannot say yes where the Worker says no, or the other way round.
+  test("the meta description: every case of the shared matrix gets the answer the Worker gives", async () => {
+    const { call, rows } = mock();
+    const before = rows().length;
+    let written = 0;
+    for (const entry of META_CASES) {
+      const res = await call("POST", PATH, { ...valid, metaDescription: entry.input });
+      if ("stored" in entry) {
+        expect(res.status, entry.name).toBe(201);
+        written += 1;
+        expect(res.body.item.metaDescription, entry.name).toBe(entry.stored);
+      } else {
+        expect(res.status, entry.name).toBe(400);
+        expect(res.body.fields, entry.name).toEqual({ metaDescription: entry.refused });
+      }
+    }
+    expect(rows()).toHaveLength(before + written);
+    // And on an update.
+    const item = (await call("POST", PATH, { ...valid, metaDescription: "Awal." })).body.item;
+    for (const entry of META_CASES) {
+      if (!("refused" in entry)) continue;
+      const res = await call("PUT", `${PATH}/${item.id}`, { ...valid, metaDescription: entry.input }, { "If-Match": ifMatch(item.updatedAt) });
+      expect(res.status, entry.name).toBe(400);
+      expect(res.body.fields, entry.name).toEqual({ metaDescription: entry.refused });
+    }
+  });
+
+  test("the meta description: a create without it has none; an update that leaves the key out keeps it, null, empty or spaces clear it", async () => {
+    const { call, rows } = mock();
+    expect((await call("POST", PATH, valid)).body.item.metaDescription).toBeNull();
+    const item = (await call("POST", PATH, { ...valid, metaDescription: "Teks untuk mesin pencari." })).body.item;
+    const save = async (extra: Record<string, unknown>) => {
+      const current = rows().find((row) => row.id === item.id)!;
+      return call("PUT", `${PATH}/${item.id}`, { ...valid, ...extra }, { "If-Match": ifMatch(current.updatedAt) });
+    };
+    expect((await save({ title: "Judul lain" })).body.item).toMatchObject({ title: "Judul lain", metaDescription: "Teks untuk mesin pencari." });
+    expect((await save({ title: "Judul lain", metaDescription: "  Teks   baru " })).body.item.metaDescription).toBe("Teks baru");
+    const version = rows().find((row) => row.id === item.id)!.updatedAt;
+    expect((await save({ title: "Judul lain", metaDescription: "Teks baru" })).body.item.updatedAt).toBe(version); // the same text: no new version
+    for (const empty of [null, "", "  \n "]) {
+      await save({ title: "Judul lain", metaDescription: "Ada isinya." });
+      expect((await save({ title: "Judul lain", metaDescription: empty })).body.item.metaDescription, JSON.stringify(empty)).toBeNull();
+    }
+  });
+
+  test("the meta description: the one an article already has stays valid whatever its length; a different long text, and any text on a create, must fit", async () => {
+    const { call, rows } = mock();
+    const long = "Sakola Kembara membuka pintu pendidikan tinggi bagi siswa dari daerah terpencil. ".repeat(7).slice(0, 562).trim();
+    const item = (await call("POST", PATH, valid)).body.item;
+    rows().find((row) => row.id === item.id)!.metaDescription = long; // as if it had come from the import
+    const save = async (extra: Record<string, unknown>) => {
+      const current = rows().find((row) => row.id === item.id)!;
+      return call("PUT", `${PATH}/${item.id}`, { ...valid, ...extra }, { "If-Match": ifMatch(current.updatedAt) });
+    };
+    expect((await save({ title: "Judul lain", metaDescription: long })).status).toBe(200);
+    expect((await save({ title: "Judul lain", metaDescription: `  ${long.replace(" ", "   ")} ` })).status).toBe(200);
+    const longer = await save({ metaDescription: `${long} Tambahan.` });
+    expect(longer.status).toBe(400);
+    expect(longer.body.fields).toEqual({ metaDescription: "Deskripsi meta maksimal 300 karakter" });
+    expect((await save({ metaDescription: "Dipendekkan." })).status).toBe(200);
+    expect((await save({ metaDescription: long })).status).toBe(400);
+    expect((await call("POST", PATH, { ...valid, metaDescription: long })).status).toBe(400);
+  });
+
+  test("every article of the seed carries the field, and one has a description to look at", async () => {
+    const { call } = mock();
+    const list = await call("GET", `${PATH}?pageSize=100`);
+    const first = list.body.items[0].id as string;
+    const articles = await Promise.all(list.body.items.map(async (item: { id: string }) => (await call("GET", `${PATH}/${item.id}`)).body.item as Record<string, unknown>));
+    expect(articles.every((article) => "metaDescription" in article)).toBe(true);
+    expect(articles.filter((article) => article.metaDescription).length).toBeGreaterThanOrEqual(1);
+    expect(first).toBeTruthy();
   });
 
   test("creates a draft with a slug made from the title, numbered when taken, or the one given", async () => {

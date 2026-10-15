@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { createBlogRoutes, uploadsOf } from "../src/api/blog";
 import type { CrudDeps } from "../src/api/crud";
 import { renderArticle } from "../src/blog/render";
-import { BODY_MAX, isIsoDay, pickFreeSlug, slugify, startOfIsoDayJakarta } from "../src/blog/rules";
+import { BODY_MAX, isIsoDay, META_DESCRIPTION_IDEAL, META_DESCRIPTION_MAX, META_DESCRIPTION_RAW_MAX, pickFreeSlug, slugify, startOfIsoDayJakarta } from "../src/blog/rules";
 import { isoDayJakarta } from "../src/public/dates";
 import type { ContentChange } from "../src/public/purge";
 import { checkLimits } from "../src/security/rate-limit";
+import { MARKUP, META_CASES, TOO_LONG } from "../spa/test/blog-meta-cases";
 import { appAround, ifMatchOf, spyOnD1 } from "./crud-app";
 import { CAPTCHA, call, cookiesOf, createVerifiedUser, fakeNetwork, PASSWORD, productionLike, signedInCookie, uniqueEmail } from "./helpers";
 import { withFrozenDate } from "./limiter-clock";
@@ -39,6 +40,7 @@ interface Item {
   slug: string;
   title: string;
   excerpt: string;
+  metaDescription: string | null;
   contentMarkdown: string;
   category: string;
   author: string;
@@ -207,7 +209,8 @@ describe("blog: create", () => {
 
     expect(item).toMatchObject({ slug: "cara-belajar-yang-efektif", title: "Cara Belajar yang Efektif", status: "draft", date: null, image: null, imageWidth: null, imageHeight: null, featured: false, contentMarkdown: BODY });
     // An explicit field list: no HTML, no WordPress id or source, no user ids.
-    expect(Object.keys(item).sort()).toEqual(["author", "category", "contentMarkdown", "createdAt", "date", "excerpt", "featured", "id", "image", "imageHeight", "imageWidth", "slug", "status", "title", "updatedAt"]);
+    expect(Object.keys(item).sort()).toEqual(["author", "category", "contentMarkdown", "createdAt", "date", "excerpt", "featured", "id", "image", "imageHeight", "imageWidth", "metaDescription", "slug", "status", "title", "updatedAt"]);
+    expect(item.metaDescription).toBeNull(); // none typed: the site uses the excerpt
     expect(res.headers.get("etag")).toBe(`"${item.updatedAt}"`);
 
     const stored = await row(item.id);
@@ -224,7 +227,7 @@ describe("blog: create", () => {
     const metadata = JSON.parse(audit[0]!.metadata) as { fields: string[]; label: string };
     expect(Object.keys(metadata).sort()).toEqual(["fields", "label"]);
     expect(metadata.label).toBe("Cara Belajar yang Efektif");
-    expect(metadata.fields).toEqual(["slug", "title", "excerpt", "contentMarkdown", "contentHtml", "image", "imageWidth", "imageHeight", "category", "author", "featured", "status", "publishedAt"]);
+    expect(metadata.fields).toEqual(["slug", "title", "excerpt", "metaDescription", "contentMarkdown", "contentHtml", "image", "imageWidth", "imageHeight", "category", "author", "featured", "status", "publishedAt"]);
     // Names only: not a word of the article, in markdown or HTML.
     for (const secret of ["disiplin", "Istirahat", "<p>", "Ringkasan artikel", "Dzul"]) expect(audit[0]!.metadata).not.toContain(secret);
   });
@@ -627,6 +630,254 @@ describe("blog: update", () => {
     const list = (await (await internalFetch("/api/public/blog")).json()) as { featured: { slug: string }; articles: { slug: string }[] };
     expect(list.featured.slug).toBe(newer.slug);
     expect(list.articles.map((a) => a.slug)).toEqual([plain.slug, older.slug]);
+  });
+});
+
+// ------------------------------------------------------------------------------------ the meta description
+
+describe("blog: the meta description (SAKEM-094)", () => {
+  const SAMPLE = "Cara belajar efektif untuk siswa: jadwal harian, istirahat cukup, dan evaluasi mingguan.";
+  /** What an imported article can carry: 562 characters, the longest of the migrated descriptions. */
+  const LONG = "Sakola Kembara membuka pintu pendidikan tinggi bagi siswa dari daerah terpencil. ".repeat(7).slice(0, 562).trim();
+  const stored = async (id: string) => (await row(id)).meta_description as string | null;
+  const publicDescription = async (slug: string) => ((await (await internalFetch(`/api/public/blog/${slug}`)).json()) as { article: { description: string | null } }).article.description;
+  const auditFields = async (action: string) => (await auditRows()).filter((r) => r.action === action).map((r) => (JSON.parse(r.metadata) as { fields: string[] }).fields);
+  /** What the SPA does: open the article, change some values, send the whole form back. */
+  const open = async (cookie: string, id: string) => ((await (await call(`${LIST}/${id}`, { cookie })).json()) as { item: Item }).item;
+  const resave = async (cookie: string, id: string, changes: Record<string, unknown>) => {
+    const item = await open(cookie, id);
+    return call(`${LIST}/${id}`, { method: "PUT", cookie, headers: { "if-match": `"${item.updatedAt}"` }, json: { ...item, ...changes } });
+  };
+
+  test("the shared validation matrix on create: what is stored, or the one message on the field, with nothing written when refused", async () => {
+    expect(LONG.length).toBeGreaterThan(300);
+    const cookie = await editor();
+    let written = 0;
+    for (const entry of META_CASES) {
+      const res = await call(LIST, { method: "POST", cookie, json: form({ metaDescription: entry.input }) });
+      const body = (await res.json()) as { item?: Item; fields?: Record<string, string> };
+      if ("stored" in entry) {
+        expect(res.status, entry.name).toBe(201);
+        written += 1;
+        expect(body.item!.metaDescription, entry.name).toBe(entry.stored);
+        expect(await stored(body.item!.id), entry.name).toBe(entry.stored);
+      } else {
+        expect(res.status, entry.name).toBe(400);
+        expect(body.fields, entry.name).toEqual({ metaDescription: entry.refused });
+      }
+    }
+    expect(await count("blog_posts")).toBe(written);
+    expect(await count("audit_log")).toBe(written); // a refusal leaves no audit row
+    // Next to the other fields' messages, in the same 400 (a form with two mistakes shows both).
+    const both = await call(LIST, { method: "POST", cookie, json: form({ title: "ab", metaDescription: "x".repeat(301) }) });
+    expect(both.status).toBe(400);
+    expect(await fieldsOf(both)).toEqual({ title: "Judul minimal 3 karakter", metaDescription: TOO_LONG });
+    // The messages are the form's own: Indonesian, with the limit in them.
+    expect([TOO_LONG, MARKUP]).toEqual(["Deskripsi meta maksimal 300 karakter", "Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML"]);
+  });
+
+  test("it can be left out: a create without the key, with null or with spaces stores NULL, and the public answer has none (the page falls back to the excerpt)", async () => {
+    const cookie = await editor();
+    for (const overrides of [{}, { metaDescription: null }, { metaDescription: "   " }]) {
+      const item = await createDraft(cookie, overrides);
+      expect(item.metaDescription, JSON.stringify(overrides)).toBeNull();
+      expect(await stored(item.id)).toBeNull();
+      expect((await verb(cookie, item.id, "publish")).status).toBe(200);
+      expect(await publicDescription(item.slug)).toBeNull();
+    }
+  });
+
+  test("a typed description is stored, shown by the admin read, and sent by the public answer once the article is published (the list and the public index do not carry it)", async () => {
+    const cookie = await editor();
+    const item = await createDraft(cookie, { metaDescription: `  ${SAMPLE}  ` });
+    expect(item.metaDescription).toBe(SAMPLE);
+    expect((await internalFetch(`/api/public/blog/${item.slug}`)).status).toBe(404); // a draft is not public
+    expect((await verb(cookie, item.id, "publish")).status).toBe(200);
+    expect(await publicDescription(item.slug)).toBe(SAMPLE);
+
+    expect((await open(cookie, item.id)).metaDescription).toBe(SAMPLE);
+    const list = (await (await call(LIST, { cookie })).json()) as { items: Record<string, unknown>[] };
+    expect(list.items.every((entry) => !("metaDescription" in entry))).toBe(true);
+    const publicIndex = (await (await internalFetch("/api/public/blog")).json()) as { featured: Record<string, unknown> | null; articles: Record<string, unknown>[] };
+    const entries = [...publicIndex.articles, ...(publicIndex.featured ? [publicIndex.featured] : [])];
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) expect(entry).not.toHaveProperty("description");
+  });
+
+  test("an update: absent keeps what is stored, null, empty or spaces clear it, a text replaces it; the audit row names the field and never the text", async () => {
+    const cookie = await editor();
+    const item = await createDraft(cookie, { metaDescription: SAMPLE });
+
+    // Absent (a client that predates the field, such as a browser tab opened before this release): the description stays.
+    const absent = await put(cookie, item.id, { title: "Judul lain" });
+    expect(((await absent.json()) as { item: Item }).item).toMatchObject({ title: "Judul lain", metaDescription: SAMPLE });
+    expect(await stored(item.id)).toBe(SAMPLE);
+    expect(await auditFields("blog.update")).toEqual([["title"]]);
+
+    // A new text: cleaned, stored, and the audit names the field only.
+    const changed = await put(cookie, item.id, { title: "Judul lain", metaDescription: "  Teks   baru\tyang rapi  " });
+    expect(((await changed.json()) as { item: Item }).item.metaDescription).toBe("Teks baru yang rapi");
+    expect(await auditFields("blog.update")).toEqual([["title"], ["metaDescription"]]);
+    const trail = (await auditRows()).map((r) => r.metadata).join(" ");
+    for (const secret of ["Teks baru", "rapi", SAMPLE]) expect(trail).not.toContain(secret);
+    expect(JSON.parse((await auditRows()).filter((r) => r.action === "blog.update")[1]!.metadata)).toEqual({ fields: ["metaDescription"], label: "Judul lain" });
+
+    // The same text typed with other spacing is not a change: no write, no audit row, the version stays.
+    const version = (await row(item.id)).updated_at;
+    expect((await put(cookie, item.id, { title: "Judul lain", metaDescription: "Teks baru   yang rapi " })).status).toBe(200);
+    expect((await row(item.id)).updated_at).toBe(version);
+    expect(await auditFields("blog.update")).toHaveLength(2);
+
+    // Cleared three ways; clearing what is already empty changes nothing.
+    for (const [index, empty] of [null, "", "   \n "].entries()) {
+      expect((await put(cookie, item.id, { title: "Judul lain", metaDescription: `Teks ${index}` })).status).toBe(200);
+      const cleared = await put(cookie, item.id, { title: "Judul lain", metaDescription: empty });
+      expect(((await cleared.json()) as { item: Item }).item.metaDescription, JSON.stringify(empty)).toBeNull();
+      expect(await stored(item.id)).toBeNull();
+      expect((await put(cookie, item.id, { title: "Judul lain", metaDescription: empty })).status).toBe(200);
+    }
+    expect(await auditFields("blog.update")).toEqual([["title"], ...Array.from({ length: 7 }, () => ["metaDescription"])]); // two for the new text, then a set and a clear per round
+  });
+
+  test("an update checks the same matrix, in the one 400 shape, and a refusal writes nothing", async () => {
+    const cookie = await editor();
+    const item = await createDraft(cookie, { metaDescription: SAMPLE });
+    for (const entry of META_CASES) {
+      if (!("refused" in entry)) continue;
+      const res = await put(cookie, item.id, { metaDescription: entry.input });
+      expect(res.status, entry.name).toBe(400);
+      expect(await fieldsOf(res), entry.name).toEqual({ metaDescription: entry.refused });
+    }
+    expect(await stored(item.id)).toBe(SAMPLE);
+    expect((await auditRows()).map((r) => r.action)).toEqual(["blog.create"]);
+  });
+
+  test("a description the article already has stays valid whatever its length (28 of the migrated ones are over the maximum); only a text the writer changes must fit, and a new article never gets the exception", async () => {
+    const cookie = await editor();
+    const imported = await seed({ slug: "diimpor", title: "Artikel diimpor", meta_description: LONG, published_at: Date.parse("2025-03-04T00:00:00Z") });
+    const id = imported.id as string;
+
+    // Unchanged (also typed with other spacing, since it is the cleaned text that is compared): accepted while the rest changes.
+    const kept = await resave(cookie, id, { title: "Artikel diimpor, disunting" });
+    expect(kept.status, JSON.stringify(await kept.clone().json())).toBe(200);
+    expect(((await kept.json()) as { item: Item }).item.metaDescription).toBe(LONG);
+    expect((await resave(cookie, id, { title: "Artikel diimpor, disunting lagi", metaDescription: `  ${LONG.replace(" ", "   ")}  ` })).status).toBe(200);
+    expect(await stored(id)).toBe(LONG);
+
+    // A different long text is a change, and must fit.
+    for (const longer of [`${LONG} Tambahan.`, "y".repeat(301)]) {
+      const refused = await resave(cookie, id, { metaDescription: longer });
+      expect(refused.status).toBe(400);
+      expect(await fieldsOf(refused)).toEqual({ metaDescription: TOO_LONG });
+    }
+    expect(await stored(id)).toBe(LONG);
+
+    // Shortened: accepted, and from then on the long one is just another long text.
+    expect((await resave(cookie, id, { metaDescription: "Deskripsi yang sudah dipendekkan." })).status).toBe(200);
+    expect((await resave(cookie, id, { metaDescription: LONG })).status).toBe(400);
+    expect(await stored(id)).toBe("Deskripsi yang sudah dipendekkan.");
+
+    // A new article has no stored text to keep.
+    const created = await call(LIST, { method: "POST", cookie, json: form({ metaDescription: LONG }) });
+    expect(created.status).toBe(400);
+    expect(await fieldsOf(created)).toEqual({ metaDescription: TOO_LONG });
+  });
+
+  test("the plain-text rule has no exception: markup is refused even when it is what is stored (only hand-written SQL could have put it there)", async () => {
+    const cookie = await editor();
+    const odd = await seed({ slug: "aneh", meta_description: "<b>tebal</b>", published_at: Date.parse("2025-03-04T00:00:00Z") });
+    const id = odd.id as string;
+    const refused = await resave(cookie, id, { title: "Artikel aneh" });
+    expect(refused.status).toBe(400);
+    expect(await fieldsOf(refused)).toEqual({ metaDescription: MARKUP });
+    expect((await resave(cookie, id, { title: "Artikel aneh", metaDescription: "tebal" })).status).toBe(200);
+  });
+
+  test("an empty string in the column reads as none, and saving none over it is not a change", async () => {
+    const cookie = await editor();
+    const empty = await seed({ slug: "kosong", title: "Awal", meta_description: "", published_at: Date.parse("2025-03-04T00:00:00Z") });
+    const id = empty.id as string;
+    expect((await open(cookie, id)).metaDescription).toBeNull();
+    // Nothing else changes: no write, no audit row, the version stays.
+    const version = (await row(id)).updated_at;
+    expect((await resave(cookie, id, {})).status).toBe(200);
+    expect((await row(id)).updated_at).toBe(version);
+    expect(await auditFields("blog.update")).toEqual([]);
+    // A change of another field does not list the description among the names that changed.
+    expect((await resave(cookie, id, { title: "Judul kosong" })).status).toBe(200);
+    expect(await auditFields("blog.update")).toEqual([["title"]]);
+  });
+
+  test("publish and unpublish leave it as it is and are not stopped by it, even when it is over the maximum; the audit names the status only", async () => {
+    const cookie = await editor();
+    const imported = await seed({ slug: "panjang", title: "Artikel panjang", meta_description: LONG, status: "draft", published_at: null });
+    const id = imported.id as string;
+    const published = await verb(cookie, id, "publish");
+    expect(published.status).toBe(200);
+    expect(((await published.json()) as { item: Item }).item.metaDescription).toBe(LONG);
+    expect(await publicDescription("panjang")).toBe(LONG);
+    expect((await verb(cookie, id, "unpublish")).status).toBe(200);
+    expect(await stored(id)).toBe(LONG);
+    expect(await auditFields("blog.publish")).toEqual([["status", "publishedAt"]]);
+    expect(await auditFields("blog.unpublish")).toEqual([["status"]]);
+  });
+
+  test("a change of the description alone tells the public side when the article is published, and not while it is a draft", async () => {
+    const notify = vi.fn<(change: ContentChange) => void>();
+    const app = appAround({ "/api/admin/blog": createBlogRoutes({ notify: (change) => notify(change), deleteUpload: vi.fn(async () => ({ status: "not_found" as const })) }) });
+    const cookie = await editor();
+    const item = (await post(cookie, { metaDescription: "Awal." }, app)).body.item;
+    await put(cookie, item.id, { metaDescription: SAMPLE }, app);
+    expect(notify).not.toHaveBeenCalled();
+
+    await verb(cookie, item.id, "publish", app);
+    notify.mockClear();
+    const date = isoDayJakarta(Date.now());
+    expect((await put(cookie, item.id, { metaDescription: "Deskripsi yang lain.", date }, app)).status).toBe(200);
+    expect(notify.mock.calls.map(([change]) => change)).toEqual([{ area: "blog", slug: item.slug }]);
+    // A save that changes nothing writes nothing and purges nothing.
+    notify.mockClear();
+    expect((await put(cookie, item.id, { metaDescription: "Deskripsi yang lain.", date }, app)).status).toBe(200);
+    expect(notify).not.toHaveBeenCalled();
+    expect(await publicDescription(item.slug)).toBe("Deskripsi yang lain.");
+  });
+
+  test("If-Match is untouched: a save of a new description made from an old version is refused (409), and one with no version is refused (428); nothing is written", async () => {
+    const cookie = await editor();
+    const item = await createDraft(cookie, { metaDescription: SAMPLE });
+    const first = await ifMatch(item.id);
+    expect((await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: first, json: form({ title: "Versi pertama", metaDescription: SAMPLE }) })).status).toBe(200);
+    const late = await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: first, json: form({ title: "Versi pertama", metaDescription: "Dari versi lama." }) });
+    expect(late.status).toBe(409);
+    expect((await call(`${LIST}/${item.id}`, { method: "PUT", cookie, json: form({ metaDescription: "Tanpa versi." }) })).status).toBe(428);
+    expect(await stored(item.id)).toBe(SAMPLE);
+  });
+
+  test("who may: a viewer reads it with the article and cannot change it; an editor of another area can do neither", async () => {
+    const cookie = await editor();
+    const item = await createDraft(cookie, { metaDescription: SAMPLE });
+    const viewer = await signedInCookie(uniqueEmail("viewer"), "viewer");
+    expect((await open(viewer, item.id)).metaDescription).toBe(SAMPLE);
+    expect((await call(`${LIST}/${item.id}`, { method: "PUT", cookie: viewer, headers: await ifMatch(item.id), json: form({ metaDescription: "Dari pembaca." }) })).status).toBe(403);
+    const other = await editor(["komunikasi"]);
+    expect((await call(`${LIST}/${item.id}`, { cookie: other })).status).toBe(403);
+    expect((await call(LIST, { method: "POST", cookie: other, json: form({ metaDescription: "Dari luar." }) })).status).toBe(403);
+    expect(await stored(item.id)).toBe(SAMPLE);
+  });
+
+  test("it costs no round trip: a create is still the slug range and one batch, an update a read and one batch", async () => {
+    const cookie = await editor();
+    const create = spyOnD1(env.DB);
+    const res = await call(LIST, { method: "POST", cookie, json: form({ metaDescription: SAMPLE }), env: { DB: create.db } });
+    const item = ((await res.json()) as { item: Item }).item;
+    expect(create.touching("blog_posts").map((e) => e.kind)).toEqual(["single", "batch"]);
+    const update = spyOnD1(env.DB);
+    await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: await ifMatch(item.id), json: form({ metaDescription: "Teks lain." }), env: { DB: update.db } });
+    expect(update.touching("blog_posts").map((e) => e.kind)).toEqual(["single", "batch"]);
+  });
+
+  test("the numbers: at most 300 characters, guidance of 50 to 160, a raw text is refused above 2,000", () => {
+    expect([META_DESCRIPTION_MAX, META_DESCRIPTION_IDEAL, META_DESCRIPTION_RAW_MAX]).toEqual([300, { min: 50, max: 160 }, 2000]);
   });
 });
 

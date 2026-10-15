@@ -16,6 +16,7 @@ import { blogSpaChecks } from "./negative-checks-spa-blog.mjs";
 import { portalSpaChecks } from "./negative-checks-spa-portal.mjs";
 import { portalFilesSpaChecks } from "./negative-checks-portal-files.mjs";
 import { portalWizardSpaChecks } from "./negative-checks-spa-portal-wizard.mjs";
+import { blogMetaSpaChecks } from "./negative-checks-blog-meta.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -48,6 +49,9 @@ const checks = [
   // The portal's registration wizard (SAKEM-083, P3): scripts/negative-checks-spa-portal-wizard.mjs (the browser's copy, the
   // rules shared with the Worker, DTKS, privacy, the first load, accessibility; the tests run with `config`).
   ...portalWizardSpaChecks,
+
+  // The blog's meta description (SAKEM-094): scripts/negative-checks-blog-meta.mjs (the form, the counter, the mock).
+  ...blogMetaSpaChecks,
 
   // Who may see and do what
   {

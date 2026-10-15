@@ -23,6 +23,7 @@ import { portalApiChecks } from "./negative-checks-portal-api.mjs";
 import { portalFilesChecks } from "./negative-checks-portal-files.mjs";
 import { portalDraftsChecks } from "./negative-checks-portal-drafts.mjs";
 import { portalStagingChecks } from "./negative-checks-portal-staging.mjs";
+import { blogMetaChecks } from "./negative-checks-blog-meta.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -72,6 +73,9 @@ const checks = [
   ...portalDraftsChecks,
   // The portal's staging environment and the runbook's cleanup SQL (SAKEM-098): scripts/negative-checks-portal-staging.mjs.
   ...portalStagingChecks,
+
+  // The blog's meta description (SAKEM-094): scripts/negative-checks-blog-meta.mjs.
+  ...blogMetaChecks,
 
   // ---------------------------------------------------------------- auth
   {

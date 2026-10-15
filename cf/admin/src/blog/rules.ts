@@ -26,6 +26,40 @@ export const IMAGE_PATH_MAX = 500;
  */
 export const BODY_MAX = 12_000;
 
+/**
+ * The meta description (SAKEM-094, `blog_posts.meta_description`): the text a search engine shows under the title, and
+ * what the site puts in `<meta name="description">`, `og:description` and the JSON-LD. Optional: empty is NULL and the page
+ * uses the excerpt. `META_DESCRIPTION_MAX` is the hard limit, counted on the cleaned text. The writer is guided to
+ * `META_DESCRIPTION_IDEAL` (about what a result shows before it cuts the text), which only the form uses.
+ * The 85 migrated descriptions are between 85 and 562 characters, 28 of them over the limit: an article keeps the
+ * description it has (the update accepts a text equal to the stored one, as it does for a short excerpt), and only a
+ * text the writer changes must fit. `META_DESCRIPTION_RAW_MAX` stops a pathological input before it is cleaned.
+ */
+export const META_DESCRIPTION_MAX = 300;
+export const META_DESCRIPTION_IDEAL = { min: 50, max: 160 } as const;
+export const META_DESCRIPTION_RAW_MAX = 2_000;
+
+/** What a plain-text field refuses: the start of anything the HTML tokenizer reads as a tag, a comment, a doctype or an instruction. A lone `<` or `>` (`IPK < 3`) is text. */
+const MARKUP_START = /<[A-Za-z/!?]/;
+
+/**
+ * A meta description as it is stored: invisible characters removed (controls, zero-width and direction marks, the
+ * byte-order mark, unpaired surrogates), every run of whitespace (tabs, line breaks, non-breaking spaces) one space,
+ * trimmed. An empty result is `""`; the caller turns that into NULL. Pure, and copied to the SPA's `rules.ts` for the
+ * live counter (a Worker test compares the two on a matrix), so the form counts what will be stored.
+ */
+export function cleanMetaDescription(raw: string): string {
+  return raw
+    .replace(/[\p{Cc}\p{Cf}\p{Cs}]/gu, (char) => (/^[\t\n\v\f\r\u0085]$/.test(char) ? " " : ""))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** True when a cleaned text holds markup. Checked after cleaning, so an invisible character cannot hide a tag (`<​script>`). */
+export function hasMarkup(cleaned: string): boolean {
+  return MARKUP_START.test(cleaned);
+}
+
 /** The longest slug the database accepts (`blog_posts_slug_check`). The legacy generator cut at 80. */
 export const SLUG_MAX = 160;
 const GENERATED_SLUG_MAX = 80;

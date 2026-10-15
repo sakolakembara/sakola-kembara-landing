@@ -127,15 +127,22 @@ describe("the meta description (SAKEM-090)", () => {
     expect(((await publicJson(`/api/public/blog/${without.slug}`)) as { article: { description: unknown } }).article.description).toBeNull();
   });
 
-  test("an editor's save in the admin does not erase it (the form has no field for it yet), and a second import does not put the file's back over an edited article", async () => {
+  test("an editor's save in the admin keeps it (the form sends it back as the admin read gave it; a client that leaves the key out does not erase it either), and a second import does not put the file's back over an edited article", async () => {
     await runImport();
     const article = oracle.articles.find((a) => a.meta.description)!;
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
     const item = (await env.DB.prepare("SELECT id FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ id: string }>())!;
     const opened = ((await (await call(`/api/admin/blog/${item.id}`, { cookie })).json()) as { item: Record<string, unknown> }).item;
+    expect(opened.metaDescription).toBe(article.meta.description); // the admin read carries it (SAKEM-094)
     const put = await call(`/api/admin/blog/${item.id}`, { method: "PUT", cookie, headers: { "if-match": `"${String(opened.updatedAt)}"` }, json: { ...opened, title: "Judul baru" } });
     expect(put.status).toBe(200);
     const description = () => env.DB.prepare("SELECT meta_description AS d FROM blog_posts WHERE slug = ?").bind(article.slug).first<{ d: string | null }>();
+    expect((await description())!.d).toBe(article.meta.description);
+    // A body without the key (a browser tab of the SPA from before the field existed) does not erase it.
+    const { metaDescription: _left, ...without } = opened;
+    const reopened = ((await (await call(`/api/admin/blog/${item.id}`, { cookie })).json()) as { item: Record<string, unknown> }).item;
+    const bare = await call(`/api/admin/blog/${item.id}`, { method: "PUT", cookie, headers: { "if-match": `"${String(reopened.updatedAt)}"` }, json: { ...without, title: "Judul baru lagi" } });
+    expect(bare.status).toBe(200);
     expect((await description())!.d).toBe(article.meta.description);
     // an operator who changed the text by hand: the edited article is not touched by another import
     await env.DB.prepare("UPDATE blog_posts SET meta_description = 'Diubah tangan' WHERE slug = ?").bind(article.slug).run();
@@ -204,6 +211,9 @@ describe("an imported article opens in the editor and can be saved again", () =>
     // change the excerpt is accepted (the minimum applies to a text the writer changes). Nothing is refused.
     expect(refused).toEqual({});
     expect(changed).toEqual([]);
+    // SAKEM-094: the meta description goes back with the form too. Many migrated ones are over the form's maximum of 300
+    // characters, and it is only because an article keeps the description it has that they are accepted.
+    expect(oracle.articles.filter((a) => String(a.meta.description ?? "").length > 300).length).toBeGreaterThan(20);
   });
 
   test("the article with the 14-character excerpt is imported as it is, can be edited around it, and a new short excerpt is refused", async () => {
