@@ -15,6 +15,7 @@ import { pendaftaranSpaChecks } from "./negative-checks-spa-pendaftaran.mjs";
 import { blogSpaChecks } from "./negative-checks-spa-blog.mjs";
 import { portalSpaChecks } from "./negative-checks-spa-portal.mjs";
 import { portalFilesSpaChecks } from "./negative-checks-portal-files.mjs";
+import { portalWizardSpaChecks } from "./negative-checks-spa-portal-wizard.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -43,6 +44,10 @@ const checks = [
   // The applicants' private files (SAKEM-083, P4): scripts/negative-checks-portal-files.mjs (the admin's detail, the shared
   // XMLHttpRequest, and the portal's file client and field; the portal's tests run with `config`).
   ...portalFilesSpaChecks,
+
+  // The portal's registration wizard (SAKEM-083, P3): scripts/negative-checks-spa-portal-wizard.mjs (the browser's copy, the
+  // rules shared with the Worker, DTKS, privacy, the first load, accessibility; the tests run with `config`).
+  ...portalWizardSpaChecks,
 
   // Who may see and do what
   {

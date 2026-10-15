@@ -53,6 +53,13 @@ export interface FileSlotFieldProps {
   required?: boolean;
   hint?: ReactNode;
   id?: string;
+  /**
+   * Called with `true` when an upload (the whole queue of files picked together, or a replacement) or a delete starts, and
+   * with `false` when it has ended, whatever way it ended: stored, refused, cancelled with "Batal", or the field going away
+   * in the middle (a slot that is hidden while it uploads reports `false` as it goes). Once per change, never twice in a row
+   * with the same value. The wizard uses it to hold "Selanjutnya" while a file is on its way.
+   */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 interface Progress {
@@ -74,7 +81,7 @@ function previewOf(blob: Blob): string | null {
 
 const typeLabel = (contentType: string) => Object.values(FILE_TYPE_INFO).find((info) => info.mime === contentType)?.label ?? "Berkas";
 
-export function FileSlotField({ slot, files, onChange, onUnauthorized, error, disabled = false, required, hint, id }: FileSlotFieldProps) {
+export function FileSlotField({ slot, files, onChange, onUnauthorized, error, disabled = false, required, hint, id, onBusyChange }: FileSlotFieldProps) {
   const spec = SLOTS[slot];
   const label = slotLabel(slot);
   const fieldId = id ?? `file-${slot}`;
@@ -97,6 +104,27 @@ export function FileSlotField({ slot, files, onChange, onUnauthorized, error, di
   const uploading = progress !== null;
   const room = spec.maxFiles - files.length;
   const shownError = localError ?? error;
+
+  // Tell the page when a file is on its way (an upload or a delete): once per change, and "not busy" if the field goes away mid-way.
+  const busy = uploading || removing !== null;
+  const busyCallback = useRef(onBusyChange);
+  const reportedBusy = useRef(false);
+  useEffect(() => {
+    busyCallback.current = onBusyChange;
+  });
+  useEffect(() => {
+    if (reportedBusy.current === busy) return;
+    reportedBusy.current = busy;
+    busyCallback.current?.(busy);
+  }, [busy]);
+  useEffect(
+    () => () => {
+      if (!reportedBusy.current) return;
+      reportedBusy.current = false;
+      busyCallback.current?.(false);
+    },
+    [],
+  );
 
   useEffect(() => {
     const urls = previews.current;

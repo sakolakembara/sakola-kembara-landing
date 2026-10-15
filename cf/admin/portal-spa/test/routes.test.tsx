@@ -5,8 +5,10 @@ import { describe, expect, test } from "vitest";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { localDraftKey } from "~/lib/local-drafts";
 import { ENDPOINTS } from "~/lib/paths";
+import { CURRENT_PATH } from "~/lib/wizard/api";
 import { meBody, overviewBody, renderApp, respond, SIGNED_IN, stubApi } from "./helpers";
 import { takeConsoleProblems } from "./setup";
+import { currentBody } from "./wizard-helpers";
 
 const location = () => screen.getByTestId("location").textContent;
 const status = { [`GET ${ENDPOINTS.applications}`]: respond({ items: [] }) };
@@ -90,8 +92,8 @@ describe("the guard", () => {
 });
 
 describe("the routes", () => {
-  test("/portal/ is the front page and /portal/status the status page; the placeholder holds /daftar; anything else is the 404", async () => {
-    stubApi({ ...SIGNED_IN, ...status });
+  test("/portal/ is the front page and /portal/status the status page; the wizard holds /daftar; anything else is the 404", async () => {
+    stubApi({ ...SIGNED_IN, ...status, [`GET ${CURRENT_PATH}`]: respond(currentBody()) });
     const first = renderApp("/portal/");
     expect(await screen.findByRole("heading", { name: "Selamat datang, Sari" })).toBeTruthy();
     first.unmount();
@@ -101,7 +103,8 @@ describe("the routes", () => {
     second.unmount();
 
     const third = renderApp("/portal/daftar");
-    expect(await screen.findByRole("heading", { name: "Belum tersedia" })).toBeTruthy();
+    // The wizard is its own chunk, loaded when the route opens; it opens on its first screen (wizard-flow.test.tsx has the rest).
+    expect(await screen.findByRole("heading", { name: "Sebelum Mulai Pendaftaran" })).toBeTruthy();
     third.unmount();
 
     renderApp("/portal/tidak-ada");
