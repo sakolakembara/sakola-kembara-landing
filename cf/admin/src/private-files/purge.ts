@@ -48,13 +48,21 @@ export async function purgeApplicationFiles(env: Storage, actor: Pick<AuthUser, 
     env.DB.prepare(MARK_ALL_SQL).bind(now, applicationId),
   ]);
   const purged = results[2]!.meta.changes ?? 0;
+  return { ok: true, purged, pending: await removeMarkedFiles(env, applicationId, application.year) };
+}
 
-  // Every marked row, the ones this call just marked and any an earlier failure left behind.
+/**
+ * Step 2 of every purge (an application's, and a draft's in src/private-files/drafts.ts): the objects of the rows that are
+ * marked go from the bucket, then the rows. "Marked" is every row of `applicationId` with `deleted_at` set: the ones the
+ * caller's batch has just marked and any an earlier failure left behind, so a repeated purge also finishes an old one.
+ * Returns how many of them are still there (0 unless the bucket refused; the daily cleanup finishes those).
+ */
+export async function removeMarkedFiles(env: Storage, applicationId: string, year: number): Promise<number> {
   const { results: rows } = await env.DB.prepare(MARKED_SQL).bind(applicationId).all<{ id: string; content_type: string }>();
   const files: RemovableFile[] = rows.flatMap((row) => {
-    const key = applicationFileKey({ year: application.year, applicationId, fileId: row.id, contentType: row.content_type });
+    const key = applicationFileKey({ year, applicationId, fileId: row.id, contentType: row.content_type });
     return key ? [{ id: row.id, keys: [key] }] : [];
   });
   const removed = await removeObjects(env, files);
-  return { ok: true, purged, pending: files.length - removed };
+  return files.length - removed;
 }

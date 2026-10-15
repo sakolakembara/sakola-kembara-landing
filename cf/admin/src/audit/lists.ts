@@ -48,6 +48,7 @@ export const DECLARED_RESOURCE_TYPES = [
   "admin_user",
   "user",
   "application",
+  "application_draft",
   "application_file",
   "batch",
   "report",

@@ -1,7 +1,7 @@
 import type { BatchDetail, BatchItem, BatchListed } from "~/pages/batches/model";
 import type { SlotId } from "@shared/application-form/slots";
-import type { ApplicationDetail, ApplicationFile, ApplicationListed, ApplicationStatus, ApplicationWithFiles } from "~/pages/applications/model";
-import { REVOCATION_NOTES_MIN, STATUSES } from "~/pages/applications/model";
+import type { ApplicationDetail, ApplicationFile, ApplicationListed, ApplicationStatus, ApplicationWithFiles, DraftFilesRow } from "~/pages/applications/model";
+import { DRAFT_PURGE_MIN_DAYS, REVOCATION_NOTES_MIN, STATUSES } from "~/pages/applications/model";
 import { CATEGORIES, CONTENT_TYPES, type ResourceItem } from "~/pages/resources/model";
 import type { AnyMockResource, MockResource, MockRowBase } from "../resources";
 
@@ -21,12 +21,16 @@ type BatchRow = BatchItem & MockRowBase;
 /** What the store keeps of an application: the answers and the files. `canOpenFiles` is the caller's, so it is added when the detail is answered. */
 type ApplicationRow = Omit<ApplicationWithFiles, "canOpenFiles"> & MockRowBase;
 
+/** What the store keeps of a draft that holds files: what the list shows, without the two the Worker works out (`purgeable`, `purgeableAt`). */
+type DraftRow = Omit<DraftFilesRow, "purgeable" | "purgeableAt">;
+
 interface World {
   batches: BatchRow[];
   applications: ApplicationRow[];
+  drafts: DraftRow[];
 }
 
-let world: World = { batches: [], applications: [] };
+let world: World = { batches: [], applications: [], drafts: [] };
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
@@ -132,7 +136,22 @@ function seedWorld(): World {
     person("mock-batch-2024", "accepted", "Nanda Pratama"),
     person("mock-batch-2024", "rejected", "Okta Ramadhan"),
   ];
-  return { batches, applications };
+  // Drafts that were never submitted and still hold files (SAKEM-093): two that are old enough to purge, two that are not.
+  // Opaque on purpose: an id, a batch, a count and a size, a last change. Invented ids, nothing personal.
+  const draft = (n: number, batchId: string, files: number, bytes: number, ageDays: number): DraftRow => ({
+    id: `00000000-0000-4000-8000-0000000000d${n}`,
+    batch: { id: batchId, year: batches.find((b) => b.id === batchId)!.year, name: batches.find((b) => b.id === batchId)!.name },
+    files,
+    bytes,
+    updatedAt: iso(-ageDays * DAY),
+  });
+  const drafts: DraftRow[] = [
+    draft(1, "mock-batch-2025", 3, 2_400_000, 120),
+    draft(2, "mock-batch-2026", 6, 7_100_000, 45),
+    draft(3, "mock-batch-2026", 2, 1_300_000, 29),
+    draft(4, "mock-batch-2026", 1, 800_000, 2),
+  ];
+  return { batches, applications, drafts };
 }
 
 const PDF_SLOTS: readonly SlotId[] = ["electricity-bill", "family-card", "parent-permission", "dtks"];
@@ -342,6 +361,39 @@ const applicationsMock: MockResource<ApplicationRow> = {
   seed: () => world.applications,
   parse: () => ({ ok: false, fields: {} }),
   custom({ method, rest, url, init, rows, access }) {
+    // The drafts that hold files, and the purge of one's files (SAKEM-093): `pendaftaran` write, like the Worker; a draft that
+    // changed less than 30 days ago is refused (409), and the list says which are which by the server's clock.
+    if (rest === "drafts/files" && method === "GET") {
+      if (access !== "write") return failure(403, "forbidden");
+      const now = Date.now();
+      const items: DraftFilesRow[] = world.drafts
+        .filter((row) => row.files > 0)
+        .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt) || a.id.localeCompare(b.id))
+        .map((row) => ({
+          ...row,
+          purgeable: now - Date.parse(row.updatedAt) >= DRAFT_PURGE_MIN_DAYS * DAY,
+          purgeableAt: new Date(Date.parse(row.updatedAt) + DRAFT_PURGE_MIN_DAYS * DAY).toISOString(),
+        }));
+      return json(envelope(items, url));
+    }
+    const draftPurge = /^drafts\/([^/]+)\/files\/purge$/.exec(rest);
+    if (draftPurge && method === "POST") {
+      if (access !== "write") return failure(403, "forbidden");
+      if (bodyOf(init)?.confirm !== true) return failure(400, "invalid", INVALID, { fields: { confirm: "Isian belum benar." } });
+      const draft = world.drafts.find((row) => row.id === decodeURIComponent(draftPurge[1]!));
+      if (!draft) return failure(404, "not_found");
+      const purgeableAt = Date.parse(draft.updatedAt) + DRAFT_PURGE_MIN_DAYS * DAY;
+      if (Date.now() < purgeableAt) {
+        return failure(409, "draft_active", `Draf ini baru diubah. Berkasnya baru bisa dihapus setelah ${DRAFT_PURGE_MIN_DAYS} hari tanpa perubahan.`, {
+          minInactiveDays: DRAFT_PURGE_MIN_DAYS,
+          purgeableAt: new Date(purgeableAt).toISOString(),
+        });
+      }
+      const purged = draft.files;
+      draft.files = 0;
+      draft.bytes = 0;
+      return json({ purged, pending: 0 });
+    }
     if (rest === "") {
       if (method !== "GET") return failure(404, "not_found");
       const params = url.searchParams;

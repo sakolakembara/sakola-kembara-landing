@@ -26,10 +26,11 @@ export const NEW_ACTION_LABEL: Record<string, string> = {
   "admin.invite_resend": "Undangan admin dikirim ulang",
 };
 
-/** The resource types the legacy table has no word for: the file of an upload. */
+/** The resource types the legacy table has no word for: the file of an upload, an applicant's file, and a draft that was never submitted (SAKEM-093). */
 export const NEW_RESOURCE_LABEL: Record<string, string> = {
   media: "Berkas unggahan",
   application_file: "Berkas pendaftar",
+  application_draft: "Draf pendaftaran",
 };
 
 /** The label of an audit action ("announcement.create" is "Pengumuman dibuat"); a name nobody labelled shows as it is. */
@@ -114,6 +115,7 @@ export const FILTER_RESOURCE_TYPES = [
   "shortlink",
   "media",
   "application_file",
+  "application_draft",
 ] as const;
 
 export interface FilterOption {

@@ -94,6 +94,45 @@ export const filePath = (applicationId: string, fileId: string) => `${API_PATH}/
 /** The manual purge of an application's files: `POST` with `{ "confirm": true }`. */
 export const purgePath = (applicationId: string) => `${API_PATH}/${encodeURIComponent(applicationId)}/files/purge`;
 
+// ─── Drafts that hold files (SAKEM-093) ──────────────────────────────────────────
+
+/** The screen of the drafts that were never submitted and still hold files: a tab of Pendaftar, for who may purge them. */
+export const DRAFTS_ROUTE = `${ROUTE}/drafts`;
+
+/** `GET`: the drafts that hold files (docs/cloudflare/portal-api.md, 12.4). Below `/drafts`, not `/:id`: a draft is not an application. */
+export const DRAFT_FILES_PATH = `${API_PATH}/drafts/files`;
+
+/** The manual purge of a draft's files: `POST` with `{ "confirm": true }`. */
+export const draftPurgePath = (draftId: string) => `${API_PATH}/drafts/${encodeURIComponent(draftId)}/files/purge`;
+
+/**
+ * How long a draft must have gone without a change before its files may be purged: the Worker's `DRAFT_PURGE_MIN_INACTIVE_DAYS`
+ * (a test keeps the two equal). The Worker decides; this is only the number the screen says.
+ */
+export const DRAFT_PURGE_MIN_DAYS = 30;
+
+/**
+ * A row of the list of drafts: opaque and light on personal data on purpose. No name, no email, no answer, no slot, no file name:
+ * only the draft's id (the screen shows its first eight characters), its batch, how many live files it holds and how big they
+ * are, when it last changed, and whether it may be purged now (the Worker's clock) and from when.
+ */
+export interface DraftFilesRow {
+  id: string;
+  batch: BatchRef;
+  files: number;
+  bytes: number;
+  updatedAt: string;
+  purgeable: boolean;
+  /** `updatedAt` plus the 30 days: from this instant the purge is allowed. */
+  purgeableAt: string;
+}
+
+/** What the list of drafts offers: pages only (no search, no filters, no sort: oldest change first, as the Worker answers). */
+export const DRAFTS_LIST_SPEC: ListSpec = { pageSize: 20 };
+
+/** The short id a row shows: the first eight characters of the draft's id. */
+export const shortDraftId = (draftId: string) => draftId.slice(0, 8);
+
 /**
  * What the list offers: the same names as the Worker's filters and sorts (src/api/applications.ts). The search is
  * a PREFIX of a name or an email (`q`), and `batch` is a batch id or `all`.

@@ -55,6 +55,14 @@ export const REFUSALS = {
 
 export const slotFull = (max: number): Refusal => refusal(409, "slot_full", "Slot ini sudah penuh. Hapus satu berkas dulu atau ganti berkas yang ada.", { max });
 
+/**
+ * 409: the draft was changed less than `days` days ago, so its files may belong to someone who is still filling in the form
+ * (the manual purge of a draft's files, src/private-files/drafts.ts). `purgeableAt` is when it will be allowed (an instant, not
+ * personal data). A function, not an entry of REFUSALS: the numbers are the caller's.
+ */
+export const draftActive = (days: number, purgeableAt: Date): Refusal =>
+  refusal(409, "draft_active", `Draf ini baru diubah. Berkasnya baru bisa dihapus setelah ${days} hari tanpa perubahan.`, { minInactiveDays: days, purgeableAt: purgeableAt.toISOString() });
+
 /** 415: not one of the types of this slot. `allowed` lists the slot's content types, as the admin upload does. */
 export function unsupportedType(types: readonly Exclude<FileType, "gif">[]): Refusal {
   return refusal(415, "unsupported_type", `Tipe file tidak didukung. Gunakan: ${types.map(typeName).join(", ")}.`, {

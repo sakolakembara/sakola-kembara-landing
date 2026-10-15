@@ -21,6 +21,7 @@ import { blogChecks } from "./negative-checks-blog.mjs";
 import { portalFoundationChecks } from "./negative-checks-portal-foundation.mjs";
 import { portalApiChecks } from "./negative-checks-portal-api.mjs";
 import { portalFilesChecks } from "./negative-checks-portal-files.mjs";
+import { portalDraftsChecks } from "./negative-checks-portal-drafts.mjs";
 import { portalStagingChecks } from "./negative-checks-portal-staging.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
@@ -67,6 +68,8 @@ const checks = [
   // The applicants' private files (SAKEM-083, P4): scripts/negative-checks-portal-files.mjs.
   ...portalFilesChecks,
 
+  // The manual purge of a draft's files (SAKEM-093): scripts/negative-checks-portal-drafts.mjs.
+  ...portalDraftsChecks,
   // The portal's staging environment and the runbook's cleanup SQL (SAKEM-098): scripts/negative-checks-portal-staging.mjs.
   ...portalStagingChecks,
 
