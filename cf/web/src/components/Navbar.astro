@@ -18,14 +18,24 @@ import NavbarSession from './NavbarSession.astro';
  *  - OFF (the default, Phase A): NOTHING. The slot is empty (decided by Dzul,
  *    2026-10-15): no "Masuk" link, no session call, not even the wrapper of
  *    the button, because there is no portal to sign in to and the page must not
- *    carry its address. The menu stays centred (the grid keeps its three
- *    columns) and the mobile menu has no empty strip under its links.
+ *    carry its address. The desktop menu goes to the RIGHT (asked by Dzul,
+ *    2026-10-16): with the third column empty a centred menu looks unbalanced.
+ *    The grid keeps its three columns and the menu's <ul> takes the third one,
+ *    its links packed to the end (`md:col-start-3 md:justify-end`, added only in
+ *    this state; the logo stays on the left). It is justify-end and not
+ *    justify-self-end because the checks (tests, e2e, check:production) look for
+ *    justify-self-end as the sign that the wrapper of the button is there. The
+ *    mobile menu has no empty strip under its links.
  *    Registration is reached from the call-to-action buttons of the pages themselves.
  *    (The two blocks are laid out the way they are, a blank line around the first
  *    and `</ul>{` for the second, because Astro then writes the same whitespace
  *    around them as around the old button: a page with the portal off is the old
- *    page minus the block, byte for byte.)
- *  - ON (Phase B): the auth-aware "Masuk" / "Portal" / "Dashboard" button. Its
+ *    page minus the block, byte for byte, apart from the class of the desktop
+ *    menu's <ul>. That one is a class:list, so its attribute is written the
+ *    same way as a plain class and the two states differ only in its value.)
+ *  - ON (Phase B): the auth-aware "Masuk" / "Portal" / "Dashboard" button, and
+ *    the layout of before: the menu in the centre column, the button on the
+ *    right (the <ul> carries neither of the two classes above). Its
  *    session script is a component of its own, NavbarSession, rendered only
  *    then. The session comes from the student portal's own Worker, which serves
  *    `/portal/api/*` on this same host (M4, SAKEM-083).
@@ -44,7 +54,7 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
       <img src={logoUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" />
     </a>
 
-    <ul class="hidden md:flex items-center gap-6 lg:gap-7">
+    <ul class:list={['hidden md:flex items-center gap-6 lg:gap-7', !portalOn && 'md:col-start-3 md:justify-end']}>
       {
         navLinks.map((link) => (
           <li>

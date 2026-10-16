@@ -38,8 +38,16 @@ const RENDERED = ['/blog', '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', 
 const INVALID = 'yes-please-0123';
 
 const navOf = (html) => html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
+// The <ul> of the desktop menu (Dzul, 2026-10-16): in the centre column while the portal is on, in the third column and packed to the right while it
+// is off. (justify-end, not justify-self-end: that word marks the wrapper of "Masuk" in the checks below, in scripts/e2e.mjs and in check:production.)
+const MENU_ON = '<ul class="hidden md:flex items-center gap-6 lg:gap-7">';
+const MENU_OFF = '<ul class="hidden md:flex items-center gap-6 lg:gap-7 md:col-start-3 md:justify-end">';
+const menuLists = (nav) => nav.match(/<ul class="hidden md:flex[^"]*">/g) ?? [];
 const scriptsOf = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-/** What a page's navbar says: 'on' (Masuk twice, one session script), 'off' (the slot of the button EMPTY: only the logo and the menu links, no session address anywhere), or the problem. */
+/**
+ * What a page's navbar says: 'on' (Masuk twice, one session script, the menu in the centre column), 'off' (the slot of the button EMPTY: only the logo and
+ * the menu links, the menu packed to the right, no session address anywhere), or the problem.
+ */
 function stateOf(html) {
   const nav = navOf(html);
   const masuk = (nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length;
@@ -48,9 +56,12 @@ function stateOf(html) {
   const empty = JSON.stringify(hrefs) === JSON.stringify(['/', ...menu, ...menu]) && !/Masuk|Daftar Sekarang|\/daftar|\/portal|data-auth-link|justify-self-end|mt-6/.test(nav) && (nav.match(/<button\b/g) ?? []).length === 1;
   const sessions = scriptsOf(html).filter((code) => code.includes('get-session')).length;
   const mentions = (html.match(/get-session/g) ?? []).length;
-  if (masuk === 2 && !nav.includes('Daftar Sekarang') && sessions === 1 && mentions === 1) return 'on';
-  if (masuk === 0 && empty && sessions === 0 && mentions === 0 && !html.includes('data-auth-link')) return 'off';
-  return `inconsistent (Masuk ${masuk}, empty slot ${empty}, session scripts ${sessions}, mentions ${mentions})`;
+  const bar = JSON.stringify(menuLists(nav));
+  const centred = bar === JSON.stringify([MENU_ON]) && !nav.includes('col-start-3');
+  const right = bar === JSON.stringify([MENU_OFF]);
+  if (masuk === 2 && !nav.includes('Daftar Sekarang') && sessions === 1 && mentions === 1 && centred) return 'on';
+  if (masuk === 0 && empty && sessions === 0 && mentions === 0 && !html.includes('data-auth-link') && right) return 'off';
+  return `inconsistent (Masuk ${masuk}, empty slot ${empty}, session scripts ${sessions}, mentions ${mentions}, menu ${menuLists(nav).join(' ') || 'none'})`;
 }
 
 const results = [];

@@ -30,6 +30,20 @@ describe('the navbar button follows the portal switch (SAKEM-103, Phase A)', () 
     expect(navbar.match(/<a\b/g)).toHaveLength(1 + 1 + 1 + 2);
   });
 
+  it('the desktop menu follows the switch (Dzul, 2026-10-16): packed to the RIGHT in the third column while the portal is off, in the centre column as before while it is on; the grid, the logo and the mobile menu do not change', () => {
+    // the grid keeps its three columns in both states, and the logo stays on the left
+    expect(navbar.match(/md:grid md:grid-cols-\[1fr_auto_1fr\]/g)).toHaveLength(1);
+    expect(navbar).toContain('<a href="/" aria-label="Sakola Kembara" class="flex items-center justify-self-start">');
+    // the <ul> has its own classes in both states; the pair that moves it to the third column and packs its links to the end is added ONLY
+    // when the portal is off (class:list writes the attribute like a plain class, so the page with the portal on is the old page byte for byte)
+    const menu = "<ul class:list={['hidden md:flex items-center gap-6 lg:gap-7', !portalOn && 'md:col-start-3 md:justify-end']}>";
+    expect(navbar.split(menu).length - 1).toBe(1);
+    // it is justify-end and not justify-self-end: that word marks the wrapper of "Masuk" for the built tests, scripts/e2e*.mjs and check:production
+    expect(navbar.replace(/\/\*\*[\s\S]*?\*\//g, '').match(/justify-self-end/g)).toHaveLength(1);
+    // the mobile menu is untouched
+    expect(navbar.match(/<ul class="flex flex-col gap-4">/g)).toHaveLength(1);
+  });
+
   it('the portal switch is read the way the beacon is: the page\'s own kind decides which source, no fallback', () => {
     expect(navbar).toContain("portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_PORTAL_ENABLED, runtime: env.PORTAL_ENABLED })");
     expect(navbar).toContain("import { BUILD_PORTAL_ENABLED, portalEnabled } from '~/lib/portal-enabled';");

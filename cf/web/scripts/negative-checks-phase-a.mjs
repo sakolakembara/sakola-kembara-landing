@@ -1,8 +1,8 @@
 // Proves the tests of Phase A of the cutover are not vacuous (SAKEM-103): each check breaks ONE safeguard of the portal switch (the strict value,
-// the two sources, the log line, the navbar's two branches and its separate script), of the WordPress pass-through (the segment boundary, the exact
-// entries, the list itself, the redirects that must not shadow it), of the registration shortlink (not reserved, not redirected, the polite page,
-// its status and its cache header), of the one-hop WordPress uploads and of the staged HSTS, runs the tests that must notice, expects them to FAIL,
-// and always restores the file.
+// the two sources, the log line, the navbar's two branches, its separate script and the desktop menu moved to the right while the slot is empty),
+// of the WordPress pass-through (the segment boundary, the exact entries, the list itself, the redirects that must not shadow it), of the
+// registration shortlink (not reserved, not redirected, the polite page, its status and its cache header), of the one-hop WordPress uploads and
+// of the staged HSTS, runs the tests that must notice, expects them to FAIL, and always restores the file.
 //
 //   node scripts/negative-checks-phase-a.mjs        (pnpm test:negative:phase-a)
 //
@@ -47,6 +47,8 @@ const WARN_LINE = 'warn(`portal: ${PORTAL_ENABLED_VARIABLE} is set but is neithe
 const BAR = '{\n      portalOn && (\n        <div class="hidden md:flex items-center justify-self-end">';
 const MENU = '{\n      portalOn && (\n        <div class="flex flex-col mt-6">';
 const BUTTON = '<a href="/daftar" class="btn">Daftar Sekarang</a>';
+const MENU_CLASSES = "!portalOn && 'md:col-start-3 md:justify-end'";
+const MENU_PAIR = "'md:col-start-3 md:justify-end'";
 const LIST_HEAD = 'export const LEGACY_PATHS: readonly LegacyPath[] = [\n';
 
 const checks = [
@@ -75,6 +77,15 @@ const checks = [
   { name: 'the empty slot of the bar gets a registration button again (Dzul decided it stays empty)', file: navbar, from: BAR, to: `{\n      !portalOn && ${BUTTON}\n    }${BAR}`, tests: NAVBAR },
   { name: 'the empty slot of the mobile menu gets a registration button again', file: navbar, from: MENU, to: `{\n      !portalOn && ${BUTTON}\n    }${MENU}`, tests: NAVBAR },
   { name: 'the closing section of /gabung-siswa gets its second sentence back (about progress saved in the browser: the portal wizard)', file: 'src/pages/gabung-siswa.astro', from: 'lead="Isi formulir pendaftaran sekarang."', to: 'lead="Isi formulir pendaftaran sekarang. Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini."', tests: COPY },
+  { name: 'the desktop menu is moved to the right whatever the switch says (Phase B would have it next to "Masuk", off the centre)', file: navbar, from: MENU_CLASSES, to: MENU_PAIR, tests: NAVBAR },
+  { name: 'the desktop menu is moved to the right only while the portal is ON (the condition is the wrong way round)', file: navbar, from: MENU_CLASSES, to: MENU_CLASSES.replace('!portalOn', 'portalOn'), tests: NAVBAR },
+  { name: 'the desktop menu is never moved: with the slot empty it stays unbalanced in the centre column (Dzul, 2026-10-16)', file: navbar, from: MENU_CLASSES, to: 'false', tests: NAVBAR },
+  { name: 'the desktop menu takes no third column (it only packs its links to the end of the centre column)', file: navbar, from: MENU_PAIR, to: "'md:justify-end'", tests: NAVBAR },
+  { name: 'the desktop menu is not packed to the end of its column (its links start at the left of the third column)', file: navbar, from: MENU_PAIR, to: "'md:col-start-3'", tests: NAVBAR },
+  { name: 'the desktop menu is right-aligned with justify-self-end (the word every check reads as "the wrapper of Masuk is there": the production check would fail on a good page)', file: navbar, from: MENU_PAIR, to: "'md:col-start-3 md:justify-self-end'", tests: NAVBAR },
+  { name: 'the grid loses its centre column (the menu would be placed by something else than the three columns)', file: navbar, from: 'md:grid-cols-[1fr_auto_1fr]', to: 'md:grid-cols-[1fr_1fr]', tests: NAVBAR },
+  { name: 'the logo is no longer on the left of the bar', file: navbar, from: 'class="flex items-center justify-self-start">', to: 'class="flex items-center justify-self-center">', tests: NAVBAR },
+  { name: 'the mobile menu changes with the desktop one', file: navbar, from: '<ul class="flex flex-col gap-4">', to: '<ul class="flex flex-col gap-4 md:col-start-3">', tests: NAVBAR },
   { name: 'the session script is rendered on every page (the address of the portal is in a page of Phase A)', file: navbar, from: '</script>{portalOn && <NavbarSession />}', to: '</script><NavbarSession />', tests: NAVBAR },
   { name: 'the navbar no longer tells a page its own kind (a prerendered page would read the Worker variable)', file: navbar, from: 'prerendered: Astro.isPrerendered', to: 'prerendered: false', tests: NAVBAR },
   { name: 'the session is asked of an /api the apex does not have', file: session, from: "'/portal/api/auth/get-session'", to: "'/api/auth/session'", tests: NAVBAR },
