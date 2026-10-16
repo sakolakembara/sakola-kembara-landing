@@ -150,6 +150,19 @@ const checks = [
   { name: 'checker: a registration button in the navbar is accepted', file: CHECKER, from: '        if (/Daftar Sekarang|\\/daftar/.test(nav)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: a filled navbar slot is accepted', file: CHECKER, from: '        if (/justify-self-end/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: a wrong HSTS value on a Worker answer is accepted (T-36)', file: CHECKER, from: '        if (value !== EXPECT.hsts) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  // ---- SAKEM-105: the reports are a section of /donasi, /laporan is one hop to it (T-37), the sitemap no longer lists /laporan (T-05), T-19 asks a static page
+  { name: 'checker: /laporan may be any redirect status, not only a 308 (T-37)', file: CHECKER, from: "      expectRedirect(laporan, [308], site('/donasi#laporan'), problems);", to: "      expectRedirect(laporan, [301, 302, 307, 308], site('/donasi#laporan'), problems);", tests: CHECK },
+  { name: 'checker: /laporan is not asked to be a redirect at all (T-37)', file: CHECKER, from: "      expectRedirect(laporan, [308], site('/donasi#laporan'), problems);\n", to: '', tests: CHECK },
+  { name: 'checker: /laporan/ is not asked to be a redirect at all (T-37)', file: CHECKER, from: "      expectRedirect(laporanSlash, [308], site('/donasi#laporan'), problems);\n", to: '', tests: CHECK },
+  { name: 'checker: /donasi may answer anything but 200 (T-37)', file: CHECKER, from: '        if (donasi.status !== 200) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /donasi may lack the Laporan section (T-37)', file: CHECKER, from: '        if (!/<section\\b[^>]*\\bid=["\']laporan["\']/i.test(donasi.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /donasi may be rendered from a stale or empty reports list (T-37)', file: CHECKER, from: '        if (!EXPECT.healthyReportsSources.includes(source)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /donasi may show the failure panel of the reports (T-37)', file: CHECKER, from: '        if (/Laporan belum dapat ditampilkan/.test(donasi.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a link to /laporan on /donasi is accepted (T-37)', file: CHECKER, from: '        if (/href=["\']\\/laporan\\/?["\']/i.test(donasi.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: /donasi may lack the footer link to /donasi#laporan (T-37)', file: CHECKER, from: '        if (!/<a\\b[^>]*\\bhref=["\']\\/donasi#laporan["\']/i.test(donasi.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a sitemap that still lists /laporan is accepted (T-05)', file: CHECKER, from: "        if (locs.includes(site('/laporan'))) problems.push(", to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a sitemap without /donasi is accepted (T-05)', file: CHECKER, from: "        if (!locs.includes(site('/donasi'))) problems.push(", to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: the slash of a static page may take the assets layer\'s 307 (T-19)', file: CHECKER, from: "      expectRedirect(slash, [308], site('/gabung-siswa'), problems);", to: "      expectRedirect(slash, [308, 307], site('/gabung-siswa'), problems);", tests: CHECK },
 
   // ---------------------------------------------------------------- the zone-export check
   { name: 'zone: a Cloudflare range is missing from the list', file: ZONE, from: "'104.16.0.0/13', ", to: '', tests: ZONE_TESTS },

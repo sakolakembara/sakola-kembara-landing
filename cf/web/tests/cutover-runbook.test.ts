@@ -209,7 +209,7 @@ describe('section 14 says what the code does', () => {
     expect(rows(smoke, /^TA-07$/).length).toBe(0);
   });
 
-  it("section 7's rows that SAKEM-103 wrote (T-09, T-16, T-31, T-34, T-35, T-36) say what the checker expects, so the two documents do not contradict", () => {
+  it("section 7's rows that SAKEM-103 and SAKEM-105 wrote (T-09, T-16, T-31, T-34, T-35, T-36, T-37) say what the checker expects, so the two documents do not contradict", () => {
     const section7 = lines.slice(0, start).join('\n');
     const row = (id: string) => rows(section7, new RegExp(`^${id}$`))[0]?.join(' | ') ?? '';
     expect(row('T-36')).toContain(`strict-transport-security: ${EXPECT.hsts}`);
@@ -231,6 +231,11 @@ describe('section 14 says what the code does', () => {
     expect(row('T-35')).toContain('get-session');
     expect(row('T-35')).toContain('href="/portal/login"');
     expect(row('T-35')).toContain('justify-self-end');
+    // T-37 (SAKEM-105): the reports are a section of Donasi, and /laporan is one hop to it
+    expect(row('T-37')).toContain('`/donasi#laporan`');
+    expect(row('T-37')).toContain('**one 308**');
+    expect(row('T-37')).toContain('id=\"laporan\"');
+    expect(row('T-37')).toContain('never a chain through `/laporan`');
     // T-16 and T-17: Phase A
     expect(row('T-16')).toContain('`/login` reaches **WordPress** (a 302 to `/wp-login.php`');
     expect(row('T-16')).toContain("`/register` and `/forgot-password` are the site's **404 page**");

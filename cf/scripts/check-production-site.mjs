@@ -12,7 +12,7 @@
 // `--allow-network` is the reminder, as in the SEO parity tool.
 //
 // What it compares with: the Phase A expectations, listed below as constants and in the runbook (the smoke tests T-xx, among
-// them T-16, T-17, T-31 and T-34 to T-36 that SAKEM-103 wrote, and the TA-xx of section 14). Every line of the output carries
+// them T-16, T-17, T-31 and T-34 to T-36 that SAKEM-103 wrote, T-37 that SAKEM-105 wrote, and the TA-xx of section 14). Every line of the output carries
 // the ID of the runbook test it answers. It is the GET half of those tests: what needs a browser or the admin (a sign-in, a
 // click counter, the real form behind /daftar) stays by hand.
 //
@@ -39,6 +39,8 @@ export const EXPECT = {
   securityHeaders: { 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY' },
   /** The names the Worker's `x-blog-source` header may carry on a healthy answer. */
   healthyBlogSources: ['network', 'cache'],
+  /** The same for `x-reports-source` on /donasi (SAKEM-105): `stale` and `empty` mean the Laporan section is showing a copy or its failure panel. */
+  healthyReportsSources: ['network', 'cache'],
 };
 
 export const MIN_DELAY_MS = 1000;
@@ -278,6 +280,8 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
         if (!EXPECT.healthyBlogSources.includes(source)) problems.push(`x-blog-source is ${source ?? 'missing'}, expected ${EXPECT.healthyBlogSources.join(' or ')}`);
         const locs = [...sitemap.body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]);
         if (locs.length < minSitemapUrls) problems.push(`${locs.length} URLs, expected at least ${minSitemapUrls}`);
+        if (locs.includes(site('/laporan'))) problems.push('lists /laporan, which is a redirect since SAKEM-105 (a redirect is not a sitemap URL)');
+        if (!locs.includes(site('/donasi'))) problems.push('does not list /donasi');
         const stray = locs.filter((loc) => !loc.startsWith(`${site('')}/`) && loc !== site(''));
         if (stray.length > 0) problems.push(`${stray.length} URL(s) not on ${HOSTS.site} (for example ${new URL(stray[0]).host})`);
         articlePaths = locs.filter((loc) => loc.startsWith(site('/blog/'))).map((loc) => new URL(loc).pathname);
@@ -393,12 +397,42 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       verdict('T-15', `/admin/blog?x=1 is a 308 to ${HOSTS.admin}/blog?x=1 (path and query kept)`, problems);
     }
 
-    const slash = await client.get(site('/donasi/'));
+    // /gabung-siswa is still a static file of the assets layer (/donasi has been the Worker's since SAKEM-105, which folds its slash itself).
+    const slash = await client.get(site('/gabung-siswa/'));
     examine(slash);
     {
       const problems = [];
-      expectRedirect(slash, [308], site('/donasi'), problems);
-      verdict('T-19', '/donasi/ is a 308 to /donasi (not the assets layer\'s 307)', problems);
+      expectRedirect(slash, [308], site('/gabung-siswa'), problems);
+      verdict('T-19', '/gabung-siswa/ (a static page) is a 308 to /gabung-siswa (not the assets layer\'s 307)', problems);
+    }
+
+    // ---- the reports are a section of /donasi since SAKEM-105: the old page is ONE permanent hop to it, and the page has the section (T-37)
+    const laporan = await client.get(site('/laporan'));
+    const laporanSlash = await client.get(site('/laporan/'));
+    const donasi = await client.get(site('/donasi'));
+    examine(laporan);
+    examine(laporanSlash);
+    examine(donasi);
+    {
+      const problems = [];
+      expectRedirect(laporan, [308], site('/donasi#laporan'), problems);
+      expectRedirect(laporanSlash, [308], site('/donasi#laporan'), problems);
+      verdict('T-37', '/laporan and /laporan/ are each ONE 308 to /donasi#laporan (the reports are a section of Donasi; no chain, no page of its own)', problems);
+    }
+    {
+      const problems = [];
+      if (ok(donasi, problems)) {
+        if (donasi.status !== 200) problems.push(`status ${donasi.status}`);
+        if (!/html/i.test(donasi.headers['content-type'] ?? '')) problems.push(`content-type ${donasi.headers['content-type'] ?? 'missing'}`);
+        if (canonicalOf(donasi.body) !== site('/donasi')) problems.push(`canonical ${canonicalOf(donasi.body) ?? 'missing'}`);
+        if (!/<section\b[^>]*\bid=["']laporan["']/i.test(donasi.body)) problems.push('no section with id="laporan"');
+        const source = donasi.headers['x-reports-source'];
+        if (!EXPECT.healthyReportsSources.includes(source)) problems.push(`x-reports-source is ${source ?? 'missing'}, expected ${EXPECT.healthyReportsSources.join(' or ')} (is the Worker answering, and does it reach the API?)`);
+        if (/Laporan belum dapat ditampilkan/.test(donasi.body)) problems.push('the Laporan section shows its failure panel');
+        if (/href=["']\/laporan\/?["']/i.test(donasi.body)) problems.push('a link to /laporan (the menu has no Laporan item since SAKEM-105, and the footer goes to /donasi#laporan)');
+        if (!/<a\b[^>]*\bhref=["']\/donasi#laporan["']/i.test(donasi.body)) problems.push('no link to /donasi#laporan (the footer\'s "Laporan")');
+      }
+      verdict('T-37', '/donasi: 200 html with the Laporan section (id="laporan", the list from the API, not its failure panel), the footer links to /donasi#laporan and nothing links to /laporan', problems);
     }
 
     // ---- static assets found in the home page: immutable, no cookie, the same security headers (T-20, T-21), cache status noted
@@ -752,7 +786,7 @@ export function parseCli(argv) {
 
 /** The URLs the plan names (the discovered ones are added at run time and are on these hosts too). */
 export const PLAN = [
-  ['site', ['/', 'http://sakolakembara.org/', '/robots.txt', '/sitemap.xml', '/blog (twice)', '/blog/<first article of the sitemap>', '/cerita/<that slug>/', '/education/', '/no-such-page-check-1f3a', '/api/public/blog', '/api/check-x', '/admin/blog?x=1', '/donasi/', 'the first /_astro/*.css and /_img/*.webp of the home page (twice each)', '/wp-content/uploads/<the first migrated image of that article>', '/daftar', '/daftar/', '/Daftar', '/gabung-siswa', '/wp-login.php', '/wp-admin/', '/wp-json/', '/login', '/register', '/forgot-password', '/portal', '/portal/status', '/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']],
+  ['site', ['/', 'http://sakolakembara.org/', '/robots.txt', '/sitemap.xml', '/blog (twice)', '/blog/<first article of the sitemap>', '/cerita/<that slug>/', '/education/', '/no-such-page-check-1f3a', '/api/public/blog', '/api/check-x', '/admin/blog?x=1', '/gabung-siswa/', '/laporan', '/laporan/', '/donasi', 'the first /_astro/*.css and /_img/*.webp of the home page (twice each)', '/wp-content/uploads/<the first migrated image of that article>', '/daftar', '/daftar/', '/Daftar', '/gabung-siswa', '/wp-login.php', '/wp-admin/', '/wp-json/', '/login', '/register', '/forgot-password', '/portal', '/portal/status', '/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']],
   ['www', ['/blog?x=1']],
   ['admin', ['/', '/api/config', '/api/me', '/api/public/team', '/uploads/check-x', '/api/dev/mailbox']],
   ['files', ['/', '/uploads/check-x-missing.png', 'one uploaded file referenced by /tim or the first article (twice), when there is one']],
