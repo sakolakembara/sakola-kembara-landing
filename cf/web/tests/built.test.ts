@@ -16,7 +16,7 @@ const walk = (dir: string): string[] =>
 describe.skipIf(!built)('build output', () => {
   const articles = blogPosts().articles;
 
-  it('prerenders the home page, the program pages, /donasi and robots.txt; the articles and the sitemap are rendered by the Worker (API data)', () => {
+  it('prerenders the home page, /gabung-siswa, the program pages and robots.txt; the articles, /donasi (with the reports) and the sitemap are rendered by the Worker (API data)', () => {
     expect(existsSync(path.join(dist, 'client/index.html'))).toBe(true);
     expect(existsSync(path.join(dist, 'client/robots.txt'))).toBe(true);
     // The blog is managed in the new admin and changes without a rebuild, so no article is a file any more.
@@ -32,7 +32,7 @@ describe.skipIf(!built)('build output', () => {
       .filter((f) => f.endsWith('.html') && f !== 'index.html' && f !== '404.html')
       .map((f) => `/${f.slice(0, -'.html'.length)}`)
       .sort();
-    expect(pages, 'the build prerenders exactly the pages the guide says it does').toEqual(['/donasi', '/gabung-siswa', '/program/pasca-pembinaan', '/program/pembinaan', '/program/prapembinaan']);
+    expect(pages, 'the build prerenders exactly the pages the guide says it does').toEqual(['/gabung-siswa', '/program/pasca-pembinaan', '/program/pembinaan', '/program/prapembinaan']);
     const lines = read('client/_redirects').trim().split('\n');
     // a fold is a rule whose destination is its own source without the slash
     const folds = lines.filter((l) => {
@@ -44,11 +44,21 @@ describe.skipIf(!built)('build output', () => {
     expect(lines.slice(0, pages.length).sort()).toEqual([...folds].sort());
   });
 
-  it('does NOT prerender the pages that must be dynamic: /blog, /blog/<slug>, /kontak, /tim, /sitemap.xml, the 404', () => {
-    for (const f of ['blog.html', 'blog/index.html', 'kontak.html', 'tim.html', 'sitemap.xml', '404.html']) {
+  it('does NOT prerender the pages that must be dynamic: /blog, /blog/<slug>, /kontak, /tim, /donasi (it carries the reports, SAKEM-105), /sitemap.xml, the 404; and /laporan is no page at all', () => {
+    for (const f of ['blog.html', 'blog/index.html', 'kontak.html', 'tim.html', 'donasi.html', 'donasi/index.html', 'laporan.html', 'laporan/index.html', 'sitemap.xml', '404.html']) {
       expect(existsSync(path.join(dist, 'client', f)), f).toBe(false); // a static 404 would be served with status 200
     }
     expect(articles.length).toBe(ARTICLE_COUNT);
+  });
+
+  it('_redirects sends /laporan (with and without the slash) and the older /impact-reports to /donasi#laporan, one hop, with a 308; the fragment is in the destination (SAKEM-105)', () => {
+    const lines = read('client/_redirects').split('\n').map((l) => l.trim().split(/\s+/).join(' '));
+    for (const source of ['/laporan', '/laporan/', '/impact-reports', '/impact-reports/', '/impact-reports/*']) {
+      expect(lines, source).toContain(`${source} /donasi#laporan 308`);
+    }
+    // not a rule that points at /laporan (two hops), and nothing folds /donasi/ (the Worker's own fold answers a rendered page)
+    expect(lines.filter((l) => l.split(' ')[1] === '/laporan')).toEqual([]);
+    expect(lines.filter((l) => l.split(' ')[0] === '/donasi/')).toEqual([]);
   });
 
   it('home page: the site graph with the Organization, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {

@@ -44,7 +44,8 @@ let stub;
 let exitCode = 1;
 try {
   // The live stub is made of the candidate's own content, so the baseline is "the same words in WordPress clothes".
-  const pagePaths = ['/', '/blog', '/tim', '/kontak', '/donasi', '/laporan', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+  // (/laporan is not one of them since SAKEM-105: it is a 308 to /donasi#laporan, listed by the tool with the other redirects)
+  const pagePaths = ['/', '/blog', '/tim', '/kontak', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
   const pages = [];
   for (const p of pagePaths) {
     const res = await fetch(`${stack.base}${p}`, { redirect: 'manual' });
@@ -85,6 +86,14 @@ try {
       assert.equal(r.candidate.final.path, `/blog/${a.id}`);
       assert.deepEqual(r.candidate.chain.map((h) => h.status), [308]);
     }
+  });
+  check('SAKEM-105: /laporan/, a page that moved into /donasi, is ONE 308 to a 200 on the candidate: INFO only (no blocker, no chain, not "missing"), the tool reads it as a redirect to a page that exists', () => {
+    const r = byPath.get('/laporan/');
+    assert.ok(r, 'the tool lists /laporan/ (a static source of the redirect table)');
+    assert.deepEqual(r.candidate.chain.map((h) => h.status), [308]);
+    assert.equal(r.candidate.final.path, '/donasi');
+    assert.equal(r.findings.filter((f) => f.severity === 'BLOCKER').length, 0, codes('/laporan/').join(', '));
+    assert.ok(!codes('/laporan/').some((c) => ['url-missing', 'redirect-chain', 'redirect-temporary', 'canonical-other-url'].includes(c)), codes('/laporan/').join(', '));
   });
   check('planted: the pages only the live site has are BLOCKERs (url-missing)', () => {
     for (const p of PLANTED.missingOnCandidate) assert.ok(codes(p).includes('url-missing'), `${p}: ${codes(p).join(', ')}`);

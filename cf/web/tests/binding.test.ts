@@ -162,7 +162,7 @@ describe('where the API is decided: one place', () => {
   });
 
   it('every page that reads content hands the loader `contentRuntime(env, ...)`; the team page does the same and only adds its own fresh window', () => {
-    for (const page of ['src/pages/laporan.astro', 'src/pages/gabung-siswa/docs.astro']) {
+    for (const page of ['src/pages/donasi.astro', 'src/pages/gabung-siswa/docs.astro']) {
       expect(readWeb(page), page).toContain('contentRuntime(env, Astro.locals.cfContext)');
     }
     const tim = readWeb('src/pages/tim.astro');

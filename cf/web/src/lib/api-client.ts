@@ -3,7 +3,7 @@
 //
 //   production   an internal SERVICE BINDING named `API`, bound to the API Worker's `PublicApi`
 //                entrypoint (wrangler.jsonc, `services`). Every call goes through it: the contact form
-//                and ALL reads of /api/public/* (/tim, /laporan, /gabung-siswa/docs, the blog). The
+//                and ALL reads of /api/public/* (/tim, /donasi, /gabung-siswa/docs, the blog). The
 //                Worker calls the API Worker directly, not over the public internet, so there is no
 //                public path to authenticate and no shared secret, and the read endpoints are not
 //                reachable from the internet at all (a cache-busting query string cannot reach D1).
@@ -13,7 +13,7 @@
 //                developer machine never needs the API Worker. Do not set them in production: the
 //                reads and the contact form would then leave the binding and travel over public HTTP.
 //   Every page that reads content takes its target from `contentApiTarget` (lib/content-api.ts
-//   `contentRuntime` for /tim, /laporan and /gabung-siswa/docs; lib/blog.ts for the blog), so the
+//   `contentRuntime` for /tim, /donasi and /gabung-siswa/docs; lib/blog.ts for the blog), so the
 //   rule above is decided in this one file.
 
 /** The bit of a service binding this site uses. */

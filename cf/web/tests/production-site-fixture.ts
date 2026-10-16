@@ -30,8 +30,9 @@ export const SECURITY: Record<string, string> = {
 };
 const html = { 'content-type': 'text/html; charset=utf-8' };
 
-// The navbar of Phase A: the logo and the menu links, twice (bar and menu), and nothing in the slot of "Masuk".
-const menu = ['/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'].map((href) => `<a href="${href}">${href.slice(1)}</a>`).join('');
+// The navbar of Phase A: the logo and the menu links, twice (bar and menu), and nothing in the slot of "Masuk". Five items since SAKEM-105
+// (the reports are a section of /donasi, so Laporan left the menu); the footer's "Laporan" goes to /donasi#laporan.
+const menu = ['/tim', '/gabung-siswa', '/donasi', '/blog'].map((href) => `<a href="${href}">${href.slice(1)}</a>`).join('');
 const navbar = `<nav><a href="/">Sakola Kembara</a>${menu}<button id="nav-toggle">Menu</button>${menu}</nav>`;
 const page = (extra = '', head = '') =>
   `<!doctype html><html lang="id-ID" class="scroll-smooth"><head><meta charset="utf-8">${head}</head><body>${navbar}<main>${extra}</main></body></html>`;
@@ -49,7 +50,7 @@ const wordpressLogin =
   '<!DOCTYPE html><html lang="en-US"><head><title>Log In</title></head><body class="login"><form name="loginform" id="loginform" action="https://sakolakembara.org/wp-login.php" method="post"><input type="text" name="log" id="user_login"><input type="password" name="pwd"></form></body></html>';
 
 const sitemap = (): string => {
-  const locs = ['https://sakolakembara.org', 'https://sakolakembara.org/blog', 'https://sakolakembara.org/tim', 'https://sakolakembara.org/laporan', 'https://sakolakembara.org/donasi', 'https://sakolakembara.org/gabung-siswa', 'https://sakolakembara.org/kontak', 'https://sakolakembara.org/program/pembinaan', 'https://sakolakembara.org/program/prapembinaan', 'https://sakolakembara.org/program/pasca-pembinaan'];
+  const locs = ['https://sakolakembara.org', 'https://sakolakembara.org/blog', 'https://sakolakembara.org/tim', 'https://sakolakembara.org/donasi', 'https://sakolakembara.org/gabung-siswa', 'https://sakolakembara.org/kontak', 'https://sakolakembara.org/program/pembinaan', 'https://sakolakembara.org/program/prapembinaan', 'https://sakolakembara.org/program/pasca-pembinaan'];
   locs.push(`https://sakolakembara.org/blog/${SLUG}`, ...Array.from({ length: 85 }, (_, i) => `https://sakolakembara.org/blog/artikel-${i + 1}`));
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${locs.map((loc) => `<url><loc>${loc}</loc></url>`).join('')}</urlset>`;
 };
@@ -85,7 +86,19 @@ export function healthySite(): Map<string, Entry> {
   set('https://sakolakembara.org/api/public/blog', apiNotFound);
   set('https://sakolakembara.org/api/check-x', apiNotFound);
   set('https://sakolakembara.org/admin/blog?x=1', redirect(308, 'https://admin.sakolakembara.org/blog?x=1'));
-  set('https://sakolakembara.org/donasi/', redirect(308, '/donasi'));
+  // a static page of the assets layer: its slash is folded by a rule of _redirects (the 308 of T-19; /donasi is the Worker's since SAKEM-105)
+  set('https://sakolakembara.org/gabung-siswa/', redirect(308, '/gabung-siswa'));
+  // SAKEM-105: the reports are a section of /donasi. /laporan is one permanent hop to it (the assets layer's rule, slash or not); /donasi is the Worker's page
+  set('https://sakolakembara.org/laporan', redirect(308, '/donasi#laporan'));
+  set('https://sakolakembara.org/laporan/', redirect(308, '/donasi#laporan'));
+  set('https://sakolakembara.org/donasi', {
+    status: 200,
+    headers: { ...SECURITY, ...html, 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300', 'x-reports-source': 'network' },
+    body: page(
+      '<section id="laporan"><h2>Laporan</h2><article><h4>Laporan Tahunan 2025</h4></article></section>',
+      '<link rel="canonical" href="https://sakolakembara.org/donasi">',
+    ).replace('</body>', '<footer><a href="/tim">Team</a><a href="/donasi#laporan">Laporan</a><a href="/blog">Blog</a></footer></body>'),
+  });
   set('https://sakolakembara.org/_astro/Base.CYEQ0bMh.css', (nth) => ({ status: 200, headers: { ...SECURITY, 'content-type': 'text/css; charset=utf-8', 'cache-control': immutable, 'cf-cache-status': nth === 1 ? 'MISS' : 'HIT' }, body: 'body{}' }));
   set('https://sakolakembara.org/_img/27f45874d486-480.webp', (nth) => ({ status: 200, headers: { ...SECURITY, 'content-type': 'image/webp', 'cache-control': immutable, 'cf-cache-status': nth === 1 ? 'MISS' : 'HIT' } }));
   set('https://sakolakembara.org/tim', { status: 200, headers: { ...SECURITY, 'content-type': 'text/html' }, body: page(`<img src="${FILE_URL}">`) });

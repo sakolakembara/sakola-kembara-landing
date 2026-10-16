@@ -289,14 +289,15 @@ pnpm deploy:staging:command      # prints:  pnpm exec wrangler deploy -c dist/se
 ```bash
 W=https://sakem-web-staging.<account-subdomain>.workers.dev
 A=https://sakem-admin-staging.<account-subdomain>.workers.dev
-for p in / /blog /tim /laporan /gabung-siswa /gabung-siswa/docs /kontak /donasi /program/prapembinaan /robots.txt /sitemap.xml /feed /no/such/page /api/x /admin /_next/x /daftar /register /wp-login.php; do
+for p in / /blog /tim /laporan /donasi /gabung-siswa /gabung-siswa/docs /kontak /program/prapembinaan /robots.txt /sitemap.xml /feed /no/such/page /api/x /admin /_next/x /daftar /register /wp-login.php; do
   printf '%-26s ' "$p"; curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' "$W$p"; done
 ```
 
 | Request | Expected |
 | --- | --- |
-| `W/`, `/gabung-siswa`, `/donasi`, `/program/prapembinaan`, `/robots.txt` | 200 (static files: no Worker request) |
-| `W/blog`, `/tim`, `/laporan`, `/gabung-siswa/docs` | 200, the empty list states, until step 12 (a 503 means the site cannot reach the admin Worker: check the binding) |
+| `W/`, `/gabung-siswa`, `/program/prapembinaan`, `/robots.txt` | 200 (static files: no Worker request) |
+| `W/laporan` | **308** to `/donasi#laporan` (SAKEM-105: a `_redirects` answer of the assets layer, no Worker request; the page is gone) |
+| `W/blog`, `/tim`, `/donasi`, `/gabung-siswa/docs` | 200, the empty list states, until step 12 (a 503 means the site cannot reach the admin Worker: check the binding; `/donasi` is the exception, it stays a **200** and its Laporan section shows the failure panel, since SAKEM-105 `/donasi` is a Worker page) |
 | `W/kontak` | 200; `curl -s $W/kontak \| grep -c challenges.cloudflare.com` is `1` (the widget script) |
 | `W/sitemap.xml` | 200 (XML) |
 | `W/feed` | 308 to `/blog` (a `_redirects` rule) |
@@ -404,7 +405,7 @@ Per Worker, method and route: count, p50, p95, p99, max CPU, wall time, the outc
 - **The 401 routes of the admin** (`/api/me`, `/api/dashboard`, `/api/admin/blog`) should now cost about what `/api/config` costs: a request without a session cookie no longer builds Better Auth. A cookie-less probe cannot show the rest (the shared Better Auth, the prepared queries), because those need a session: do a few signed-in reads by hand as in step c and compare with the figures of 2026-10-14.
 - **The first invocation after an idle gap** (the collector prints it apart) is where a change of the cold cost shows. The admin Worker now runs a start-up warm-up of the library code (`src/warmup.ts`). Whether Cloudflare charges that to the first request is not documented, so this is the number that tells. It logs nothing when it works and one line, `[warm-up] skipped (<ErrorName>)`, once per isolate start when it does not (search Workers Logs for `warm-up`). To switch it off, set `WARM_UP_ENABLED` to `false` in that file and redeploy.
 - **Sign-in twice.** The 89 ms of the first sign-in is a cold isolate plus the hash; sign in a second time in the same minute (same isolate) and compare: the second is the figure for a warm Worker. The hash parameters were not touched.
-- **The page copy on the site, off by default.** Put `PAGE_CACHE_SECONDS=30` in `cf/web/.staging.vars` (the deploy command accepts it), deploy the site, run the probe again and compare `/blog`, `/blog/<slug>`, `/tim`, `/laporan`, `/gabung-siswa/docs` and `/sitemap.xml` with the run without it. A page answered from the copy says `x-page-cache: hit`; the render that made it says `miss` (the probe prints the headers it sees). Remove the line and redeploy to go back. At 600 ms between requests a route comes round every 16 s, inside the 30 s the copy lives, so most requests of the second round on should be hits **if the isolate is the same**: the share of `hit` among the answers is itself a measurement of how many isolates the site gets.
+- **The page copy on the site, off by default.** Put `PAGE_CACHE_SECONDS=30` in `cf/web/.staging.vars` (the deploy command accepts it), deploy the site, run the probe again and compare `/blog`, `/blog/<slug>`, `/tim`, `/donasi`, `/gabung-siswa/docs` and `/sitemap.xml` with the run without it. A page answered from the copy says `x-page-cache: hit`; the render that made it says `miss` (the probe prints the headers it sees). Remove the line and redeploy to go back. At 600 ms between requests a route comes round every 16 s, inside the 30 s the copy lives, so most requests of the second round on should be hits **if the isolate is the same**: the share of `hit` among the answers is itself a measurement of how many isolates the site gets.
 
 Locally, with no account, the same comparison can be made before a deploy: `pnpm measure:cpu` in `cf/admin` and in `cf/web` (after `pnpm build`) print the Worker's own JavaScript per request for the same routes; the method and its limits are in the audit section.
 

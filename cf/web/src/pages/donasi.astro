@@ -1,14 +1,22 @@
 ---
 import qrisImage from '@root/public/images/qris-sakola-kembara.png';
+import { env } from 'cloudflare:workers';
 import Button from '~/components/Button.astro';
 import Container from '~/components/Container.astro';
 import Heading from '~/components/Heading.astro';
 import Icon from '~/components/Icon.astro';
 import PageHero from '~/components/PageHero.astro';
+import ReportsSection from '~/components/ReportsSection.astro';
 import Base from '~/layouts/Base.astro';
+import { contentRuntime, contentSectionHeaders } from '~/lib/content-api';
+import { loadReportsSection } from '~/lib/reports';
 
-// Static at build time: served by the Workers assets layer, no Worker invocation.
-export const prerender = true;
+// SSR since SAKEM-105: the Laporan section (the page /laporan moved here) reads the reports from the content API at
+// request time (see lib/content-api.ts for the timeout, the 60 s cache and stale-if-error), so the page is rendered by
+// the Worker like /tim, and is one of the pages of src/lib/page-cache.ts. It used to be a static file.
+// The page NEVER fails because of the reports: with the API down and nothing cached it is still a 200, and only the
+// section shows its failure panel (contentSectionHeaders: `no-store`, so nothing keeps that answer).
+export const prerender = false;
 
 // Ported from app/(public)/donasi/page.tsx and layout.tsx. Bank details, QRIS and
 // the confirmation form are the legacy constants, unchanged.
@@ -28,6 +36,15 @@ const CONFIRMATION_FORM_URL =
 // box (a client-side onError fallback) is not ported. A plain <img> on purpose: a QR code
 // must reach the scanner byte for byte, so it is not resized or re-encoded.
 const QRIS_IMAGE = qrisImage.src;
+
+const reports = await loadReportsSection(() => ({
+  ...contentRuntime(env, Astro.locals.cfContext),
+  onFailure: (reason) => console.warn(`reports api: ${reason}`),
+}));
+const page = contentSectionHeaders(reports.source);
+Astro.response.status = page.status;
+for (const [name, value] of Object.entries(page.headers)) Astro.response.headers.set(name, value);
+Astro.response.headers.set('x-reports-source', reports.source);
 ---
 
 <Base
@@ -153,6 +170,9 @@ const QRIS_IMAGE = qrisImage.src;
         </div>
       </Container>
     </section>
+
+    {/* Laporan (SAKEM-105): the reports, where /laporan used to be. Anchor: /donasi#laporan. */}
+    <ReportsSection section={reports} uploadsBase={env.UPLOADS_BASE_URL} />
   </main>
 </Base>
 

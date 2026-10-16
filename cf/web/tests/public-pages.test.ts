@@ -1,19 +1,16 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { REDIRECTS } from '../redirects.config.mjs';
 import { absoluteUrl, buildSeo } from '~/lib/seo';
-import { importRoot, liveTitle, readRoot, readWeb } from './helpers';
+import { REPORTS_SECTION_PATH, footerLinks, navLinks } from '~/lib/site';
+import { importRoot, liveTitle, readRoot, readWeb, webRoot } from './helpers';
 
-// Source-level checks for the pages of SAKEM-080 part D: /laporan, /gabung-siswa and
-// /gabung-siswa/docs. What they render is checked in tests/gabung-siswa-built.test.ts (the
-// prerendered page) and in scripts/e2e.mjs (the SSR ones, as the Worker serves them); the copy is
-// compared with the legacy source in tests/copy.test.ts.
+// Source-level checks for the pages of SAKEM-080 part D: /gabung-siswa and /gabung-siswa/docs, and
+// the Laporan section of /donasi, which took the place of the page /laporan (SAKEM-105). What they render is
+// checked in tests/gabung-siswa-built.test.ts (the prerendered page) and in scripts/e2e.mjs (the SSR
+// ones, as the Worker serves them); the copy is compared with the legacy source in tests/copy.test.ts.
 
 const pages = [
-  {
-    route: '/laporan',
-    web: 'src/pages/laporan.astro',
-    legacy: ['app/(public)/laporan/layout.tsx'],
-    prerender: false,
-  },
   {
     route: '/gabung-siswa',
     web: 'src/pages/gabung-siswa.astro',
@@ -67,22 +64,36 @@ describe.each(pages)('$route', (page) => {
   });
 });
 
-describe('the two SSR pages degrade the same way', () => {
-  it.each([
-    ['src/pages/laporan.astro', 'loadReports', 'x-reports-source'],
-    ['src/pages/gabung-siswa/docs.astro', 'loadResources', 'x-resources-source'],
-  ])('%s: loader, runtime, status and cache headers come from lib/content-api.ts', (file, loader, header) => {
-    const src = readWeb(file);
-    expect(src).toContain(`${loader}(contentRuntime(env, Astro.locals.cfContext))`);
+describe('the SSR pages that read a list degrade, each in its own way', () => {
+  it('the documents page IS the list: loader, runtime, status and cache headers come from lib/content-api.ts, a 503 when it cannot answer', () => {
+    const src = readWeb('src/pages/gabung-siswa/docs.astro');
+    expect(src).toContain('loadResources(contentRuntime(env, Astro.locals.cfContext))');
     expect(src).toContain('contentPageHeaders(source)');
     expect(src).toContain('Astro.response.status = page.status;');
-    expect(src).toContain(`Astro.response.headers.set('${header}', source);`);
+    expect(src).toContain("Astro.response.headers.set('x-resources-source', source);");
     expect(src).not.toMatch(/https?:\/\/(?!sakolakembara\.org)[a-z0-9.-]+\.[a-z]{2,}/i); // no host baked in
+  });
+
+  it('/donasi only CARRIES the reports (SAKEM-105): the loader is lib/reports.ts loadReportsSection, the runtime is contentRuntime, and the status and cache headers come from contentSectionHeaders, a 200 whatever the source', () => {
+    const src = readWeb('src/pages/donasi.astro');
+    expect(src).toContain('export const prerender = false;');
+    expect(src).toContain('loadReportsSection(() => ({');
+    expect(src).toContain('...contentRuntime(env, Astro.locals.cfContext),');
+    expect(src).toContain('contentSectionHeaders(reports.source)');
+    expect(src).toContain('Astro.response.status = page.status;');
+    expect(src).toContain("Astro.response.headers.set('x-reports-source', reports.source);");
+    // the page-level 503 of contentPageHeaders must never come back for this page: a degraded reports list is not a degraded Donasi page
+    expect(src).not.toContain('contentPageHeaders');
+    expect(src).not.toMatch(/Astro\.response\.status = (?!page\.status;)/);
+    expect(src).not.toMatch(/https?:\/\/(?!sakolakembara\.org|docs\.google\.com)[a-z0-9.-]+\.[a-z]{2,}/i); // no host baked in (the confirmation form is the legacy constant)
+    // the section itself is one component, mounted once, after "Cara Berdonasi"
+    expect(src.match(/<ReportsSection\b/g)).toHaveLength(1);
+    expect(src.indexOf('<ReportsSection')).toBeGreaterThan(src.indexOf('Cara Berdonasi'));
   });
 
   it('the notice of the degraded state is new copy (the legacy page had no such state: a database error was a 500) and sits in a status region', () => {
     for (const [file, notice] of [
-      ['src/pages/laporan.astro', 'Laporan belum dapat ditampilkan'],
+      ['src/components/ReportsSection.astro', 'Laporan belum dapat ditampilkan'],
       ['src/pages/gabung-siswa/docs.astro', 'Dokumen belum dapat ditampilkan'],
     ]) {
       const web = readWeb(file);
@@ -95,9 +106,9 @@ describe('the two SSR pages degrade the same way', () => {
   });
 
   it('the legacy empty states are kept, and shown only for an empty list (null is the degraded state)', () => {
-    const laporan = readWeb('src/pages/laporan.astro');
+    const laporan = readWeb('src/components/ReportsSection.astro');
     expect(laporan).toContain('reports === null ? (');
-    expect(laporan).toContain('totalReports === 0 ? (');
+    expect(laporan).toContain('total === 0 ? (');
     const docs = readWeb('src/pages/gabung-siswa/docs.astro');
     expect(docs).toContain('resources === null && (');
     expect(docs).toContain('resources !== null && !hasAnything && (');
@@ -151,5 +162,42 @@ describe('/gabung-siswa/docs', () => {
     expect(card.match(/target="_blank"/g)).toHaveLength(2);
     expect(card.match(/rel="noopener noreferrer"/g)).toHaveLength(2);
     expect(card.match(/\sdownload\n/g)).toHaveLength(1);
+  });
+});
+
+describe('SAKEM-105: the reports have one address, /donasi#laporan, and every place that names it agrees', () => {
+  const [address, fragment] = REPORTS_SECTION_PATH.split('#');
+  const section = readWeb('src/components/ReportsSection.astro');
+
+  it('the address is the page /donasi and the fragment `laporan`', () => {
+    expect(address).toBe('/donasi');
+    expect(fragment).toBe('laporan');
+  });
+
+  it('the section carries that id, once, clears the fixed navbar when it is jumped to (scroll-mt-24, the documents page\'s own value) and is named by its heading', () => {
+    expect(section.match(new RegExp(`<section id="${fragment}" class="scroll-mt-24 `, 'g'))).toHaveLength(1);
+    expect(section.match(/\sid="laporan"/g)).toHaveLength(1);
+    expect(section).toContain('aria-labelledby="laporan-heading"');
+    expect(section).toContain('id="laporan-heading"');
+    expect(readWeb('src/pages/gabung-siswa/docs.astro')).toContain('class="scroll-mt-24"');
+  });
+
+  it('/donasi mounts the section once, and the page is rendered by the Worker (a static file could not carry the reports)', () => {
+    const donasi = readWeb('src/pages/donasi.astro');
+    expect(donasi.match(/<ReportsSection\b/g)).toHaveLength(1);
+    expect(donasi).toContain('export const prerender = false;');
+    expect(donasi).not.toContain('export const prerender = true;');
+  });
+
+  it('the redirect table sends /laporan and the older /impact-reports to it with a 308, one hop (never to /laporan, never without the fragment)', () => {
+    for (const source of ['/laporan', '/impact-reports', '/impact-reports/[...path]']) {
+      expect(REDIRECTS[source], source).toEqual({ status: 308, destination: REPORTS_SECTION_PATH });
+    }
+  });
+
+  it('the footer\'s "Laporan" goes to it, the menu has no Laporan, and the page /laporan is gone', () => {
+    expect(footerLinks.filter((l) => l.label === 'Laporan').map((l) => l.href)).toEqual([REPORTS_SECTION_PATH]);
+    expect(navLinks.map((l) => l.label)).not.toContain('Laporan');
+    for (const rel of ['src/pages/laporan.astro', 'src/pages/laporan/index.astro']) expect(existsSync(`${webRoot}${rel}`), rel).toBe(false);
   });
 });

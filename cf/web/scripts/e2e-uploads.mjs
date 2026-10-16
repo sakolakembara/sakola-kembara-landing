@@ -5,7 +5,7 @@
 //   pnpm build && pnpm test:e2e:uploads         (E2E_PORT_OFFSET=1700 for a second stack on one machine)
 //
 // Two runs of the same pages:
-//   1. UPLOADS_BASE_URL set    upload paths get the base in front on /tim, /laporan, /gabung-siswa/docs,
+//   1. UPLOADS_BASE_URL set    upload paths get the base in front on /tim, /donasi (its Laporan section), /gabung-siswa/docs,
 //                              /blog and /blog/<slug> (cover, og:image, JSON-LD, the images and links inside
 //                              the article); legacy static paths, data- attributes and text in code blocks do not
 //   2. UPLOADS_BASE_URL unset  every path is exactly what the API sent, and the base appears nowhere
@@ -114,7 +114,7 @@ async function render({ ports, vars }) {
     };
     return {
       tim: await get('/tim'),
-      laporan: await get('/laporan'),
+      donasi: await get('/donasi'),
       docs: await get('/gabung-siswa/docs'),
       blog: await get('/blog'),
       article: await get(`/blog/${slug}`),
@@ -136,9 +136,9 @@ check('with a base: /tim leaves a legacy static photo path alone', () => {
   assert.ok(withBase.tim.includes('src="/images/team/contoh.jpg"'));
   assert.ok(!withBase.tim.includes(`${BASE}/images/team/`));
 });
-check('with a base: /laporan links the uploaded PDF on the files domain and keeps the legacy links', () => {
-  assert.equal(count(withBase.laporan, `href="${BASE}${PATHS.report}"`), 1);
-  assert.ok(withBase.laporan.includes('href="/reports/2025-2026/financial/laporan-keuangan-semester-1-contoh.pdf"'));
+check('with a base: /donasi links the uploaded PDF on the files domain and keeps the legacy links', () => {
+  assert.equal(count(withBase.donasi, `href="${BASE}${PATHS.report}"`), 1);
+  assert.ok(withBase.donasi.includes('href="/reports/2025-2026/financial/laporan-keuangan-semester-1-contoh.pdf"'));
 });
 check('with a base: /gabung-siswa/docs links the uploaded file on the files domain and keeps the legacy ones', () => {
   assert.equal(count(withBase.docs, `href="${BASE}${PATHS.resource}"`), 1);
@@ -176,7 +176,7 @@ const without = await render({ ports: { port: 8822, stubPort: 4423, fixturePort:
 
 check('without a base: every upload path is what the API sent (same-origin), on all five pages', () => {
   assert.equal(count(without.tim, `src="${PATHS.team}"`), 2);
-  assert.equal(count(without.laporan, `href="${PATHS.report}"`), 1);
+  assert.equal(count(without.donasi, `href="${PATHS.report}"`), 1);
   assert.equal(count(without.docs, `href="${PATHS.resource}"`), 1);
   assert.ok(without.blog.includes(`src="${PATHS.cover}"`));
   assert.ok(without.article.includes(`src="${PATHS.cover}"`));

@@ -19,7 +19,6 @@ export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: S
   { path: '/', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/blog', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },
-  { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },
   { path: '/gabung-siswa', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/tim', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/kontak', priority: 0.7, changeFrequency: 'yearly' },

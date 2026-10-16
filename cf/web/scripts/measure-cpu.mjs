@@ -51,7 +51,10 @@ export const SCENARIOS = [
   { name: 'article-2', path: `/blog/${SLUGS.article2}`, status: 200 },
   { name: 'article-3', path: `/blog/${SLUGS.article3}`, status: 200 },
   { name: 'tim', path: '/tim', status: 200 },
-  { name: 'laporan', path: '/laporan', status: 200 },
+  // SAKEM-105: the reports are a section of /donasi, which the Worker renders now (it was a static file: no Worker request at all);
+  // /laporan is a redirect, answered by the assets layer in production (here the stand-in finds no assets, so the middleware does).
+  { name: 'donasi', path: '/donasi', status: 200 },
+  { name: 'laporan-redirect', path: '/laporan', status: 308 },
   { name: 'docs', path: '/gabung-siswa/docs', status: 200 },
   { name: 'kontak', path: '/kontak', status: 200 },
   { name: 'sitemap', path: '/sitemap.xml', status: 200 },

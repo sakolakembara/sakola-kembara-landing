@@ -33,8 +33,9 @@ if (existsSync(devVars)) {
   process.exit(2);
 }
 
-const PRERENDERED = ['/', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
-const RENDERED = ['/blog', '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
+// /donasi is a rendered page since SAKEM-105 (it carries the Laporan section, so the Worker renders it): it takes the Worker variable, not the build's.
+const PRERENDERED = ['/', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+const RENDERED = ['/blog', '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
 const INVALID = 'yes-please-0123';
 
 const navOf = (html) => html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
@@ -51,7 +52,7 @@ const scriptsOf = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<
 function stateOf(html) {
   const nav = navOf(html);
   const masuk = (nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length;
-  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'];
+  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/blog']; // five items since SAKEM-105
   const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
   const empty = JSON.stringify(hrefs) === JSON.stringify(['/', ...menu, ...menu]) && !/Masuk|Daftar Sekarang|\/daftar|\/portal|data-auth-link|justify-self-end|mt-6/.test(nav) && (nav.match(/<button\b/g) ?? []).length === 1;
   const sessions = scriptsOf(html).filter((code) => code.includes('get-session')).length;
@@ -121,9 +122,9 @@ try {
   const configA = path.join(outA, 'server/wrangler.json');
   const configB = path.join(outB, 'server/wrangler.json');
 
-  await check('both builds prerendered the six pages', () => {
+  await check('both builds prerendered the five pages', () => {
     for (const client of [clientA, clientB]) {
-      assert.deepEqual(walk(client).filter((f) => f.endsWith('.html')).map((f) => path.relative(client, f)).sort(), ['donasi.html', 'gabung-siswa.html', 'index.html', 'program/pasca-pembinaan.html', 'program/pembinaan.html', 'program/prapembinaan.html']);
+      assert.deepEqual(walk(client).filter((f) => f.endsWith('.html')).map((f) => path.relative(client, f)).sort(), ['gabung-siswa.html', 'index.html', 'program/pasca-pembinaan.html', 'program/pembinaan.html', 'program/prapembinaan.html']);
     }
   });
 

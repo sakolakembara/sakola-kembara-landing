@@ -49,6 +49,8 @@ Area `konten` ([`d1-schema.md`](d1-schema.md#permission-model)): `super_admin` a
 
 Port of `app/(admin)/admin/reports/actions.ts`.
 
+**Where the public sees what is managed here (SAKEM-105):** the reports are the **Laporan section of `/donasi`** (`https://sakolakembara.org/donasi#laporan`), not a page of their own. `/laporan` is a 308 to it, so an old link still lands there. A saved change shows after the data cache window (60 s) and, where the page copy is on (`PAGE_CACHE_SECONDS`), the seconds it was set to; an empty list is the section's own empty state ("Laporan akan segera tersedia"), and an API that cannot answer is its failure panel with the rest of the Donasi page intact.
+
 | Rule | Value |
 | --- | --- |
 | Title | 3 to 200 characters ("Judul minimal 3 karakter", "Judul maksimal 200 karakter") |
@@ -203,7 +205,7 @@ The first row also proved the chain end to end: 65 visits left `click_count` at 
 | Reserved slugs | 27 | 27 plus 33 (60 today: the site's redirect sources, the WordPress pages of the live sitemap and the WordPress paths it forwards; **`daftar` is not one**, SAKEM-103), and a test that derives them from the site | [section 5](#5-shortlink) |
 | "N aktif" above the shortlinks | counted among all rows | only when the page holds every link (otherwise just the total) | a page can hold 100 of more |
 | Where a shortlink is resolved | the legacy Next app (Postgres), forwarded by the Worker | the API Worker (D1); **the legacy origin is no longer asked for shortlinks** | M3 moves the data; see "Open decisions" |
-| Address of the public pages in the descriptions | `/laporan` on the admin's own host | a link to `https://sakolakembara.org/laporan` (the admin has its own host now) | `lib/site.ts` |
+| Address of the public pages in the descriptions | `/laporan` on the admin's own host | a link to `https://sakolakembara.org/laporan` (the admin has its own host now). **Since SAKEM-105 that address is a 308 to `/donasi#laporan`**: the link works, but its label is the old path; pointing it at `/donasi#laporan` is a one-line change of `cf/admin/spa/src/pages/reports/ReportsPage.tsx` and its test, not made in that ticket | `lib/site.ts` |
 
 ## 10. Tests and negative checks
 

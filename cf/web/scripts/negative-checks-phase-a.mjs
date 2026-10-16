@@ -2,7 +2,9 @@
 // the two sources, the log line, the navbar's two branches, its separate script and the desktop menu moved to the right while the slot is empty),
 // of the WordPress pass-through (the segment boundary, the exact entries, the list itself, the redirects that must not shadow it), of the
 // registration shortlink (not reserved, not redirected, the polite page, its status and its cache header), of the one-hop WordPress uploads and
-// of the staged HSTS, runs the tests that must notice, expects them to FAIL, and always restores the file.
+// of the staged HSTS, and (SAKEM-105) of the move of the reports into /donasi (the menu, the footer, the anchor, the redirect with its
+// fragment, the sitemap, the page that stays rendered by the Worker), runs the tests that must notice, expects them to FAIL, and always
+// restores the file. (That the page /donasi answers 200 and is never copied while degraded is in scripts/negative-checks-page-cache.mjs.)
 //
 //   node scripts/negative-checks-phase-a.mjs        (pnpm test:negative:phase-a)
 //
@@ -26,6 +28,9 @@ const REGISTRATION = ['tests/registration-page.test.ts', 'tests/portal-links.tes
 const PRINTER = ['tests/portal-enabled.test.ts', 'tests/staging-scripts.test.ts'];
 const RESERVED = ['tests/shortlink-reserved.test.ts'];
 const COPY = ['tests/copy.test.ts', 'tests/public-pages.test.ts'];
+const REPORTS = ['tests/public-pages.test.ts', 'tests/copy.test.ts'];
+const REPORTS_REDIRECT = ['tests/redirects.test.ts', 'tests/public-pages.test.ts'];
+const SITEMAP = ['tests/headers-sitemap.test.ts'];
 
 const config = 'portal-enabled.config.mjs';
 const lib = 'src/lib/portal-enabled.ts';
@@ -40,6 +45,9 @@ const catchAll = 'src/pages/[...path].astro';
 const polite = 'src/components/RegistrationUnavailablePage.astro';
 const site = 'src/lib/site.ts';
 const middleware = 'src/middleware.ts';
+const sitemapLib = 'src/lib/sitemap.ts';
+const reportsSection = 'src/components/ReportsSection.astro';
+const donasiPage = 'src/pages/donasi.astro';
 const printer = '../scripts/staging-deploy-command.mjs';
 const adminReserved = '../admin/src/shortlinks/reserved.ts';
 
@@ -47,6 +55,9 @@ const WARN_LINE = 'warn(`portal: ${PORTAL_ENABLED_VARIABLE} is set but is neithe
 const BAR = '{\n      portalOn && (\n        <div class="hidden md:flex items-center justify-self-end">';
 const MENU = '{\n      portalOn && (\n        <div class="flex flex-col mt-6">';
 const BUTTON = '<a href="/daftar" class="btn">Daftar Sekarang</a>';
+const NAV_TAIL = "  { href: '/donasi', label: 'Donasi' },\n  { href: '/blog', label: 'Blog' },\n];";
+const FOOTER_REPORTS = "  { href: REPORTS_SECTION_PATH, label: 'Laporan' },\n";
+const FRAGMENT_QUERY = "location = fragment < 0 ? location + search : `${location.slice(0, fragment)}${search}${location.slice(fragment)}`;";
 const MENU_CLASSES = "!portalOn && 'md:col-start-3 md:justify-end'";
 const MENU_PAIR = "'md:col-start-3 md:justify-end'";
 const LIST_HEAD = 'export const LEGACY_PATHS: readonly LegacyPath[] = [\n';
@@ -91,6 +102,26 @@ const checks = [
   { name: 'the session is asked of an /api the apex does not have', file: session, from: "'/portal/api/auth/get-session'", to: "'/api/auth/session'", tests: NAVBAR },
   { name: 'the two copies of cachedJson drift apart', file: session, from: 'if (Date.now() - at < ttl(v)) return v;', to: 'if (Date.now() - at <= ttl(v)) return v;', tests: NAVBAR },
   { name: 'a signed-in student is sent to /admin', file: session, from: "a.href = admin ? '/admin' : '/portal';", to: "a.href = '/admin';", tests: NAVBAR },
+
+  // ---- SAKEM-105: the reports are a section of /donasi (the menu, the footer, the anchor, the redirect, the sitemap)
+  { name: 'Laporan is back in the menu (it has five items since SAKEM-105)', file: site, from: NAV_TAIL, to: "  { href: '/donasi', label: 'Donasi' },\n  { href: '/laporan', label: 'Laporan' },\n  { href: '/blog', label: 'Blog' },\n];", tests: REPORTS },
+  { name: 'the footer\'s Laporan points at the page that is gone', file: site, from: "{ href: REPORTS_SECTION_PATH, label: 'Laporan' },", to: "{ href: '/laporan', label: 'Laporan' },", tests: REPORTS },
+  { name: 'the footer loses its Laporan link', file: site, from: FOOTER_REPORTS, to: '', tests: REPORTS },
+  { name: 'the footer\'s Laporan moves after Blog (it keeps its place between Donasi and Blog)', file: site, from: FOOTER_REPORTS + "  { href: '/blog', label: 'Blog' },\n", to: "  { href: '/blog', label: 'Blog' },\n" + FOOTER_REPORTS, tests: REPORTS },
+  { name: 'the address of the reports names another anchor than the section\'s id', file: site, from: "export const REPORTS_SECTION_PATH = '/donasi#laporan';", to: "export const REPORTS_SECTION_PATH = '/donasi#reports';", tests: REPORTS },
+  { name: 'the section has no id (the address /donasi#laporan lands on nothing)', file: reportsSection, from: '<section id="laporan" class="scroll-mt-24 ', to: '<section class="scroll-mt-24 ', tests: REPORTS },
+  { name: 'the section has another id than the address says', file: reportsSection, from: '<section id="laporan" class="scroll-mt-24 ', to: '<section id="reports" class="scroll-mt-24 ', tests: REPORTS },
+  { name: 'the anchor does not clear the fixed navbar (the heading would sit under it)', file: reportsSection, from: '<section id="laporan" class="scroll-mt-24 ', to: '<section id="laporan" class="', tests: REPORTS },
+  { name: '/donasi does not show the section', file: donasiPage, from: '    <ReportsSection section={reports} uploadsBase={env.UPLOADS_BASE_URL} />\n', to: '', tests: REPORTS },
+  { name: '/donasi is a static file again (it could not carry the reports)', file: donasiPage, from: 'export const prerender = false;', to: 'export const prerender = true;', tests: REPORTS },
+  { name: 'the section\'s failure panel is shown for an empty list (null is the failure, [] is the legacy empty state)', file: reportsSection, from: 'reports === null ? (', to: 'total === 0 ? (', tests: REPORTS },
+  { name: '/laporan is not redirected any more (a dead address of the old site and of every external link)', file: redirects, from: "  '/laporan': to('/donasi#laporan'),\n", to: '', tests: REPORTS_REDIRECT },
+  { name: '/laporan loses the fragment (the visitor lands at the top of Donasi)', file: redirects, from: "  '/laporan': to('/donasi#laporan'),", to: "  '/laporan': to('/donasi'),", tests: REPORTS_REDIRECT },
+  { name: '/laporan is a temporary redirect (a 307 that no browser or search engine keeps)', file: redirects, from: "  '/laporan': to('/donasi#laporan'),", to: "  '/laporan': to('/donasi#laporan', TEMPORARY),", tests: REPORTS_REDIRECT },
+  { name: '/impact-reports goes to /laporan again (two hops)', file: redirects, from: "  '/impact-reports': to('/donasi#laporan'),", to: "  '/impact-reports': to('/laporan'),", tests: REPORTS_REDIRECT },
+  { name: 'the Worker\'s redirect puts the carried query AFTER the fragment (it would become part of the fragment and be lost)', file: redirects, from: FRAGMENT_QUERY, to: 'location += search;', tests: REPORTS_REDIRECT },
+  { name: 'the sitemap lists /laporan again (a redirect is not a sitemap URL)', file: sitemapLib, from: "  { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },\n", to: "  { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },\n  { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },\n", tests: SITEMAP },
+  { name: 'the sitemap loses /donasi', file: sitemapLib, from: "  { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },\n", to: '', tests: SITEMAP },
 
   // ---- the staging deploy-command printer
   { name: 'the printer accepts any value for PORTAL_ENABLED', file: printer, from: "if (value !== 'true' && value !== 'false') throw new Error(`${where}: exactly true or false`);", to: '', tests: PRINTER },

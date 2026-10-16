@@ -99,7 +99,7 @@ Source: [Workers limits](https://developers.cloudflare.com/workers/platform/limi
 | `POST /api/auth/sign-in/email`, `register`, `reset-password` | PBKDF2-SHA256, 100,000 iterations, in native WebCrypto | hash 8.1 ms (Node, [`auth.md`](auth.md#results)); route 13.1 ms through `wrangler dev` | **Decided order (PM, 2026-10-13):** 1. fewer iterations (hash format `pbkdf2-sha256$<n>$...` is self-describing, so old hashes still verify); 2. Google sign-in, no hash; 3. Workers Paid, which is not $0. Not in the order: the hash in a second Worker through a service binding (billing sums the CPU of both Workers; whether the limit does is not documented). The 100,000 cap the code assumes is **not on the WebCrypto page** (only "PBKDF2 supported"); confirm on the account |
 | `POST /api/admin/blog` (save) and `/preview` | markdown render and sanitiser on the Worker, up to 12,000 characters | about 0.45 ms per 1,000 characters warm; 4.1 ms (wall) for 12,000; two to three times that in a fresh isolate ([`admin-blog.md`](admin-blog.md#11-measured)) | lower `BODY_MAX`, render once at module load, render in the browser (documented there) |
 | `POST /api/admin/uploads`, 20 and 25 MB kinds | multipart parse of a body held in memory | 225 to 263 ms wall locally, CPU unknown ([`uploads.md`](uploads.md#what-was-not-verified)) | lower limits for those kinds, or a raw-body `PUT` streamed to R2 with no parse |
-| `GET /blog`, `/blog/<slug>`, `/tim`, `/laporan`, `/gabung-siswa/docs`, `/sitemap.xml` | Astro render plus a `JSON.parse` of the API answer; no cache on staging | wall 1.4 to 3.2 ms warm through `wrangler dev` ([`web-skeleton.md`](web-skeleton.md)); **measured on staging: 5 to 13 ms of CPU (section 10)** | `PAGE_CACHE_SECONDS` (done, off by default); drop `contentMarkdown` from the public article payload, cache the rendered HTML, prerender the 80 migrated articles again |
+| `GET /blog`, `/blog/<slug>`, `/tim`, `/donasi` (the page `/laporan` was before SAKEM-105, see [10.9](#109-donasi-becomes-a-worker-page-sakem-105-the-extra-request-and-cpu-budget)), `/gabung-siswa/docs`, `/sitemap.xml` | Astro render plus a `JSON.parse` of the API answer; no cache on staging | wall 1.4 to 3.2 ms warm through `wrangler dev` ([`web-skeleton.md`](web-skeleton.md)); **measured on staging: 5 to 13 ms of CPU (section 10)** | `PAGE_CACHE_SECONDS` (done, off by default); drop `contentMarkdown` from the public article payload, cache the rendered HTML, prerender the 80 migrated articles again |
 | `GET /portal/api/auth/get-session` (navbar) | a full 404 page render on every first visit, because the portal Worker is not on staging | | route it to a cheap JSON 404 when the portal is not deployed |
 | The first request into a new isolate | start-up of a 3.5 MiB (admin) or 0.8 MiB (site) bundle | 85 ms and 52 ms of local CPU | see item 3 of [section 1](#1-result) |
 | A `waitUntil` job (cache write, click count, purge notice) | counts: a 200 response can still end with outcome `exceededCpu` | | keep jobs I/O-bound |
@@ -114,7 +114,7 @@ Sources: [Workers limits, CPU time](https://developers.cloudflare.com/workers/pl
 | | |
 | --- | --- |
 | Free plan | **100,000 requests a day for the whole account** (every Worker in it, staging included), reset at 00:00 UTC. No general requests-per-second limit. Past it: **error 1027** (a route in *fail open* mode bypasses the Worker as if none were there; *fail closed* shows the 1027 page); in a project with static assets, a request that matches a `run_worker_first` pattern gets **429** instead of falling back to the assets. **Requests for static assets are free and unlimited**; a Workers cache hit would be billed as a request (we do not enable it). A service binding call is billed as one request, with the CPU of both Workers. |
-| Our usage | Prerendered pages, `_redirects` answers, images, PDFs, fonts and the admin SPA never invoke a Worker. A Worker request is an SSR page (`/blog`, `/blog/<slug>`, `/tim`, `/laporan`, `/gabung-siswa/docs`, `/kontak`, `/sitemap.xml`), a short link, a 404, an admin API call, and each navbar call once per browser session (`/portal/api/auth/get-session` goes to the portal Worker, `/api/announcements/current` is a JSON 404 of the site's Worker until it gets an endpoint). Roughly 3 Worker requests for a first page view and 1 for each further SSR page: about 30,000 visits a day before the wall. |
+| Our usage | Prerendered pages, `_redirects` answers (`/laporan` is one since SAKEM-105), images, PDFs, fonts and the admin SPA never invoke a Worker. A Worker request is an SSR page (`/blog`, `/blog/<slug>`, `/tim`, `/donasi` since SAKEM-105, `/gabung-siswa/docs`, `/kontak`, `/sitemap.xml`), a short link, a 404, an admin API call, and each navbar call once per browser session (`/portal/api/auth/get-session` goes to the portal Worker, `/api/announcements/current` is a JSON 404 of the site's Worker until it gets an endpoint). Roughly 3 Worker requests for a first page view and 1 for each further SSR page: about 30,000 visits a day before the wall. |
 | Verdict | **RISK (low).** A crawler or a scan of random `/<slug>` URLs spends the same budget as visitors, and every miss is a Worker request and a D1 read. |
 | Watch | The dashboard, Workers, the account's requests chart; the probe prints the share of the budget it uses. |
 | Fallback | **Decided (PM, 2026-10-13): the public production route fails OPEN** (past the limit, requests bypass the Worker and the visitor gets the origin behind the hostname: the WordPress site, which the cutover runbook keeps behind the same hostname, so a page instead of an error page), **and the admin host's route fails CLOSED** (a 1027 page, never a bypass of a security-critical Worker). The route's fail mode is a toggle on the route; the cutover runbook records it (D-06, step S-33). Either way the limit is an incident. Reduce Worker requests: prerender the 80 articles again; answer the navbar's two calls without a Worker (the strip as static JSON). |
@@ -199,7 +199,7 @@ The headers file can also match a host: the page documents a rule with `X-Robots
 | | |
 | --- | --- |
 | Free plan | The Cache API is not a plan feature. The page says "Workers deployed to **custom domains** have access to functional `cache` operations" (Pages Functions too, on custom domains or `*.pages.dev`), that operations in the dashboard editor and playground "will have no impact", and that it is "not currently available" for Workers fronted by Cloudflare Access. **`workers.dev` is not mentioned as working.** (A note elsewhere on the page says redirects with a query string are cached on `.workers.dev` with the query in the key, which suggests a cache exists there; it is not a promise.) The cache is per data centre; `stale-while-revalidate` and `stale-if-error` "are not supported" for `put` and `match`. |
-| Our usage | `/tim`, `/laporan`, `/gabung-siswa/docs`, `/blog`, `/blog/<slug>`, `/sitemap.xml` keep the API answer 60 s (5 min for `/tim`) and the last good copy 7 days, with our own stale-if-error. Every cache call is wrapped: a miss, an error or an absent cache is the normal path, not a failure. |
+| Our usage | `/tim`, `/donasi` (its Laporan section), `/gabung-siswa/docs`, `/blog`, `/blog/<slug>`, `/sitemap.xml` keep the API answer 60 s (5 min for `/tim`) and the last good copy 7 days, with our own stale-if-error. Every cache call is wrapped: a miss, an error or an absent cache is the normal path, not a failure. |
 | Verdict | **RISK**: staging cannot prove cache behaviour (hit, stale, the 60 s window, purge), only that the code works without one. Dzul's decision (2026-10-12): staging on `workers.dev`, cache tested on cutover day. The staging CPU and D1 numbers are therefore the **uncached worst case**, conservative for both the 10 ms and the 5M-row limits. |
 | Real account | On the production hostname: `cache-control`, the second request faster, stale-if-error with the API Worker stopped, `x-blog-source: cache`. Owned by the cutover runbook (M5-B). |
 
@@ -342,7 +342,7 @@ Cloudflare's own `cpuTime`, 307 invocations, 12 rounds of 27 GET routes 600 ms a
 | site `GET /blog` (and `?page=2`) | 13 | 56 | FAIL |
 | site `GET /blog/<slug>` | 7 to 9 | 12 to 18 | FAIL |
 | site `/sitemap.xml`, `/tim` | 7 | 14, 13 | FAIL |
-| site `/kontak`, `/laporan`, `/gabung-siswa/docs` | 5, 5, 6 | 12, 9, 8 | FAIL, FAIL, RISK |
+| site `/kontak`, `/laporan` (a page then; since SAKEM-105 its reports are the section of `/donasi`, 10.9), `/gabung-siswa/docs` | 5, 5, 6 | 12, 9, 8 | FAIL, FAIL, RISK |
 | admin `GET /api/me`, no cookie (401) | 18 | 38 | FAIL |
 | admin `/api/dashboard`, `/api/admin/blog` (401) | 5, 6 | 11, 12 | FAIL |
 | admin `GET /api/config` | 4 | 9 | FAIL |
@@ -424,7 +424,7 @@ Local, edge-like regime, ms of the Worker's own JavaScript per request, median o
 | `/blog`, `/blog?page=2` | 1.99 > 0.42, 1.93 > 0.39 | 0.71 > 0.17, 0.67 > 0.16 | about 1 ms more on first sight, locally |
 | `/blog/<slug>` (three articles) | 1.55 > 0.38, 1.34 > 0.36, 1.23 > 0.37 | 0.52 > 0.14 | |
 | `/tim` (24 members) | 4.10 > 0.46 | 1.16 > 0.22 | |
-| `/laporan`, `/gabung-siswa/docs` | 2.15 > 0.38, 2.48 > 0.38 | 0.59 > 0.15, 0.71 > 0.18 | |
+| `/laporan` (then; now the section of `/donasi`, 10.9), `/gabung-siswa/docs` | 2.15 > 0.38, 2.48 > 0.38 | 0.59 > 0.15, 0.71 > 0.18 | |
 | `/sitemap.xml` | 1.02 > 0.33 | 0.56 > 0.13 | |
 | `/kontak`, the 404 pages, the redirects | unchanged (not copied) | | |
 
@@ -444,6 +444,43 @@ Everything on a real zone or the edge (the Cache API, `workers.dev` against a ro
 ### 10.8 How to check it on staging
 
 [`staging-runbook.md`](staging-runbook.md#13-measure-cpu-per-route), step 13g: re-run the probe and compare with the table of 10.1; the 401 routes should now cost about what `/api/config` costs; look at the first invocation after idle (the warm-up); sign in twice; try `PAGE_CACHE_SECONDS=30` on the site as an A/B. The local harness (`pnpm measure:cpu`, `--compare` / `--compare-server` against a copy of an earlier commit, `--page-cache 30`, `--dump` for a byte comparison) is the way to measure a further change before deploying it.
+
+### 10.9 `/donasi` becomes a Worker page (SAKEM-105): the extra request and CPU budget
+
+SAKEM-105 (variant A, approved by Dzul) moved the reports into a section of `/donasi` (`id="laporan"`) and made `/laporan` a permanent redirect to `/donasi#laporan`. Reading the reports from the API needs the Worker, so **`/donasi` is no longer a static file**: the Workers assets layer answered it with no Worker request at all, and now the Worker renders it (`export const prerender = false`), like `/tim` or `/gabung-siswa/docs`. What that costs on the Free plan, and what was done about it:
+
+**Requests (100,000 a day for the whole account, 2.4).**
+
+| | Before | After |
+| --- | --- | --- |
+| a visit to `/donasi` | 0 Worker requests (a static file) | **1 Worker request** |
+| a visit to `/laporan` (an old link, a bookmark, a search result) | 1 Worker request (SSR) | **0**: a `_redirects` answer of the assets layer (a 308, free and unlimited), then the 1 of `/donasi` above |
+| the footer's "Laporan", `/impact-reports` | 1 (the page), a 308 then 1 | a link to `/donasi#laporan`: 1; `/impact-reports` is one free 308, then 1 |
+| the sitemap | lists `/laporan` | does not (a redirect is not a sitemap URL) |
+
+So the change is **+1 Worker request per visit to `/donasi`** (the page visitors reach from the menu and from every "Dukung" button), and **no change** for someone who came for the reports. In the model of 2.4 (about 3 Worker requests for a first page view, 1 for each further SSR page), if `/donasi` is 5 to 10% of page views, the daily total grows by that share of the page views: for 30,000 visits a day (the wall of 2.4) that is roughly 1,500 to 3,000 requests, 1.5 to 3% of the budget. The page copy (`PAGE_CACHE_SECONDS`) cuts the CPU of a request, **not the number of requests**: a copy is still answered by the Worker. Nothing here is measured on a real zone; the dashboard's request chart after the first week is the figure.
+
+**CPU (10 ms per request, 2.3).** Local only: `pnpm measure:cpu` in `cf/web`, the built Worker in plain Node, the content API answered from the recording at school volume (16 reports), 2026-10-16, ms of the Worker's own JavaScript per request, median of three fresh processes (edge-like: `node --jitless`) and a warm run. **These are this machine's numbers and not Cloudflare's CPU**: the staging probe of 10.1 measured the old `/laporan` at 5 ms p50 and 9 ms at the maximum on the real edge, with no Cache API, where this harness says 1.8 ms: the ratio of about 3 is the one to carry over, not the figures.
+
+| Page | edge-like first | p50 | max | warm p50 | warm p95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| old `/donasi` (static) | 0 (no Worker) | | | | |
+| old `/laporan` (SSR, 16 reports) | 2.00 | 1.78 | 2.90 | 0.53 | 1.52 |
+| **new `/donasi`** (SSR, the page and the section) | **2.59** | **2.07** | 2.48 | **0.58** | 1.82 |
+| new `/donasi` with `PAGE_CACHE_SECONDS=30` (a copy) | 0.47 | 0.33 | 0.62 | 0.13 | 0.33 |
+| `/laporan` answered by the middleware (when the assets layer does not) | 0.33 | 0.26 | 0.60 | 0.10 | 0.24 |
+| control, the same two sessions: `/blog` | 2.05 > 2.09 | 1.66 > 1.70 | | 0.56 > 0.55 | |
+| control: `/tim` | 3.52 > 3.55 | 3.38 > 3.52 | | 1.00 > 1.00 | |
+
+Without a Cache API (the `workers.dev` regime of staging): old `/laporan` first 12.40, p50 1.83, warm p50 0.53; new `/donasi` first 13.07, p50 2.15, warm p50 0.59. The new page is about 15% heavier than the old `/laporan` (it is that page plus the payment cards, 56 KB of HTML against 49 KB), and a copy brings it to the cost of a redirect. **Reading it with the edge's ratio, an uncached `/donasi` is expected at about 6 ms p50 and 10 ms at the maximum on Cloudflare, which is the band the gate calls FAIL (p99 over 8): the page that was free is now one of the heavier ones.** It is the donation page, so the options, in the order I would take them (the decision is the PM's and Dzul's):
+
+1. **Turn the page copy on at the cutover** (`--var PAGE_CACHE_SECONDS:30`, no code change; `/donasi` is on its list, [`web-skeleton.md`](web-skeleton.md)). A copy costs about a sixth of a render, and only a fresh answer is ever copied (never the degraded page, which is a 200 with `no-store`, nor a stale one).
+2. The production zone's Cache API (3.4) is already counted on for the API answers; it is not a copy of the page.
+3. If the staging probe still says FAIL after 1: keep `/donasi` static and let the Laporan section read the reports in the browser from a small endpoint, which is a different design from the approved one (and would need the endpoint, CORS, and a second look at the failure panel). Not done, not proposed as the first choice.
+
+**What the page does when the API cannot answer.** `/donasi` never fails because of the reports: the Laporan section shows its failure panel and the page is still a **200** (`cache-control: no-store`, no `Retry-After`), where `/laporan` was a 503. With the API down and a cold cache a visit waits the loader's 2 s timeout once (the stale copy of the last 7 days, when there is one, answers instead, and an outage costs one wait per 30 s, not one per request). That wait is the price of reading the reports at request time; a shorter timeout for this page would trade it for more failure panels and is not applied.
+
+**What was not measured:** Cloudflare CPU of any of this, the Cache API on a real zone, the real distribution of visits between `/donasi` and the rest.
 
 ## Sources
 

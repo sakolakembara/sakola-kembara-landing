@@ -176,7 +176,7 @@ export function extraNotes(worker, entries) {
   const notes = [];
   if (worker === 'web' && entries.some((e) => e.name === 'WEB_ANALYTICS_BEACON_ID')) {
     notes.push(
-      '# the prerendered pages (/, /donasi, /gabung-siswa, /program/<id>) are static files: they get WEB_ANALYTICS_BEACON_ID from the shell of the BUILD,',
+      '# the prerendered pages (/, /gabung-siswa, /program/<id>) are static files: they get WEB_ANALYTICS_BEACON_ID from the shell of the BUILD,',
       '# so run step 2 as `WEB_ANALYTICS_BEACON_ID=<the same value> pnpm build:staging`; the --var below reaches the pages the Worker renders only.',
     );
   }

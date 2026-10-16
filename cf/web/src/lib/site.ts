@@ -12,19 +12,32 @@ export const REGISTRATION_PATH = '/daftar';
 /** The slug of that shortlink: `REGISTRATION_PATH` without its slash. */
 export const REGISTRATION_SLUG = 'daftar';
 
+/**
+ * Where the reports are (SAKEM-105, variant A): the "Laporan" section of /donasi, `id="laporan"`
+ * (src/components/ReportsSection.astro). The page /laporan is gone: it is a 308 to this address
+ * (redirects.config.mjs), and the footer's "Laporan" link points here.
+ */
+export const REPORTS_SECTION_PATH = '/donasi#laporan';
+
+/** The header menu: five items since SAKEM-105 (Laporan left it; the reports are a section of Donasi). */
 export const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/tim', label: 'Team' },
   { href: '/gabung-siswa', label: 'Siswa' },
   { href: '/donasi', label: 'Donasi' },
-  { href: '/laporan', label: 'Laporan' },
   { href: '/blog', label: 'Blog' },
 ];
 
-// The footer repeats the header destinations (its logo already links home)
-// and carries Kontak, which lives only in the footer.
+// The footer is NOT derived from the menu any more: it repeats the menu's destinations (its logo already links home),
+// keeps "Laporan" between Donasi and Blog, where it has always been, now pointing at the section of /donasi that took
+// the page's place (SAKEM-105), and carries Kontak, which lives only in the footer. Written out so that a change of
+// the menu cannot move a footer link by accident (tests/copy.test.ts pins the list).
 export const footerLinks = [
-  ...navLinks.filter((link) => link.href !== '/'),
+  { href: '/tim', label: 'Team' },
+  { href: '/gabung-siswa', label: 'Siswa' },
+  { href: '/donasi', label: 'Donasi' },
+  { href: REPORTS_SECTION_PATH, label: 'Laporan' },
+  { href: '/blog', label: 'Blog' },
   { href: '/kontak', label: 'Kontak' },
 ];
 

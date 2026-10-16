@@ -105,11 +105,12 @@ export function buildPlan({ slugs = DEFAULT_SLUGS, shortlink, web = true, admin 
     add('none', 'GET', '/gabung-siswa', { note: 'control: prerendered' });
     add('none', 'GET', '/robots.txt', { note: 'control: static' });
     add('none', 'GET', '/feed', { note: 'control: a _redirects rule (308), answered by the assets layer' });
+    add('none', 'GET', '/laporan', { note: 'control: a _redirects rule (308 to /donasi#laporan, SAKEM-105), answered by the assets layer' });
     add('web', 'GET', '/blog', { note: 'SSR: list from the API through the binding' });
     add('web', 'GET', '/blog?page=2', { note: 'SSR: second page of the list' });
     for (const slug of slugs) add('web', 'GET', `/blog/${slug}`, { note: 'SSR: one article (404 until the blog import ran on staging)' });
     add('web', 'GET', '/tim', { note: 'SSR: team from the API' });
-    add('web', 'GET', '/laporan', { note: 'SSR: reports from the API' });
+    add('web', 'GET', '/donasi', { note: 'SSR since SAKEM-105: the page and its Laporan section (reports from the API)' });
     add('web', 'GET', '/gabung-siswa/docs', { note: 'SSR: documents from the API' });
     add('web', 'GET', '/kontak', { note: 'SSR: the contact page (GET only)' });
     add('web', 'GET', '/sitemap.xml', { note: 'SSR: every page of the blog index through the API' });

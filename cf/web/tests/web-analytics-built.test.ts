@@ -19,8 +19,8 @@ const pages = () => (built ? walk(client).filter((f) => f.endsWith('.html')) : [
 const rel = (file: string) => path.relative(client, file);
 
 describe.skipIf(!built)('the beacon in the prerendered pages of dist/', () => {
-  it('there are prerendered pages to look at: the home page, /donasi, /gabung-siswa and the three program pages', () => {
-    expect(pages().map(rel).sort()).toEqual(['donasi.html', 'gabung-siswa.html', 'index.html', 'program/pasca-pembinaan.html', 'program/pembinaan.html', 'program/prapembinaan.html']);
+  it('there are prerendered pages to look at: the home page, /gabung-siswa and the three program pages (/donasi is rendered by the Worker since SAKEM-105)', () => {
+    expect(pages().map(rel).sort()).toEqual(['gabung-siswa.html', 'index.html', 'program/pasca-pembinaan.html', 'program/pembinaan.html', 'program/prapembinaan.html']);
   });
 
   if (expected === null) {

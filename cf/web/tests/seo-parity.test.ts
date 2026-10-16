@@ -961,6 +961,9 @@ describe('the tool and the repository agree', () => {
     expect(new Set(MAIN_PATHS).size).toBe(MAIN_PATHS.length);
     expect(MAIN_PATHS).toContain('/');
     expect(MAIN_PATHS).toContain('/index.php');
+    // SAKEM-105: /laporan/ is no page any more; it is listed once, as a static source of the redirect table (a 308 to /donasi#laporan)
+    expect(MAIN_PATHS.filter((p) => p === '/laporan/')).toHaveLength(1);
+    expect(MAIN_PATHS.filter((p) => p === '/donasi/')).toHaveLength(1);
     expect(MAIN_PATHS.every((p) => !p.startsWith('/portal') && !p.startsWith('/admin') && !p.startsWith('/api'))).toBe(true);
   });
 

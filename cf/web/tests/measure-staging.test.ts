@@ -92,8 +92,8 @@ describe('the plan', () => {
     const plan = buildPlan({ web: true });
     expect(new Set(plan.map((r) => r.method))).toEqual(new Set(['GET']));
     const paths = plan.map((r) => r.path);
-    for (const expected of ['/', '/blog', '/blog?page=2', `/blog/${DEFAULT_SLUGS[0]}`, '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/sitemap.xml', '/no/such/page', '/portal/api/auth/get-session']) expect(paths).toContain(expected);
-    expect(plan.filter((r) => r.worker === 'none').map((r) => r.path)).toEqual(['/', '/gabung-siswa', '/robots.txt', '/feed']);
+    for (const expected of ['/', '/blog', '/blog?page=2', `/blog/${DEFAULT_SLUGS[0]}`, '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/sitemap.xml', '/no/such/page', '/portal/api/auth/get-session']) expect(paths).toContain(expected);
+    expect(plan.filter((r) => r.worker === 'none').map((r) => r.path)).toEqual(['/', '/gabung-siswa', '/robots.txt', '/feed', '/laporan']);
     expect(plan.some((r) => 'body' in r)).toBe(false);
   });
 

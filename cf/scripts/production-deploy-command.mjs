@@ -396,7 +396,7 @@ function main(argv) {
       `# 2. ${buildLine(worker, entries)}`,
       ...(worker === 'web'
         ? [
-            '#    the beacon id goes in the BUILD (prerendered pages: /, /donasi, /gabung-siswa, /program/<id>) and in the --var below (pages the Worker renders): one value, from the vars file.',
+            '#    the beacon id goes in the BUILD (prerendered pages: /, /gabung-siswa, /program/<id>) and in the --var below (pages the Worker renders): one value, from the vars file.',
             '#    typed on the build line, never exported: a later staging build in the same shell would pick it up.',
             ...(entries.some((e) => e.name === 'PORTAL_ENABLED')
               ? ['#    the same goes for PORTAL_ENABLED (the prerendered pages take it from the shell of the BUILD, the --var reaches the rendered pages only): Phase A is `false`.']

@@ -9,9 +9,11 @@ import {
   formatBytes,
   groupReportsByYear,
   loadReports,
+  loadReportsSection,
   parseReportsPayload,
   type Report,
 } from '~/lib/reports';
+import { type ContentSource, contentPageHeaders, contentSectionHeaders } from '~/lib/content-api';
 import { tagClasses } from '~/lib/ui';
 import { fakeCache, hangingFetch, okFetch, statusFetch } from './fake-cache';
 import { importRoot, readRoot } from './helpers';
@@ -184,5 +186,91 @@ describe('loadReports', () => {
 
   it('without CONTENT_API_URL there is nothing to show (null)', async () => {
     expect(await loadReports({ baseUrl: undefined })).toEqual({ reports: null, source: 'empty' });
+  });
+});
+
+// SAKEM-105: the reports are a section of /donasi, and /donasi must NEVER fail because of them.
+describe('loadReportsSection: the data of the Laporan section of /donasi, which never throws', () => {
+  const payload = { reports: [raw(1), raw(2, { year: '2024' }), raw(3)] };
+
+  it('loads, groups by year (newest first) and counts', async () => {
+    const section = await loadReportsSection(() => ({ baseUrl: 'http://api.test', fetchImpl: okFetch(payload).fetchImpl }));
+    expect(section.source).toBe('network');
+    expect(section.total).toBe(3);
+    expect(section.years.map((y) => [y.year, y.reports.map((r) => r.id)])).toEqual([
+      ['2025', ['id-1', 'id-3']],
+      ['2024', ['id-2']],
+    ]);
+    expect(section.reports?.map((r) => r.id)).toEqual(['id-1', 'id-2', 'id-3']);
+  });
+
+  it('an empty list is a real answer (the legacy empty state), not a failure', async () => {
+    const section = await loadReportsSection(() => ({ baseUrl: 'http://api.test', fetchImpl: okFetch({ reports: [] }).fetchImpl }));
+    expect(section).toEqual({ reports: [], source: 'network', years: [], total: 0 });
+  });
+
+  it('the API cannot answer and nothing is cached: reports null (the failure panel), no years, no throw', async () => {
+    const cold = await loadReportsSection(() => ({ baseUrl: 'http://api.test', cache: fakeCache(() => 0), fetchImpl: statusFetch(503) }));
+    expect(cold).toEqual({ reports: null, source: 'empty', years: [], total: 0 });
+    const hanging = await loadReportsSection(() => ({ baseUrl: 'http://api.test', fetchImpl: hangingFetch, timeoutMs: 30 }));
+    expect(hanging.reports).toBeNull();
+    expect((await loadReportsSection(() => ({ baseUrl: undefined }))).reports).toBeNull();
+  });
+
+  it('the last good copy is shown while the API is down (stale), so the section survives an outage', async () => {
+    let t = 0;
+    const cache = fakeCache(() => t);
+    await loadReportsSection(() => ({ baseUrl: 'http://api.test', cache, fetchImpl: okFetch(payload).fetchImpl }));
+    t += 61_000;
+    const stale = await loadReportsSection(() => ({ baseUrl: 'http://api.test', cache, fetchImpl: statusFetch(500) }));
+    expect(stale.source).toBe('stale');
+    expect(stale.total).toBe(3);
+  });
+
+  it('a runtime that cannot be built, or a loader that throws, is the same as an API with nothing to show: the page does not fail', async () => {
+    const noRuntime = await loadReportsSection(() => {
+      throw new Error('no binding');
+    });
+    expect(noRuntime).toEqual({ reports: null, source: 'empty', years: [], total: 0 });
+    const brokenCache = {
+      match: () => {
+        throw new Error('cache exploded');
+      },
+      put: () => Promise.reject(new Error('cache exploded')),
+    } as never;
+    const fetchFails = (async () => {
+      throw new TypeError('network down');
+    }) as unknown as typeof fetch;
+    expect((await loadReportsSection(() => ({ baseUrl: 'http://api.test', cache: brokenCache, fetchImpl: fetchFails }))).reports).toBeNull();
+  });
+
+  it('a failure is told to the Worker log in fixed words (never a URL or a body)', async () => {
+    const reasons: string[] = [];
+    await loadReportsSection(() => ({ baseUrl: 'http://api.test', fetchImpl: statusFetch(500), onFailure: (r) => reasons.push(r) }));
+    expect(reasons).toEqual(['status 500']);
+  });
+});
+
+describe('contentSectionHeaders: a page that carries a list never fails because of it (SAKEM-105), unlike the page that is the list', () => {
+  const all: ContentSource[] = ['network', 'cache', 'stale', 'empty', 'not_found'];
+
+  it('always a 200, whatever the source: only the section says the list is missing', () => {
+    for (const source of all) expect(contentSectionHeaders(source).status, source).toBe(200);
+  });
+
+  it('fresh data has the list pages\' freshness; stale data a short one; nothing at all is no-store, with no Retry-After', () => {
+    const fresh = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300';
+    expect(contentSectionHeaders('network').headers).toEqual({ 'cache-control': fresh });
+    expect(contentSectionHeaders('cache').headers).toEqual({ 'cache-control': fresh });
+    expect(contentSectionHeaders('stale').headers).toEqual({ 'cache-control': 'public, max-age=0, s-maxage=30' });
+    for (const source of ['empty', 'not_found'] as const) expect(contentSectionHeaders(source).headers, source).toEqual({ 'cache-control': 'no-store' });
+  });
+
+  it('the cache-control of every source is the one of the page that IS the list, except where that page fails: there a 503 becomes a 200 no-store', () => {
+    for (const source of ['network', 'cache', 'stale'] as const) {
+      expect(contentSectionHeaders(source), source).toEqual({ status: 200, headers: contentPageHeaders(source).headers });
+    }
+    expect(contentPageHeaders('empty').status).toBe(503);
+    expect(contentSectionHeaders('empty').status).toBe(200);
   });
 });
