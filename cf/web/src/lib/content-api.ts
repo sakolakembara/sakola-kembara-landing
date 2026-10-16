@@ -1,5 +1,5 @@
 // Loader for the public content API (docs/cloudflare/content-api.md), shared by the SSR pages
-// that read it: /tim, /laporan and /gabung-siswa/docs. One implementation of the timeout,
+// that read it: /tim, /donasi (its Laporan section), /gabung-siswa/docs and the blog. One implementation of the timeout,
 // the Workers Cache API (`caches.default`) and stale-if-error, so the pages cannot drift:
 //
 //   1. fresh copy in the cache (default TTL 60 s)             -> source "cache"
@@ -228,6 +228,26 @@ export function contentPageHeaders(source: ContentSource): { status: number; hea
       return { status: 404, headers: { 'cache-control': 'public, max-age=0, s-maxage=30' } };
     default:
       return { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '30' } };
+  }
+}
+
+/**
+ * Headers of a page that CARRIES a content list as one section among others (SAKEM-105: /donasi carries the reports).
+ * Such a page never fails because of the list: with nothing to show (API down, cold cache) it still answers 200 and
+ * only the section says so, unlike contentPageHeaders, whose 503 is for a page that IS the list. Freshness is the
+ * list pages' (`s-maxage=60`, the stale copy's 30); a degraded answer is `no-store`, with no Retry-After (the page
+ * itself is fine): no edge, browser or page copy (src/lib/page-cache.ts copies only an `s-maxage` of a minute or
+ * more) keeps it, so the list shows again as soon as the API does.
+ */
+export function contentSectionHeaders(source: ContentSource): { status: 200; headers: Record<string, string> } {
+  switch (source) {
+    case 'network':
+    case 'cache':
+      return { status: 200, headers: { 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' } };
+    case 'stale':
+      return { status: 200, headers: { 'cache-control': 'public, max-age=0, s-maxage=30' } };
+    default:
+      return { status: 200, headers: { 'cache-control': 'no-store' } };
   }
 }
 

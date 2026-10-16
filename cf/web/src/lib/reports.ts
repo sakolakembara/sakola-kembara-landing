@@ -1,6 +1,6 @@
-// Reports for /laporan: the payload of GET ${CONTENT_API_URL}/api/public/reports (shape and
-// order: docs/cloudflare/content-api.md), the display helpers ported from the root
-// lib/report-types.ts, and the grouping of the root lib/reports.ts (getReportsByYear).
+// Reports for the Laporan section of /donasi (SAKEM-105; it was the page /laporan): the payload of
+// GET ${CONTENT_API_URL}/api/public/reports (shape and order: docs/cloudflare/content-api.md), the display
+// helpers ported from the root lib/report-types.ts, and the grouping of the root lib/reports.ts (getReportsByYear).
 
 import { fileHref, isRecord, listOf, loadContent, str, type ContentCallOptions, type ContentSource } from './content-api';
 import type { TagTone } from './ui';
@@ -101,4 +101,31 @@ export interface ReportsResult {
 export async function loadReports(opts: ContentCallOptions<Report[]>): Promise<ReportsResult> {
   const { data, source } = await loadContent<Report[]>({ ...opts, path: REPORTS_PATH, parse: parseReportsPayload });
   return { reports: data, source };
+}
+
+/** Everything the Laporan section of /donasi shows, loaded and grouped once: the one source of its data. */
+export interface ReportsSectionData extends ReportsResult {
+  /** The years, newest first, each with its reports (empty when there are none or the API is down). */
+  years: { year: string; reports: Report[] }[];
+  /** How many reports in all. */
+  total: number;
+}
+
+/**
+ * The data of the Laporan section. It NEVER throws: /donasi must not fail because of the reports (the page answers 200
+ * whatever happens here, src/lib/content-api.ts `contentSectionHeaders`), so a failure of the runtime itself (the
+ * `runtime` thunk, the loader) is the same as an API that cannot answer and has nothing cached: `reports: null`,
+ * source "empty", and the section shows its failure panel.
+ *
+ * `runtime` is a thunk so that building it (the API binding, the cache) is inside the guard too.
+ */
+export async function loadReportsSection(runtime: () => ContentCallOptions<Report[]>): Promise<ReportsSectionData> {
+  let result: ReportsResult;
+  try {
+    result = await loadReports(runtime());
+  } catch {
+    result = { reports: null, source: 'empty' };
+  }
+  const list = result.reports ?? [];
+  return { ...result, years: groupReportsByYear(list), total: list.length };
 }
