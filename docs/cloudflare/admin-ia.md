@@ -29,7 +29,7 @@
 | Pendaftar | `student_applications` + catatan tinjau | `/portal/status` (vonis baru terlihat setelah publikasi) | Saring batch/status, baca profil, ubah status, cabut penerimaan | Musiman | Daftar berfilter + detail (baca + panel tinjau) |
 | Pesan | `contact_messages` dari `/kontak` (Kerjasama, Donasi, Lainnya) | Masuk dari `/kontak` | Baca, tandai belum dibaca, balas via email (mailto), hapus | Mingguan | Daftar (kotak masuk) + detail |
 | Pengumuman | `announcements`: tingkat (info/peringatan/mendesak), jadwal, CTA, aktif | Strip di semua halaman publik | Buat, jadwalkan, aktif/nonaktif, hapus | Musiman | Daftar + editor |
-| Laporan | `reports`: PDF ≤ 20 MB, 4 kategori, tahun | `/laporan` | Unggah, ubah metadata, hapus | Tahunan | Daftar + editor |
+| Laporan | `reports`: PDF ≤ 20 MB, 4 kategori, tahun | bagian Laporan di `/donasi#laporan` (SAKEM-105; `/laporan` dulu sebuah halaman, kini 308 ke sana) | Unggah, ubah metadata, hapus | Tahunan | Daftar + editor |
 | Blog | Berkas markdown `content/blog/*.md` + gambar | `/blog` | Tulis, sunting, unggah gambar, hapus | Mingguan | Daftar + editor (terbesar: 2 tab, pratinjau) |
 | Tim | `team_members`: bio, riwayat, foto, urutan | `/tim` | Tambah, ubah, atur urutan, hapus | Jarang | Daftar + editor |
 | Berkas Pendaftaran | `site_resources`: 5 kategori; file ≤ 25 MB, link, atau teks | `/gabung-siswa/docs` ("Pusat Dokumen & Berkas"), ditautkan wizard `/portal/daftar` | Tambah, ubah, urutkan, hapus | Musiman (sebelum batch dibuka) | Daftar + editor |

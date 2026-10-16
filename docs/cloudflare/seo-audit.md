@@ -42,7 +42,7 @@ pnpm seo:parity -- --live-dir ~/private/seo-live/live --candidate-base https://p
 
 ### Where the URL list comes from
 
-1. The main pages and the legacy entry points (`MAIN_PATHS`: `/`, `/blog/`, `/tim/`, `/kontak/`, `/donasi/`, `/laporan/`, `/gabung-siswa/`, the three program pages, and the static sources of `redirects.config.mjs`), in WordPress spelling (trailing slash).
+1. The main pages and the legacy entry points (`MAIN_PATHS`: `/`, `/blog/`, `/tim/`, `/kontak/`, `/donasi/`, `/gabung-siswa/`, the three program pages, and the static sources of `redirects.config.mjs`, `/laporan/` among them since SAKEM-105: it is a redirect now, not a page of its own), in WordPress spelling (trailing slash).
 2. The **86 WordPress article URLs** (`sourceUrl` of `lib/blog-posts.json`) and their **86 `/?p=<wpId>` shortlinks** (WordPress answers those with a redirect to the post; `--no-wp-ids` leaves them out).
 3. Your own list: `--extra FILE` (one path or URL per line, `#` comments).
 4. **The live sitemap(s)**: the `Sitemap:` lines of the live robots.txt, else `/sitemap_index.xml`, `/wp-sitemap.xml`, `/sitemap.xml` (the first that works), following an index into its children (at most 50 files, two levels). `--sitemap PATH` (repeatable) overrides. Sitemap URLs are re-based onto the live base, so a stand-in works.
@@ -229,7 +229,18 @@ Dzul decided on 2026-10-15 to take the **latest live version** of the four artic
 
 ### The trailing-slash 307 (F-03)
 
-The cause: for a prerendered page (`dist/client/donasi.html`) the Workers assets layer redirects `/donasi/` to `/donasi` itself with a **307**, and `assets.html_handling` has no setting for the status. The fix is **config only**: a static `_redirects` rule per page. Cloudflare documents `_redirects` as applied to static asset responses and does not say which of the two redirects wins, so it was tried in the local emulation (`wrangler dev`, local mode): **`/donasi/` answers 308**, the query string is kept, the origin is not asked, and `/donasi/` + `?utm_source=...` redirects once. A request with a doubled slash (`/donasi//`) still gets the layer's 307; nothing links to it. The rules are generated from the `.html` files of the build, so a page prerendered later is covered, and a test fails if one is not. **Whether the same wins on a real zone is T-19 of the runbook**: until it is checked there, the old warning (`redirect-temporary`) is the thing to look for.
+The cause: for a prerendered page (`dist/client/donasi.html`) the Workers assets layer redirects `/donasi/` to `/donasi` itself with a **307**, and `assets.html_handling` has no setting for the status. The fix is **config only**: a static `_redirects` rule per page. Cloudflare documents `_redirects` as applied to static asset responses and does not say which of the two redirects wins, so it was tried in the local emulation (`wrangler dev`, local mode): **`/donasi/` answers 308**, the query string is kept, the origin is not asked, and `/donasi/` + `?utm_source=...` redirects once. A request with a doubled slash (`/donasi//`) still gets the layer's 307; nothing links to it. The rules are generated from the `.html` files of the build, so a page prerendered later is covered, and a test fails if one is not. **Whether the same wins on a real zone is T-19 of the runbook**: until it is checked there, the old warning (`redirect-temporary`) is the thing to look for. (Since SAKEM-105 `/donasi` is a page the Worker renders, so it folds its own slash and is no longer one of these pages: four are left, and T-19 asks `/gabung-siswa/`.)
+
+### The reports moved into /donasi (SAKEM-105)
+
+Decided by Dzul on 2026-10-16: `/laporan` is no longer a page, its content is the Laporan section of `/donasi` ([`web-skeleton.md`](web-skeleton.md#the-laporan-section-of-donasi-sakem-105)). What it means for search:
+
+- **`/laporan` and `/laporan/` are one permanent hop (308) to `/donasi#laporan`**, answered by the assets layer; `/impact-reports` and below it go to the same place in one hop (they went to `/laporan`, which would have been two). A search engine that has `/laporan` indexed follows the 308 and keeps `/donasi`; the fragment is not sent to a server, so Google sees `/donasi`.
+- **The page's `<title>`, description and JSON-LD (the site graph and its Laporan breadcrumb) went with it.** `/donasi` keeps its own, unchanged: title "Donasi", the same description, canonical `https://sakolakembara.org/donasi`, the site graph and the Donasi breadcrumb. The description does not mention reports; a text that does would be new copy and is Dzul's to approve (a proposal is in the pull request of SAKEM-105). Nothing was changed.
+- **The sitemap lists `/donasi` and no longer `/laporan`** (a redirect is not a sitemap URL). `/donasi` keeps its priority and frequency.
+- **The parity tool** lists `/laporan/` among the redirects of the table (it is a static source of `redirects.config.mjs`, so it is no longer written out in `MAIN_PATHS`), and reads it as a redirect to a page that exists: one 308 to a 200, INFO only (`served-where-live-404` in the local rehearsal, where the stand-in has no such page; on the real site whatever WordPress answers for `/laporan/` is compared the same way). Its local rehearsal checks exactly that: `scripts/seo-parity-local.mjs`, and `tests/seo-parity.test.ts` for the list.
+- **`/donasi` is rendered by the Worker now**, so its head is checked on the Worker's answer (e2e group `donasi`) and no longer on a file of `dist/client`.
+- **Not verified:** that Google treats the redirect to a section the way it treats any other 308 (it does not index fragments); that a real zone's assets layer keeps the fragment in `Location` (T-37 of the runbook).
 
 ### Not verified, and open decisions
 
@@ -264,7 +275,7 @@ node scripts/seo-parity.mjs --live-dir ~/seo-reports-sakola-kembara/2026-10-13/r
 
 | Item | Plan |
 | --- | --- |
-| URLs | home `/`; `/blog`; one long article; one short article; `/tim`; `/kontak`; `/gabung-siswa`; `/donasi`; `/laporan`; one program page (10 URLs, the same paths on the live site and on the candidate) |
+| URLs | home `/`; `/blog`; one long article; one short article; `/tim`; `/kontak`; `/gabung-siswa`; `/donasi`; `/laporan` (a page then; since SAKEM-105 a redirect to `/donasi#laporan`, so measure `/donasi`, which carries the reports); one program page (10 URLs, the same paths on the live site and on the candidate) |
 | Strategies | mobile and desktop |
 | Budget | 10 URLs x 2 strategies = 20 combinations per site and occasion, three runs each for a median = 60 requests; three occasions (the live site before the cutover, staging, production the week after) and the live site again for comparison at staging time = about 240 requests in all, a small fraction of the free daily allowance of the API; no key is committed, no key in a ticket, results are summarised in SAKEM-084 as numbers |
 | Method | the PageSpeed Insights page or API with the URL; three runs per URL and the median, since a single lab run varies; record LCP, INP (field only), CLS, TBT, Speed Index, the performance score |
