@@ -10,6 +10,13 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
+  // PRODUCTION is never on `workers.dev` (SAKEM-104, docs/cloudflare/cutover-runbook.md section 14): wrangler turns the
+  // workers.dev address on at every deploy unless the configuration says otherwise, and a production API Worker there
+  // would be a second public face on a host nobody watches. The production host is a Custom Domain attached in the
+  // dashboard (no `routes` here on purpose). The staging block at the end of the file turns workers.dev on for itself.
+  "workers_dev": false,
+  "preview_urls": false,
+
   // Anything that is not production must say so in untracked .dev.vars
   // (ENVIRONMENT=development). A deployed worker with this file as-is is
   // production: email, Turnstile and rate limiting fail closed, and tokenized

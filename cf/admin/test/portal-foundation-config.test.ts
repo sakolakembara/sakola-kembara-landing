@@ -60,7 +60,10 @@ describe("the portal's configuration", () => {
     expect(Object.keys(portal).sort()).toEqual(["$schema", "assets", "compatibility_date", "compatibility_flags", "d1_databases", "env", "main", "name", "observability", "r2_buckets", "ratelimits", "vars"]);
     expect(Object.keys(portal.env ?? {})).toEqual(["staging"]);
     for (const config of [admin, portal]) {
-      for (const forbidden of ["routes", "route", "account_id", "zone_id", "zone_name", "workers_dev", "kv_namespaces", "durable_objects", "services"]) expect(config, forbidden).not.toHaveProperty(forbidden);
+      for (const forbidden of ["routes", "route", "account_id", "zone_id", "zone_name", "kv_namespaces", "durable_objects", "services"]) expect(config, forbidden).not.toHaveProperty(forbidden);
+      // workers_dev may only be switched OFF here (SAKEM-104: a production Worker is never on workers.dev, and wrangler turns that
+      // address on at every deploy unless the file says false); it is never turned on at the top level, only by the staging block.
+      expect([undefined, false], "workers_dev").toContain((config as { workers_dev?: boolean }).workers_dev);
       for (const database of config.d1_databases) expect(database.database_id, "a D1 id").toBeUndefined();
     }
     expect(portal.triggers).toBeUndefined(); // the daily cleanup runs on the admin Worker

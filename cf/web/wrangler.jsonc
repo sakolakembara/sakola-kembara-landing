@@ -8,6 +8,14 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
+  // PRODUCTION is never on `workers.dev` (SAKEM-104, docs/cloudflare/cutover-runbook.md section 14). Wrangler enables the
+  // workers.dev address of a Worker on every deploy unless the configuration says otherwise, and a production Worker
+  // there would be a second public copy of the site on a host nobody watches (and its pass-through to the old origin
+  // would call itself). The route `sakolakembara.org/*` is attached in the dashboard, not here. The staging block
+  // below turns workers.dev on for itself; a test (tests/production-config.test.ts) pins both.
+  "workers_dev": false,
+  "preview_urls": false,
+
   // The API Worker (cf/admin), reached through an internal SERVICE BINDING, and only through its
   // named entrypoint `PublicApi` (src/api/public/entrypoint.ts there). Two things go through it:
   // the contact form (POST /api/public/contact, which exists ONLY on that entrypoint) and every

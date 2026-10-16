@@ -101,7 +101,7 @@ Why, from the documented behaviour:
 
 Not in git (public repository, no ids, no hostnames beyond the public domain): they are set by the deploy ticket, after the zone is active.
 
-- **Names (placeholders).** `sakem-web` (the web Worker; its `name` in `cf/web/wrangler.jsonc` is `sakola-kembara-web`, and `account-setup.md` proposes `sakem-web-staging`: the deploy ticket picks one set), `sakem-admin` (it must equal the `service` of the web Worker's `API` binding, a test keeps the two equal today) and `sakem-portal`.
+- **Names.** `sakola-kembara-web` (the web Worker: its `name` in `cf/web/wrangler.jsonc`, final for production; staging is `sakem-web-staging`), `sakem-admin` (it must equal the `service` of the web Worker's `API` binding, a test keeps the two equal today) and `sakem-portal`.
 - **Routes of `sakem-portal`:** `sakolakembara.org/portal` and `sakolakembara.org/portal/*`, zone `sakolakembara.org`, both on the same Worker. The apex needs a proxied DNS record (it exists for the web Worker). `workers_dev` follows the environment: off in production, on for staging (adding `routes` to a config turns `workers_dev` off on the next deploy).
 - **The web Worker** stays on its own pattern (`sakolakembara.org/*`, or the Custom Domain decided at M5). M4 does not need to choose; D1 holds in both modes.
 - **Failure mode of the two portal routes:** fail closed (the portal holds session-bound data; a bypass would send `/portal/api/*` to the web Worker, which answers 404, and hide the cause).

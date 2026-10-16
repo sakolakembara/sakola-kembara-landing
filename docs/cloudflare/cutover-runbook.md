@@ -6,6 +6,8 @@ Ticket: SAKEM-084 (M5), task M5-B. Written for **Dzul on the day**; the agent's 
 
 > **PHASE A (decided by Dzul on 2026-10-15, SAKEM-103): registration stays on the old form, and the student portal (M4) follows later as Phase B.** The public site and the admin move to `sakolakembara.org` first. The live WordPress site has no student login or portal: registration is `/daftar/` (a 301 to an external form), `/login/` goes to `wp-login.php`, and `/portal/`, `/register/` and `/gabung-siswa/` are 404 there. The code of Phase A is merged by SAKEM-103 (the pull request is the evidence of P-01 and P-19): every "Daftar Sekarang" goes to `/daftar`, an **admin shortlink** whose target is the registration form (the owner creates it before the switch: P-07, P-25), there is no "Masuk" and no session call (`PORTAL_ENABLED` is unset), `/login` and WordPress's other paths are forwarded to the WordPress origin behind the route, `/register` and `/portal*` are the site's 404, and HSTS is staged at `max-age=300`. **The former blocker (F-02) is gone for Phase A; it is Phase B's** ([`web-skeleton.md`](web-skeleton.md#phase-a-of-the-cutover-sakem-103)). What Phase A still needs from the owner: P-25 and the real-zone checks T-31 to T-36.
 
+> **PHASE A (decided by Dzul on 2026-10-15) DOES NOT WAIT FOR M4.** The public site and the admin move first and the student portal follows later (Phase B); sign-up goes through the shortlink `/daftar` to the registration form WordPress uses today. [Section 14](#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104) is the day's runbook for Phase A and says, step by step, which of the IDs below apply, which are deferred and which change. The sections above it stay as the reference for those IDs.
+
 ## 0. How to read this document
 
 - Every step has an ID and a **Who** cell: **needs Dzul** (a real action in an account, DNS, the registrar or a browser: only he does it, or approves it per step) or **agent may prepare** (a list, a script, a command, a text to paste, a read-back of results; the agent never touches an account). Some say both.
@@ -17,10 +19,11 @@ Ticket: SAKEM-084 (M5), task M5-B. Written for **Dzul on the day**; the agent's 
 
 - The site is **live on WordPress today**; the Next app was never released and the VPS is no longer used. **The rollback target is the WordPress site, reached through DNS and Cloudflare settings.** (`docs/runbook/launch.md` and `docs/roadmap/mvp-roadmap.md` still describe a VPS cutover: they are superseded by this runbook for the Cloudflare plan.)
 - New site: Astro on Workers Free (`cf/web`), the API and admin Worker (`cf/admin`), D1, R2, Resend. $0.
-- Staging runs on `*.workers.dev`: **no cache behaviour is tested there** (the Cache API is documented to work on custom domains and routes; `workers.dev` is not mentioned). The zone `sakolakembara.org` moves to Cloudflare (nameservers) **only on cutover day**, with every record copied identically and kept DNS-only first. The zone may not be in the organisation account yet: this runbook assumes it is not.
+- Staging runs on `*.workers.dev`: **no cache behaviour is tested there** (the Cache API is documented to work on custom domains and routes; `workers.dev` is not mentioned). The zone `sakolakembara.org` moves to Cloudflare (nameservers) **only on cutover day**, with every record copied identically and kept DNS-only first. The zone may not be in the organisation account yet: this runbook assumes it is not. (**Updated 2026-10-15:** it is now active in the organisation account with the WordPress site live behind it; see [section 14.1](#141-what-changed-since-sections-1-to-13-were-written).)
 - Every real Cloudflare or DNS action needs Dzul's explicit OK, per step.
 - Shortlinks of the old Postgres were not migrated: the real ones are recreated in the new admin before cutover (P-07).
 - All work lives on the long-lived branch `cloudflare`.
+- **2026-10-15: cutover Phase A.** The public site and the admin first, the portal later; the zone is already active in the organisation account. Concrete steps, tests and rollback: [section 14](#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104).
 
 ## 2. What is verified today and what is paper
 
@@ -33,6 +36,7 @@ Ticket: SAKEM-084 (M5), task M5-B. Written for **Dzul on the day**; the agent's 
 | Content cache: 60 s fresh window, stale-if-error, a 503 that is never cached, a 404 remembered 30 s | **verified locally** against workerd's emulation of `caches.default` and against fakes; **not on a real zone** | `tests/content-api*.test.ts`, e2e group `blog` (the `x-blog-source` header says `network`, `cache`, `stale`, `empty` or `not_found`) |
 | The SEO parity tool and its rules | **verified**: 126 unit tests on recorded fixtures, a fake fetch and the two documents, no network; a local rehearsal | `tests/seo-parity.test.ts`, `pnpm seo:parity:local` |
 | The Web Analytics tag (one script per page and only when configured; the same id on prerendered and rendered pages; none on the admin or the portal; no Content-Security-Policy to extend; an invalid id ignored and never echoed) | **verified by tests** (local, with an invented id) | `tests/web-analytics*.test.ts`, `scripts/e2e.mjs` group `analytics`, `scripts/e2e-analytics.mjs`, `pnpm test:negative:web-analytics` |
+| The production command printers and dry runs of the two Phase A Workers, the offline check of a zone export, and the read-only production checker with its Phase A expectations | **verified by tests** (local, recorded and invented answers, no network); **never run against the account, the zone or the live site** | `cf/web/tests/production-scripts.test.ts`, `production-check.test.ts`, `zone-export.test.ts`, `cutover-runbook.test.ts`, `pnpm test:negative:production`; [section 14](#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104) |
 | **Phase A (SAKEM-103):** only WordPress's own paths are forwarded to the origin (14 of them reach a stand-in, 21 look-alikes and the whole new site never do); `/daftar` is an admin shortlink (307, the slash folded, a polite 404 page without one, the outage a 503); every "Daftar Sekarang" goes there; no "Masuk" and no session address while `PORTAL_ENABLED` is off (on prerendered and rendered pages, from the build and from the Worker variable, strict values); a copied upload is a one-hop 308 and any other upload is forwarded; HSTS is `max-age=300` on every answer of the Worker | **verified by tests** (local, against a stand-in origin that is a script of the repository) | `tests/legacy.test.ts`, `redirects.test.ts`, `portal-enabled*.test.ts`, `registration-page.test.ts`, `headers-sitemap.test.ts`, `scripts/e2e.mjs` (groups `pass-through`, `registration`, `portal`, `portal-paths`), `scripts/e2e-portal.mjs`, `pnpm test:negative:phase-a` |
 | Everything involving a zone, nameservers, DNS records, proxy, TLS modes, routes, Custom Domains, redirect and WAF rules, Search Console, Resend, Turnstile, Web Analytics (a real hit in the dashboard), real D1 and R2, real CPU on the Free plan, the real WordPress HTML, **a real request reaching WordPress through the route (T-31 to T-34), the real registration form behind `/daftar` (P-25)** | **paper** | nothing in this repository exercises it |
 
@@ -412,6 +416,333 @@ Likelihood and impact: **H** high, **M** medium, **L** low. "Owner" is who acts.
 | R-29 | **Staging is indexed** | L | L | no links to it, canonical to production | | F-14 |
 | R-30 | **`_redirects` limits** (2,000 static and 100 dynamic rules on Cloudflare; the generated file has 332 lines today, 312 static and 20 dynamic, counted on 2026-10-15 after SAKEM-103: 249 of the static ones are the one-hop rules for the WordPress uploads the build copied, so a new image under `/blog/images` adds one) | L | L | the F-04 to F-08 rules stay small; `tests/redirects.test.ts` | agent | |
 
+## 14. Cutover Phase A: the public site and the admin first (SAKEM-104)
+
+**Decision (Dzul, 2026-10-15): cutover Phase A.** The public site (`sakolakembara.org`) and the admin (`admin.sakolakembara.org`) move to the new Workers first; the student portal (M4) follows later as Phase B. This section is the concrete version of sections 3 to 11 for Phase A: it points at the existing P, S, H, T, C, M, RB and X steps by ID and says which apply, which are deferred and which change. **Where it disagrees with an earlier section, this section wins for Phase A.** The earlier sections are not rewritten: SAKEM-102 owns the DNS lessons in sections 4 and 5, and the portal's part (Phase B) will reuse them.
+
+**Status: paper, with code.** Everything this section needs on the repository side is built and tested locally (the production command printers, the dry runs, the zone-export check, the read-only production checker: [14.5](#145-production-resources-variables-and-the-printed-commands), [14.4](#144-zone-pre-flight-read-only-pa-1), [14.7](#147-smoke-tests-of-phase-a)). **Nothing was run against the account, the zone or the live site.** What only the real zone can settle is marked **(real zone)** and collected in [14.11](#1411-what-is-not-verified-needs-the-real-zone). IDs of this section: `PA-` preconditions, `SA-` steps, `TA-` smoke tests, `RBA-` rollback steps, `F-16` and later findings, `R-31` and later risks, `DA-` decisions.
+
+### 14.1 What changed since sections 1 to 13 were written
+
+| Then | Now (2026-10-15) |
+| --- | --- |
+| The zone is not in the organisation account; it moves on cutover day (S-11 to S-15, H1, P-13 to P-15) | **The zone `sakolakembara.org` is ACTIVE in the organisation account (Free plan).** The live WordPress site runs behind it: the apex `A` record is proxied to the cPanel/LiteSpeed server, `www` is a proxied CNAME to the apex. The zone also holds the Microsoft 365 mail records, the LMS CNAME, the cPanel hostnames and a **broken wildcard record**. S-11 to S-15, S-31 and H1 are **done** (by Dzul, in the dashboard); P-13 to P-15 are replaced by the zone pre-flight of [14.4](#144-zone-pre-flight-read-only-pa-1) |
+| One full switch, the portal included; go-live blocked on M4 (P-01, F-02) | **Two Workers**: the site (`sakola-kembara-web`) and the API and admin (`sakem-admin`). The portal Worker, its routes, its Resend mails, the private bucket's use and the registration decision are Phase B. Sign-up goes through the shortlink `/daftar` to the registration form WordPress uses today. **The code of this is SAKEM-103 (PR #93, merged into `cloudflare`)**: every "Daftar Sekarang" goes to `/daftar`, there is no "Masuk" and no session call, `/login` and WordPress's other own paths are forwarded to WordPress, HSTS is `max-age=300` |
+| The admin and the files host are new names added at S-22, after a cache rehearsal | Same, but built before the switch and tested at their own hosts, so the day itself changes one thing: the route on the apex |
+| Rollback by removing the route (RB-1 to RB-7) | Unchanged in model; the Phase A steps and the timing to record are in [14.8](#148-rollback-phase-a) |
+
+**The incident of 2026-10-15 and what it changed.** The DNS scan that came with the zone's onboarding copied Cloudflare's **own proxy addresses** as the content of A and AAAA records, and the live site answered **error 1000 for about 1 h 40** until Dzul corrected the records in the dashboard. Three rules came out of it (summarised from the SAKEM-077 comment; SAKEM-102 writes the full version): (1) **export the OLD zone first** (at the previous DNS provider) and compare the new zone with it **record by record**; (2) **never trust the scan** for a site that is already behind Cloudflare: it resolves names and gets Cloudflare's addresses back; (3) after **any** zone change, **check for Cloudflare-range addresses** as the content of A and AAAA records and for **proxied Microsoft 365 records**. An address of that kind is invisible from outside (`dig` shows Cloudflare's addresses for a proxied record either way), so the check reads the dashboard's export: [14.4](#144-zone-pre-flight-read-only-pa-1).
+
+### 14.2 The route model
+
+| Host | Attached how | To what | When the 100,000-request day is spent | Notes |
+| --- | --- | --- | --- | --- |
+| `sakolakembara.org/*` | a **Route** over the proxied apex record (D-02, unchanged) | the web Worker `sakola-kembara-web`, with the WordPress pass-through of SAKEM-103 (merged, PR #93: only WordPress's own paths are forwarded, T-31 and T-34) | **OPEN** (D-06): the Worker is bypassed and WordPress answers, where the new URLs are a 404 | WordPress stays behind the same hostname: a `fetch()` of the incoming URL from the Worker reaches the origin (documented for routes; **real zone**). **Rollback is removing the route** |
+| `www.sakolakembara.org` | **no Worker**: the proxied CNAME stays; a zone **Single Redirect** to the apex, 301, path and query kept (SA-23) | the zone rule | not applicable | The route pattern is not matched by `www` (exact host), which is why the rule is needed (R-03) |
+| `admin.sakolakembara.org` | a **Custom Domain** of the admin Worker `sakem-admin` (Workers, Settings, Domains & Routes) | the admin Worker: the admin app and `/api/*` | **CLOSED** by construction: the documentation describes the fail mode as a property of a route, so a Custom Domain has none to set and a spent limit is error 1027 (**real zone**: confirm in the dashboard that no toggle exists) | Cloudflare creates the DNS record (it points directly at the Worker) and an Advanced Certificate. The hostname must have **no existing CNAME** (Cloudflare refuses). A wildcard record is not supported by Custom Domains: sort it out first |
+| `files.sakolakembara.org` | a **custom domain of the PUBLIC R2 bucket** `sakem-files` (R2, the bucket, Settings, Custom Domains), then `UPLOADS_BASE_URL` | R2, no Worker | R2 has no daily request limit of the Workers kind | Removing the domain removes its CNAME. The `r2.dev` address stays **disabled**. Cloudflare's cache serves it (by default only some file types are cached: images and PDFs are) |
+| not attached | the portal Worker and its routes `sakolakembara.org/portal` and `/portal/*`; any domain on the private bucket `sakem-private` | nothing | | The private bucket gets **no** domain, ever |
+
+The commands are dashboard steps, written for Dzul:
+
+- **Admin domain.** Workers & Pages, `sakem-admin`, Settings, Domains & Routes, Add, **Custom Domain**, `admin.sakolakembara.org`, Add Custom Domain. First `dig +short CNAME admin.sakolakembara.org @1.1.1.1` must print nothing. Wait for the domain to be **Active** and the certificate to be issued (SSL/TLS, Edge Certificates).
+- **Files domain.** R2, `sakem-files`, Settings, Custom Domains, Add, `files.sakolakembara.org`, Continue, **Connect Domain**; wait for **Active** (a few minutes; "Retry connection" if not). The bucket's **Public Development URL** must read Disabled.
+- **The route** (the switch, SA-24). Workers & Pages, `sakola-kembara-web`, Settings, Domains & Routes, Add, **Route**; zone `sakolakembara.org`; route `sakolakembara.org/*`; failure mode **fail open** (the dialog's own wording is not in the documentation: look for "fail open" or "proceed"). Note the time to the second.
+- **Nothing is attached by `wrangler deploy`.** Both production configurations have `workers_dev: false` and no `routes` (a test pins both): a deploy creates a Worker nobody can reach until the dashboard attaches it. That is deliberate: wrangler turns the `workers.dev` address of a Worker on at every deploy unless the configuration says otherwise, and a production Worker there would be a public second copy of the site whose pass-through calls itself.
+
+### 14.3 What Phase A needs, and what it does not
+
+**Does NOT need** (all of it is Phase B or later):
+
+| Item | Why it stays out | Caveat |
+| --- | --- | --- |
+| The portal Worker `sakem-portal`, its routes, its SPA, its secrets and its two WhatsApp variables (`PORTAL_CONTACT_WHATSAPP`, `PORTAL_WHATSAPP_GROUP_URL`) | the portal is deferred; the site's switch `PORTAL_ENABLED` stays `false` | there is **no production printer or dry run for it** on purpose |
+| The private bucket's **use** (applicants' documents) | no uploads from the public in Phase A | **the resource must still exist**: the admin Worker's configuration binds `sakem-private`, and a deploy that finds none creates it without the location hint. Create it empty and private (14.5) and never give it a domain |
+| Resend **for the portal** (registration, verification, status mails, `email_daily`) | no student accounts | Resend for the **admin** is a separate question: DA-2 |
+| The privacy policy page (SAKEM-056, P-06) | it was a blocker because of the portal's uploads and registration | **Dzul's decision (DA-1).** Phase A still collects names, emails and messages through `/kontak`, and the staff accounts of the admin; the page is not needed for uploads because there are none |
+| M4, D-03 | no portal | decided on 2026-10-15, option (b); T-16 and T-17 apply with their Phase A expectations (section 7) |
+| P-01 (A) | the registration decision is taken | **done**: Dzul, 2026-10-15, option (b); the code is SAKEM-103 (PR #93, merged) |
+
+**Still needs:**
+
+| Item | Step | Notes |
+| --- | --- | --- |
+| A **real Turnstile widget** for the real hostnames, for `/kontak` and the admin's sign-in | P-11, SA-04 | list `sakolakembara.org` **and** `admin.sakolakembara.org` (and the throwaway name of SA-12) as hostnames; Cloudflare's always-pass test keys are refused by the printers. Seen working on a phone (T-12) |
+| A **WordPress backup that was checked**, and the content freeze | P-12, S-06 | WordPress is the rollback target and the only copy of the media that was never mirrored (R-07) |
+| The **real shortlinks**, `daftar` included | P-07, P-25, SA-09 | `daftar` is the address of every "Daftar Sekarang" (SAKEM-103, merged): its target is the registration form of the current cohort, copied from the live redirect (P-25). Until it exists, and between cohorts, visitors get the polite page "Formulir pendaftaran belum tersedia" (a 404, `no-store`), and TA-02 says so |
+| The **first production super_admin** in the production D1 | P-08, SA-07 | [`first-super-admin.md`](first-super-admin.md); a second one can be invited only with email (DA-2) |
+| The **production D1 with the 86 articles** and every article WordPress publishes before the switch | P-05, SA-09, SA-13 | counts compared with the live sitemap |
+| Content of the other admin-managed pages (team, reports, documents) | SA-09 | they read D1 too: an empty production database shows their empty states at launch (DA-6) |
+| The **Web Analytics site** for `sakolakembara.org` and its **beacon id** | P-24, SA-04 | automatic injection off for the hostname; the id goes in the build **and** the `--var` (T-25) |
+| `PAGE_CACHE_SECONDS` | SA-05 | `30`. The staging probe put `/blog` at 13 ms CPU a request without the page copy, above the 10 ms limit ([`free-plan-audit.md`](free-plan-audit.md#10-cpu-on-the-hot-routes-sakem-091)); the printer refuses a site deploy without it |
+| A **Resend key** | P-10, SA-04 | **only if** the admin's invitation, verification and reset emails are wanted at launch (DA-2) |
+| Account safety nets, the window, the rollback rehearsal, log retention | P-20 to P-23 | unchanged |
+
+### 14.4 Zone pre-flight (read-only), PA-1
+
+**PA-1: before anything is attached, and again at the hold point HA1 (SA-21), the zone is exported and read.** None of it changes anything.
+
+1. **Export** the zone from the dashboard (DNS, Records, Import and Export, **Export**) and save it **outside the repository** (a password manager note, an encrypted folder): it holds the origin's address. Compare it **record by record** with the export of the OLD zone that Dzul kept at the previous provider (rule 1 of 14.1), and tick "reviewed by" with a second person (P-13).
+2. **Run the check** over the export (`cf/scripts/check-zone-export.mjs`; offline: it reads one file, uses no network, writes nothing, and refuses a file inside the repository):
+
+   ```bash
+   cd cf/web
+   pnpm check:zone-export -- <the export file>
+   ```
+
+   It prints one line per rule and exits 1 on a failure. **Z-01**: no A or AAAA record has a Cloudflare address as its content (the incident). **Z-02**: no wildcard record (`--allow-wildcard` only once a wildcard is intended and its content was read by hand). **Z-03**: no mail, autodiscover, DKIM, hosting-panel or Microsoft 365 record is **proxied** (grey cloud for all of them). **Z-04**: nothing points at `workers.dev`. **Z-05**: the apex has a proxied record (a route needs one) and `www` too. **Z-06**: what Microsoft 365 holds (MX, SPF include, autodiscover, the two DKIM selectors). **Z-07**: every proxied name. Anything it fails is fixed **in the dashboard**, then the zone is exported and checked again until it exits 0. The ranges it uses are Cloudflare's published lists (read 2026-10-15); a test pins them.
+3. **Read-only queries** that the export cannot answer. They use `dig` against a public resolver and send nothing to the account:
+
+   ```bash
+   # a wildcard answers for a name nobody made: empty output (NXDOMAIN) is the right answer for every type
+   for t in A AAAA CNAME MX TXT; do echo "$t: $(dig +short $t zz-check-$(date +%s).sakolakembara.org @1.1.1.1)"; done
+   # the Microsoft 365 names must answer as CNAMEs to Microsoft's hosts; Cloudflare addresses instead mean the record is proxied.
+   # Only names the export lists are expected to answer; an empty line for a name the export lists is a failure
+   for n in autodiscover lyncdiscover sip enterpriseregistration enterpriseenrollment msoid selector1._domainkey selector2._domainkey; do
+     printf '%-28s ' $n; dig +short CNAME $n.sakolakembara.org @1.1.1.1 | tr '\n' ' '; echo; done
+   dig +short MX sakolakembara.org @1.1.1.1                      # ends in .mail.protection.outlook.com.
+   dig +short TXT sakolakembara.org @1.1.1.1 | grep spf1        # includes spf.protection.outlook.com
+   dig +short NS sakolakembara.org @1.1.1.1                      # the two Cloudflare nameservers
+   dig +short DS sakolakembara.org @1.1.1.1                      # empty, or the DS that DNS, Settings, DNSSEC shows (P-15)
+   curl -sI https://sakolakembara.org/ | head -30               # WordPress's signature headers (SA-20 records them)
+   curl -sI https://www.sakolakembara.org/ | head -10           # the canonical host of WordPress: it must NOT redirect the apex to www
+   ```
+
+   The last line matters for SA-23: a zone rule that sends `www` to the apex, over a WordPress that sends the apex to `www`, is a redirect loop.
+4. **Record** the result in SAKEM-084 as "done" or the failing rule's ID, never a value.
+
+### 14.5 Production resources, variables and the printed commands
+
+**One rule for every command of the day:** `CLOUDFLARE_ENV` must be **unset** (`echo "[$CLOUDFLARE_ENV]"` prints `[]`; the staging runbook sets it for its session). Wrangler and `pnpm build` obey it, so a shell left on staging deploys or builds the staging Worker silently. The printers refuse to run while it is set, the production build (`pnpm build:prod`) unsets it, and every production command below carries `--env=""`, which selects the top level whatever the variable says (tested with wrangler's dry run on 2026-10-15). Pin the organisation account in the shell (`export CLOUDFLARE_ACCOUNT_ID=...`, never written anywhere). Every real command below needs Dzul's explicit OK, as in the staging runbook, and `git status --short` is checked after each one (it must stay clean: no id may land in a tracked file).
+
+**The resources the top-level configurations expect** (names, read from the files; the printers print the same list so Dzul can compare it with the dashboard):
+
+| Kind | Name | Notes |
+| --- | --- | --- |
+| Worker | `sakem-admin` | the API and admin; the site's service binding names it |
+| Worker | `sakola-kembara-web` | the public site (**final**: the `name` of `cf/web/wrangler.jsonc`, DA-7; staging is `sakem-web-staging`) |
+| D1 | `sakem-admin` | one database for the admin (and later the portal); location hint `apac` |
+| R2 | `sakem-files` | PUBLIC through `files.sakolakembara.org`; location hint `apac` |
+| R2 | `sakem-private` | PRIVATE, empty, no `r2.dev`, no domain; created only because the admin Worker binds it |
+| attached in the dashboard | `admin.sakolakembara.org`, `files.sakolakembara.org`, the route `sakolakembara.org/*` | 14.2 |
+
+```bash
+cd cf/admin
+pnpm exec wrangler d1 list                                         # read-only: the organisation's databases only
+CI=1 pnpm exec wrangler d1 create sakem-admin --location apac      # CI=1: wrangler must not offer to write the id into wrangler.jsonc
+CI=1 pnpm exec wrangler r2 bucket create sakem-files --location apac
+CI=1 pnpm exec wrangler r2 bucket create sakem-private --location apac
+pnpm exec wrangler r2 bucket dev-url get sakem-files               # must NOT show a public address
+pnpm exec wrangler r2 bucket dev-url get sakem-private             # must NOT show a public address
+pnpm exec wrangler r2 bucket domain list sakem-private             # must list no custom domain, now and after every change to R2
+pnpm exec wrangler d1 migrations list  sakem-admin --env="" --remote   # fourteen not yet applied, 0000 to 0013
+pnpm exec wrangler d1 migrations apply sakem-admin --env="" --remote   # shows them, asks you to confirm
+pnpm exec wrangler d1 execute sakem-admin --env="" --remote --command \
+  "SELECT type, name FROM sqlite_master WHERE name IN ('signable_super_admins', 'users_keep_one_super_admin')"   # two rows
+git status --short                                                 # clean
+```
+
+**Variables and secrets, names only.** A value of a `--var` is public; a secret is typed into wrangler's own prompt. A deploy **deletes every variable it does not pass** (wrangler's `--keep-vars` is deliberately not used) and never deletes a secret, which is why the values live in one untracked file per Worker, `.production.vars` (copy `production.vars.example`; git-ignored), and the printer prints the whole command from it.
+
+| Name | Worker | Kind | Value |
+| --- | --- | --- | --- |
+| `TURNSTILE_SITE_KEY` | admin and site | public var, required | the real widget's site key (not a test key) |
+| `UPLOADS_BASE_URL` | admin and site | public var, required | exactly `https://files.sakolakembara.org` |
+| `SITE_URL` | admin | public var, required | exactly `https://sakolakembara.org` |
+| `EMAIL_FROM` | admin | public var, optional | on `sakolakembara.org`, only with a Resend key (DA-2) |
+| `ADMIN_URL` | site | public var, required | exactly `https://admin.sakolakembara.org` |
+| `WEB_ANALYTICS_BEACON_ID` | site | public var, required | 32 hexadecimal characters; **also** in the shell of the build (below) |
+| `PAGE_CACHE_SECONDS` | site | public var, required | `30` (1 to 120) |
+| `CONTENT_CACHE_FRESH_SECONDS`, `TEAM_CACHE_FRESH_SECONDS` | site | public var, optional | seconds, default 60 and 300 |
+| `PORTAL_ENABLED` | site | public var, optional | exactly `false` in Phase A, or leave the line out (the portal is OFF by default); `true` is refused until Phase B changes the printer. SAKEM-103's switch for "Masuk" and the session call; **also** in the shell of the build, like the beacon id |
+| `BETTER_AUTH_SECRET` | admin | secret | `openssl rand -base64 32`, **a new value** (never one used on another Worker or environment) |
+| `TURNSTILE_SECRET_KEY` | admin | secret | the widget's secret key |
+| `RESEND_API_KEY` | admin | secret, optional | only with DA-2 |
+| `LEGACY_ORIGIN_URL`, `CONTENT_API_URL`, `CONTACT_API_URL`, `COOKIE_DOMAIN`, `TRUSTED_ORIGINS`, `ENVIRONMENT`, `PORTAL_CONTACT_WHATSAPP`, `PORTAL_WHATSAPP_GROUP_URL` | none | **never set** | refused by the printers; `ENVIRONMENT` is `production` in the configuration |
+
+The printers refuse (with the line number): a secret name; an API URL; a placeholder (`<...>`); an `http://` origin; a path or a trailing slash; anything that looks like staging (a `workers.dev` or `r2.dev` host, Cloudflare's always-pass Turnstile test keys `1x00...`, `no-legacy-origin.invalid`, `resend.dev`, the word "staging"); an origin that is not the host of its role; an empty required value; a required value that is missing; `PORTAL_ENABLED` other than `false`. The three origins are fixed to the plan's hostnames. A variable that a later change adds to the site is one entry in `SPECS.web` of `cf/scripts/production-deploy-command.mjs`, and a test fails for any variable of the site's `env.d.ts` that is neither printable nor refused, so none can be forgotten (`PORTAL_ENABLED` was the first).
+
+```bash
+# the admin (cf/admin), then the site (cf/web): the site's binding names the admin, so the admin goes first
+cd cf/admin
+cp production.vars.example .production.vars            # git-ignored; fill in the public values
+pnpm deploy:prod:dry                                   # no account (cf/scripts/production-dry-run.mjs): "production dry-run ok: sakem-admin, ..."
+pnpm deploy:prod:command                               # prints the build line and the command, and the resources it expects: read them
+pnpm build:spa
+pnpm exec wrangler deploy --env="" --var '...'         # the printed line (your OK): the Worker exists but nobody can reach it
+openssl rand -base64 32 | pbcopy                       # then paste at the hidden prompt and clear the clipboard
+pnpm exec wrangler secret put BETTER_AUTH_SECRET --env=""
+pnpm exec wrangler secret put TURNSTILE_SECRET_KEY --env=""
+pnpm exec wrangler secret put RESEND_API_KEY --env=""  # only with DA-2
+pnpm exec wrangler secret list --env=""                # NAMES only
+
+cd ../web
+cp production.vars.example .production.vars
+pnpm deploy:prod:dry                                   # builds the production site with no beacon and dry-runs it: "production dry-run ok: sakola-kembara-web, ..."
+pnpm deploy:prod:command                               # refuses the build the dry run just made (no beacon) and prints the build line to use
+WEB_ANALYTICS_BEACON_ID=<the id> PORTAL_ENABLED=false pnpm build:prod   # the printed line: on the command line, never exported (a later staging build in this shell would pick them up)
+pnpm deploy:prod:command                               # now it checks dist/ (the production build, the id and the portal switch in the prerendered home page) and prints
+pnpm exec wrangler deploy -c dist/server/wrangler.json --var '...'   # the printed line (your OK): still no route, still unreachable
+```
+
+The beacon id is needed twice because the site has two kinds of page: the prerendered ones (`/`, `/donasi`, `/gabung-siswa`, `/program/<id>`) take it from the shell of the build, the pages the Worker renders from the `--var` ([`web-skeleton.md`](web-skeleton.md#web-analytics-sakem-095-decision-d-07)). The printer prints the build line with the id from the same file, refuses to print while `dist/` was built without it or with another one, and T-25 checks the result on the live site. **`PORTAL_ENABLED` has the same two sources** ([`web-skeleton.md`](web-skeleton.md#the-student-portal-switch)): the printed build line and the `--var` come from the one line of `.production.vars`, and the printer refuses a `dist/` whose prerendered home page disagrees with the file (a "Masuk" link or the session address where the file says `false` or says nothing: a build made in a shell that still had `PORTAL_ENABLED=true`); T-35 checks both kinds of page on the live site.
+
+### 14.6 The Phase A day
+
+"Replaces" says which step of section 6.2 the row stands for. **Who**: *Dzul* needs Dzul (a real action in an account, DNS or the dashboard, or his approval per step); *agent* prepares (text, commands, a read-back).
+
+| ID | When | Step | Replaces or uses | Who |
+| --- | --- | --- | --- | --- |
+| SA-01 | T-7 d | Choose the window, tell the team and Rommy, ask for the WordPress freeze from T-1 d 18:00; name a second person with dashboard access (DA-4); the window rules of [14.9](#149-the-rules-of-the-window) | S-01, P-21 | Dzul |
+| SA-02 | T-7 d to T-3 d | **The code is ready**: SAKEM-103 is merged (PR #93: HSTS `max-age=300`, `/daftar` as an admin shortlink, the portal off, WordPress's own paths forwarded). Deploy both Workers from the `cloudflare` branch at or after its head; **create the shortlink `daftar`** in the production admin (P-25) before SA-24; the redirect additions of D-05 that are still open (F-03 to F-08, the `?p=` rule at SA-23) are decided | P-01, P-19, P-25 | agent prepared; Dzul creates the shortlink |
+| SA-03 | T-72 h | **Zone pre-flight** ([14.4](#144-zone-pre-flight-read-only-pa-1)): export, compare with the old zone, `pnpm check:zone-export`, the `dig` queries; sort out the wildcard and any proxied Microsoft 365 record; DNSSEC state (P-15) | S-02, S-03, P-13 to P-15 | Dzul runs, agent reads |
+| SA-04 | T-72 h | **Objects in the account**: the real Turnstile widget (hostnames in 14.3); the Web Analytics site for `sakolakembara.org` with the automatic injection off, and its beacon id; Resend only with DA-2 (domain verified; its records added **without touching the Microsoft 365 SPF**; run `pnpm check:zone-export` again); the usage notification (P-20); the analytics and Turnstile steps in P-11, P-24 | P-10, P-11, P-20, P-24 | Dzul |
+| SA-05 | T-48 h | **Production resources and variables** ([14.5](#145-production-resources-variables-and-the-printed-commands)): D1, the two buckets, the 14 migrations, both `.production.vars`, both dry runs. `workers_dev` is off in the configurations | P-09, P-18 | Dzul (agent prepares the text) |
+| SA-06 | T-48 h | **Deploy the admin Worker**, then its secrets (14.5). It is unreachable until SA-07 | P-18 | Dzul |
+| SA-07 | T-48 h | **Attach `admin.sakolakembara.org`** (14.2). Then `curl -s https://admin.sakolakembara.org/api/config`: the real site key, `uploadsBaseUrl`, `siteUrl`; `/api/me` is a 401. **First super_admin**: `pnpm first-admin --database sakem-admin --remote` ([`first-super-admin.md`](first-super-admin.md)), sign in with the real widget, check Aktivitas. The zone rules of SA-23 that protect the admin host (F-16, F-19) are added now, not on the day | P-08, S-22 | Dzul |
+| SA-08 | T-48 h | **Attach `files.sakolakembara.org`** to `sakem-files` (14.2), upload a small image through the admin, open it at the files host (`cache-control: public, max-age=31536000, immutable`, the right `content-type`), delete it. `pnpm exec wrangler r2 bucket dev-url get sakem-files` shows no public address | S-22, [`uploads.md`](uploads.md#owner-steps-bucket-domain-variable) | Dzul |
+| SA-09 | T-48 h to T-24 h | **Content**: the 86 articles imported into the production D1 (migration `0012` is among the 14; `pnpm blog:import:local -- --out <file outside the repo>`, then `wrangler d1 execute sakem-admin --env="" --remote --file <it>`, then `SELECT count(*) FROM blog_posts` is 86; Time Travel bookmark written down first); the real shortlinks including `daftar`; team, reports and documents (DA-6) | P-05, P-07 | Dzul |
+| SA-10 | T-24 h | **Record the live corpus** with `--record` (needs Dzul's approval for the run) | S-04 | Dzul (agent prepares the command) |
+| SA-11 | T-24 h | **Deploy the production site Worker** (14.5): dry run, the build with the beacon id, the printed command. No route yet | P-18 | Dzul |
+| SA-12 | T-24 h | **Rehearsals on the throwaway name** `cache-test.sakolakembara.org`: first S-20 and S-21 unchanged (the **staging** pair, which must still be deployed: cache checklist C-01 to C-08, stale-if-error with the staging API broken on purpose, the rollback rehearsal, the timing written down); then, recommended, the **production site Worker** on the same name as a Custom Domain: `/`, `/blog` twice (`x-blog-source` network then cache), `/tim`, `/laporan`, `/kontak` (the widget carries the production key), `/sitemap.xml` (about 96 URLs); delete the domain. Do not browse it (the beacon matches by suffix and would count the visits). Pass-through paths cannot be tested there (a Custom Domain re-enters itself) | S-20, S-21, P-22 | Dzul |
+| SA-13 | T-1 d 18:00 | **WordPress freeze**, final backup with checksums, the **final article re-import** and the count against the live sitemap; WordPress auto-updates switched off at the host | S-06, P-05, P-12 | Dzul |
+| SA-20 | T-0 | **Window opens.** Baseline, private: `curl -sI` of the apex, `www`, `/wp-login.php`, `/wp-admin`, `/daftar` and one old article URL; the `dig` list of 14.4; write down WordPress's signature headers (they are the checker's `--legacy-header` input and what RBA-2 looks for) and what `/daftar` is on WordPress today (that is what a rollback restores) | S-10 | Dzul (agent prepares the lines) |
+| SA-21 | after SA-20 | **Hold point HA1 (replaces H1 and H2).** The zone pre-flight is run again and is clean (`pnpm check:zone-export` exits 0, the `dig` queries as before); the admin and files hosts are Active and checked; the rehearsal timing is known; the production site Worker is deployed; the cache and rollback rehearsals passed. Continue only on "all of this is true" | H1, H2 | Dzul |
+| SA-22 | after SA-21 | **TLS: verify, do not change.** The SSL/TLS mode and Always Use HTTPS stay as they are (WordPress works through them today); the zone's HSTS stays off (the Worker sends its own header). Record `curl -sI http://sakolakembara.org/` | S-30, S-31 | Dzul |
+| SA-23 | after SA-22 | **Zone rules**, text below: the `www` redirect, the `?p=` rule, the WAF rules | S-32 | Dzul (agent prepares the rule texts) |
+| SA-24 | after SA-23 | **THE SWITCH.** Attach the route `sakolakembara.org/*` to `sakola-kembara-web`, fail open (14.2). Note the time to the second | S-33 | Dzul |
+| SA-25 | SA-24 + 0 min | **Smoke tests**: `pnpm check:production -- --allow-network` ([14.7](#147-smoke-tests-of-phase-a); about 47 requests, a minute; Dzul's approval for the run) and the manual tests. Apply the decision rule of 9.2 at each failure | S-34 | Dzul runs, agent reads |
+| SA-26 | SA-24 + 15 min | SEO parity against production, Search Console (X-02, X-03) | S-35, X-02, X-03 | Dzul (agent reads the report) |
+| SA-27 | SA-24 + 60 min | The first-hour watch (section 8), the announcement (section 10), the 48-hour plan | S-36, S-37 | Dzul |
+
+**Zone rules (SA-23).** Free limits: 10 Single Redirects, 5 WAF custom rules. Redirect rules run first in the Rules order, before the Worker and the origin (the documented order of the Rules products; **real zone**: confirm in the Workers metrics that a redirected request is not a Worker request).
+
+| Rule | Where | Text | Notes |
+| --- | --- | --- | --- |
+| `www` to the apex | Rules, Redirect Rule, wildcard pattern | request URL `https://www.*`, target `https://${1}`, status **301**, **preserve query string** | the documented example of Cloudflare; with Always Use HTTPS on, `http://www...` takes one more hop (T-03 allows two). Only after the 14.4 check that WordPress does not send the apex to `www` |
+| `/?p=<id>` (F-06) | Rules, Redirect Rule, custom filter | `(http.request.uri.path eq "/" and starts_with(http.request.uri.query, "p="))`, static target `https://sakolakembara.org/blog`, 301, preserve query **off** | Free has no regex, so this matches any `p=` query; **verify the expression in the dashboard** (F-06). **Disable it at a rollback** (RBA-4): WordPress resolves `?p=` itself |
+| the admin's student registration (F-16) | Security, WAF, Custom rules | `(http.host eq "admin.sakolakembara.org" and http.request.uri.path eq "/api/auth/register")`, action **Block** | added at SA-07, with the test below |
+| the admin's security headers (F-19) | Rules, Transform Rules, Modify Response Header | when `(http.host eq "admin.sakolakembara.org")` set `X-Frame-Options` to `DENY`, `X-Content-Type-Options` to `nosniff`, `Referrer-Policy` to `strict-origin-when-cross-origin` | the admin app's pages carry none of their own; TA-05 warns until this exists |
+| `/xmlrpc.php` (F-09, changed) | Security, WAF, Custom rules | `(http.request.uri.path eq "/xmlrpc.php")`, **Block** | **only after** the plugin list of P-12 shows nothing that uses it (Jetpack, the mobile app, a payment callback). Unchanged risk R-09 |
+| `/wp-login.php`, `/wp-admin/` (F-09, **changed**) | Security, WAF, Custom rules, optional | `(http.request.uri.path eq "/wp-login.php") or (starts_with(http.request.uri.path, "/wp-admin/") and http.request.uri.path ne "/wp-admin/admin-ajax.php")`, **Managed Challenge** | **not blocked**: Phase A keeps them reaching WordPress. Optional (DA-3). With it, TA-03 prints a warning, not a pass, because a script meets the challenge |
+
+The registration block is tested once by hand: `curl -si -X POST https://admin.sakolakembara.org/api/auth/register -H 'content-type: application/json' -d '{}'` must be a **Cloudflare block page (403, HTML)**, not the API's JSON error.
+
+### 14.7 Smoke tests of Phase A
+
+The checker is `cf/scripts/check-production-site.mjs` (`pnpm check:production` in `cf/web`). **It asks the four hosts of the plan and no other** (there is no option to name a host and a URL outside the four is refused before any request), sends **GET and nothing else**, no cookie, no credential, no token, **one request per second** (it cannot be made faster), and **writes nothing** (`--json` prints to standard output). It needs Dzul's approval for the run (`--allow-network` is the reminder; `--plan` prints what it would ask). Exit codes: 0 all passed, 1 a check failed, 2 refused or bad arguments, 3 nothing answered. Every output line starts with the ID of the test it answers.
+
+```bash
+cd cf/web
+pnpm check:production -- --plan                                        # what it would ask; nothing is sent
+pnpm check:production -- --allow-network                               # the real run (Dzul's approval)
+pnpm check:production -- --allow-network --only admin,files            # at SA-07 and SA-08, before the switch, and after a rollback
+pnpm check:production -- --allow-network --daftar-target <the form's URL> --legacy-header 'x-some-header=value'   # what SA-20 recorded
+```
+
+Of the Phase A tests the plan asked for, `www` to the apex is **T-03** (strict 301), HSTS `max-age=300` is **TA-01**, the old WordPress URLs are **T-08** and **T-09** (the checker asks two; the parity run asks all 86), `/daftar` is **TA-02** (the GET half of SAKEM-103's **T-31**), WordPress's own paths are **TA-03** (the other GET half of T-31, with T-16 for `/login`) and "new-site paths never reach the origin" is **TA-04** (T-34 asks the look-alikes). The checker's expectations are those of section 7: T-01, T-09, T-16, T-17, T-31, T-34, T-35 and T-36 are written there by SAKEM-103 and are not repeated here.
+
+| ID | Check | Expected in Phase A | By |
+| --- | --- | --- | --- |
+| T-01 (A) | `https://sakolakembara.org/` | **changed**: 200 html, `lang="id-ID"`, canonical itself, no cookie, no `wp-content`; the HSTS value is TA-01 | checker |
+| TA-01 | **HSTS and the security headers** on `/` and on a static asset | `strict-transport-security: max-age=300` **exactly** (no `includeSubDomains`, no `preload`: D-04, F-01), `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`. The code sends exactly this since SAKEM-103 (F-18, resolved); T-36 reads it on every answer of the Worker | checker |
+| T-02 (A) | `http://sakolakembara.org/` | one permanent redirect to https | checker |
+| T-03 (A) | `https://www.sakolakembara.org/blog?x=1` | one **301** to `https://sakolakembara.org/blog?x=1` (the zone rule; a WordPress `x-redirect-by` header is a TA-04 failure) | checker |
+| T-04 to T-06 | robots, sitemap, `/blog` | as written; the sitemap lists about 96 URLs all on the apex; `/blog` twice shows `x-blog-source` network then cache (C-02, a warning if not: another data center) | checker |
+| T-07 (A) | an article | canonical itself, absolute `og:image`, BlogPosting, **no image from `r2.dev`**; the images load from `files.sakolakembara.org` or `/blog/images` | checker (one article), Dzul (the rest) |
+| T-08, T-09 | the old WordPress URLs | `/cerita/<slug>/` and `/education/` are a 308 (the checker); every one of the 86 is proved by the parity run (SA-26); an upload an article uses is **one** 308 to its copy (the checker asks one; an upload no article uses is a 200 from WordPress, by hand: T-33) | checker, parity tool, Dzul |
+| T-10 (A) | an unknown path | the new site's 404 with noindex, **never WordPress's**: since SAKEM-103 only WordPress's own paths are forwarded (T-34) | checker |
+| T-11, T-12, T-13 | `/tim`, `/laporan`, `/gabung-siswa/docs` have the entered content; `/kontak` on a **phone**: the real widget, a test message in the admin's Pesan; a shortlink's click counter | as written | Dzul |
+| T-14 (A) | `/api/public/*` | a 404 JSON on the apex **and** on the admin host (the checker asks GET; the POST half of the contact route by hand) | checker, Dzul |
+| T-15 (A) | `/admin` | **changed**: `/admin/blog?x=1` is a 308 to `https://admin.sakolakembara.org/blog?x=1`; the first super_admin signs in at the admin host (Dzul) | checker, Dzul |
+| T-16 and T-17 | `/login`, `/register`, `/forgot-password`, `/portal`, `/portal/status` | Phase A, as section 7 says: `/login` is **WordPress's** (a 302 to `/wp-login.php`, not a 308 into `/portal`); the others are the **new site's 404 page** (noindex), not a redirect | checker |
+| T-18 to T-21 | `/api/anything`, the trailing slash, assets, security headers | as written (T-19 is a 308 on the real zone or a warning with the reason) | checker |
+| T-22, T-23 | the old sitemap names, `/?p=<id>` | only if the F-08 and F-06 rules are in | Dzul |
+| T-24 to T-26, T-30 | no-JavaScript form, the beacon on both kinds of page, one hit in the dashboard, the Workers metrics | as written, for the production host | Dzul |
+| T-31 to T-33 | the registration link, WordPress behind the route, an upload hotlinked from outside | section 7.5; the checker asks the GET half (TA-02, TA-03, T-09); the real sign-in (T-32), a file of the media library that no article uses (T-33), `/xmlrpc.php` and `/wp-includes/...` by hand | checker (TA-02, TA-03), Dzul |
+| T-34 (A) | look-alikes of WordPress's paths (`/wp-adminx`, `/wp-login`, `/wp-login.php.bak`, `/login/x`, `/Login`) | the site's own 404 page, not WordPress's | checker |
+| T-35 (A) | the portal switch | OFF on a prerendered page (`/`) and a rendered one (`/blog`): no `get-session`, no "Masuk", no registration button and an empty slot in the navbar | checker |
+| T-36 (A) | HSTS on every answer of the Worker | exactly `max-age=300` on `/`, `/blog`, `/daftar`, a 404, `/robots.txt` and an image; the forwarded WordPress answers carry none of the Worker's | checker (and TA-03) |
+| C-01 to C-03, C-06 | the cache checklist | on production at SA-25 (the checker asks `/blog` twice: C-02); C-04, C-05, C-07 and C-08 need the staging API broken on purpose and are SA-12 only | checker (C-02), Dzul |
+| C-09 | the cache status of static assets and files | **new**: `cf-cache-status` is noted (MISS then HIT is the sign it works), never judged | checker (the run needs Dzul's approval) |
+| M-01 to M-04 | mail | as written; M-03 only with DA-2 | Dzul |
+| TA-02 | **`/daftar`**, the GET half of T-31 | a **307** (`no-store`) to the registration form; `/daftar/` a **308** to `/daftar`; `/Daftar` a 307; `/gabung-siswa` links to `/daftar` and not into `/portal`. Before the shortlink exists `/daftar` is the polite 404 page and the checker says P-25. `--daftar-target` pins the form's URL | checker |
+| TA-03 | **WordPress's own paths still reach WordPress**, the other GET half of T-31 | `/wp-login.php` 200 with the login form, `/wp-admin/` a 302 to the sign-in, `/wp-json/` 200 JSON, and none of them carries the Worker's HSTS (the Worker did not answer). A challenge rule makes it a warning | checker |
+| TA-04 | **new-site paths never reach the origin** | no WordPress, PHP or LiteSpeed header on any answer of the apex, `www`, admin or files host except WordPress's four (`/wp-login.php`, `/wp-admin/`, `/wp-json/`, `/login`); the old stack's names are built in, `--legacy-header` adds what SA-20 recorded | checker |
+| TA-05 | **the admin host** | `/` 200 html; `/api/config` has a real site key, `uploadsBaseUrl` and `siteUrl` equal to the production hosts (so the `--var` values were deployed); `/api/me` 401; a warning if the admin sends no `X-Frame-Options` or `nosniff` (F-19) | checker |
+| TA-06 | **the files host** | `/` does not list the bucket; a missing object is a 404; an uploaded file is a 200 with `cache-control: public, max-age=31536000, immutable`, a file `content-type` and no cookie | checker |
+
+### 14.8 Rollback (Phase A)
+
+**Triggers.** Section 9.1 applies, with these changes: trigger 2's list is "T-01 to T-12, T-14, T-18 and TA-01 to TA-04"; **trigger 8 is replaced**: *the sign-up path is dead* (`/daftar` does not reach the registration form, TA-02 and T-31, or the form itself fails) and cannot be fixed within 30 minutes (a shortlink is edited in the admin: minutes); **new trigger 10**: *WordPress does not answer behind the route* (`/wp-login.php`, a page or a file WordPress serves answers an error: TA-03, T-31 to T-33) and it is not fixed within 30 minutes. Not triggers on their own: a problem of the admin host (fix forward, or detach its Custom Domain: nothing public depends on it except the `/admin` redirect), of the files host (a wrong `UPLOADS_BASE_URL` is a redeploy of minutes; T-07 failing for 30 minutes is trigger 2), or of a zone rule (disable the rule). Who decides and how fast is 9.2 unchanged: Dzul, within 10 minutes; if he cannot be reached, the second person of SA-01 removes the route (DA-4).
+
+| ID | Step | Time to take effect | Who |
+| --- | --- | --- | --- |
+| RBA-1 | **Remove the route**: Workers & Pages, `sakola-kembara-web`, Settings, Domains & Routes, the route `sakolakembara.org/*`, delete it (the routes page of the documentation describes adding a route, not removing one: **real zone**). The proxied apex record still points at WordPress | seconds to about five minutes | Dzul |
+| RBA-2 | **Confirm WordPress is back** with the loop below: every 15 seconds until the headers recorded at SA-20 appear; one old article URL answers 200 at its old address | immediately after RBA-1 | Dzul |
+| RBA-3 | **Record the timing**: the time of the click, the time of the first WordPress answer, the time of five in a row. Compare with the rehearsal of S-21 and write all three in SAKEM-084 | | Dzul |
+| RBA-4 | **Disable the zone rules that only make sense with the new site**: the `?p=` rule (WordPress resolves `?p=<id>` itself). Keep the `www` redirect and the WAF rules | five minutes | Dzul |
+| RBA-5 | **Leave the admin and files hosts up** (no public traffic uses them); detach `admin.sakolakembara.org` only if the admin itself is the problem | | Dzul |
+| RBA-6 | RB-3 (the proxy itself) and RB-4 (a record) apply as written. **RB-5 does not apply**: the nameservers are never rolled back, the zone stays | | Dzul |
+| RBA-7 | Tell the team and Rommy (section 10) and handle the data written in the window (9.4, below); write the time, the trigger and the evidence in SAKEM-084 | | Dzul (agent prepares the exports) |
+
+```bash
+for i in $(seq 1 20); do
+  printf '%s ' "$(date +%T)"; curl -s -o /dev/null -w '%{http_code} ' https://sakolakembara.org/
+  curl -sI https://sakolakembara.org/ | grep -i -E '^(x-powered-by|x-litespeed|link:)' | head -2 | tr '\n' ' '; echo; sleep 15
+done
+```
+
+**What a rollback leaves behind in Phase A** (9.4 with the portal removed): the contact messages written since SA-24 stay in D1, invisible to WordPress: export and forward them. Shortlinks, **`daftar` included, stop working** (WordPress has none: record at SA-20 what `/daftar` is on WordPress today, that is what a rollback restores), so do not print or announce a new one in the window. Edits and uploads in the admin stay in D1 and R2. There are **no student accounts**, unless someone used the admin's `/api/auth/register` (F-16). A browser that was sent through a **308** during the window may keep the new address and meet a WordPress 404 on `/blog/<slug>` until it asks again: the reason to keep the window short.
+
+### 14.9 The rules of the window
+
+- **Dzul and one more person are reachable together** from SA-20 until four hours after SA-24, phones on, nobody else touching the account or the zone; the second person has dashboard access (DA-4).
+- **No deploy after the switch** except a fix both agree on or the rollback; no zone change except the rollback steps.
+- **Do not edit or update WordPress** (R-28): auto-updates off, no plugin changes, from the freeze (SA-13) until the 48 hours are over.
+- **A weekday morning in WIB, from 08:00**, so the first day has 23 hours before the daily limits reset at 00:00 UTC (07:00 WIB); not a Friday, not the day before a holiday, not within a week of an announced admissions or donation campaign (the `/daftar` link is the WordPress form).
+- Times are written to the second; every check is one line in SAKEM-084, no values.
+
+### 14.10 Who does what
+
+| Dzul (needs the account, the zone or his approval) | The agent prepares or reads |
+| --- | --- |
+| Every dashboard action: Custom Domains, the route, the zone and WAF rules, the Turnstile widget, the Web Analytics site, R2, Resend; every real wrangler command (the resources, the migrations, the deploys, the secrets, the first admin, the import); the approval of each run of `pnpm check:production`, `pnpm seo:parity` and the exports; the decision at a trigger | The printers and dry runs, the example files, the zone-export check, the production checker, this section and its rule texts; reading the checker's, the parity tool's and the zone check's output with Dzul; the exports of the data written in a window; the follow-up PRs of F-16 to F-19 |
+
+### 14.11 What is not verified (needs the real zone)
+
+- **Everything in 14.2 that is a dashboard behaviour**: that a route over the proxied apex lets the Worker's `fetch()` reach WordPress and not re-enter; that no fail-mode toggle exists for a Custom Domain (and that a spent limit is a 1027 there); the dialog's wording of the route's failure mode; how a route is deleted; that Custom Domain creation works with the existing records of the zone (the wildcard); that a Turnstile hostname covers subdomains (the printers' advice is to list `admin.` explicitly).
+- **That redirect rules do not reach the Worker**, and the `?p=` expression and the `www` rule in the dashboard.
+- **The cache on the real zone** (C-01 to C-08), the real CPU per route (T-30), the Worker request count per page view, the R2 domain's caching of images and PDFs (C-09 is only a note).
+- **The checker against the live site**: its header and body markers follow answers recorded from the built Worker on loopback and invented answers for WordPress, the admin and the files host (`cf/web/tests/production-site-fixture.ts`). What WordPress really sends through Cloudflare (which headers survive), R2's answer for `/`, the admin's real `/api/config`, and what a challenge page looks like are guesses until the first run; each guess is a line of the checker that fails or warns visibly rather than passing quietly.
+- **The zone-export check against a real export**: the format is Cloudflare's documented one (`cf_tags=cf-proxied:...` after each record); a long TXT record split over lines and the exact SOA layout were not seen.
+- **Wrangler's behaviour on a real account** for `--env=""`, `--var`, `d1 migrations apply --env=""`, `secret put --env=""` (tested with `--dry-run` and local commands only), and that `workers_dev: false` leaves a deployed Worker unreachable.
+- Visual and interaction QA of any page (nobody opened a browser for this).
+
+### 14.12 Findings, risks and decisions of Phase A
+
+| ID | Finding | Evidence | Severity | What to do |
+| --- | --- | --- | --- | --- |
+| F-16 | **The admin Worker serves the student registration route** `POST /api/auth/register` on the admin host (the route was mounted before the portal got its own Worker). With Turnstile and rate limits, but anyone can create student accounts in the shared D1 and trigger verification mails against Resend's 100 a day, which also carry the admins' invitations and resets. Without a Resend key it answers 503 | `cf/admin/src/worker.ts` (`registerStudent`), `src/auth/gate.ts` | **Medium** | the WAF block of SA-23 now; a ticket to remove the route from the admin app (it belongs to the portal) |
+| F-17 | **Resolved by SAKEM-103 (PR #93).** `daftar` could not be a shortlink: a static rule answered `/daftar` with a 308 to `/gabung-siswa` and the admin reserved the name. Now `/daftar` is an admin shortlink: a 307 (`no-store`) once it exists (P-25), a polite 404 page before and between cohorts, its slash folded by a 308 | `redirects.config.mjs`, `cf/admin/src/shortlinks/reserved.ts` (the rule and the reservation are gone), `tests/redirects.test.ts`, `tests/registration-page.test.ts` | was **High for Phase A** | create the shortlink (P-25, SA-09); TA-02 and T-31 check it |
+| F-18 | **Resolved by SAKEM-103 (PR #93).** HSTS was still the one-year value (F-01, D-04). The code sends `max-age=300`, no `includeSubDomains`, no `preload` on every answer of the Worker; P-19 is met for HSTS | `public/_headers`, `src/lib/security-headers.ts`, `tests/headers-sitemap.test.ts` | was **High** (rollback) | T-01, T-36 and TA-01 read it on the zone; raise it in steps at X-07 |
+| F-19 | **The admin app's pages carry no security headers** (the assets layer serves them with no `_headers` file, unlike the portal's): no `X-Frame-Options`, no `nosniff`, no `Referrer-Policy` | `cf/admin/dist/spa` has no `_headers` | **Medium** (clickjacking of the admin) | the response header rule of SA-23 now; a `_headers` file in the admin SPA build later; TA-05 warns until one exists |
+| R-31 | **Every request of the apex is a Worker request in Phase A**, WordPress probes included (`/wp-login.php`, `/xmlrpc.php`); at 100,000 the route fails open and the new URLs become WordPress 404s | 14.2, F-09 | H likelihood on a WordPress site, H impact | monitoring at 60,000 and 80,000 (section 8); the optional rules of SA-23; DA-3 |
+| R-32 | **A browser may keep a 308** from the window and meet a WordPress 404 after a rollback | RFC behaviour of 308 | L | a short window |
+| R-33 | **A DNS or proxy change by someone else** inside the window (the incident came from one) | 14.1 | M | the window rules; the second person; PA-1 at SA-21 |
+
+Open decisions for Dzul:
+
+| ID | Decision | Recommendation |
+| --- | --- | --- |
+| DA-1 | **The privacy policy page in Phase A**: launch without it (no uploads, but names, emails and messages through `/kontak`), or write the short version first | Dzul's call; the facts are above |
+| DA-2 | **Resend at launch**: the admin's invitation, verification and reset mails need a key and a verified domain. Without it a lost password cannot be reset by mail (the break-glass of [`first-super-admin.md`](first-super-admin.md) is a direct database write) and a second admin cannot be invited | yes, before launch; Resend's free plan is enough |
+| DA-3 | **WordPress-only paths** (`/wp-login.php`, `/wp-admin/*`, `/wp-json/*`): through the Worker's pass-through (SAKEM-103, shipped: the default of Phase A), or **routes with no Worker** (documented: a route with no Worker attached overrides less specific ones and skips Workers entirely: zero Worker requests), or a managed challenge | Dzul's call; the budget (R-31) argues for the bypass routes |
+| DA-4 | **A second person with dashboard access** who may remove the route if Dzul cannot be reached | yes |
+| DA-5 | **F-16**: the WAF block now, and a ticket to remove the route from the admin app | yes |
+| DA-6 | **Content of team, reports and documents** in the production D1: entered before launch, or launched empty | enter before launch |
+| DA-7 | **The site Worker's name**: decided by the PM: **`sakola-kembara-web`**, the `name` in the tracked `cf/web/wrangler.jsonc`, is final for production (staging is `sakem-web-staging`) | closed |
+
 ## Open decisions for Dzul
 
 | ID | Decision | Recommendation |
@@ -427,7 +758,10 @@ Likelihood and impact: **H** high, **M** medium, **L** low. "Owner" is who acts.
 | D-09 | **The WAF probe rule** (F-09) | yes |
 | D-10 | **The date and time of the window**, and who is reachable | a weekday morning WIB, outside a campaign |
 | D-11 | **The real runs**: S-04 (about 700 GET requests to the live site) and the PageSpeed runs of [`seo-audit.md`](seo-audit.md) | approve once Dzul has read the dry-run plan |
+| D-12 | **Phase A** (2026-10-15): the privacy page, Resend at launch, the WordPress-only paths, a second person with dashboard access, the admin's registration route, the content of team, reports and documents, the Worker's name | listed as DA-1 to DA-7 in [section 14.12](#1412-findings-risks-and-decisions-of-phase-a) |
 
 ## Sources
 
 Cloudflare documentation read on 2026-10-13 (no account was used): Workers Custom Domains and Routes (`developers.cloudflare.com/workers/configuration/routing/custom-domains/`, `.../routes/`, Workers best practices); the Workers platform limits and errors (`.../workers/platform/limits/`, `.../workers/observability/errors/`, `.../metrics-and-analytics/`, Workers Logs); the Cache API (`.../workers/runtime-apis/cache/`, `.../workers/reference/how-the-cache-works/`); static assets redirects and headers (`.../workers/static-assets/redirects/`, `.../headers/`); DNS full setup, update nameservers, DNSSEC, the DNS FAQ (`.../dns/zone-setups/full-setup/setup/`, `.../dns/nameservers/update-nameservers/`, `.../dns/dnssec/`, `.../dns/faq/`); SSL/TLS modes, Always Use HTTPS and the redirect-loop troubleshooting page (`.../ssl/...`); Rules: Single and Bulk Redirects, their limits and execution order (`.../rules/url-forwarding/`); WAF custom rules limits (`.../waf/custom-rules/`); the D1 free-tier enforcement notice of 2026-09-01 (changelog). Cloudflare Web Analytics documentation read on 2026-10-15 (no account was used): `developers.cloudflare.com/web-analytics/faq/` (the snippet, `type="module"`, hostname matching, one snippet per page, Content-Security-Policy entries), `.../web-analytics/get-started/` (manual and automatic setup) and `.../speed/observatory/rum-beacon/` (what is collected, privacy, the EEA/EU option). Repository documents: [`web-skeleton.md`](web-skeleton.md), [`portal-architecture.md`](portal-architecture.md), [`public-api.md`](public-api.md), [`content-api.md`](content-api.md), [`account-setup.md`](account-setup.md), [`uploads.md`](uploads.md), [`admin-blog.md`](admin-blog.md), [`admin-konten.md`](admin-konten.md), [`first-super-admin.md`](first-super-admin.md).
+
+Phase A, read on 2026-10-15 (no account was used): Workers Custom Domains and Routes (`developers.cloudflare.com/workers/configuration/routing/custom-domains/` and `.../routes/`: the Custom Domain conditions, the proxied record a route needs, a route with no Worker as a bypass), the Workers limits page (the fail mode as a property of a route), R2 public buckets (custom domain steps, removing the domain deletes its CNAME, only some file types cached by default, disabling `r2.dev`), the DNS import and export page (`cf_tags=cf-proxied:true|false`), Rules: Single Redirects and the `www` to root example (wildcard `https://www.*` to `https://${1}`, 301, preserve query string), the Rules execution order, and Cloudflare's published address lists `https://www.cloudflare.com/ips-v4` and `/ips-v6`. `wrangler deploy --help` of the installed 4.149 (`--env`, `--var`, `--keep-vars`, no workers.dev flag) and a dry run showing that `--env=""` selects the top level whatever `CLOUDFLARE_ENV` says.

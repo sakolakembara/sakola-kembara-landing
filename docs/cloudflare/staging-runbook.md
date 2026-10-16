@@ -1,6 +1,6 @@
 # Staging runbook (owner's guide)
 
-The exact, ordered steps to put the site on **staging**: three Workers on `*.workers.dev` in the organisation account (the admin API, the public site and, since SAKEM-098, the student portal), run from Dzul's Mac. Written for Dzul; **nothing here is run by an agent**. Ticket: SAKEM-084 (M5); the student portal's steps (15 to 22) are SAKEM-098. What the plan allows and where it can fail: [`free-plan-audit.md`](free-plan-audit.md). The account and token background: [`account-setup.md`](account-setup.md).
+The exact, ordered steps to put the site on **staging**: three Workers on `*.workers.dev` in the organisation account (the admin API, the public site and, since SAKEM-098, the student portal), run from Dzul's Mac. Written for Dzul; **nothing here is run by an agent**. Ticket: SAKEM-084 (M5); the student portal's steps (15 to 22) are SAKEM-098. What the plan allows and where it can fail: [`free-plan-audit.md`](free-plan-audit.md). The account and token background: [`account-setup.md`](account-setup.md). **Production** (cutover Phase A, SAKEM-104: the same two Workers on the real domain, with printers and dry runs of their own) is in [`cutover-runbook.md`](cutover-runbook.md#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104), section 14; nothing there reuses `CLOUDFLARE_ENV=staging`, which must be unset before any production command.
 
 ## Decisions this runbook rests on (Dzul, 2026-10-12)
 
@@ -278,7 +278,7 @@ pnpm deploy:staging:command      # prints:  pnpm exec wrangler deploy -c dist/se
 `cf/web/.staging.vars`: `TURNSTILE_SITE_KEY`, `ADMIN_URL` (the admin's address), `UPLOADS_BASE_URL`, and `LEGACY_ORIGIN_URL=https://no-legacy-origin.invalid`.
 
 - **Why that last one.** The site forwards WordPress's own paths (`/wp-login.php`, `/wp-admin/*`, `/wp-content/*`, `/wp-includes/*`, `/wp-json/*`, `/xmlrpc.php`, `/login`; SAKEM-103) to "the legacy origin" with a plain `fetch`, which in production reaches the WordPress site behind the same hostname. On `workers.dev` nothing is behind the hostname, so the fetch would go back into the same Worker, up to Cloudflare's loop limit of 16 invocations for one request, on a 100,000-a-day budget ([`free-plan-audit.md` 7.1](free-plan-audit.md#7-staging-findings)). A `*.invalid` host never resolves, so the forward fails at once. The printer accepts no other value for it.
-- **Creates:** the Worker `sakem-web-staging`, its `API` service binding to `sakem-admin-staging#PublicApi` (the admin Worker must exist: that is why it came first), the static assets (about 1,000 files, 137 MiB), its `workers.dev` address. No cron, no database.
+- **Creates:** the Worker `sakem-web-staging`, its `API` service binding to `sakem-admin-staging#PublicApi` (the admin Worker must exist: that is why it came first), the static assets (1,040 files, 143 MiB, counted by `check-dist` on 2026-10-15), its `workers.dev` address. No cron, no database.
 - **Your OK:** yes.
 - **Verify:** the output lists `env.API (sakem-admin-staging#PublicApi)`; the smoke tests of step 11.
 - **Revert:** `pnpm exec wrangler delete --name sakem-web-staging` (first, before the admin: the site's binding points at it).
@@ -736,8 +736,9 @@ pnpm exec wrangler d1 delete sakem-staging                                 # the
 pnpm exec wrangler r2 bucket dev-url disable sakem-files-staging           # type disallow
 # empty the PUBLIC bucket in the dashboard (R2, the bucket, Objects, select all, delete), then:
 pnpm exec wrangler r2 bucket delete sakem-files-staging
-# the PRIVATE bucket: it has no public address to turn off. Empty it in the dashboard the same way (a draft's files, and anything a test left,
-# are only in the bucket: no screen reaches them), check that Objects is empty, then:
+# the PRIVATE bucket: it has no public address to turn off. Empty it in the dashboard the same way (a draft's files, and anything a test left:
+# an admin with the Pendaftaran grant can purge the files of a draft that was never submitted only after 30 days without a change, SAKEM-093,
+# portal-api.md 12.4, so empty the bucket here), check that Objects is empty, then:
 pnpm exec wrangler r2 bucket delete sakem-private-staging
 rm -f .staging.vars .staging.vars.portal ../web/.staging.vars ../web/.measure/*.jsonl ../web/.measure/*.json
 rm -rf /private/tmp/sakem-e2e
