@@ -72,7 +72,13 @@ const nodeOf = (html, type) => graphNodes(html).find((n) => [].concat(n['@type']
  * The navbar of a page while the portal is off (SAKEM-103; Dzul, 2026-10-15), as a list of problems (empty: as it should be): the logo and the
  * menu links, twice (the bar, the mobile menu), and NOTHING in the slot of the old "Masuk" button: no link or button, no wrapper, no text of a
  * sign-in or a registration. (The menu links are the labels of src/lib/site.ts; this script is plain JavaScript and cannot import them.)
+ * And the desktop menu is packed to the RIGHT then (Dzul, 2026-10-16): its <ul> takes the third column of the grid. The classes are written out
+ * here (MENU_OFF while the portal is off, MENU_ON while it is on: the menu in the centre column, as before) and are justify-end, not
+ * justify-self-end: that word marks the wrapper of "Masuk" in this list, in the built tests and in check:production.
  */
+const MENU_ON = '<ul class="hidden md:flex items-center gap-6 lg:gap-7">';
+const MENU_OFF = '<ul class="hidden md:flex items-center gap-6 lg:gap-7 md:col-start-3 md:justify-end">';
+const menuLists = (nav) => nav.match(/<ul class="hidden md:flex[^"]*">/g) ?? [];
 function navbarProblems(html) {
   const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
   const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'];
@@ -81,6 +87,8 @@ function navbarProblems(html) {
   if (JSON.stringify(hrefs) !== JSON.stringify(['/', ...menu, ...menu])) problems.push(`links: ${hrefs.join(' ')}`);
   for (const bad of ['Daftar Sekarang', 'Masuk', '/daftar', '/portal', 'data-auth-link', 'justify-self-end', 'mt-6']) if (nav.includes(bad)) problems.push(`the navbar has ${bad}`);
   if ((nav.match(/<button\b/g) ?? []).length !== 1) problems.push('more than the menu toggle in the navbar');
+  if (JSON.stringify(menuLists(nav)) !== JSON.stringify([MENU_OFF])) problems.push(`the desktop menu is not packed to the right: ${menuLists(nav).join(' ') || 'no menu'}`);
+  if ((nav.match(/<ul class="flex flex-col gap-4">/g) ?? []).length !== 1) problems.push('the mobile menu is not as it was');
   return problems;
 }
 const onlySiteGraph = (html) => {
@@ -2850,6 +2858,8 @@ await check('portal', 'the portal switch with the Worker variable true: every pa
       const nav = portalNav(html);
       assert.equal((nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length, 2, `${p}: Masuk in the bar and in the menu`);
       assert.ok(!nav.includes('Daftar Sekarang'), `${p}: the registration button is not in the navbar while the portal is on`);
+      assert.deepEqual(menuLists(nav), [MENU_ON], `${p}: the menu stays in the centre column while the portal is on (no class that moves it right)`);
+      assert.ok(!nav.includes('col-start-3'), p);
       const session = portalScripts(html).filter((code) => code.includes('get-session'));
       assert.equal(session.length, 1, `${p}: one session script`);
       assert.ok(session[0].includes('/portal/api/auth/get-session') && session[0].includes('sk:session') && session[0].includes('super_admin'), `${p}: it is the whole session script`);
