@@ -6,7 +6,7 @@
 // Covers: status codes of every page type, the real 404, all 80 WordPress
 // redirects, the other redirect rules, pass-through to the WordPress origin (method, headers, body,
 // cookies, redirects not followed), Astro paths NOT reaching the origin, /tim
-// timeout / cache / stale-if-error (also /laporan and /gabung-siswa/docs: grouping, anchors, copy
+// timeout / cache / stale-if-error (also the Laporan section of /donasi, SAKEM-105, and /gabung-siswa/docs: grouping, anchors, copy
 // buttons run in a DOM, degraded and empty states), the blog read from the content API (cache,
 // stale-if-error, outage pages, 404, sitemap), the /kontak form without JavaScript (every status
 // code of the contract, IP forwarding, no personal data in the log), SEO tags in the served HTML,
@@ -81,7 +81,7 @@ const MENU_OFF = '<ul class="hidden md:flex items-center gap-6 lg:gap-7 md:col-s
 const menuLists = (nav) => nav.match(/<ul class="hidden md:flex[^"]*">/g) ?? [];
 function navbarProblems(html) {
   const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
-  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/laporan', '/blog'];
+  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/blog']; // five items since SAKEM-105: the reports are a section of /donasi
   const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
   const problems = [];
   if (JSON.stringify(hrefs) !== JSON.stringify(['/', ...menu, ...menu])) problems.push(`links: ${hrefs.join(' ')}`);
@@ -192,7 +192,12 @@ const other = [
   // neither are the auth names (/login is WordPress's, group `pass-through`; the others are the site's 404, group `portal-paths`).
   ['/gabung-siswa/form', 308, '/daftar'], ['/gabung-siswa/form?utm_source=ig', 308, '/daftar?utm_source=ig'],
   ['/tentang-kami', 308, '/tim'], ['/about', 308, '/tim'],
-  ['/impact-reports', 308, '/laporan'], ['/impact-reports/2025/foo', 308, '/laporan'],
+  // SAKEM-105: the reports are a section of /donasi. The old page and the older name each go straight to it, one hop, with the fragment in the
+  // destination (the assets layer accepts it in `_redirects` and puts a query BEFORE it; the middleware does the same for the same table).
+  ['/impact-reports', 308, '/donasi#laporan'], ['/impact-reports/2025/foo', 308, '/donasi#laporan'],
+  ['/laporan', 308, '/donasi#laporan'], ['/laporan/', 308, '/donasi#laporan'],
+  ['/laporan?utm_source=ig', 308, '/donasi?utm_source=ig#laporan'], ['/laporan/?utm_source=ig&x=1', 308, '/donasi?utm_source=ig&x=1#laporan'],
+  ['/impact-reports/?utm_source=ig', 308, '/donasi?utm_source=ig#laporan'],
   ['/blog/page/3', 308, '/blog?page=3'], ['/blog/page/3/', 308, '/blog?page=3'],
   ['/feed', 308, '/blog'], ['/feed/atom', 308, '/blog'],
   ['/index.php', 308, '/'],
@@ -270,7 +275,8 @@ for (const [from, to] of [['/tim/', '/tim'], ['/blog/', '/blog'], ['/blog/?page=
 }
 // F-03 of the cutover runbook: the assets layer answers a trailing-slash request for a PRERENDERED page with its own 307; since
 // SAKEM-090 `_redirects` carries `/<page>/  /<page>  308` for each, and (here, in the local emulation of the layer) it wins.
-for (const page of ['/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan']) {
+// (/donasi is not one of them since SAKEM-105: it is rendered by the Worker, which folds its slash itself, checked just below.)
+for (const page of ['/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan']) {
   await check('canonical-url', `${page}/ -> 308 ${page} (not the layer's 307), the query kept, no Worker request to the origin; ${page} itself is a 200`, async () => {
     clearStub();
     const res = await get(`${page}/`);
@@ -283,6 +289,16 @@ for (const page of ['/donasi', '/gabung-siswa', '/program/prapembinaan', '/progr
     assert.equal((await get(page)).status, 200);
   });
 }
+await check('canonical-url', '/donasi/ (a page the Worker renders since SAKEM-105): the Worker folds the slash, one 308, the query kept', async () => {
+  clearStub();
+  const res = await get('/donasi/');
+  assert.equal(res.status, 308);
+  assert.equal(res.headers.get('location'), '/donasi');
+  const withQuery = await get('/donasi/?utm_source=ig');
+  assert.equal(withQuery.status, 308);
+  assert.equal(withQuery.headers.get('location'), '/donasi?utm_source=ig');
+  assert.equal(stubHits().length, 0);
+});
 await check('canonical-url', 'a WordPress path with a trailing slash is not touched: the origin decides (WordPress redirects it itself)', async () => {
   clearStub();
   const res = await get('/wp-content/themes/astra/');
@@ -561,7 +577,7 @@ for (const p of [
 await check('pass-through', 'the new site never reaches the origin: every page, redirect, shortlink, the admin and the API, the portal names and every old Next path', async () => {
   clearStub();
   const paths = [
-    // (not /tim, /laporan, /gabung-siswa/docs or /sitemap.xml: the groups after this one expect their first request to reach the API; the e2e checks them one by one
+    // (not /tim, /gabung-siswa/docs or /sitemap.xml: the groups after this one expect their first request to reach the API; the e2e checks them one by one
     // for "never reaches the origin" in their own groups)
     '/', '/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/gabung-siswa', '/gabung-siswa/form', '/donasi', '/kontak',
     '/program/prapembinaan', '/program', '/robots.txt', '/404', '/no-such-page', '/no-such/page/deep', '/cerita/some-slug', '/category/news', '/feed', '/index.php',
@@ -703,7 +719,7 @@ for (const p of ['/no_such_link', '/a--b', '/-a', `/${'a'.repeat(65)}`, '/has.do
 await check('shortlinks', 'static pages and the pages of the Worker win over the catch-all: they never ask the API for a shortlink', async () => {
   clearStub();
   const { asked } = await visiting(async () => {
-    for (const p of ['/', '/blog', '/tim', '/laporan', '/kontak', '/donasi', '/gabung-siswa', '/robots.txt', '/program/pembinaan']) await get(p);
+    for (const p of ['/', '/blog', '/tim', '/kontak', '/donasi', '/gabung-siswa', '/robots.txt', '/program/pembinaan']) await get(p);
   });
   assert.deepEqual(asked, []);
   assert.equal(stubHits().length, 0);
@@ -886,7 +902,7 @@ await check('registration', 'an API that cannot answer is a 503 for /daftar like
 });
 await check('registration', 'the address of the form is in no page of the site: not in the polite page, not in a navbar, not in /gabung-siswa (only the fixture API, standing in for the admin\'s D1, knows it)', async () => {
   const target = new URL(SAMPLE_SHORTLINKS.daftar);
-  // (not /tim, /laporan or /gabung-siswa/docs: the groups after this one expect their first request to reach the API)
+  // (not /tim or /gabung-siswa/docs: the groups after this one expect their first request to reach the API; /donasi is here, and the group `reports` waits out its 2 s of data copy first)
   for (const p of ['/', '/gabung-siswa', '/donasi', '/program/pembinaan', '/no-such-page']) {
     const html = await text(await get(p));
     assert.ok(!html.includes(target.host + target.pathname), p);
@@ -991,23 +1007,36 @@ await check('program', 'the sitemap lists the three program URLs and /donasi', a
   assert.ok(xml.includes('<loc>https://sakolakembara.org/donasi</loc>'));
 });
 
-await check('donasi', '/donasi: 200 html from the assets layer, one h1, SEO tags, no JSON-LD', async () => {
+// /donasi is rendered by the Worker since SAKEM-105 (it carries the Laporan section, so it reads the API); it used to be a static file of the
+// assets layer, and tests/program-pages.test.ts read that file. What that test checked is checked here, on the Worker's answer.
+const LEGACY_DONASI = readFileSync(path.join(webRoot, '../../app/(public)/donasi/page.tsx'), 'utf8');
+const LEGACY_DONASI_LAYOUT = readFileSync(path.join(webRoot, '../../app/(public)/donasi/layout.tsx'), 'utf8');
+await check('donasi', '/donasi: 200 html rendered by the Worker, one h1, the legacy head data (title, description, canonical, Open Graph, share image), the site graph only, an empty navbar slot', async () => {
   clearStub();
   const res = await get('/donasi');
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.ok(res.headers.get('x-reports-source'), 'the Worker rendered it (it read the reports)');
   assert.equal(stubHits().length, 0, 'must not reach the origin');
   const html = await text(res);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  const description = LEGACY_DONASI_LAYOUT.match(/description:\s*"([^"]+)"/)[1];
   assert.match(html, /<title>Donasi - Yayasan Sakola Kembara Indonesia<\/title>/);
+  assert.equal(tag(html, /<meta name="description" content="([^"]*)"/), description, 'the description is the legacy one, unchanged');
   assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/donasi');
-  assert.match(html, /<meta name="description" content="Dukung pendidikan setara untuk anak Indonesia\./);
+  assert.equal(tag(html, /<meta property="og:title" content="([^"]*)"/), 'Donasi');
+  assert.equal(tag(html, /<meta property="og:description" content="([^"]*)"/), description);
+  assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), 'https://sakolakembara.org/donasi');
+  assert.equal(tag(html, /<meta property="og:image" content="([^"]*)"/), 'https://sakolakembara.org/og-default.jpg');
+  assert.equal(tag(html, /<meta name="robots" content="([^"]*)"/), 'index, follow');
+  assert.deepEqual(navbarProblems(html), [], 'the navbar of the page: five items, the slot of Masuk empty');
   onlySiteGraph(html);
+  assert.deepEqual(graphNodes(html).map((n) => [n['@type']].flat().join('+')), ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList']);
   assert.match(html, /Bank Muamalat/);
   assert.match(html, /1010 141 940/);
   assert.match(html, /data-copy-account="1010141940"/);
 });
-await check('donasi', '/donasi: the QRIS image is a plain <img> with dimensions, served as a hashed PNG by the assets layer, and the download link points at it', async () => {
+await check('donasi', '/donasi: the QRIS image is a plain <img> with dimensions, served as a hashed PNG by the assets layer (the page is rendered by the Worker, the image is not), and the download link points at it', async () => {
   const html = await text(await get('/donasi'));
   const qr = imgTags(html).find((i) => /alt="QRIS Sakola Kembara"/.test(i));
   assert.ok(qr);
@@ -1105,8 +1134,8 @@ await check('tim', 'API returns invalid JSON shape: treated as an error (empty o
   }
 });
 
-// ---------------------------------------------------------------- /laporan, /gabung-siswa, /gabung-siswa/docs (SAKEM-080, part D)
-// /laporan and /gabung-siswa/docs are SSR from the content API (fixture: scripts/fixture-api.mjs);
+// ---------------------------------------------------------------- /donasi (the Laporan section, SAKEM-105), /gabung-siswa, /gabung-siswa/docs (SAKEM-080, part D)
+// /donasi (which carries the reports; it was /laporan) and /gabung-siswa/docs are SSR from the content API (fixture: scripts/fixture-api.mjs);
 // /gabung-siswa is a prerendered file of the assets layer. The tim checks above left the main
 // fixture failing, so it is reset first.
 const decode = (t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(?:39|x27);/g, "'").replace(/&amp;/g, '&');
@@ -1128,9 +1157,13 @@ const notes = [];
 await setMode(4391, 'ok');
 const listLogStart = stack.output().length;
 
-await check('reports', '/laporan: SSR 200 from the API, one h1, years newest first, cards in the API order, PDF links as the API gave them, origin not asked', async () => {
+await check('reports', '/donasi, its Laporan section: SSR 200 from the API, ONE h1 (the page\'s), the section (id="laporan") after "Cara Berdonasi", years newest first, cards in the API order, PDF links as the API gave them, origin not asked', async () => {
+  // Everything that rendered /donasi before this group (the redirect checks end on it, the pass-through and navbar checks visit it, the checks of the
+  // `donasi` group above) left the reports in caches.default, which this stack keeps for 2 s (CONTENT_CACHE_FRESH_SECONDS): wait it out, so that
+  // this is the request that reaches the API.
+  await new Promise((resolve) => setTimeout(resolve, 2300));
   clearStub();
-  const res = await get('/laporan');
+  const res = await get('/donasi');
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type'), /text\/html/);
   assert.equal(res.headers.get('x-reports-source'), 'network');
@@ -1138,10 +1171,15 @@ await check('reports', '/laporan: SSR 200 from the API, one h1, years newest fir
   assert.equal(stubHits().length, 0, 'must not reach the origin');
   const html = await text(res);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  const years = [...html.matchAll(/<h2 class="[^"]*">(Tahun[^<]*)<\/h2>/g)].map((m) => m[1]);
+  assert.equal((html.match(/\sid="laporan"/g) ?? []).length, 1, 'one section with the anchor');
+  assert.ok(html.includes('<section id="laporan" class="scroll-mt-24'), 'the anchor is on the section, and clears the fixed navbar');
+  assert.ok(html.indexOf('<section id="laporan"') > html.indexOf('Cara Berdonasi'), 'the section comes after "Cara Berdonasi"');
+  assert.ok(html.indexOf('<section id="laporan"') < html.indexOf('</main>'));
+  assert.match(html, /<h2 class="[^"]*" id="laporan-heading">Laporan<\/h2>/);
+  const years = [...html.matchAll(/<h3 class="[^"]*">(Tahun[^<]*)<\/h3>/g)].map((m) => m[1]);
   assert.deepEqual(years, ['Tahun Ajaran 2025/2026', 'Tahun 2025', 'Tahun Ajaran 2024/2025', 'Tahun 2024']);
   assert.deepEqual([...html.matchAll(/<span class="text-sm text-gray-500">(\d+) laporan<\/span>/g)].map((m) => Number(m[1])), [2, 2, 1, 1]);
-  const titles = [...html.matchAll(/<h3 class="text-lg font-bold text-gray-900 mb-2 leading-snug">([^<]*)<\/h3>/g)].map((m) => decode(m[1]));
+  const titles = [...html.matchAll(/<h4 class="text-lg font-bold text-gray-900 mb-2 leading-snug">([^<]*)<\/h4>/g)].map((m) => decode(m[1]));
   assert.deepEqual(titles, SAMPLE_REPORTS.map((r) => r.title)); // the fixture lists them in display order
   const tags = [...html.matchAll(/rounded-full text-xs font-semibold border border-(\w+)-200 [^"]*">([^<]*)<\/span>/g)].map((m) => `${m[1]}:${m[2]}`);
   assert.deepEqual(tags, ['purple:Laporan Dampak', 'emerald:Laporan Keuangan', 'blue:Laporan Tahunan', 'amber:Laporan Donasi', 'purple:Laporan Dampak', 'blue:Laporan Tahunan']);
@@ -1153,14 +1191,44 @@ await check('reports', '/laporan: SSR 200 from the API, one h1, years newest fir
     assert.equal(attrOf(a, 'rel'), 'noopener noreferrer');
   }
   const t = mainText(html);
-  assert.ok(t.includes('Komitmen kami untuk transparansi.'));
+  assert.ok(t.includes('Komitmen kami untuk transparansi. Laporan tahunan, keuangan, dampak, dan donasi tersedia untuk diunduh dan dipelajari oleh donor, mitra, dan publik.'));
   assert.ok(t.includes('Punya pertanyaan tentang laporan kami?'));
+  assert.ok(t.includes('Tim kami senang membantu menjelaskan angka-angka di balik laporan ini.'));
+  assert.ok(t.indexOf('Punya pertanyaan tentang laporan kami?') > t.indexOf('Unduh Laporan'), 'the closing block ends the section');
   assert.ok(html.includes('href="/kontak"'));
   onlySiteGraph(html);
 });
-await check('reports', '/laporan: a second request inside the fresh window comes from caches.default (the API is not asked again)', async () => {
+await check('donasi', '/donasi with the section: the payment cards, the QRIS card, the copy button, the confirmation and the contact cards are the legacy ones, and the page has its two inline scripts and no script file', async () => {
+  const html = await text(await get('/donasi'));
+  const t = mainText(html);
+  assert.ok(t.includes('Dukung Perjalanan Mereka Setiap donasi Anda membantu siswa dari keluarga kurang mampu untuk mewujudkan impian mereka masuk perguruan tinggi.'));
+  assert.ok(t.includes('Cara Berdonasi Pilih salah satu metode di bawah ini. Donasi dengan nominal berapa pun sangat berarti bagi mereka.'));
+  assert.ok(t.includes('Scan QRIS'));
+  assert.ok(html.includes('Scan via <span class="font-semibold text-gray-700">GoPay, OVO, DANA, ShopeePay</span>, atau m-banking.'));
+  assert.ok(t.includes('Transfer Bank Bank Bank Muamalat Kode Bank 147 Nomor Rekening 1010 141 940 Atas Nama Sakola Kembara Indonesia'));
+  for (const value of ['Bank Muamalat', '147', '1010 141 940', 'Sakola Kembara Indonesia']) assert.ok(LEGACY_DONASI.includes(`"${value}"`), value);
+  assert.equal(attrOf(imgTags(html).find((i) => /alt="QRIS Sakola Kembara"/.test(i)), 'decoding'), 'async');
+  for (const img of imgTags(html)) assert.ok(/\swidth="\d+"/.test(img) && /\sheight="\d+"/.test(img) && /\salt="/.test(img), img);
+  const number = LEGACY_DONASI.match(/const ACCOUNT_NUMBER = "(\d+)"/)[1];
+  assert.ok(html.includes(`data-copy-account="${number}"`));
+  assert.match(html, /<span data-copy-idle[^>]*>[\s\S]*?Salin No Rekening/);
+  assert.match(html, /<span data-copy-done hidden[^>]*>[\s\S]*?Tersalin!/);
+  const form = LEGACY_DONASI.match(/CONFIRMATION_FORM_URL =\s*"([^"]+)"/)[1];
+  const link = anchorTags(html).find((a) => attrOf(a, 'href') === form);
+  assert.ok(link && link.includes('target="_blank"') && link.includes('rel="noopener noreferrer"'), 'the confirmation form opens in a new tab');
+  assert.ok(t.includes('Terima Kasih atas Donasi Anda Setelah berdonasi, mohon konfirmasikan melalui formulir berikut agar donasi Anda dapat kami catat dengan baik. Konfirmasi Donasi'));
+  assert.ok(t.includes('Kontak Kami Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu. Hubungi Kami'));
+  assert.ok(anchorTags(html).some((a) => attrOf(a, 'href') === '/kontak' && a.includes('bg-white')));
+  // no script file, no framework: the navbar script and the copy-button script, both inline (the Worker renders the page, Astro still inlines them)
+  assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0);
+  const scripts = inlineScripts(html);
+  assert.equal(scripts.length, 2);
+  assert.equal(scripts.filter((c) => c.includes('clipboard')).length, 1);
+  for (const c of scripts) assert.ok(c.length < 6000);
+});
+await check('reports', '/donasi: a second request inside the fresh window comes from caches.default (the API is not asked again)', async () => {
   const before = (await fixtureStats()).byEndpoint.reports;
-  const res = await get('/laporan');
+  const res = await get('/donasi');
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('x-reports-source'), 'cache');
   assert.equal((await fixtureStats()).byEndpoint.reports, before);
@@ -1310,25 +1378,26 @@ await check('gabung-siswa', '/gabung-siswa: 200 html from the assets layer, one 
   assert.ok(html.includes('<section id="manfaat"'));
   assert.equal(inlineScripts(html).length, 1, 'the navbar script is the only script');
 });
-await check('gabung-siswa', 'trailing slashes: /gabung-siswa/ (assets layer) and /gabung-siswa/docs/, /laporan/ (middleware) go to the clean URL', async () => {
+await check('gabung-siswa', 'trailing slashes: /gabung-siswa/ (assets layer) and /gabung-siswa/docs/ (middleware) go to the clean URL', async () => {
   clearStub();
   const a = await get('/gabung-siswa/');
   assert.equal(a.headers.get('location'), '/gabung-siswa');
   assert.ok([307, 308].includes(a.status));
-  for (const [from, to] of [['/gabung-siswa/docs/', '/gabung-siswa/docs'], ['/laporan/', '/laporan'], ['/laporan.html', '/laporan']]) {
+  for (const [from, to] of [['/gabung-siswa/docs/', '/gabung-siswa/docs']]) {
     const res = await get(from);
     assert.equal(res.status, 308, from);
     assert.equal(res.headers.get('location'), to, from);
   }
   assert.equal(stubHits().length, 0);
 });
-await check('gabung-siswa', 'the sitemap lists /laporan and /gabung-siswa (not /gabung-siswa/docs, like the Next sitemap)', async () => {
+await check('gabung-siswa', 'the sitemap lists /gabung-siswa (not /gabung-siswa/docs, like the Next sitemap) and no longer /laporan, which is a redirect since SAKEM-105', async () => {
   const xml = await text(await get('/sitemap.xml'));
-  assert.ok(xml.includes('<loc>https://sakolakembara.org/laporan</loc>'));
+  assert.ok(!xml.includes('/laporan'));
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/donasi</loc>'));
   assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa</loc>'));
   assert.ok(!xml.includes('/gabung-siswa/docs'));
 });
-await check('gabung-siswa', 'the Worker logged no error while serving /laporan, /gabung-siswa and /gabung-siswa/docs', async () => {
+await check('gabung-siswa', 'the Worker logged no error while serving /donasi, /gabung-siswa and /gabung-siswa/docs', async () => {
   assert.doesNotMatch(stack.output().slice(listLogStart), /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
 });
 
@@ -1337,14 +1406,40 @@ await check('gabung-siswa', 'the Worker logged no error while serving /laporan, 
   const failing = await startStack({ port: 8795, stubPort: 4398, fixturePort: 4399, inspectorPort: 9335, vars: { CONTENT_CACHE_FRESH_SECONDS: '1' } });
   const page = (p) => fetch(`${failing.base}${p}`, { redirect: 'manual' });
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // /donasi only CARRIES a list (SAKEM-105): when the reports are missing the page is still a 200, and only its Laporan section says so; the documents
+  // page IS its list, and a 503 is its answer. Every step below is the same for both except the first.
   const lists = [
-    { path: '/laporan', header: 'x-reports-source', endpoint: 'reports', degraded: 'Laporan belum dapat ditampilkan', empty: 'Laporan akan segera tersedia', data: 'Laporan Dampak 2025/2026' },
+    { path: '/donasi', carries: true, header: 'x-reports-source', endpoint: 'reports', degraded: 'Laporan belum dapat ditampilkan', empty: 'Laporan akan segera tersedia', data: 'Laporan Dampak 2025/2026' },
     { path: '/gabung-siswa/docs', header: 'x-resources-source', endpoint: 'resources', degraded: 'Dokumen belum dapat ditampilkan', empty: 'Dokumen akan segera tersedia', data: 'Panduan Pendaftaran Siswa Baru' },
   ];
   try {
     await setMode(4399, '500', 'resources');
     await setMode(4399, 'badjson', 'reports');
-    for (const l of lists) {
+    await check('degraded', `/donasi: the reports API failing and nothing cached -> the page is still a 200 (whole: hero, payment cards, QRIS), only the Laporan section says so; no-store, no Retry-After`, async () => {
+      const res = await page('/donasi');
+      assert.equal(res.status, 200, 'the Donasi page never fails because of the reports');
+      assert.equal(res.headers.get('x-reports-source'), 'empty');
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.equal(res.headers.get('retry-after'), null);
+      assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+      assert.match(res.headers.get('content-type'), /text\/html/);
+      const html = await res.text();
+      const t = mainText(html);
+      assert.ok(t.includes('Laporan belum dapat ditampilkan'), 'degraded notice, in the section');
+      assert.ok(t.includes('Silakan muat ulang halaman ini beberapa saat lagi.'));
+      assert.ok(!t.includes('Laporan akan segera tersedia'), 'must not claim the list is empty');
+      assert.ok(html.indexOf('Laporan belum dapat ditampilkan') > html.indexOf('<section id="laporan"'), 'the notice is inside the section');
+      assert.ok(html.includes('role="status"'));
+      assert.ok(t.includes('Dukung Perjalanan Mereka') && t.includes('Cara Berdonasi') && t.includes('Bank Muamalat') && t.includes('Konfirmasi Donasi'), 'the rest of the page is all there');
+      assert.ok(imgTags(html).some((i) => /alt="QRIS Sakola Kembara"/.test(i)));
+      assert.ok(html.includes('data-copy-account="1010141940"'));
+      assert.ok(t.includes('Punya pertanyaan tentang laporan kami?'), 'the closing block of the section is there too');
+      assert.ok(html.includes('id="site-nav"') && html.includes('<footer'), 'shell is there');
+      assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+      assert.match(html, /<link rel="canonical" href="https:\/\/sakolakembara\.org\/donasi"/);
+      assert.match(html, /<title>Donasi - Yayasan Sakola Kembara Indonesia<\/title>/);
+    });
+    for (const l of lists.filter((x) => !x.carries)) {
       await check('degraded', `${l.path}: API failing and nothing cached -> 503 with the page shell and a clear notice, never cached, Retry-After`, async () => {
         const res = await page(l.path);
         assert.equal(res.status, 503);
@@ -1435,16 +1530,31 @@ await check('gabung-siswa', 'the Worker logged no error while serving /laporan, 
       assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
       assert.ok(mainText(await res.text()).includes('Dokumen belum dapat ditampilkan'));
     });
-    await check('stale', '/laporan: a hanging API with a stale copy: after about 2 s the stale copy is served', async () => {
-      assert.equal((await fetch(`${slow.base}/laporan`)).headers.get('x-reports-source'), 'network');
+    await check('stale', '/donasi: a hanging reports API with a stale copy: after about 2 s the stale copy is served (the page is a 200 either way)', async () => {
+      assert.equal((await fetch(`${slow.base}/donasi`)).headers.get('x-reports-source'), 'network');
       await setMode(4401, 'slow', 'reports');
       await new Promise((r) => setTimeout(r, 1300));
       const started = performance.now();
-      const res = await fetch(`${slow.base}/laporan`);
+      const res = await fetch(`${slow.base}/donasi`);
       const ms = performance.now() - started;
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('x-reports-source'), 'stale');
       assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
+    });
+    await check('degraded', '/donasi: a hanging reports API on a cold cache costs the page the 2 s timeout, then it is a 200 with the failure panel (never a 503)', async () => {
+      const cold = await startStack({ port: 8797, stubPort: 4402, fixturePort: 4403, inspectorPort: 9337, vars: { CONTENT_CACHE_FRESH_SECONDS: '1' } });
+      try {
+        await setMode(4403, 'slow', 'reports');
+        const started = performance.now();
+        const res = await fetch(`${cold.base}/donasi`);
+        const ms = performance.now() - started;
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get('cache-control'), 'no-store');
+        assert.ok(ms >= 1900 && ms < 3500, `timeout took ${Math.round(ms)} ms`);
+        assert.ok(mainText(await res.text()).includes('Laporan belum dapat ditampilkan'));
+      } finally {
+        await cold.stop();
+      }
     });
   } finally {
     await slow.stop();
@@ -1457,7 +1567,7 @@ const SEO_PAGES = [
   { path: '/', title: 'Sakola Kembara, Pendidikan Untuk Semua', exact: true, canonical: 'https://sakolakembara.org/', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage'] },
   { path: '/blog', title: 'Blog &amp; Cerita - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/blog', graph: ['NGO+EducationalOrganization', 'WebSite', 'CollectionPage', 'BreadcrumbList'] },
   { path: '/tim', title: 'Tim Kami - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/tim', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
-  { path: '/laporan', title: 'Laporan - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/laporan', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
+  { path: '/donasi', title: 'Donasi - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/donasi', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
   { path: '/gabung-siswa', title: 'Daftar Siswa - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/gabung-siswa', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
   { path: '/gabung-siswa/docs', title: 'Pusat Dokumen &amp; Berkas - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/gabung-siswa/docs', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
   { path: `/blog/${slugs[0]}`, title: ` - Yayasan Sakola Kembara Indonesia`, canonical: `https://sakolakembara.org/blog/${slugs[0]}`, graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList', 'BlogPosting', 'Person'] },
@@ -1529,17 +1639,17 @@ await check('seo', 'sitemap.xml: every article with real lastmod, static routes 
   assert.match(res.headers.get('content-type'), /xml/);
   const xml = await text(res);
   const urls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
-  assert.equal(urls.length, 7 + 3 + ARTICLE_COUNT);
+  assert.equal(urls.length, 6 + 3 + ARTICLE_COUNT); // six static routes since SAKEM-105 (/laporan left), three programs
   const blogUrls = urls.filter((u) => /<loc>https:\/\/sakolakembara\.org\/blog\/[^<]+<\/loc>/.test(u));
   assert.equal(blogUrls.length, ARTICLE_COUNT);
   for (const u of blogUrls) assert.match(u, /<lastmod>\d{4}-\d{2}-\d{2}/);
   const staticUrls = urls.filter((u) => !/\/blog\/[^<]+<\/loc>/.test(u));
-  assert.equal(staticUrls.length, 10);
+  assert.equal(staticUrls.length, 9);
   for (const u of staticUrls) assert.doesNotMatch(u, /<lastmod>/);
 });
 
 // ---------------------------------------------------------------- headers
-for (const p of ['/', '/tim', '/blog', '/blog/nope', `/blog/${slugs[0]}`, '/robots.txt', '/laporan', '/gabung-siswa', '/gabung-siswa/docs']) {
+for (const p of ['/', '/tim', '/blog', '/blog/nope', `/blog/${slugs[0]}`, '/robots.txt', '/donasi', '/gabung-siswa', '/gabung-siswa/docs']) {
   await check('headers', `${p}: security headers present`, async () => {
     const res = await get(p);
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
@@ -2272,7 +2382,7 @@ await check('turnstile', 'GET /kontak: the slot with the site key (from the Work
 });
 
 await check('turnstile', 'Cloudflare\'s script is on /kontak and nowhere else: not on the other pages, the 404, the confirmation or an article', async () => {
-  for (const p of ['/', '/donasi', '/tim', '/laporan', '/gabung-siswa', '/gabung-siswa/docs', '/blog', `/blog/${slugs[0]}`, '/program/pembinaan', '/does-not-exist']) {
+  for (const p of ['/', '/donasi', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/blog', `/blog/${slugs[0]}`, '/program/pembinaan', '/does-not-exist']) {
     const html = await text(await get(p));
     assert.ok(!html.includes('challenges.cloudflare.com'), `${p} names Cloudflare's script`);
     assert.ok(!html.includes('data-turnstile'), `${p} has a widget or its script`);
@@ -2514,14 +2624,14 @@ await check('binding', 'the built config binds `API` to the PublicApi entrypoint
   assert.deepEqual(config.vars, {}, 'no var in the deployed config: no API URL, no key');
 });
 
-await check('binding', 'with no API URL set, /tim, /laporan, /gabung-siswa/docs, the blog and the sitemap are rendered from data that only the binding can reach', async () => {
+await check('binding', 'with no API URL set, /tim, /donasi (its Laporan section), /gabung-siswa/docs, the blog and the sitemap are rendered from data that only the binding can reach', async () => {
   const s = await startStack({ port: 8806, stubPort: 4421, fixturePort: 4422, inspectorPort: 9346, binding: true });
   const f = `http://127.0.0.1:${s.fixture.port}`;
   try {
     const hits = async () => (await (await fetch(`${f}/__hits`)).json()).byEndpoint;
     const pages = [
       ['/tim', 'Anggota Contoh 1', 'x-team-source', 'team'],
-      ['/laporan', 'Laporan Dampak 2025/2026', 'x-reports-source', 'reports'],
+      ['/donasi', 'Laporan Dampak 2025/2026', 'x-reports-source', 'reports'],
       ['/gabung-siswa/docs', 'Panduan Pendaftaran Siswa Baru', 'x-resources-source', 'resources'],
     ];
     for (const [p, marker, header, endpoint] of pages) {
@@ -2616,14 +2726,19 @@ await check('binding', 'a shortlink is resolved through the binding (no API URL 
   }
 });
 
-await check('binding', 'a binding whose Worker is gone is an outage, not a crash: the pages show their degraded state and the form says it cannot send', async () => {
+await check('binding', 'a binding whose Worker is gone is an outage, not a crash: the pages show their degraded state (/donasi stays a 200) and the form says it cannot send', async () => {
   const s = await startStack({ port: 8808, stubPort: 4425, fixturePort: 4426, inspectorPort: 9348, binding: true });
   try {
     await s.fixture.close(); // the probe's upstream goes away: the entrypoint answers with a failure
     const tim = await fetch(`${s.base}/tim`);
     assert.equal(tim.status, 200, '/tim keeps its legacy empty state');
     assert.equal(tim.headers.get('x-team-source'), 'empty');
-    assert.equal((await fetch(`${s.base}/laporan`)).status, 503);
+    // /donasi only CARRIES the reports (SAKEM-105): without the API it is still the page, a 200, and the section says so
+    const donasi = await fetch(`${s.base}/donasi`);
+    assert.equal(donasi.status, 200);
+    assert.equal(donasi.headers.get('x-reports-source'), 'empty');
+    assert.equal(donasi.headers.get('cache-control'), 'no-store');
+    assert.ok((await donasi.text()).includes('Laporan belum dapat ditampilkan'));
     const post = await fetch(`${s.base}/kontak`, {
       method: 'POST',
       redirect: 'manual',
@@ -2642,7 +2757,7 @@ await check('binding', 'a binding whose Worker is gone is an outage, not a crash
 // Off unless PAGE_CACHE_SECONDS is set: the whole run above is the proof that nothing changed when it is not. These
 // checks start a Worker with it on and look at what a copy may and may not be.
 await check('page-cache', 'off by default: no page carries x-page-cache, and every request renders', async () => {
-  for (const p of ['/blog', '/tim', '/laporan']) assert.equal((await get(p)).headers.get('x-page-cache'), null, p);
+  for (const p of ['/blog', '/tim', '/donasi']) assert.equal((await get(p)).headers.get('x-page-cache'), null, p);
 });
 
 await check('page-cache', 'on: the first render says miss and is kept; the next request is a copy (no API call, same bytes, same headers), then it expires', async () => {
@@ -2652,7 +2767,7 @@ await check('page-cache', 'on: the first render says miss and is kept; the next 
   const hits = async () => (await (await fetch(`${f}/__hits`)).json()).byEndpoint;
   try {
     const slug = slugs[0];
-    const pages = ['/blog', '/blog?page=2', `/blog/${slug}`, '/tim', '/laporan', '/gabung-siswa/docs', '/sitemap.xml'];
+    const pages = ['/blog', '/blog?page=2', `/blog/${slug}`, '/tim', '/donasi', '/gabung-siswa/docs', '/sitemap.xml'];
     for (const p of pages) {
       const first = await fetch(`${s.base}${p}`);
       assert.equal(first.status, 200, p);
@@ -2704,28 +2819,37 @@ await check('page-cache', 'on: what must not be copied is not: a 404, a stale or
     assert.ok((await asked()) >= 1);
 
     // Pages that are not on the list never carry the header.
-    for (const p of ['/kontak', '/gabung-siswa', '/donasi', '/tim/extra', '/no/such/page']) {
+    for (const p of ['/kontak', '/gabung-siswa', '/laporan', '/tim/extra', '/no/such/page']) {
       const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
       assert.equal(res.headers.get('x-page-cache'), null, p);
     }
 
-    // The API fails and nothing is stored for /laporan: a 503 is not copied, so recovery shows at once.
+    // The API fails and nothing is stored for /donasi (SAKEM-105): the page is still a 200 (it never fails because of the reports) and says no-store,
+    // so it is NOT copied (a copy of the failure panel would keep the panel for the configured 30 s after the API is back): recovery shows at once.
     await setFixtureMode(f, 'reports', '500');
-    const down = await fetch(`${s.base}/laporan`);
-    assert.equal(down.status, 503);
+    const down = await fetch(`${s.base}/donasi`);
+    assert.equal(down.status, 200);
+    assert.equal(down.headers.get('x-reports-source'), 'empty');
+    assert.equal(down.headers.get('cache-control'), 'no-store');
     assert.equal(down.headers.get('x-page-cache'), null);
+    assert.ok((await down.text()).includes('Laporan belum dapat ditampilkan'));
     await settle();
+    const downAgain = await fetch(`${s.base}/donasi`);
+    assert.equal(downAgain.headers.get('x-page-cache'), null, 'the degraded page is not a copy, however many times it is asked for');
     await setFixtureMode(f, 'reports', 'ok');
-    const back = await fetch(`${s.base}/laporan`);
-    assert.equal(back.status, 200, 'the outage page was not kept');
+    const back = await fetch(`${s.base}/donasi`);
+    assert.equal(back.status, 200, 'the failure panel was not kept');
     assert.equal(back.headers.get('x-page-cache'), 'miss');
+    const backText = await back.text();
+    assert.ok(backText.includes('Laporan Dampak 2025/2026') && !backText.includes('Laporan belum dapat ditampilkan'));
 
     // A copy is of the data as it was: an outage after the copy was made does not touch it until it expires.
     await settle();
     await setFixtureMode(f, 'reports', '500');
-    const served = await fetch(`${s.base}/laporan`);
+    const served = await fetch(`${s.base}/donasi`);
     assert.equal(served.status, 200);
     assert.equal(served.headers.get('x-page-cache'), 'hit');
+    assert.ok((await served.text()).includes('Laporan Dampak 2025/2026'));
     assert.doesNotMatch(s.output(), /\[ERROR\]|Uncaught|TypeError/);
   } finally {
     await s.stop();
@@ -2739,8 +2863,8 @@ await check('page-cache', 'on: what must not be copied is not: a 404, a stale or
 // plain build: nothing is configured in `stack`, so nothing carries the beacon, and a Worker variable alone cannot
 // reach a static file. The id is invented.
 const BEACON_ID = '0123456789abcdef0123456789abcdef';
-const BEACON_PRERENDERED = ['/', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
-const BEACON_RENDERED = ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/kontak?terkirim=1', '/no-such-page', '/blog/no-such-article'];
+const BEACON_PRERENDERED = ['/', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+const BEACON_RENDERED = ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/kontak?terkirim=1', '/no-such-page', '/blog/no-such-article'];
 const BEACON_ANYWHERE = /cloudflareinsights|data-cf-beacon|beacon\.min\.js/i;
 const beaconTags = (html) => [...html.matchAll(/<script\b[^>]*>/g)].map((m) => m[0]).filter((t) => BEACON_ANYWHERE.test(t));
 
@@ -2843,8 +2967,8 @@ await check('analytics', 'unset is silent: the default stack\'s Worker output ha
 // has neither anywhere (group `portal-paths`). A page gets the value from its own source: the pages the Worker renders from the Worker variable
 // (checked here, with a `--var`), the prerendered ones from the build's environment (checked by scripts/e2e-portal.mjs against two more
 // builds). This group runs the plain build, so a Worker variable alone cannot reach a static file. Only strict values count.
-const PORTAL_PRERENDERED = ['/', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
-const PORTAL_RENDERED = ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/kontak?terkirim=1', '/no-such-page', '/blog/no-such-article'];
+const PORTAL_PRERENDERED = ['/', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+const PORTAL_RENDERED = ['/blog', '/blog?page=2', `/blog/${slugs[0]}`, '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/kontak?terkirim=1', '/no-such-page', '/blog/no-such-article'];
 const portalNav = (html) => html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
 const portalScripts = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 

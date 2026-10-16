@@ -31,8 +31,9 @@ if (existsSync(devVars)) {
   process.exit(2);
 }
 
-const PRERENDERED = ['/', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
-const RENDERED = ['/blog', '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
+// /donasi is a rendered page since SAKEM-105 (it carries the Laporan section): it takes the Worker variable, not the build's.
+const PRERENDERED = ['/', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+const RENDERED = ['/blog', '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
 const ANYWHERE = /cloudflareinsights|data-cf-beacon|beacon\.min\.js/i;
 const tagsOf = (html) => [...html.matchAll(/<script\b[^>]*>/g)].map((m) => m[0]).filter((t) => ANYWHERE.test(t));
 const decode = (t) => t.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
@@ -81,8 +82,8 @@ try {
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
   const htmlFiles = walk(client).filter((f) => f.endsWith('.html'));
 
-  await check('the build prerendered the six pages', () => {
-    assert.deepEqual(htmlFiles.map((f) => path.relative(client, f)).sort(), ['donasi.html', 'gabung-siswa.html', 'index.html', 'program/pasca-pembinaan.html', 'program/pembinaan.html', 'program/prapembinaan.html']);
+  await check('the build prerendered the five pages', () => {
+    assert.deepEqual(htmlFiles.map((f) => path.relative(client, f)).sort(), ['gabung-siswa.html', 'index.html', 'program/pasca-pembinaan.html', 'program/pembinaan.html', 'program/prapembinaan.html']);
   });
 
   await check('1. every prerendered page has exactly one beacon tag with the build\'s id, a module script at the end of <body>', () => {
