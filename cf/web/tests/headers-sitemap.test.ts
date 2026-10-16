@@ -80,7 +80,7 @@ describe('robots.txt', () => {
 });
 
 describe('sitemap', () => {
-  it('static routes, priorities and frequencies equal the root app/sitemap.ts', () => {
+  it('static routes, priorities and frequencies equal the root app/sitemap.ts, except /laporan: it is a redirect to /donasi#laporan since SAKEM-105, and a redirect is not a sitemap URL (/donasi stays, with its own priority)', () => {
     const src = readRoot('app/sitemap.ts');
     const rootRoutes = [...src.matchAll(/\{ path: "([^"]+)", priority: ([\d.]+), changeFrequency: "(\w+)" as const \}/g)].map((m) => ({
       path: m[1],
@@ -88,7 +88,10 @@ describe('sitemap', () => {
       changeFrequency: m[3],
     }));
     expect(rootRoutes).toHaveLength(7);
-    expect(STATIC_ROUTES).toEqual(rootRoutes);
+    expect(rootRoutes.map((r) => r.path)).toContain('/laporan');
+    expect(STATIC_ROUTES).toEqual(rootRoutes.filter((r) => r.path !== '/laporan'));
+    expect(STATIC_ROUTES.map((r) => r.path)).not.toContain('/laporan');
+    expect(STATIC_ROUTES.map((r) => r.path)).toContain('/donasi');
   });
 
   it('program ids equal lib/data.ts of the root app', () => {

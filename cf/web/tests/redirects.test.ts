@@ -10,7 +10,9 @@ const articleFiles = () => readdirSync(`${repoRoot}content/blog`).filter((f) => 
 /**
  * A small evaluator for Cloudflare `_redirects` syntax (placeholders `:name`
  * match one segment, `*` matches the rest and fills `:splat`, first match wins,
- * the query string is kept unless the destination has its own). It lets the
+ * the query string is kept unless the destination has its own, and goes before a
+ * fragment of the destination, as the assets layer writes it: `/donasi?utm=x#laporan`,
+ * checked against the local one by scripts/e2e.mjs). It lets the
  * unit tests check the FILE that ships to the assets layer, not only the table.
  */
 function evalUnderscoreRedirects(file: string, pathname: string, search = ''): { status: number; location: string } | null {
@@ -35,7 +37,10 @@ function evalUnderscoreRedirects(file: string, pathname: string, search = ''): {
     if (!m) continue;
     let location = destination;
     keys.forEach((k, i) => (location = location.replace(`:${k}`, m[i + 1])));
-    if (search && !location.includes('?')) location += search;
+    if (search && !location.includes('?')) {
+      const fragment = location.indexOf('#');
+      location = fragment < 0 ? location + search : `${location.slice(0, fragment)}${search}${location.slice(fragment)}`;
+    }
     return { status: Number(status), location };
   }
   return null;
@@ -89,8 +94,15 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     ['/gabung-siswa/form', '?utm_source=ig', 308, '/daftar?utm_source=ig'],
     ['/tentang-kami', '', 308, '/tim'],
     ['/about', '', 308, '/tim'],
-    ['/impact-reports', '', 308, '/laporan'],
-    ['/impact-reports/2025/q1', '', 308, '/laporan'],
+    // SAKEM-105: the reports are a section of /donasi; the old page and the older name both go straight to it (one hop), and a
+    // query is kept BEFORE the fragment
+    ['/impact-reports', '', 308, '/donasi#laporan'],
+    ['/impact-reports/2025/q1', '', 308, '/donasi#laporan'],
+    ['/impact-reports/', '?utm_source=a', 308, '/donasi?utm_source=a#laporan'],
+    ['/laporan', '', 308, '/donasi#laporan'],
+    ['/laporan/', '', 308, '/donasi#laporan'],
+    ['/laporan', '?utm_source=a', 308, '/donasi?utm_source=a#laporan'],
+    ['/laporan/', '?a=1&b=2', 308, '/donasi?a=1&b=2#laporan'],
     ['/blog/page/3', '', 308, '/blog?page=3'],
     ['/blog/page/3/', '', 308, '/blog?page=3'],
     ['/feed', '', 308, '/blog'],
@@ -125,6 +137,8 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
  * 13 pages + 2 archive splats + 1 renamed article slug = 16 rules.
  */
 const SAKEM_090_RULES = 16;
+/** SAKEM-105: `/laporan` (the page that became a section of /donasi). */
+const SAKEM_105_RULES = 1;
 
 /** [WordPress path as the live sitemap lists it (trailing slash), destination]. */
 const WORDPRESS_PAGES: [string, string][] = [
@@ -246,9 +260,9 @@ describe('SAKEM-090: no redirect loops, no needless chains', () => {
   function follow(start: string): string[] {
     const seen = [start];
     for (let hops = 0; hops < 10; hops++) {
-      const hit = matchRedirect(seen[seen.length - 1].split('?')[0]);
+      const hit = matchRedirect(seen[seen.length - 1].split(/[?#]/)[0]);
       if (!hit) return seen;
-      const next = hit.location.split('?')[0];
+      const next = hit.location.split(/[?#]/)[0]; // the query and the fragment are not part of the path the next hop reads
       if (seen.includes(next)) throw new Error(`redirect loop: ${[...seen, next].join(' -> ')}`);
       seen.push(next);
     }
@@ -323,12 +337,13 @@ describe('parity with the root next.config.ts', () => {
     expect(cats).toEqual(WP_BLOG_CATEGORIES);
   });
 
-  it('every explicit rule of next.config.ts is in the table, with the same status (the two that differ on purpose are checked below)', () => {
+  it('every explicit rule of next.config.ts is in the table, with the same status (the four that differ on purpose are checked below)', () => {
     const rules = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:\s*"([^"]+)",\s*permanent:\s*(true|false)/g)];
     expect(rules.length).toBeGreaterThanOrEqual(11);
     const toAstro = (s: string) => s.replace(/:path\*/g, '[...path]').replace(/:(\w+)/g, '[$1]');
     for (const [, source, destination, permanent] of rules) {
       if (source === '/daftar' || source === '/gabung-siswa/form') continue; // SAKEM-103: see the test below
+      if (source === '/impact-reports' || source === '/impact-reports/:path*') continue; // SAKEM-105: now straight to /donasi#laporan, see the test below
       const entry = REDIRECTS[toAstro(source)];
       expect(entry, `missing rule for ${source}`).toBeDefined();
       expect(entry.destination).toBe(toAstro(destination));
@@ -336,11 +351,11 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103), + /program + 2 x 7 category rules + the SAKEM-090 additions', () => {
+  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103), + /program + 2 x 7 category rules + the SAKEM-090 additions + /laporan (SAKEM-105)', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
     // next.config.ts: 11 literal rules; the 14 category rules are generated from the list. Gone since SAKEM-075 and M4: the splat over
     // /wp-content/uploads (a rule per mirrored file is written at build time now) and the five auth pages (Phase A, SAKEM-103).
-    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 1 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES);
+    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 1 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES + SAKEM_105_RULES);
   });
 
   it('Phase A (SAKEM-103): no auth name is a redirect (/login is WordPress\'s, the others are the site\'s own 404), and nothing is redirected into /portal', () => {
@@ -354,6 +369,14 @@ describe('parity with the root next.config.ts', () => {
     expect(REDIRECTS['/gabung-siswa/form']).toEqual({ status: 308, destination: '/daftar' });
     expect(next).toContain('source: "/daftar", destination: "/gabung-siswa"');
     expect(next).toContain('destination: "/portal/daftar"');
+  });
+
+  it('SAKEM-105: the two /impact-reports rules of next.config.ts went to /laporan, a page of the Next app; here /laporan is no page, so they end on its section of /donasi, and /laporan is a rule of its own', () => {
+    expect(next).toContain('source: "/impact-reports", destination: "/laporan"');
+    expect(REDIRECTS['/impact-reports']).toEqual({ status: 308, destination: '/donasi#laporan' });
+    expect(REDIRECTS['/impact-reports/[...path]']).toEqual({ status: 308, destination: '/donasi#laporan' });
+    expect(REDIRECTS['/laporan']).toEqual({ status: 308, destination: '/donasi#laporan' });
+    expect(next).not.toContain('source: "/laporan"');
   });
 });
 

@@ -6,8 +6,11 @@ import { programs } from '~/lib/programs';
 import { PROGRAM_IDS, STATIC_ROUTES } from '~/lib/sitemap';
 import { graphTypes, importRoot, readRoot, webRoot } from './helpers';
 
-// Checks on the pages `pnpm build` generates for /program/<id> and /donasi (dist/client/*.html).
+// Checks on the pages `pnpm build` generates for /program/<id> (dist/client/*.html).
 // Skipped, not failed, when dist/ is missing, like tests/built.test.ts.
+// /donasi is not one of them since SAKEM-105: it carries the reports, so the Worker renders it, and what it renders (the head, the
+// payment cards, the QRIS image, the copy button, the confirmation and contact cards, the Laporan section) is checked on the built
+// Worker's answer in scripts/e2e.mjs, group `donasi`.
 const client = path.join(webRoot, 'dist/client');
 const built = existsSync(path.join(client, 'program/pembinaan.html'));
 
@@ -193,97 +196,5 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
       const scripts = [...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json'));
       expect(scripts).toHaveLength(1);
     });
-  });
-});
-
-describe.skipIf(!built)('/donasi build output', async () => {
-  const html = read('donasi.html');
-  const text = textOf(html);
-  const legacyPage = readRoot('app/(public)/donasi/page.tsx');
-  const legacyLayout = readRoot('app/(public)/donasi/layout.tsx');
-
-  it('is a static file', () => {
-    expect(existsSync(path.join(client, 'donasi.html'))).toBe(true);
-    expect(existsSync(path.join(client, 'donasi/index.html'))).toBe(false);
-  });
-
-  it('SEO: "Donasi - Yayasan Sakola Kembara Indonesia", the legacy description, canonical, Open Graph, default share image, the site graph only', () => {
-    const description = legacyLayout.match(/description:\s*"([^"]+)"/)![1];
-    expect(html).toContain('<title>Donasi - Yayasan Sakola Kembara Indonesia</title>');
-    expect(meta(html, 'name', 'description')).toBe(description);
-    expect(canonical(html)).toBe('https://sakolakembara.org/donasi');
-    expect(meta(html, 'property', 'og:title')).toBe('Donasi');
-    expect(meta(html, 'property', 'og:description')).toBe(description);
-    expect(meta(html, 'property', 'og:url')).toBe('https://sakolakembara.org/donasi');
-    expect(meta(html, 'property', 'og:image')).toBe('https://sakolakembara.org/og-default.jpg');
-    expect(meta(html, 'name', 'twitter:image')).toBe('https://sakolakembara.org/og-default.jpg');
-    expect(meta(html, 'name', 'robots')).toBe('index, follow');
-    expect(jsonLd(html)).toHaveLength(1);
-    expect(graphTypes(html)).toEqual(['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList']);
-  });
-
-  it('exactly one h1, the hero title, with the lead', () => {
-    expect([...html.matchAll(/<h1[\s>]/g)]).toHaveLength(1);
-    expect(text).toContain('Dukung Perjalanan Mereka Setiap donasi Anda membantu siswa dari keluarga kurang mampu untuk mewujudkan impian mereka masuk perguruan tinggi.');
-  });
-
-  it('payment cards: QRIS card and bank transfer card with the bank details exactly as the legacy page', () => {
-    expect(text).toContain('Cara Berdonasi Pilih salah satu metode di bawah ini. Donasi dengan nominal berapa pun sangat berarti bagi mereka.');
-    expect(text).toContain('Scan QRIS');
-    // Raw HTML: the comma after the bold part must follow it directly (JSX gave no space there either).
-    expect(html).toContain('Scan via <span class="font-semibold text-gray-700">GoPay, OVO, DANA, ShopeePay</span>, atau m-banking.');
-    expect(text).toContain('Transfer Bank Bank Bank Muamalat Kode Bank 147 Nomor Rekening 1010 141 940 Atas Nama Sakola Kembara Indonesia');
-    for (const value of ['Bank Muamalat', '147', '1010 141 940', 'Sakola Kembara Indonesia']) expect(legacyPage).toContain(`"${value}"`);
-  });
-
-  it('QRIS: a plain <img> with width, height, alt and lazy loading, pointing at a file in the build; the download link uses the same file', () => {
-    const qr = imgsOf(html).find((i) => attr(i, 'alt') === 'QRIS Sakola Kembara')!;
-    expect(qr).toBeDefined();
-    expect(attr(qr, 'width')).toBe('280');
-    expect(attr(qr, 'height')).toBe('373');
-    expect(attr(qr, 'loading')).toBe('lazy');
-    expect(attr(qr, 'decoding')).toBe('async');
-    expect(qr).not.toContain('srcset');
-    const src = attr(qr, 'src');
-    expect(src).toMatch(/^\/_astro\/qris-sakola-kembara\.[\w-]+\.png$/);
-    expect(statSync(path.join(client, src)).size).toBe(statSync(path.join(webRoot, '../../public/images/qris-sakola-kembara.png')).size); // the original, not re-encoded
-    const download = links(html).find((a) => a.includes('download="qris-sakola-kembara.png"'))!;
-    expect(attr(download, 'href')).toBe(src);
-    expect(text).toContain('Download QR');
-    for (const img of imgsOf(html)) {
-      expect(img, img).toMatch(/\swidth="\d+"/);
-      expect(img, img).toMatch(/\sheight="\d+"/);
-      expect(img, img).toMatch(/\salt="/);
-    }
-  });
-
-  it('copy button: carries the account number of the legacy page; both labels are in the markup, the second hidden', () => {
-    const number = legacyPage.match(/const ACCOUNT_NUMBER = "(\d+)"/)![1];
-    expect(html).toContain(`data-copy-account="${number}"`);
-    expect(html).toMatch(/<span data-copy-idle[^>]*>[\s\S]*?Salin No Rekening/);
-    expect(html).toMatch(/<span data-copy-done hidden[^>]*>[\s\S]*?Tersalin!/);
-  });
-
-  it('confirmation card (Google Form, opens in a new tab) and contact card (/kontak)', () => {
-    const form = legacyPage.match(/CONFIRMATION_FORM_URL =\s*"([^"]+)"/)![1];
-    const link = links(html).find((a) => attr(a, 'href') === form)!;
-    expect(link).toBeDefined();
-    expect(link).toContain('target="_blank"');
-    expect(link).toContain('rel="noopener noreferrer"');
-    expect(text).toContain('Terima Kasih atas Donasi Anda Setelah berdonasi, mohon konfirmasikan melalui formulir berikut agar donasi Anda dapat kami catat dengan baik. Konfirmasi Donasi');
-    expect(text).toContain('Kontak Kami Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu. Hubungi Kami');
-    expect(links(html).some((a) => attr(a, 'href') === '/kontak' && a.includes('bg-white'))).toBe(true);
-  });
-
-  it('the transparency block is not part of this page (separate ticket)', () => {
-    expect(text).not.toMatch(/transparansi|laporan keuangan|Stakeholder/i);
-  });
-
-  it('no external script; no framework: the navbar script and the copy-button script, both inline', () => {
-    expect([...html.matchAll(/<script[^>]*\ssrc=/g)]).toHaveLength(0);
-    const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-    expect(scripts).toHaveLength(2);
-    expect(scripts.filter((s) => s[2].includes('clipboard'))).toHaveLength(1);
-    for (const s of scripts) expect(s[2].length).toBeLessThan(6000);
   });
 });

@@ -172,9 +172,12 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     ],
   },
   {
-    name: '/laporan',
-    web: 'src/pages/laporan.astro',
-    root: ['app/(public)/laporan/_laporan-content.tsx', 'app/(public)/laporan/layout.tsx'],
+    // SAKEM-105: the page /laporan is the Laporan section of /donasi. Every string it had is in the section, the old hero's title and
+    // lead as the section's own; the page's <title> and meta description left with the page (the section is not a page), and the
+    // text of the failure panel was never in the legacy app (it is a Worker-side state), so it is pinned in tests/public-pages.test.ts.
+    name: 'the Laporan section of /donasi (was /laporan)',
+    web: 'src/components/ReportsSection.astro',
+    root: ['app/(public)/laporan/_laporan-content.tsx'],
     phrases: [
       'Komitmen kami untuk transparansi. Laporan tahunan, keuangan, dampak, dan donasi tersedia untuk diunduh dan dipelajari oleh donor, mitra, dan publik.',
       'Laporan akan segera tersedia',
@@ -185,7 +188,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Tim kami senang membantu menjelaskan angka-angka di balik laporan ini. Hubungi kami untuk diskusi lebih lanjut.',
       'Hubungi Tim Kami',
       '/kontak',
-      'Laporan tahunan, keuangan, dampak, dan donasi Sakola Kembara. Komitmen kami untuk transparansi dan akuntabilitas kepada donor, mitra, dan publik.',
     ],
   },
   {
@@ -311,6 +313,29 @@ describe('data copied from lib/data.ts and lib/team-types.ts', () => {
   it('navigation labels and hrefs', () => {
     for (const l of navLinks) expect(data).toContain(`{ href: "${l.href}", label: "${l.label}" }`);
     expect(footerLinks.map((l) => l.label)).toEqual(['Team', 'Siswa', 'Donasi', 'Laporan', 'Blog', 'Kontak']);
+  });
+
+  it('SAKEM-105: the menu has five items (Laporan left it) and the footer is written out, with "Laporan" where it was but pointing at the section of /donasi', () => {
+    expect(navLinks.map((l) => [l.href, l.label])).toEqual([
+      ['/', 'Home'],
+      ['/tim', 'Team'],
+      ['/gabung-siswa', 'Siswa'],
+      ['/donasi', 'Donasi'],
+      ['/blog', 'Blog'],
+    ]);
+    expect(footerLinks.map((l) => [l.href, l.label])).toEqual([
+      ['/tim', 'Team'],
+      ['/gabung-siswa', 'Siswa'],
+      ['/donasi', 'Donasi'],
+      ['/donasi#laporan', 'Laporan'],
+      ['/blog', 'Blog'],
+      ['/kontak', 'Kontak'],
+    ]);
+    // the footer repeats the menu's destinations (but the home page, whose logo links there) and adds Laporan and Kontak: nothing else
+    const menu = navLinks.filter((l) => l.href !== '/').map((l) => l.href);
+    expect(footerLinks.filter((l) => !['/donasi#laporan', '/kontak'].includes(l.href)).map((l) => l.href)).toEqual(menu);
+    // no link of the site points at the page that is gone
+    for (const l of [...navLinks, ...footerLinks]) expect(l.href, l.label).not.toMatch(/^\/laporan/);
   });
 
   it('hero stats', () => {
