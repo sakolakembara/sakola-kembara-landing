@@ -20,7 +20,7 @@ ADMIN_URL=https://sakem-admin-staging.<account-subdomain>.workers.dev
 # Leave the line out until the bucket's public URL is on.
 UPLOADS_BASE_URL=https://pub-<hash>.r2.dev
 
-# Optional, and a test of the CPU work (SAKEM-091): seconds a rendered page (/blog, an article, /tim, /laporan,
+# Optional, and a test of the CPU work (SAKEM-091): seconds a rendered page (/blog, an article, /tim, /donasi,
 # /gabung-siswa/docs, /sitemap.xml) is kept in the isolate's memory and answered from there, with no render.
 # Leave the line out and every request renders. Try 30; the most it takes is 120.
 # PAGE_CACHE_SECONDS=30

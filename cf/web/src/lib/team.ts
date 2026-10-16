@@ -1,5 +1,5 @@
 // Loader for /tim: team members from the content API. The timeout, the Workers Cache API
-// (`caches.default`) and stale-if-error live in lib/content-api.ts (shared with /laporan and
+// (`caches.default`) and stale-if-error live in lib/content-api.ts (shared with /donasi's reports and
 // /gabung-siswa/docs); this file is the team's part: the path, the parser and the 5-minute
 // fresh window (the other lists use 60 s).
 //

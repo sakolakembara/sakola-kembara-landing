@@ -33,7 +33,7 @@ declare namespace Cloudflare {
     /** Same for the other lists (reports, resources) and for the blog pages and articles: default 60, the contract's `s-maxage`. */
     CONTENT_CACHE_FRESH_SECONDS?: string;
     /**
-     * Seconds a rendered page (/blog, an article, /tim, /laporan, /gabung-siswa/docs, /sitemap.xml) is kept in the memory
+     * Seconds a rendered page (/blog, an article, /tim, /donasi, /gabung-siswa/docs, /sitemap.xml) is kept in the memory
      * of the isolate and answered from there, at most 120 and never longer than the page's own `s-maxage`. Unset, 0 or
      * not a number: off (every request renders). 30 is the value to start with. src/lib/page-cache.ts.
      */

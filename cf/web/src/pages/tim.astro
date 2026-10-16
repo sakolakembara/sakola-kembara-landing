@@ -14,7 +14,7 @@ import { uploadUrl } from '~/lib/uploads';
 
 // SSR: the team comes from the content API at request time (see lib/team.ts for
 // the timeout, cache and stale-if-error behaviour). Where the API is (the `API` service binding in
-// production, CONTENT_API_URL locally) is decided by contentRuntime, like /laporan and /gabung-siswa/docs;
+// production, CONTENT_API_URL locally) is decided by contentRuntime, like /donasi (its Laporan section) and /gabung-siswa/docs;
 // the team keeps its own fresh window (TEAM_CACHE_FRESH_SECONDS, default 5 minutes), not the 60 s of the others.
 export const prerender = false;
 

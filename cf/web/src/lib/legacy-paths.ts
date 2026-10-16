@@ -84,7 +84,7 @@ export const PORTAL_OWNED_PATHS: readonly LegacyPath[] = [
   { path: '/api', why: 'No API on the apex: answered with a JSON 404. The student API is /portal/api/*, the admin API is on the admin host.' },
 ];
 
-// Empty: /laporan, /gabung-siswa* and /kontak are ported. The list stays (the matcher and the tests use it)
+// Empty: /donasi (with the reports), /gabung-siswa* and /kontak are ported. The list stays (the matcher and the tests use it)
 // for the next public page that is ever added to the origin before the Worker has it.
 export const NOT_YET_PORTED: readonly LegacyPath[] = [];
 
