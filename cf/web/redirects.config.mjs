@@ -64,9 +64,13 @@ export const REDIRECTS = {
   // "About" page rename: the public team page took over.
   '/tentang-kami': to('/tim'),
   '/about': to('/tim'),
-  // Internal rename.
-  '/impact-reports': to('/laporan'),
-  '/impact-reports/[...path]': to('/laporan'),
+  // Internal rename, and then SAKEM-105: the reports are a section of /donasi, so the old page (`/laporan`) and the
+  // older `/impact-reports` go straight to that section, one hop each. The fragment is part of the destination: the
+  // assets layer accepts it in `_redirects` and puts the query before it (checked locally by scripts/e2e.mjs; on a
+  // real zone by the runbook's T-37).
+  '/impact-reports': to('/donasi#laporan'),
+  '/impact-reports/[...path]': to('/donasi#laporan'),
+  '/laporan': to('/donasi#laporan'),
   // WordPress paginated archives (/blog/page/3/) → /blog?page=3.
   '/blog/page/[page]': to('/blog?page=[page]'),
   // Common WordPress entry points that should not 404 at cutover.
@@ -146,7 +150,9 @@ const compiled = Object.entries(REDIRECTS).map(([pattern, rule]) => ({
  * is carried over, like _redirects does, unless the destination already has
  * its own query: then the incoming one is dropped (so /blog/page/2?utm=x goes
  * to /blog?page=2). Next would merge the two; a tracking parameter on an old
- * WordPress pagination URL is not worth a second code path.
+ * WordPress pagination URL is not worth a second code path. A destination may
+ * end in a fragment (`/donasi#laporan`, SAKEM-105): the carried query is put
+ * before it, which is also where the assets layer puts it.
  *
  * @param {string} pathname  e.g. "/cerita/some-slug/"
  * @param {string} [search]  e.g. "?utm_source=x" (or "")
@@ -160,7 +166,11 @@ export function matchRedirect(pathname, search = '') {
     keys.forEach((key, i) => {
       location = location.replace(new RegExp(`\\[(?:\\.\\.\\.)?${key}\\]`), m[i + 1]);
     });
-    if (search && search !== '?' && !location.includes('?')) location += search;
+    if (search && search !== '?' && !location.includes('?')) {
+      // The query goes BEFORE a fragment (`/donasi?utm=x#laporan`): after it, it would be part of the fragment and lost.
+      const fragment = location.indexOf('#');
+      location = fragment < 0 ? location + search : `${location.slice(0, fragment)}${search}${location.slice(fragment)}`;
+    }
     return { status: rule.status, location };
   }
   return null;

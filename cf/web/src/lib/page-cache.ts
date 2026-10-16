@@ -35,7 +35,7 @@ const MAX_BODY_BYTES = 1024 * 1024;
 const MIN_PAGE_MAX_AGE = 60;
 
 const ARTICLE_SLUG = /^[a-z0-9][a-z0-9_-]{0,199}$/;
-const FIXED_PAGES = new Set(['/tim', '/laporan', '/gabung-siswa/docs', '/sitemap.xml']);
+const FIXED_PAGES = new Set(['/tim', '/donasi', '/gabung-siswa/docs', '/sitemap.xml']);
 
 /** The setting as a whole number of seconds: 0 (off) for unset, empty, not a number or not above zero. Capped. */
 export function pageCacheSeconds(value: string | undefined): number {
