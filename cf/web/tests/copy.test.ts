@@ -81,7 +81,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Ingin Bergabung dengan Tim?',
       'Kami selalu mencari relawan yang bersemangat untuk berkontribusi dalam membuka akses pendidikan bagi siswa Indonesia. Terbuka juga untuk kerja sama lembaga dan bentuk dukungan lainnya.',
       'Bergabung Menjadi Relawan',
-      'https://linktr.ee/JoinSakolaKembara',
       'Hubungi Kami',
       'Riwayat Pendidikan',
       'Riwayat Pekerjaan',
@@ -304,6 +303,16 @@ describe('the deliberate differences of Phase A (SAKEM-103): the registration li
       expect(readWeb(rel), rel).toContain('href={REGISTRATION_PATH}');
       expect(readWeb(rel), rel).not.toContain('/portal/daftar');
     }
+  });
+});
+
+describe('the deliberate difference of SAKEM-107: the volunteer button of /tim', () => {
+  // Dzul, 2026-10-18: "Bergabung Menjadi Relawan" goes to the volunteer form through `/apply`, an admin shortlink, instead of the Linktree.
+  it('the legacy /tim page links the Linktree; the port links VOLUNTEER_PATH (/apply, an admin shortlink) and names the Linktree nowhere', () => {
+    expect(readRoot('app/(public)/tim/_tim-content.tsx')).toContain('https://linktr.ee/JoinSakolaKembara');
+    const web = readWeb('src/pages/tim.astro');
+    expect(web).toContain('<Button href={VOLUNTEER_PATH} size="lg">Bergabung Menjadi Relawan</Button>');
+    expect(web).not.toContain('linktr.ee');
   });
 });
 

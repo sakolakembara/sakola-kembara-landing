@@ -51,10 +51,10 @@ export const REDIRECTS = {
   // Legacy category archive pages → /blog index.
   ...Object.fromEntries(WP_BLOG_CATEGORIES.map((cat) => [`/${cat}`, to('/blog')])),
 
-  // Old CTA destinations still linked from external sites, QR codes and bios. `/daftar` is NOT here (SAKEM-103): it is an
-  // admin shortlink now (D1, a 307 to the registration form, src/pages/[...path].astro), so a new cohort changes the
-  // shortlink's target in the admin and nothing is deployed.
-  '/apply': to('/gabung-siswa'),
+  // Old CTA addresses still linked from external sites, QR codes and bios: `/daftar` and `/apply` are NOT here. They are admin
+  // shortlinks (D1, a 307 to wherever the admin points them, src/pages/[...path].astro). `/daftar` is the registration form (SAKEM-103), so
+  // a new cohort changes the shortlink's target in the admin and nothing is deployed. `/apply` used to be a 308 to /gabung-siswa; it is
+  // free since SAKEM-107 so that an admin can make a custom link of it, and until one exists it is the site's own 404.
   // The registration form of the abandoned portal address goes where every "Daftar Sekarang" goes: the shortlink.
   '/gabung-siswa/form': to('/daftar'),
   // `/login`, `/register`, `/forgot-password`, `/reset-password` and `/verify-email` are NOT here any more (SAKEM-103, Phase A of

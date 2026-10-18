@@ -45,7 +45,7 @@ describe("validateSlug (the legacy rule)", () => {
   });
 
   test("a reserved slug is refused with the legacy sentence, whatever its case or slashes", () => {
-    for (const input of ["donasi", "Donasi", "/tim/", " LAPORAN ", "gabung-siswa", "apply", "tentang-kami", "404", "wp-admin", "/WP-JSON/"]) {
+    for (const input of ["donasi", "Donasi", "/tim/", " LAPORAN ", "gabung-siswa", "about", "tentang-kami", "404", "wp-admin", "/WP-JSON/"]) {
       const slug = normaliseSlug(input);
       expect(validateSlug(input), input).toEqual({
         ok: false,
@@ -62,6 +62,11 @@ describe("validateSlug (the legacy rule)", () => {
     expect(RESERVED_SLUGS.has("daftar")).toBe(false);
     for (const input of ["daftar", "Daftar", "/daftar/", " DAFTAR "]) expect(validateSlug(input), input).toEqual({ ok: true, slug: "daftar" });
   });
+
+  test("`apply` is NOT reserved: it is the volunteer link, a custom shortlink whose target an admin sets (SAKEM-107)", () => {
+    expect(RESERVED_SLUGS.has("apply")).toBe(false);
+    for (const input of ["apply", "Apply", "/apply/", " APPLY "]) expect(validateSlug(input), input).toEqual({ ok: true, slug: "apply" });
+  });
 });
 
 describe("the reserved list", () => {
@@ -72,7 +77,7 @@ describe("the reserved list", () => {
     "resources", "favicon", "static",
   ];
   // What the Cloudflare site added: the 404 page, and the sources of cf/web/redirects.config.mjs that are one segment.
-  const NEW = ["404", "cerita", "education", "news", "tips", "testimonials", "career", "kiat-kiat", "apply", "tentang-kami", "about", "impact-reports", "feed", "wp-content", "wp-admin", "wp-includes", "wp-json"];
+  const NEW = ["404", "cerita", "education", "news", "tips", "testimonials", "career", "kiat-kiat", "tentang-kami", "about", "impact-reports", "feed", "wp-content", "wp-admin", "wp-includes", "wp-json"];
   // SAKEM-090: the WordPress pages and archives the table now redirects.
   const WORDPRESS_PAGES = [
     "home", "sample-page", "who-we-are", "our-partners", "contact-us", "donate", "donation-confirmation", "donation-confirmation-2",

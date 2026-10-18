@@ -53,10 +53,9 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "testimonials",
   "career",
   "kiat-kiat",
-  // Old call-to-action addresses and renamed pages. `daftar` is NOT here (SAKEM-103, Phase A of the cutover): `/daftar` is the
-  // registration shortlink, created in this admin, whose target is the form of the current cohort. A test of cf/web
-  // (tests/shortlink-reserved.test.ts) fails the day anything claims that name again.
-  "apply",
+  // Renamed pages. `daftar` and `apply` are NOT here (SAKEM-103, Phase A of the cutover; SAKEM-107): `/daftar` is the registration
+  // shortlink, created in this admin, whose target is the form of the current cohort, and `/apply` is free for a custom link. A test of
+  // cf/web (tests/shortlink-reserved.test.ts) fails the day anything claims either name again.
   "tentang-kami",
   "about",
   "impact-reports",

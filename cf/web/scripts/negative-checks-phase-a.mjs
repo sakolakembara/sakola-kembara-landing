@@ -27,6 +27,7 @@ const HEADERS = ['tests/headers-sitemap.test.ts'];
 const REGISTRATION = ['tests/registration-page.test.ts', 'tests/portal-links.test.ts'];
 const PRINTER = ['tests/portal-enabled.test.ts', 'tests/staging-scripts.test.ts'];
 const RESERVED = ['tests/shortlink-reserved.test.ts'];
+const VOLUNTEER = ['tests/copy.test.ts', 'tests/portal-links.test.ts'];
 const COPY = ['tests/copy.test.ts', 'tests/public-pages.test.ts'];
 const REPORTS = ['tests/public-pages.test.ts', 'tests/copy.test.ts'];
 const REPORTS_REDIRECT = ['tests/redirects.test.ts', 'tests/public-pages.test.ts'];
@@ -39,6 +40,8 @@ const navbar = 'src/components/Navbar.astro';
 const session = 'src/components/NavbarSession.astro';
 const paths = 'src/lib/legacy-paths.ts';
 const redirects = 'redirects.config.mjs';
+// A rule that stays in the table: the redirect checks add the rule they must notice right after it.
+const REDIRECT_ANCHOR = "  '/gabung-siswa/form': to('/daftar'),\n";
 const securityHeaders = 'src/lib/security-headers.ts';
 const headersFile = 'public/_headers';
 const catchAll = 'src/pages/[...path].astro';
@@ -141,11 +144,12 @@ const checks = [
   { name: 'the middleware adds the security headers to an origin answer', file: middleware, from: 'return forwardToLegacy(context.request, env.LEGACY_ORIGIN_URL);', to: 'return withSecurityHeaders(await forwardToLegacy(context.request, env.LEGACY_ORIGIN_URL));', tests: PATHS },
 
   // ---- the redirect table: nothing may shadow the pass-through, and /daftar is not a rule
-  { name: '/daftar is a redirect rule again (the shortlink would never be reached)', file: redirects, from: "  '/apply': to('/gabung-siswa'),\n", to: "  '/apply': to('/gabung-siswa'),\n  '/daftar': to('/gabung-siswa'),\n", tests: REDIRECTS },
-  { name: '/login is a redirect into the portal again (WordPress would never see it)', file: redirects, from: "  '/apply': to('/gabung-siswa'),\n", to: "  '/apply': to('/gabung-siswa'),\n  '/login': to('/portal/login'),\n", tests: REDIRECTS },
-  { name: '/register is a redirect into the portal again', file: redirects, from: "  '/apply': to('/gabung-siswa'),\n", to: "  '/apply': to('/gabung-siswa'),\n  '/register': to('/portal/register'),\n", tests: REDIRECTS },
+  { name: '/daftar is a redirect rule again (the shortlink would never be reached)', file: redirects, from: REDIRECT_ANCHOR, to: `${REDIRECT_ANCHOR}  '/daftar': to('/gabung-siswa'),\n`, tests: REDIRECTS },
+  { name: '/apply is a redirect rule again (a custom shortlink called apply would never be reached; SAKEM-107)', file: redirects, from: REDIRECT_ANCHOR, to: `${REDIRECT_ANCHOR}  '/apply': to('/gabung-siswa'),\n`, tests: REDIRECTS },
+  { name: '/login is a redirect into the portal again (WordPress would never see it)', file: redirects, from: REDIRECT_ANCHOR, to: `${REDIRECT_ANCHOR}  '/login': to('/portal/login'),\n`, tests: REDIRECTS },
+  { name: '/register is a redirect into the portal again', file: redirects, from: REDIRECT_ANCHOR, to: `${REDIRECT_ANCHOR}  '/register': to('/portal/register'),\n`, tests: REDIRECTS },
   { name: 'the old registration form goes to /portal/daftar again', file: redirects, from: "'/gabung-siswa/form': to('/daftar'),", to: "'/gabung-siswa/form': to('/portal/daftar'),", tests: REDIRECTS },
-  { name: 'the splat over /wp-content/uploads is back (an upload this site did not copy would be sent to a 404)', file: redirects, from: "  '/apply': to('/gabung-siswa'),\n", to: "  '/apply': to('/gabung-siswa'),\n  '/wp-content/uploads/[...path]': to('/blog/images/[...path]'),\n", tests: REDIRECTS },
+  { name: 'the splat over /wp-content/uploads is back (an upload this site did not copy would be sent to a 404)', file: redirects, from: REDIRECT_ANCHOR, to: `${REDIRECT_ANCHOR}  '/wp-content/uploads/[...path]': to('/blog/images/[...path]'),\n`, tests: REDIRECTS },
 
   // ---- the WordPress uploads this build copied
   { name: 'an @ in an upload name is not written in its %40 form (two hops again)', file: redirects, from: 'to: assetUrl(`/${file}`) }))', to: 'to: `/${file}` }))', tests: REDIRECTS },
@@ -153,9 +157,14 @@ const checks = [
   { name: 'the upload rules are written after the dynamic ones (the file is ordered the way wrangler warns about)', file: redirects, from: '  staticEntries.forEach(emit);\n', to: '  staticEntries.forEach(emit);\n  dynamicEntries.forEach(emit);\n', tests: REDIRECTS },
 
   // ---- reserved names
-  { name: '`daftar` is reserved by the admin again (the registration link could not be created)', file: adminReserved, from: '  "apply",\n', to: '  "apply",\n  "daftar",\n', tests: RESERVED },
+  { name: '`daftar` is reserved by the admin again (the registration link could not be created)', file: adminReserved, from: '  "tentang-kami",\n', to: '  "tentang-kami",\n  "daftar",\n', tests: RESERVED },
+  { name: '`apply` is reserved by the admin again (a custom link called apply could not be created; SAKEM-107)', file: adminReserved, from: '  "tentang-kami",\n', to: '  "tentang-kami",\n  "apply",\n', tests: RESERVED },
   { name: 'a WordPress path (wp-json) is no longer reserved', file: adminReserved, from: '  "wp-json",\n', to: '', tests: RESERVED },
   { name: 'wp-admin is no longer reserved', file: adminReserved, from: '  "wp-admin",\n', to: '', tests: RESERVED },
+
+  // ---- the volunteer link (SAKEM-107)
+  { name: 'the volunteer button points at the Linktree again (the form is no longer behind /apply)', file: 'src/pages/tim.astro', from: '<Button href={VOLUNTEER_PATH} size="lg">', to: '<Button href="https://linktr.ee/JoinSakolaKembara" size="lg">', tests: VOLUNTEER },
+  { name: 'the volunteer link is renamed (the button would point at a name nobody made a shortlink of)', file: site, from: "export const VOLUNTEER_PATH = '/apply';", to: "export const VOLUNTEER_PATH = '/relawan';", tests: VOLUNTEER },
 
   // ---- the registration link and its polite page
   { name: 'the registration link is renamed (every Daftar Sekarang would point at another name)', file: site, from: "export const REGISTRATION_PATH = '/daftar';", to: "export const REGISTRATION_PATH = '/pendaftaran';", tests: REGISTRATION },
