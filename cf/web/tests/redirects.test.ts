@@ -88,7 +88,6 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     ['/cerita', '', 308, '/blog'],
     ['/education/', '', 308, '/blog'],
     ['/kiat-kiat', '', 308, '/blog'],
-    ['/apply', '', 308, '/gabung-siswa'],
     // SAKEM-103: the old registration form goes to the registration shortlink, which is not a rule of this table (D1).
     ['/gabung-siswa/form', '', 308, '/daftar'],
     ['/gabung-siswa/form', '?utm_source=ig', 308, '/daftar?utm_source=ig'],
@@ -120,7 +119,8 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
   it.each([
     '/', '/blog', '/blog/some-slug', '/tim', '/portal/daftar', '/portal/login', '/cerita/a/b', '/blog/page', '/wp-content', '/programs', '/login-help', '/registered', '/admin', '/api',
     // SAKEM-103: the registration link is a shortlink, the auth names are WordPress's (/login) or the site's 404, and an upload is WordPress's unless this build copied it
-    '/daftar', '/daftar/', '/login', '/login/', '/register', '/forgot-password', '/reset-password', '/verify-email',
+    // SAKEM-107: /apply is free for a custom shortlink, so it is no rule either
+    '/daftar', '/daftar/', '/apply', '/apply/', '/login', '/login/', '/register', '/forgot-password', '/reset-password', '/verify-email',
     '/wp-content/uploads/2026/05/foto.jpg', '/wp-content/uploads/2099/01/not-copied.jpg',
   ])(
     '%s is not redirected',
@@ -343,6 +343,7 @@ describe('parity with the root next.config.ts', () => {
     const toAstro = (s: string) => s.replace(/:path\*/g, '[...path]').replace(/:(\w+)/g, '[$1]');
     for (const [, source, destination, permanent] of rules) {
       if (source === '/daftar' || source === '/gabung-siswa/form') continue; // SAKEM-103: see the test below
+      if (source === '/apply') continue; // SAKEM-107: a shortlink now, like /daftar, see the test below
       if (source === '/impact-reports' || source === '/impact-reports/:path*') continue; // SAKEM-105: now straight to /donasi#laporan, see the test below
       const entry = REDIRECTS[toAstro(source)];
       expect(entry, `missing rule for ${source}`).toBeDefined();
@@ -351,11 +352,12 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103), + /program + 2 x 7 category rules + the SAKEM-090 additions + /laporan (SAKEM-105)', () => {
+  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103) and /apply (SAKEM-107), + /program + 2 x 7 category rules + the SAKEM-090 additions + /laporan (SAKEM-105)', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
     // next.config.ts: 11 literal rules; the 14 category rules are generated from the list. Gone since SAKEM-075 and M4: the splat over
-    // /wp-content/uploads (a rule per mirrored file is written at build time now) and the five auth pages (Phase A, SAKEM-103).
-    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 1 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES + SAKEM_105_RULES);
+    // /wp-content/uploads (a rule per mirrored file is written at build time now) and the five auth pages (Phase A, SAKEM-103). /daftar and
+    // /apply are shortlinks, so two rules fewer.
+    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 2 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES + SAKEM_105_RULES);
   });
 
   it('Phase A (SAKEM-103): no auth name is a redirect (/login is WordPress\'s, the others are the site\'s own 404), and nothing is redirected into /portal', () => {

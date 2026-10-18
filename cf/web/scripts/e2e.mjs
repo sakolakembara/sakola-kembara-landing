@@ -187,7 +187,6 @@ for (const a of articles) {
 const other = [
   ['/cerita', 308, '/blog'], ['/cerita/', 308, '/blog'], ['/education', 308, '/blog'], ['/news', 308, '/blog'],
   ['/tips', 308, '/blog'], ['/testimonials', 308, '/blog'], ['/career', 308, '/blog'], ['/kiat-kiat', 308, '/blog'],
-  ['/apply', 308, '/gabung-siswa'],
   // SAKEM-103 (Phase A): the old registration form goes to the registration shortlink. /daftar itself is NOT a rule (group `registration`), and
   // neither are the auth names (/login is WordPress's, group `pass-through`; the others are the site's 404, group `portal-paths`).
   ['/gabung-siswa/form', 308, '/daftar'], ['/gabung-siswa/form?utm_source=ig', 308, '/daftar?utm_source=ig'],
@@ -705,6 +704,18 @@ await check('shortlinks', "an unknown valid slug (or one switched off: the API s
   assert.deepEqual(asked, ['/api/public/shortlinks/no-such-link']);
   assert.deepEqual(counted, {});
   assert.equal(stubHits().length, 0);
+});
+await check('shortlinks', '/apply is no redirect rule (SAKEM-107): it is a free name like any other, so the API is asked once, and with no shortlink it is the site\'s own 404', async () => {
+  clearStub();
+  const { result: res, asked, counted } = await visiting(() => get('/apply'));
+  assert.equal(res.status, 404);
+  assert.equal(res.headers.get('location'), null);
+  assert.match(await res.text(), /Halaman tidak ditemukan/);
+  assert.equal(res.headers.get('x-stub-origin'), null, 'the legacy origin must not answer');
+  assert.deepEqual(asked, ['/api/public/shortlinks/apply']);
+  assert.deepEqual(counted, {});
+  assert.equal(stubHits().length, 0);
+  assert.equal(matchRedirect('/apply'), null);
 });
 for (const p of ['/no_such_link', '/a--b', '/-a', `/${'a'.repeat(65)}`, '/has.dot', '/a%20b', '/%E0%A4%A']) {
   await check('shortlinks', `${p.slice(0, 20)} cannot be a slug: 404 from the Worker, the API not asked`, async () => {

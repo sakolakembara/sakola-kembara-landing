@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { adminOrigin, adminRedirectTarget } from '~/lib/admin-redirect';
-import { REGISTRATION_PATH, REGISTRATION_SLUG } from '~/lib/site';
+import { REGISTRATION_PATH, REGISTRATION_SLUG, VOLUNTEER_PATH } from '~/lib/site';
 import { readWeb } from './helpers';
 
 // The student portal is a Worker of its own at the path /portal of this host (M4, SAKEM-083) and is NOT live in Phase A of the cutover
@@ -91,6 +91,16 @@ describe('the "Daftar Sekarang" buttons all go to the registration shortlink', (
     expect(REGISTRATION_SLUG).toBe('daftar');
     for (const file of ['src/lib/site.ts', 'src/pages/[...path].astro', 'src/components/RegistrationUnavailablePage.astro']) {
       expect(readWeb(file), file).not.toMatch(/s\.id|forms\.gle|docs\.google\.com|bit\.ly/);
+    }
+  });
+});
+
+describe('the volunteer link (SAKEM-107)', () => {
+  it('"Bergabung Menjadi Relawan" on /tim uses VOLUNTEER_PATH, /apply, a shortlink name: the address of the volunteer form is in no file of this repository', () => {
+    expect(VOLUNTEER_PATH).toBe('/apply');
+    expect(readWeb('src/pages/tim.astro')).toContain('<Button href={VOLUNTEER_PATH} size="lg">Bergabung Menjadi Relawan</Button>');
+    for (const file of ['src/lib/site.ts', 'src/pages/tim.astro', 'redirects.config.mjs']) {
+      expect(readWeb(file), file).not.toMatch(/s\.id|forms\.gle|docs\.google\.com|bit\.ly|linktr\.ee/);
     }
   });
 });

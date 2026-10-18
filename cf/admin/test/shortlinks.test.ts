@@ -111,6 +111,19 @@ describe("shortlinks: creating one", () => {
     expect(await fieldsOf(loop)).toEqual({ targetUrl: "Tujuan tidak boleh menunjuk ke shortlink itu sendiri." });
   });
 
+  test("the volunteer link `apply` can be created and re-pointed (SAKEM-107: /apply is served as a shortlink, not reserved)", async () => {
+    const { cookie } = await konten();
+    const created = await call(LIST, { method: "POST", cookie, json: valid({ slug: "apply", targetUrl: "https://forms.example.org/relawan", note: "Tombol Bergabung Menjadi Relawan" }) });
+    expect(created.status).toBe(201);
+    const { item } = await body<{ item: { id: string; slug: string; targetUrl: string } }>(created);
+    expect(item).toMatchObject({ slug: "apply", targetUrl: "https://forms.example.org/relawan" });
+
+    // another form later: only the target changes, no deploy
+    const repointed = await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: await ifMatch(item.id), json: valid({ slug: "apply", targetUrl: "https://forms.example.org/relawan-2", note: "Tombol Bergabung Menjadi Relawan" }) });
+    expect(repointed.status).toBe(200);
+    expect(await body(repointed)).toMatchObject({ item: { slug: "apply", targetUrl: "https://forms.example.org/relawan-2" } });
+  });
+
   test("the slug is stored the way the resolver looks it up: trimmed, lower case, no surrounding slashes", async () => {
     const { cookie } = await konten();
     const res = await call(LIST, { method: "POST", cookie, json: valid({ slug: "  /Rapat-Besar/ " }) });
@@ -156,7 +169,7 @@ describe("shortlinks: creating one", () => {
 
   test("a slug a page of the site already answers is refused when it is created, not left to fail silently", async () => {
     const { cookie } = await konten();
-    for (const slug of ["donasi", "tim", "/Blog/", "gabung-siswa", "kontak", "laporan", "program", "login", "api", "admin", "apply", "404", "wp-admin", "wp-content", "wp-includes", "wp-json"]) {
+    for (const slug of ["donasi", "tim", "/Blog/", "gabung-siswa", "kontak", "laporan", "program", "login", "api", "admin", "about", "404", "wp-admin", "wp-content", "wp-includes", "wp-json"]) {
       const res = await call(LIST, { method: "POST", cookie, json: valid({ slug }) });
       expect(res.status, slug).toBe(400);
       const normalised = slug.toLowerCase().replace(/^\/+|\/+$/g, "");

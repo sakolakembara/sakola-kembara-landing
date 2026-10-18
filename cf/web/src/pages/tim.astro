@@ -8,6 +8,7 @@ import PageHero from '~/components/PageHero.astro';
 import SectionHeader from '~/components/SectionHeader.astro';
 import Base from '~/layouts/Base.astro';
 import { contentRuntime } from '~/lib/content-api';
+import { VOLUNTEER_PATH } from '~/lib/site';
 import { loadTeam } from '~/lib/team';
 import { CATEGORY_DESCRIPTION, TEAM_CATEGORY_LABEL, groupTeam } from '~/lib/team-types';
 import { uploadUrl } from '~/lib/uploads';
@@ -102,7 +103,7 @@ Astro.response.headers.set('x-team-source', source);
         />
         {/* Secondary route for anyone who wants to collaborate rather than sign up as a volunteer. */}
         <div class="flex flex-col sm:flex-row justify-center gap-3">
-          <Button href="https://linktr.ee/JoinSakolaKembara" size="lg">Bergabung Menjadi Relawan</Button>
+          <Button href={VOLUNTEER_PATH} size="lg">Bergabung Menjadi Relawan</Button>
           <Button href="/kontak" variant="outline" size="lg">Hubungi Kami</Button>
         </div>
       </Container>

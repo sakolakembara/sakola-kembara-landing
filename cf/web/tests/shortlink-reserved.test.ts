@@ -45,7 +45,7 @@ const claimed = (() => {
 
 describe('the names the site claims are reserved', () => {
   it('finds a real set of them (the derivation itself works)', () => {
-    for (const expected of ['blog', 'tim', 'donasi', 'laporan', 'kontak', 'gabung-siswa', 'program', 'login', 'portal', 'api', 'apply', 'cerita', 'tentang-kami']) {
+    for (const expected of ['blog', 'tim', 'donasi', 'laporan', 'kontak', 'gabung-siswa', 'program', 'login', 'portal', 'api', 'cerita', 'tentang-kami']) {
       expect(claimed.has(expected), expected).toBe(true);
     }
     expect(claimed.size).toBeGreaterThan(25);
@@ -66,6 +66,12 @@ describe('the names the site claims are reserved', () => {
     expect(REGISTRATION_SLUG).toBe('daftar');
     expect(REGISTRATION_PATH).toBe(`/${REGISTRATION_SLUG}`);
     expect(isShortlinkCandidate(REGISTRATION_SLUG)).toBe(true);
+  });
+
+  it('SAKEM-107: `apply` is free for a custom shortlink, so NOTHING claims it and the admin does not reserve it', () => {
+    expect(claimed.has('apply'), 'a page, a legacy path or a redirect source takes /apply again: a shortlink called apply would never open').toBe(false);
+    expect(RESERVED_SLUGS.has('apply'), 'the admin refuses the slug of the custom link').toBe(false);
+    expect(isShortlinkCandidate('apply')).toBe(true);
   });
 
   it('the portal-owned names stay reserved after they left the legacy list: portal, login, register, forgot-password, reset-password, verify-email, admin, api', () => {

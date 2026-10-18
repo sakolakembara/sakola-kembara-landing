@@ -13,6 +13,14 @@ export const REGISTRATION_PATH = '/daftar';
 export const REGISTRATION_SLUG = 'daftar';
 
 /**
+ * Where "Bergabung Menjadi Relawan" on /tim goes (SAKEM-107): `/apply`, an admin shortlink (D1) that answers a 307 to the volunteer
+ * form. Like the registration form, the form's address is NOT in this repository: an admin edits the shortlink's target and nothing
+ * is deployed. `/apply` is not a reserved shortlink name and no redirect rule of the site takes it. Without a shortlink the visitor
+ * gets the generic 404, so the shortlink is created before the site that links to it goes live.
+ */
+export const VOLUNTEER_PATH = '/apply';
+
+/**
  * Where the reports are (SAKEM-105, variant A): the "Laporan" section of /donasi, `id="laporan"`
  * (src/components/ReportsSection.astro). The page /laporan is gone: it is a 308 to this address
  * (redirects.config.mjs), and the footer's "Laporan" link points here.

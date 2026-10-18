@@ -198,9 +198,9 @@ export const kontenMiscChecks = [
     tests: `${RULES} ${SHORTLINKS}`,
   },
   {
-    name: "konten: a redirect source of the new site is no longer reserved (apply)",
+    name: "konten: a redirect source of the new site is no longer reserved (tentang-kami)",
     file: "src/shortlinks/reserved.ts",
-    from: '  "apply",\n',
+    from: '  "tentang-kami",\n',
     to: "",
     tests: `${RULES} ${SHORTLINKS}`,
   },
@@ -214,8 +214,15 @@ export const kontenMiscChecks = [
   {
     name: "konten: the registration link's name is reserved again (daftar): the Daftar Sekarang buttons could not be created",
     file: "src/shortlinks/reserved.ts",
-    from: '  "apply",\n',
-    to: '  "apply",\n  "daftar",\n',
+    from: '  "tentang-kami",\n',
+    to: '  "tentang-kami",\n  "daftar",\n',
+    tests: `${RULES} ${SHORTLINKS}`,
+  },
+  {
+    name: "konten: the volunteer link's name is reserved again (apply): the Bergabung Menjadi Relawan button could not get its shortlink",
+    file: "src/shortlinks/reserved.ts",
+    from: '  "tentang-kami",\n',
+    to: '  "tentang-kami",\n  "apply",\n',
     tests: `${RULES} ${SHORTLINKS}`,
   },
   {
