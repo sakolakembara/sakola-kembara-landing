@@ -5,7 +5,7 @@ import { REGISTRATION_PATH } from '~/lib/site';
 /**
  * Homepage "Jadilah Bagian dari Perubahan" (SAKEM-111, the poster Dzul chose on 2026-10-27): a sunglow band with the
  * headline on the left and the four ways to take part as ruled rows on the right (from md), each row one link: the role, a
- * photo chip to its right, an arrow. The action ("Daftar Sekarang"...) is in the link for screen readers only. The photos
+ * photo chip to its right that widens on hover, an arrow. The action ("Daftar Sekarang"...) is in the link for screen readers only. The photos
  * are decorative (alt=""): the link text says it all.
  * The donor row's arrow is filled at rest, the one emphasis of the section.
  */
@@ -58,7 +58,7 @@ const ctaOptions = [
                   src={option.photo}
                   alt=""
                   sizes="96px"
-                  class="h-10 w-16 shrink-0 rounded-[10px] object-cover md:h-14 md:w-24"
+                  class="h-10 w-16 shrink-0 rounded-[10px] object-cover transition-[width] duration-300 group-hover:w-24 md:h-14 md:w-24 md:group-hover:w-40 motion-reduce:transition-none"
                 />
                 <span class="sr-only">{option.buttonText}</span>
               </span>
