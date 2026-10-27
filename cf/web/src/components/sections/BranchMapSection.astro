@@ -4,8 +4,9 @@ import { branches } from '~/lib/site';
 
 /**
  * Homepage branch map (SAKEM-111; reshaped by Dzul on 2026-10-27 after his own mock, drawn after the dotted office map
- * of Global DMC): one screen tall on navy mist, no card: Indonesia as a large dotted map on the right, from the top
- * of the section (the land runs on north to it) and off the right edge, and the title "Kami hadir dari Bandung sampai Samarinda" at the bottom left. A pulsing point per branch of
+ * of Global DMC): one screen tall on navy mist, no card: Indonesia as a large dotted map placed so the branches
+ * (west Java to east Kalimantan) sit in the middle of the section, running off the edges, and the title "Kami hadir
+ * dari Bandung sampai Samarinda" at the top left. A pulsing point per branch of
  * `branches`, a small chip naming each (the five around Bandung in a column to their left, joined by thin lines), and
  * solid arcs from Bandung to the branches further out, drawn in as the map scrolls up (CSS scroll-driven behind
  * @supports; whole with reduced motion or without support). The names are also in a list for screen readers. The dots
@@ -41,8 +42,12 @@ const chipShift = {
 const names = branches.map((b) => b.name).join(', ');
 ---
 
-<section id="cabang" class="relative flex min-h-[100svh] flex-col justify-end gap-10 overflow-hidden bg-[#EEF1F6] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24 lg:py-28">
-  <div class="w-[135%] max-w-none self-start lg:absolute lg:left-[28%] lg:top-0 lg:w-[92%]">
+<section id="cabang" class="relative flex min-h-[100svh] flex-col gap-10 overflow-hidden bg-[#EEF1F6] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24 lg:py-28">
+  <h2 class="relative z-10 font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] anim-reveal">
+    Kami hadir <br />dari Bandung <br />sampai Samarinda
+  </h2>
+
+  <div class="w-[135%] max-w-none self-start lg:absolute lg:left-[12%] lg:top-[58%] lg:w-[130%] lg:-translate-y-[75%]">
     <div class="relative w-full" style={`aspect-ratio:${width}/${height}`}>
       <img src={dots} alt="" width={width} height={height} loading="lazy" decoding="async" class="absolute inset-0 h-full w-full select-none" />
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Peta cabang Sakola Kembara: ${names}`} class="absolute inset-0 h-full w-full overflow-visible">
@@ -77,10 +82,6 @@ const names = branches.map((b) => b.name).join(', ');
       {branches.map((b) => <li>{b.name}, {b.region}</li>)}
     </ul>
   </div>
-
-  <h2 class="relative z-10 font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] anim-reveal">
-    Kami hadir <br />dari Bandung <br />sampai Samarinda
-  </h2>
 </section>
 
 <style>
