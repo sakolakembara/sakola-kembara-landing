@@ -1,46 +1,42 @@
 ---
 import { branches, footerLinks } from '~/lib/site';
-import Icon from './Icon.astro';
 import SocialLinks from './SocialLinks.astro';
 
 /**
- * Site footer (SAKEM-111, design "Opsi C"): the name as a full-width wordmark,
- * the mission, site links in two columns, the branches (to their Instagram where they have one), contact, then copyright and social
- * links. The wordmark is SVG text stretched to the width (textLength), so it
- * fills the row at every screen size in the site's own Lora.
+ * Site footer (SAKEM-111; option B of the footer mock Dzul chose on 2026-10-27, after BYQ Kelvin "Full Footer with
+ * Navigation Columns"): the name and the mission on top, then the email as the contact call, the site pages and the
+ * branches, then copyright and social links. No column headings: the groups read by their form (pages as large text,
+ * branches as chips). A branch with an Instagram account is a link to it; the others are plain chips.
  */
 // Build-time value; the navbar script rewrites it to the current year in the browser.
 const buildYear = new Date().getFullYear();
-const rule = 'border-t border-white/15';
+const rule = 'border-white/15';
+const chip = 'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm';
 ---
 
 <footer class="bg-primary-blue-dark px-6 md:px-10 pt-20 pb-7 text-white md:pt-28">
-  <div class="flex w-full flex-col gap-12 md:gap-14">
-    <a href="/" aria-label="Sakola Kembara" class="block">
-      <svg viewBox="0 0 687 82" aria-hidden="true" class="block h-auto w-full overflow-visible">
-        <text
-          x="0"
-          y="78"
-          textLength="687"
-          lengthAdjust="spacingAndGlyphs"
-          class="fill-white font-body font-medium"
-          style="font-size:100px;letter-spacing:-4.5px">Sakola Kembara</text
-        >
-      </svg>
-    </a>
-
-    <div class="grid items-start gap-x-12 gap-y-10 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))]">
-      <p class="max-w-[22em] text-[22px] font-medium leading-[1.4]">
+  <div class="flex w-full flex-col gap-10">
+    <div class:list={['grid items-end gap-x-12 gap-y-6 border-b pb-10 md:grid-cols-2', rule]}>
+      <a href="/" class="text-[clamp(40px,5.5vw,88px)] font-medium leading-none tracking-[-0.035em] text-white">Sakola Kembara</a>
+      <p class="max-w-[24em] text-balance text-[clamp(18px,1.7vw,24px)] leading-[1.45] md:justify-self-end">
         Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia.
       </p>
+    </div>
 
-      <nav aria-labelledby="footer-links-heading">
-        <h4 id="footer-links-heading" class="mb-2.5 text-sm font-semibold text-white/60">Jelajahi</h4>
-        <ul class="grid grid-cols-2 gap-x-6">
+    <div class="grid items-start gap-10 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)]">
+      <a
+        href="mailto:contact@sakolakembara.org"
+        class="text-[clamp(22px,2.4vw,34px)] font-medium tracking-[-0.02em] [overflow-wrap:anywhere] transition-colors hover:text-secondary-yellow md:col-span-2 xl:col-span-1"
+      >
+        contact@sakolakembara.org
+      </a>
+
+      <nav aria-label="Halaman">
+        <ul class="grid grid-cols-[repeat(2,max-content)] gap-x-8">
           {
             footerLinks.map((link) => (
               <li>
-                <a href={link.href} class="block py-1.5 text-base text-white/85 transition-colors hover:text-white">
+                <a href={link.href} class="block text-[clamp(20px,2vw,26px)] font-medium leading-normal tracking-[-0.01em] transition-colors hover:text-secondary-yellow">
                   {link.label}
                 </a>
               </li>
@@ -49,9 +45,8 @@ const rule = 'border-t border-white/15';
         </ul>
       </nav>
 
-      <nav aria-labelledby="footer-branches-heading">
-        <h4 id="footer-branches-heading" class="mb-2.5 text-sm font-semibold text-white/60">Cabang</h4>
-        <ul class="grid grid-cols-2 gap-x-6">
+      <nav aria-label="Cabang">
+        <ul class="flex flex-wrap gap-2">
           {
             branches.map((branch) => (
               <li title={branch.region}>
@@ -60,33 +55,21 @@ const rule = 'border-t border-white/15';
                     href={`https://instagram.com/${branch.instagram}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="block py-1.5 text-base text-white/85 transition-colors hover:text-white"
+                    class:list={[chip, 'border-white/40 text-white transition-colors hover:border-secondary-yellow hover:bg-secondary-yellow hover:text-primary-blue-dark']}
                   >
                     {branch.name}
                   </a>
                 ) : (
-                  <span class="block py-1.5 text-base text-white/60">{branch.name}</span>
+                  <span class={`${chip} border-white/15 text-white/60`}>{branch.name}</span>
                 )}
               </li>
             ))
           }
         </ul>
       </nav>
-
-      <div>
-        <h4 class="mb-2.5 text-sm font-semibold text-white/60">Kontak</h4>
-        <a href="mailto:contact@sakolakembara.org" class:list={['flex items-center gap-3 py-3 text-base text-white hover:text-secondary-yellow transition-colors', rule]}>
-          <Icon name="mail" size={18} class="size-[18px] shrink-0" />
-          contact@sakolakembara.org
-        </a>
-        <p class:list={['flex items-center gap-3 border-b border-white/15 py-3 text-base text-white/85', rule]}>
-          <Icon name="map-pin" size={18} class="size-[18px] shrink-0" />
-          Bandung, Jawa Barat, Indonesia
-        </p>
-      </div>
     </div>
 
-    <div class:list={['flex flex-wrap items-center justify-between gap-x-8 gap-y-4 pt-5', rule]}>
+    <div class:list={['flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t pt-5', rule]}>
       <p class="text-sm text-white/70">
         © <span id="copyright-year">{buildYear}</span> Yayasan Sakola Kembara Indonesia. All rights reserved.
       </p>

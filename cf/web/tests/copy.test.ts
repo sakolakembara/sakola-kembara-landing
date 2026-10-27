@@ -42,8 +42,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     root: ['components/layout/footer.tsx'],
     phrases: [
       'Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia.',
-      'Bandung, Jawa Barat, Indonesia',
-      'Jelajahi',
       'contact@sakolakembara.org',
       'Social Media',
       'Yayasan Sakola Kembara Indonesia. All rights reserved.',
@@ -377,6 +375,6 @@ describe('footer branches (SAKEM-111)', () => {
     });
     expect(footer).toContain('href={`https://instagram.com/${branch.instagram}`}');
     expect(footer).toContain('rel="noopener noreferrer"');
-    expect(footer).toMatch(/<span class="[^"]*">\{branch\.name\}<\/span>/);
+    expect(footer).toContain('>{branch.name}</span>');
   });
 });
