@@ -38,7 +38,7 @@ const cases: { name: string; web: string[]; root: string[]; phrases: string[] }[
     phrases: [
       'Bersama Mewujudkan Perubahan',
       'Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.',
-      'Pernah Didukung & Bermitra Dengan',
+      // "Pernah Didukung & Bermitra Dengan" was removed by Dzul, 2026-10-27 (SAKEM-111).
     ],
   },
   {

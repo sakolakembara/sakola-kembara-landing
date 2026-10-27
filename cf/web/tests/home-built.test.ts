@@ -157,11 +157,11 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Partners', () => {
-    it('one logo per partner, its alt the partner\'s name; the past partner captioned with its group', () => {
+    it('one logo per partner, its alt the partner\'s name; no caption any more', () => {
       const logos = all(partners, /<img [^>]*>/g);
       expect(logos).toHaveLength(activePartners.length + pastPartners.length);
       [...activePartners, ...pastPartners].forEach((p, i) => expect(logos[i]).toContain(`alt="${p.name.replace(/&/g, '&amp;')}"`));
-      expect(all(partners, /Pernah Didukung &amp; Bermitra Dengan/g)).toHaveLength(pastPartners.length);
+      expect(partners).not.toContain('Pernah Didukung');
     });
   });
 
