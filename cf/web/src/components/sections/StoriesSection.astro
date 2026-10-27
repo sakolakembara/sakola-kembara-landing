@@ -10,9 +10,9 @@ import { polaroidFrame, polaroidTilt } from '~/lib/ui';
  * alumnus's photo as a polaroid (the frame of "Cerita & Inspirasi") clipped on, name, major and campus on its strip.
  * Every story's parts sit in the same grid cells (the story wrapper is `display: contents`), so the letter keeps the
  * size of the longest story; only the active one is visible, the others are invisible and inert. The stories change
- * every 5 s: an outline draws itself around the active small photo and its `animationend` shows the next story, so
- * pausing it (hover, keyboard focus, the section out of view) pauses the rotation, and with reduced motion the outline
- * is simply drawn and nothing rotates. Without JS the first story shows and the photos do nothing.
+ * every 5 s: the ring on the large photo (like the program steps') fills and its `animationend` shows the next story,
+ * so pausing it (hover, keyboard focus, the section out of view) pauses the rotation, and with reduced motion the ring
+ * is simply full and nothing rotates. The small photos other than the active one are dimmed. Without JS the first story shows and the photos do nothing.
  */
 const photos: Record<number, string> = {
   1: '/images/testimoni/daffa-najwan.jpg',
@@ -43,12 +43,9 @@ const photos: Record<number, string> = {
                 title={`${story.name}, ${story.university}`}
                 data-story={index}
                 data-active={index === 0 ? '' : undefined}
-                class="relative block rounded-[4px] bg-white p-1 shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] transition-transform duration-300 hover:-translate-y-1 motion-reduce:transition-none"
+                class="relative block rounded-[4px] bg-white p-1 opacity-60 shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] transition duration-300 hover:-translate-y-1 hover:opacity-100 data-active:opacity-100 motion-reduce:transition-none"
               >
                 <Img src={photos[story.id]} alt="" sizes="64px" class="size-12 rounded-[3px] object-cover md:size-16" />
-                <svg aria-hidden="true" class="story-ring pointer-events-none absolute -inset-[5px] h-[calc(100%+10px)] w-[calc(100%+10px)] overflow-visible">
-                  <rect x="1.5" y="1.5" rx="7" pathLength="100" class="story-bar fill-none stroke-primary-blue-dark [height:calc(100%-3px)] [stroke-width:2.5] [width:calc(100%-3px)]" />
-                </svg>
               </button>
             </li>
           ))
@@ -65,7 +62,15 @@ const photos: Record<number, string> = {
                 <path d="M12 17 V6 a8 8 0 0 1 16 0 V17" fill="none" stroke="#9AA3B8" stroke-width="2.4" stroke-linecap="round" />
                 <path d="M6 14 h28 l-3 14 h-22 z" fill="currentColor" />
               </svg>
-              <Img src={photos[story.id]} alt={story.name} sizes="(min-width: 1024px) 26rem, 80vw" class="aspect-[4/5] w-full rounded-[3px] object-cover" />
+              <span class="relative block">
+                <Img src={photos[story.id]} alt={story.name} sizes="(min-width: 1024px) 26rem, 80vw" class="aspect-[4/5] w-full rounded-[3px] object-cover" />
+                <span aria-hidden="true" class="absolute right-3 top-3 flex rounded-full bg-white/90 p-1 shadow-sm">
+                  <svg viewBox="0 0 24 24" class="size-6 -rotate-90">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.5" class="text-primary-blue-dark/15" />
+                    <circle cx="12" cy="12" r="10" fill="none" stroke-width="2.5" pathLength="100" class="story-bar stroke-primary-blue-dark" />
+                  </svg>
+                </span>
+              </span>
               <figcaption class="flex flex-col px-1 pt-3">
                 <strong class="text-lg font-semibold text-primary-blue-dark">{story.name}</strong>
                 <span class="text-sm text-gray-600">{story.major}, {story.university}</span>
@@ -83,17 +88,16 @@ const photos: Record<number, string> = {
 </section>
 
 <style>
-  /* The active photo's outline (like the program steps' ring) draws itself in 5 s; its animationend shows the next story (the script). */
+  /* The ring on the large photo (like the program steps') fills in 5 s; its animationend shows the next story (the script). */
   .story-bar {
     stroke-dasharray: 100;
     stroke-dashoffset: 100;
   }
-  [data-story][data-active] .story-bar {
+  .story[data-active] .story-bar {
     animation: story-fill 5s linear forwards;
   }
   /* The stories' parts share their grid cells, so the letter keeps the size of the longest story; only the active one shows. */
-  .story:not([data-active]) .story-part,
-  [data-story]:not([data-active]) .story-ring {
+  .story:not([data-active]) .story-part {
     visibility: hidden;
   }
   [data-stories][data-paused] .story-bar {
@@ -105,7 +109,7 @@ const photos: Record<number, string> = {
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    [data-story][data-active] .story-bar {
+    .story[data-active] .story-bar {
       animation: none;
       stroke-dashoffset: 0;
     }
@@ -113,7 +117,7 @@ const photos: Record<number, string> = {
 </style>
 
 <script>
-  // One story at a time: a small photo's click shows its story; the active photo's outline, once drawn, shows the next.
+  // One story at a time: a small photo's click shows its story; the ring on the large photo, once full, shows the next.
   const section = document.querySelector<HTMLElement>('[data-stories]');
   if (section) {
     const stories = [...section.querySelectorAll<HTMLElement>('.story')];
@@ -130,7 +134,7 @@ const photos: Record<number, string> = {
       });
     };
     cards.forEach((card, i) => card.addEventListener('click', () => show(i)));
-    cards.forEach((card, i) => card.querySelector('.story-bar')!.addEventListener('animationend', () => show((i + 1) % cards.length)));
+    stories.forEach((story, i) => story.querySelector('.story-bar')!.addEventListener('animationend', () => show((i + 1) % stories.length)));
     let hovered = false;
     let visible = true;
     // Keyboard focus pauses; a mouse click leaves focus on a card, so focus only counts while visible as such.
