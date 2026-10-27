@@ -91,7 +91,7 @@ describe('data is the legacy lib/data.ts, value for value', async () => {
     expect(problemStats).toEqual(legacy.problemStats);
   });
   it('impact metrics (the top-3 label shortened by Dzul, 2026-10-27)', () => {
-    const shortened = legacy.impactMetrics.map((m: { number: string; label: string }) =>
+    const shortened = (legacy.impactMetrics as { number: string; label: string; color: string }[]).map((m) =>
       m.label === 'Siswa Diterima di Top 3 Universitas di Indonesia' ? { ...m, label: 'Diterima di Kampus Top 3' } : m,
     );
     expect(impactMetrics).toEqual(shortened);
