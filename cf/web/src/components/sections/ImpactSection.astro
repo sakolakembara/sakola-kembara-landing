@@ -9,7 +9,8 @@ import { buttonClasses } from '~/lib/ui';
  * under a navy gradient, the title, lead and "Cerita Sukses Alumni" on top, and the four metrics of impactMetrics in a
  * row along the bottom; the top-3 figure carries the three universities' logos. It follows "Mengapa
  * Kami Ada?" (Dzul swapped the two the same day). Figures and labels are verbatim from home-data.ts; the title was
- * "Pencapaian Sakola Kembara". The photo is decorative.
+ * "Pencapaian Sakola Kembara". The photo (students in their campus jackets, from the foundation's documentation Drive) is
+ * decorative.
  */
 // The three universities of the top-3 figure, their logos from the universities' own sites (UI, UGM) and the partner set (ITB).
 const universities = [
@@ -26,7 +27,7 @@ const stats = [
 ---
 
 <section id="impact" class="relative isolate flex min-h-[100svh] flex-col justify-between gap-14 overflow-hidden bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-24">
-  <Img src="/images/program/galeri/pasca-pembinaan/3.jpg" alt="" sizes="100vw" class="absolute inset-0 -z-20 h-full w-full object-cover" />
+  <Img src="/images/home/impact-kampus.jpg" alt="" sizes="100vw" class="absolute inset-0 -z-20 h-full w-full object-cover object-[50%_60%]" />
   <span aria-hidden="true" class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.6)_0%,rgba(13,31,82,0.75)_45%,rgba(13,31,82,0.95)_100%)]" />
 
   <div class="flex max-w-[44rem] flex-col gap-6 anim-reveal">
