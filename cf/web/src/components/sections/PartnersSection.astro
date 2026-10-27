@@ -10,8 +10,8 @@ import { activePartners, pastPartners, type Partner } from '~/lib/home-data';
 
 /**
  * Homepage "Partner Kami" (SAKEM-111; layout after BYQ Genesis "Trusted Logo
- * Grid"): the title left and the thanks right above a rule, then the logos in
- * a quiet grid, muted until hovered; each logo's alt is the partner's name,
+ * Grid"; two columns since Dzul, 2026-10-27): the title with the thanks under it on
+ * the left, the logos in a quiet grid on the right, muted until hovered; each logo's alt is the partner's name,
  * and the past partner carries its group's label as a caption. Split
  * into active and past partners so visitors can tell who we work with right now
  * from who has supported us before. Copy is verbatim from the root
@@ -33,17 +33,17 @@ const partners: { partner: Partner; caption: string | null }[] = [
 ---
 
 <section class="px-6 py-20 md:px-10 md:py-28" id="partners">
-  <div class="flex w-full flex-col gap-12 md:gap-16">
-    <div class="grid items-start gap-6 border-b border-gray-200 pb-12 md:grid-cols-2 md:pb-16 anim-reveal">
+  <div class="grid w-full items-center gap-12 md:grid-cols-2 md:gap-16">
+    <div class="flex flex-col gap-6 anim-reveal">
       <h2 class="max-w-[14em] font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
         Bersama Mewujudkan Perubahan
       </h2>
-      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600 md:justify-self-end">
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600">
         Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.
       </p>
     </div>
 
-    <ul class="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 anim-reveal">
+    <ul class="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 anim-reveal">
       {
         partners.map(({ partner, caption }) => (
           <li class="flex flex-col items-center justify-center gap-3 text-center">
