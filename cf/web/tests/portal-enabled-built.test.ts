@@ -48,7 +48,9 @@ describe.skipIf(!built)('the portal switch in the prerendered pages of dist/', (
         const html = readFileSync(file, 'utf8');
         const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
         const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
-        expect(hrefs, rel(file)).toEqual(['/', ...navLinks.map((l) => l.href), ...navLinks.map((l) => l.href)]);
+        // the text links, then Donasi as the one button (SAKEM-111), in the bar and again in the menu
+        const menu = [...navLinks.filter((l) => l.href !== '/donasi'), ...navLinks.filter((l) => l.href === '/donasi')].map((l) => l.href);
+        expect(hrefs, rel(file)).toEqual(['/', ...menu, ...menu]);
         expect(nav, rel(file)).not.toContain('Daftar Sekarang');
         expect(nav, rel(file)).not.toContain('/daftar');
         expect(nav, rel(file)).not.toContain('justify-self-end');

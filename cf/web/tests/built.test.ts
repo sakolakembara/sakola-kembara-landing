@@ -73,22 +73,19 @@ describe.skipIf(!built)('build output', () => {
       expect(img, img).toMatch(/height="\d+"/);
       expect(img, img).toMatch(/\salt(=|\s|>)/); // decorative logos have an empty alt, which Astro prints as a bare `alt`
     }
-    const hero = imgs.find((i) => i.includes('Siswa Sakola Kembara belajar bersama'));
+    const hero = imgs.find((i) => i.includes('src="/images/home/hero-poster.jpg"')); // the poster of the hero video (SAKEM-111)
     expect(hero).toContain('fetchpriority="high"');
     expect(hero).toContain('loading="eager"');
     expect(hero).toContain('srcset=');
-    for (const img of imgs.filter((i) => i !== hero && !i.includes('logo-sakola-kembara.'))) {
+    for (const img of imgs.filter((i) => i !== hero && !/logo-sakola-kembara[.-]/.test(i))) {
       expect(img, img).toContain('loading="lazy"');
     }
   });
 
-  it('the only JS files are the home page map chunks (the scripts of the other pages are inline)', () => {
+  it('the only JS files are the home page\'s GSAP motion and its loader (SAKEM-111); every other script is inline', () => {
     // The home page's scripts and budget are checked in home-built.test.ts; the Worker-rendered pages are checked in e2e.
-    const jsFiles = walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js'));
-    for (const f of jsFiles) {
-      expect(path.basename(f), f).toMatch(/^(ImpactMap\.astro_astro_type_script_index_0_lang|leaflet-src|leaflet|map)\.[\w-]+\.js$/);
-      expect(readFileSync(f, 'utf8'), f).not.toMatch(/framer-motion|gsap/);
-    }
+    const files = walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js')).map((f) => path.basename(f).replace(/\.[\w-]+\.js$/, ''));
+    expect(files.sort()).toEqual(['home-motion', 'index.astro_astro_type_script_index_0_lang']);
   });
 
   it('fonts are self-hosted: no request to a font CDN, woff2 emitted, two preloaded', () => {

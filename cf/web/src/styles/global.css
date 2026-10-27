@@ -105,6 +105,33 @@ html {
   }
 }
 
+/* The homepage navbar floats over the hero video (SAKEM-111): transparent, white links and the light logo, until the
+   navbar script sets data-solid (the page has scrolled, or the mobile menu is open). Without JS it stays transparent all
+   the way down, a known limit, like the mobile menu, which needs the same script. */
+#site-nav {
+  transition: transform 0.3s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Hidden while the page scrolls down (the navbar script sets data-hidden), back on a scroll up or keyboard focus. */
+#site-nav[data-hidden]:not(:focus-within) {
+  transform: translateY(-100%);
+}
+
+#site-nav[data-overlay]:not([data-solid]) {
+  background-color: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+
+#site-nav[data-overlay]:not([data-solid]) :is(ul a:not([data-nav-cta]), #nav-toggle) {
+  color: var(--white);
+}
+
+#site-nav[data-overlay]:not([data-solid]) [data-logo-solid],
+#site-nav[data-overlay][data-solid] [data-logo-overlay] {
+  display: none;
+}
+
 /* Site-wide motion opt-out for CSS transitions and animations. */
 @media (prefers-reduced-motion: reduce) {
   html {

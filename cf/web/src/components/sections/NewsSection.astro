@@ -1,14 +1,16 @@
 ---
 import Button from '~/components/Button.astro';
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
-import Tag from '~/components/Tag.astro';
+import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 import type { BlogMeta } from '~/lib/blog-types';
 
 /**
- * Homepage "Cerita & Inspirasi": the newest articles, as the root NewsSection
- * does. The caller passes them (the home page takes the three newest from the
- * blog index at build time). A cover is optional: dashboard-authored posts can
+ * Homepage "Cerita & Inspirasi" (SAKEM-111; after BYQ Jake Carter "Blog Posts
+ * Grid Layout", header after Babka "Blog Card Grid with Hover"): a navy band,
+ * the title left and "Lihat Semua" right, then the articles in ONE row of up to
+ * four (Dzul, 2026-10-27): the cover in a tilted polaroid frame (after BYQ Hollow "Yoga Gallery Marquee Section";
+ * it straightens and lifts on hover) with the category (left) and the date (right) as chips on it, then the title.
+ * The caller passes the articles (the home page takes the
+ * four newest from the blog index at build time). A cover is optional: dashboard-authored posts can
  * have none, and then the card shows no <img> at all rather than an empty src.
  * Cover files are the blog's own /blog/images/*; the metadata index carries their
  * size and WebP srcset from the asset pipeline.
@@ -19,50 +21,44 @@ interface Props {
 const { articles } = Astro.props;
 ---
 
-<section class="py-14 md:py-16 bg-white" id="blog">
-  <Container>
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8 anim-reveal">
-      <SectionHeader align="left" eyebrow="Blog" title="Cerita & Inspirasi" />
-      <Button href="/blog" variant="outline" class="self-start sm:self-auto">Lihat Semua</Button>
+<section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28" id="blog">
+  <div class="flex w-full flex-col gap-10 md:gap-14">
+    <div class="flex flex-wrap items-end justify-between gap-6 anim-reveal">
+      <h2 class="font-body text-[clamp(32px,3.9vw,56px)] font-medium leading-[1.1] tracking-[-0.025em]">Cerita &amp; Inspirasi</h2>
+      <Button href="/blog" variant="outline-on-navy">Lihat Semua</Button>
     </div>
 
-    {/* Compact article list */}
-    <div class="grid md:grid-cols-3 gap-6">
+    <div class="grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
       {
         articles.map((article, index) => (
-          <article class="anim-reveal" style={`--i:${index}`}>
-            <a
-              href={`/blog/${article.id}`}
-              class="group block bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
-            >
-              <div class="h-[160px] relative overflow-hidden">
-                {article.image && (
-                  <img
-                    src={article.image}
-                    srcset={article.imageSrcset ?? undefined}
-                    sizes="(min-width: 1200px) 368px, (min-width: 768px) 33vw, 100vw"
-                    alt={article.title}
-                    width={article.imageWidth ?? undefined}
-                    height={article.imageHeight ?? undefined}
-                    loading="lazy"
-                    decoding="async"
-                    class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                )}
-                <Tag size="sm" class="absolute top-3 left-3">
-                  {article.category}
-                </Tag>
+          <article class="anim-reveal" style={`--i:${index % 4}`}>
+            <a href={`/blog/${article.id}`} class="group flex h-full flex-col gap-6">
+              <div class:list={[polaroidFrame, 'bg-[#FBFBF5] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]']} style={polaroidTilt(index)}>
+                <div class="relative aspect-[4/3] overflow-hidden rounded-[3px] bg-primary-blue-dark/10">
+                  {article.image && (
+                    <img
+                      src={article.image}
+                      srcset={article.imageSrcset ?? undefined}
+                      sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                      alt={article.title}
+                      width={article.imageWidth ?? undefined}
+                      height={article.imageHeight ?? undefined}
+                      loading="lazy"
+                      decoding="async"
+                      class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
+                    />
+                  )}
+                  <p class="absolute inset-x-3 top-3 flex items-start justify-between gap-1.5 text-xs font-semibold text-primary-blue-dark">
+                    <span class="rounded-full bg-secondary-yellow px-2.5 py-1">{article.category}</span>
+                    <span class="rounded-full bg-white/90 px-2.5 py-1">{article.date}</span>
+                  </p>
+                </div>
               </div>
-              <div class="p-4">
-                <p class="text-xs text-gray-400 mb-2">{article.date}</p>
-                <h3 class="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 group-hover:text-primary-blue transition-colors">
-                  {article.title}
-                </h3>
-              </div>
+              <h3 class="line-clamp-3 text-lg font-medium leading-snug transition-colors group-hover:text-secondary-yellow">{article.title}</h3>
             </a>
           </article>
         ))
       }
     </div>
-  </Container>
+  </div>
 </section>

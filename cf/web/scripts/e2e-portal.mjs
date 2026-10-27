@@ -52,7 +52,7 @@ const scriptsOf = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<
 function stateOf(html) {
   const nav = navOf(html);
   const masuk = (nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length;
-  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/blog']; // five items since SAKEM-105
+  const menu = ['/', '/tim', '/gabung-siswa', '/blog', '/donasi']; // five items since SAKEM-105; Donasi last, the one button, since SAKEM-111
   const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
   const empty = JSON.stringify(hrefs) === JSON.stringify(['/', ...menu, ...menu]) && !/Masuk|Daftar Sekarang|\/daftar|\/portal|data-auth-link|justify-self-end|mt-6/.test(nav) && (nav.match(/<button\b/g) ?? []).length === 1;
   const sessions = scriptsOf(html).filter((code) => code.includes('get-session')).length;

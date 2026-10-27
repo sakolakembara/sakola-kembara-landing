@@ -14,6 +14,7 @@ export const cx = (...parts: ClassValue[]): string => parts.filter(Boolean).join
 export type ButtonVariant =
   | 'primary'
   | 'outline'
+  | 'outline-navy'
   | 'outline-on-navy'
   | 'yellow-on-navy'
   | 'white-on-navy'
@@ -28,6 +29,8 @@ const buttonBase =
 const buttonVariant: Record<ButtonVariant, string> = {
   primary: 'bg-primary-blue text-white hover:bg-primary-blue-dark',
   outline: 'border-[1.5px] border-primary-blue text-primary-blue hover:bg-primary-blue/5',
+  // The outlined action of the homepage (SAKEM-111): deep navy on light sections.
+  'outline-navy': 'border-[1.5px] border-primary-blue-dark text-primary-blue-dark hover:bg-primary-blue-dark/5',
   'outline-on-navy': 'border-[1.5px] border-white/60 text-white hover:bg-white/10',
   'yellow-on-navy': 'bg-secondary-yellow text-gray-900 hover:bg-secondary-yellow/90',
   'white-on-navy': 'bg-white text-primary-blue hover:bg-gray-50',
@@ -38,8 +41,8 @@ const buttonVariant: Record<ButtonVariant, string> = {
 };
 
 const buttonSize: Record<ButtonSize, string> = {
-  sm: 'min-h-10 rounded-lg px-4 py-2 text-[15px] leading-snug',
-  md: 'min-h-11 rounded-lg px-5 py-2 text-[15px] leading-snug',
+  sm: 'min-h-10 rounded-[10px] px-4 py-2 text-[15px] leading-snug',
+  md: 'min-h-11 rounded-[10px] px-5 py-2 text-[15px] leading-snug',
   lg: 'rounded-xl px-8 py-4 text-base',
 };
 
@@ -139,3 +142,15 @@ export const eyebrowClasses = (tone: 'light' | 'dark' = 'light', className?: str
     tone === 'dark' ? 'text-secondary-yellow' : 'text-primary-blue',
     className,
   );
+
+/**
+ * The homepage's polaroid frame (SAKEM-111): a thin frame with a deeper bottom strip, tilted by `--tilt` and
+ * straightened and lifted when its `group` is hovered. Shared by "Cerita & Inspirasi" and "Cerita Sukses Alumni"; the
+ * caller adds the paper colour and a shadow for its background. `polaroidTilted` is the tilt and hover alone (for a card
+ * with its own padding); `polaroidTilt(i)` gives the i-th card its tilt, in order.
+ */
+export const polaroidTilted =
+  'transition-transform duration-300 ease-out [transform:rotate(var(--tilt))] group-hover:[transform:rotate(0deg)_translateY(-6px)] motion-reduce:transition-none';
+export const polaroidFrame = `${polaroidTilted} rounded-[4px] p-1.5 pb-6 md:p-2 md:pb-7`;
+const POLAROID_TILTS = [-1.2, 0.8, -0.6, 1];
+export const polaroidTilt = (index: number) => `--tilt:${POLAROID_TILTS[index % POLAROID_TILTS.length]}deg`;

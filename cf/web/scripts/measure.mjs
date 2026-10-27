@@ -24,7 +24,7 @@ function pageWeight(htmlFile) {
   const text = html.toString('utf8');
   const inline = [...text.matchAll(/<script(?![^>]*ld\+json)([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !/\ssrc=/.test(m[1]));
   const inlineJs = Buffer.from(inline.map((m) => m[2]).join('\n'));
-  // Script files (the home page's map loader) count too; Leaflet itself is lazy and not in the HTML.
+  // Script files count too (no page has one since the home page map left, SAKEM-111).
   const jsFiles = [...text.matchAll(/<script(?![^>]*ld\+json)[^>]*\ssrc="([^"]+)"/g)].map((m) => readFileSync(path.join(dist, 'client', m[1])));
   const css = [
     ...[...text.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => readFileSync(path.join(dist, 'client', m[1]))),

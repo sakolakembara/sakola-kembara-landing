@@ -1,91 +1,83 @@
 ---
-import logoLightUrl from '@root/public/images/logo-sakola-kembara-light.png?url';
-import { footerLinks } from '~/lib/site';
-import Container from './Container.astro';
-import Icon from './Icon.astro';
+import { branches, footerLinks } from '~/lib/site';
 import SocialLinks from './SocialLinks.astro';
 
-/** Site footer: brand, site links, contact and social links. */
+/**
+ * Site footer (SAKEM-111; option B of the footer mock Dzul chose on 2026-10-27, after BYQ Kelvin "Full Footer with
+ * Navigation Columns"): the name and the mission on top, then the email as the contact call with the site pages in one row
+ * under it, the branches on the right, then copyright and social links. No column headings: the groups read by their form (pages as one row of text,
+ * branches as chips). A branch with an Instagram account is a link to it; the others are chips that look the same
+ * (not greyed out, Dzul 2026-10-27) without the link. The email is set at the mission's size.
+ */
 // Build-time value; the navbar script rewrites it to the current year in the browser.
 const buildYear = new Date().getFullYear();
+const rule = 'border-white/15';
+const chip = 'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm';
 ---
 
-<footer class="bg-gradient-to-b from-accent-navy to-primary-blue text-white">
-  {/* Sunglow hairline: the brand accent, and it stops the footer reading as a slab of dark. */}
-  <div aria-hidden="true" class="h-1 bg-secondary-yellow"></div>
+<footer class="bg-primary-blue-dark px-6 md:px-10 pt-20 pb-7 text-white md:pt-28">
+  <div class="flex w-full flex-col gap-10">
+    <div class:list={['grid items-end gap-x-12 gap-y-6 border-b pb-10 md:grid-cols-2', rule]}>
+      <a href="/" class="text-[clamp(40px,5.5vw,88px)] font-medium leading-none tracking-[-0.035em] text-white">Sakola Kembara</a>
+      <p class="max-w-[24em] text-balance text-[clamp(18px,1.7vw,24px)] leading-[1.45] md:justify-self-end md:text-right">
+        Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia.
+      </p>
+    </div>
 
-  <Container class="pt-12 md:pt-16 pb-8 md:pb-10">
-    <div
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))] gap-10 md:gap-12"
-    >
-      <div>
-        <a href="/" aria-label="Sakola Kembara" class="inline-flex items-center mb-4">
-          <img
-            src={logoLightUrl}
-            alt="Sakola Kembara"
-            width="300"
-            height="103"
-            loading="lazy"
-            class="h-10 w-auto"
-          />
+    <div class="grid items-start gap-10 md:grid-cols-2">
+      <div class="flex flex-col gap-6">
+        <a
+          href="mailto:contact@sakolakembara.org"
+          class="self-start text-[clamp(18px,1.7vw,24px)] font-medium [overflow-wrap:anywhere] transition-colors hover:text-secondary-yellow"
+        >
+          contact@sakolakembara.org
         </a>
-        <p class="text-sm text-white/75 leading-relaxed max-w-sm mb-4">
-          Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada
-          seluruh anak Indonesia.
-        </p>
-        <div class="flex items-start gap-3 text-sm text-white/75">
-          <Icon name="map-pin" size={16} class="w-4 h-4 mt-0.5 shrink-0" />
-          Bandung, Jawa Barat, Indonesia
-        </div>
+        <nav aria-label="Halaman">
+          <ul class="flex flex-wrap gap-x-7 gap-y-2">
+            {
+              footerLinks.map((link) => (
+                <li>
+                  <a href={link.href} class="text-lg font-medium text-white/85 transition-colors hover:text-secondary-yellow">
+                    {link.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
       </div>
 
-      <nav aria-labelledby="footer-links-heading">
-        <h4
-          id="footer-links-heading"
-          class="text-sm font-bold uppercase tracking-wider text-secondary-yellow mb-5"
-        >
-          Jelajahi
-        </h4>
-        <ul class="space-y-3">
+      <nav aria-label="Cabang" class="md:max-w-[30rem] md:justify-self-end">
+        <ul class="flex flex-wrap gap-2 md:justify-end">
           {
-            footerLinks.map((link) => (
-              <li>
-                <a href={link.href} class="text-sm text-white/75 hover:text-white transition-colors">
-                  {link.label}
-                </a>
+            branches.map((branch) => (
+              <li title={branch.region}>
+                {branch.instagram ? (
+                  <a
+                    href={`https://instagram.com/${branch.instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class:list={[chip, 'border-white/40 text-white transition-colors hover:border-secondary-yellow hover:bg-secondary-yellow hover:text-primary-blue-dark']}
+                  >
+                    {branch.name}
+                  </a>
+                ) : (
+                  <span class={`${chip} border-white/40 text-white`}>{branch.name}</span>
+                )}
               </li>
             ))
           }
         </ul>
       </nav>
+    </div>
 
-      <div>
-        <h4 class="text-sm font-bold uppercase tracking-wider text-secondary-yellow mb-5">Kontak</h4>
-        <ul class="space-y-4">
-          <li>
-            <a
-              href="mailto:contact@sakolakembara.org"
-              class="flex items-start gap-3 text-sm text-white/75 hover:text-white transition-colors"
-            >
-              <Icon name="mail" size={16} class="w-4 h-4 mt-0.5 shrink-0" />
-              contact@sakolakembara.org
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-sm font-bold uppercase tracking-wider text-secondary-yellow mb-5">Social Media</h4>
+    <div class:list={['flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t pt-5', rule]}>
+      <p class="text-sm text-white/70">
+        © <span id="copyright-year">{buildYear}</span> Yayasan Sakola Kembara Indonesia. All rights reserved.
+      </p>
+      <div role="group" aria-label="Social Media">
         <SocialLinks theme="dark" />
       </div>
     </div>
-  </Container>
-
-  <div class="border-t border-white/15">
-    <Container class="py-5">
-      <p class="text-xs text-white/70 text-center">
-        © <span id="copyright-year">{buildYear}</span> Yayasan Sakola Kembara Indonesia. All rights reserved.
-      </p>
-    </Container>
   </div>
 </footer>

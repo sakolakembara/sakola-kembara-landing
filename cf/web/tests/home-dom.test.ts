@@ -3,13 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mapLocations, testimonials } from '~/lib/home-data';
 
-// The built home page, in a DOM, with its own scripts run for real: the stat dialog opener, the
-// carousel controls and the lazy Leaflet map (the dynamic imports included), plus the navbar script.
-// This is the check that the markup and the scripts agree (selectors, hidden/un-hidden controls,
-// the data the map reads) and that rendering the page logs no console errors. It is NOT a browser:
-// there is no layout, so the geometry the carousel reads is stubbed, and no pixel was looked at.
+// The built home page, in a DOM, with its own scripts run for real: the navbar (and its floating mode,
+// SAKEM-111), the alumni stories and the hero video. This is the check that the markup and the
+// scripts agree (selectors, hidden/un-hidden controls) and that rendering the page logs no console
+// errors. It is NOT a browser: there is no layout and no media playback (play() is stubbed), and no
+// pixel was looked at.
 // Needs `pnpm build`; skipped without dist/.
 // (helpers.ts is not imported: its `new URL(.., import.meta.url)` is rewritten by Vite in a DOM test environment)
 const webRoot = path.resolve(import.meta.dirname, '..');
@@ -39,20 +38,6 @@ async function runScript(html: string, marker: string) {
   await import(/* @vite-ignore */ `${pathToFileURL(file).href}?run=${++runId}`);
 }
 
-/** Geometry for the carousel: `visible` cards of 500 px with a 24 px gap, as at md and up (2) or below (1). */
-function stubLayout(root: HTMLElement, visible: number) {
-  const track = root.querySelector<HTMLElement>('[data-carousel-track]')!;
-  const cards = [...track.querySelectorAll<HTMLElement>(':scope > ul > li')];
-  const define = (el: object, prop: string, value: number) => Object.defineProperty(el, prop, { value, configurable: true });
-  cards.forEach((card, i) => {
-    define(card, 'offsetLeft', i * 524);
-    define(card, 'offsetWidth', 500);
-  });
-  define(track, 'scrollWidth', cards.length * 524 - 24);
-  define(track, 'clientWidth', visible * 524 - 24);
-  return { track, cards };
-}
-
 describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
   const html = built ? readFileSync(path.join(client, 'index.html'), 'utf8') : '';
   let problems: string[];
@@ -75,188 +60,144 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     vi.unstubAllGlobals();
   });
 
-  it('all four scripts of the page run without a console error', async () => {
-    for (const marker of ['nav-toggle', 'data-dialog-open', 'data-carousel', 'data-impact-map']) await runScript(html, marker);
+  it('the five scripts of the page run without a console error', async () => {
+    for (const marker of ['nav-toggle', 'data-chart', 'data-steps', 'data-stories', 'hero-video']) await runScript(html, marker);
     await new Promise((r) => setTimeout(r, 20));
   });
 
-  describe('stat dialog', () => {
-    it('opens from its button and closes on a click on the backdrop', async () => {
-      await runScript(html, 'data-dialog-open');
-      const button = document.querySelector<HTMLElement>('[data-dialog-open]')!;
-      const dialog = document.getElementById(button.dataset.dialogOpen!) as HTMLDialogElement;
-      expect(dialog.open).toBe(false);
-      button.click();
-      expect(dialog.open).toBe(true);
-      // a click inside the dialog's content keeps it open, a click on the dialog itself (the backdrop) closes it
-      dialog.querySelector<HTMLElement>('p')!.click();
-      expect(dialog.open).toBe(true);
-      dialog.click();
-      expect(dialog.open).toBe(false);
+  describe('preloader gate (the inline head script)', () => {
+    const gate = () => html.match(/<script>([^<]*sk-preloaded[^<]*)<\/script>/)![1];
+    const run = (reduce: boolean) => {
+      document.documentElement.classList.remove('preload');
+      vi.stubGlobal('matchMedia', (q: string) => ({ matches: reduce && q.includes('reduce') }));
+      new Function(gate())();
+      return document.documentElement.classList.contains('preload');
+    };
+    it('shows the loader on the first visit only, and never with reduced motion', () => {
+      sessionStorage.removeItem('sk-preloaded');
+      expect(run(false)).toBe(true);
+      expect(run(true)).toBe(false);
+      sessionStorage.setItem('sk-preloaded', '1');
+      expect(run(false)).toBe(false);
+      sessionStorage.removeItem('sk-preloaded');
+      document.documentElement.classList.remove('preload');
     });
   });
 
-  describe('testimonial carousel', () => {
-    const root = () => document.querySelector<HTMLElement>('[data-carousel]')!;
-    const ui = () => [...root().querySelectorAll<HTMLElement>('[data-carousel-ui]')];
-    const dots = () => [...root().querySelectorAll<HTMLElement>('[data-carousel-dot]')];
-    const active = () => dots().findIndex((d) => d.getAttribute('aria-current') === 'true');
-    const settle = () => new Promise((r) => setTimeout(r, 30));
-    /** The stubbed track moves when asked to (as scroll-snap would) and reports it with a scroll event. */
-    async function scrollTo(track: HTMLElement, left: number) {
-      Object.defineProperty(track, 'scrollLeft', { value: left, configurable: true });
-      track.dispatchEvent(new Event('scroll'));
-      await settle();
+  describe('problem charts', () => {
+    it('a click opens a chart\'s popover and closes the others; a click elsewhere or Escape closes it', async () => {
+      await runScript(html, 'data-chart');
+      const charts = [...document.querySelectorAll<HTMLElement>('[data-chart]')];
+      const button = (i: number) => charts[i].querySelector('button')!;
+      expect(charts).toHaveLength(3);
+      button(0).click();
+      expect(charts.map((c) => c.hasAttribute('data-open'))).toEqual([true, false, false]);
+      expect(button(0).getAttribute('aria-expanded')).toBe('true');
+      button(1).click();
+      expect(charts.map((c) => c.hasAttribute('data-open'))).toEqual([false, true, false]);
+      charts[1].querySelector<HTMLElement>('.problem-pop')!.click(); // a click inside the popover keeps it open
+      expect(charts[1].hasAttribute('data-open')).toBe(true);
+      document.body.click();
+      expect(charts.some((c) => c.hasAttribute('data-open'))).toBe(false);
+      button(2).click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(charts[2].hasAttribute('data-open')).toBe(false);
+    });
+  });
+
+  describe('program steps', () => {
+    const shown = () => [...document.querySelectorAll<HTMLElement>('[data-steps] [role="region"]')].filter((p) => !p.hidden).map((p) => p.id);
+    it('the bar ending opens the next step (wrapping), a click on a header opens that step', async () => {
+      await runScript(html, 'data-steps');
+      const tiles = [...document.querySelectorAll<HTMLElement>('.step')];
+      expect(shown()).toEqual(['tahap-prapembinaan']);
+      tiles[0].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
+      expect(shown()).toEqual(['tahap-pembinaan']);
+      expect(tiles.map((t) => t.querySelector('button')!.getAttribute('aria-expanded'))).toEqual(['false', 'true', 'false']);
+      tiles[2].querySelector('button')!.click();
+      expect(shown()).toEqual(['tahap-pasca-pembinaan']);
+      tiles[2].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
+      expect(shown()).toEqual(['tahap-prapembinaan']);
+    });
+  });
+
+  describe('hero video', () => {
+    /** Stubs what happy-dom lacks: playback, and the reduced-motion query. */
+    function stubMedia(reducedMotion: boolean) {
+      const video = document.getElementById('hero-video') as HTMLVideoElement;
+      const play = vi.fn(() => Promise.resolve());
+      video.play = play;
+      vi.stubGlobal('matchMedia', (q: string) => ({ matches: reducedMotion && q.includes('reduce') }));
+      return { video, play };
     }
-    const press = (selector: string) => root().querySelector<HTMLElement>(selector)!.click();
 
-    it('without the script the controls are hidden; with it they appear', async () => {
-      expect(ui().length).toBeGreaterThan(0);
-      for (const el of ui()) expect(el.hidden, el.outerHTML.slice(0, 60)).toBe(true);
-      stubLayout(root(), 2);
-      await runScript(html, 'data-carousel');
-      for (const el of ui()) expect(el.hidden).toBe(false);
+    it('plays the loop', async () => {
+      const { video, play } = stubMedia(false);
+      await runScript(html, 'hero-video');
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(video.preload).toBe('auto');
     });
 
-    it('with two cards in view it has one dot fewer than cards; the first is current', async () => {
-      stubLayout(root(), 2);
-      await runScript(html, 'data-carousel');
-      expect(dots()).toHaveLength(testimonials.length);
-      expect(dots().filter((d) => !d.hidden)).toHaveLength(testimonials.length - 1);
-      expect(active()).toBe(0);
-    });
-
-    it('with one card in view every card has a dot (after a resize)', async () => {
-      const { track } = stubLayout(root(), 2);
-      await runScript(html, 'data-carousel');
-      stubLayout(root(), 1);
-      window.dispatchEvent(new Event('resize'));
-      expect(dots().filter((d) => !d.hidden)).toHaveLength(testimonials.length);
-      expect(track.scrollWidth).toBe(testimonials.length * 524 - 24);
-    });
-
-    it('next moves one card, prev moves back, both wrap around; the dot follows', async () => {
-      const { track } = stubLayout(root(), 2);
-      const scrolled: number[] = [];
-      track.scrollTo = ((opts: ScrollToOptions) => void scrolled.push(opts.left as number)) as typeof track.scrollTo;
-      await runScript(html, 'data-carousel');
-
-      press('[data-carousel-next]');
-      expect(scrolled.at(-1)).toBe(524);
-      await scrollTo(track, 524);
-      expect(active()).toBe(1);
-
-      press('[data-carousel-prev]');
-      expect(scrolled.at(-1)).toBe(0);
-      await scrollTo(track, 0);
-      expect(active()).toBe(0);
-
-      // at the start, previous wraps to the last position (index 5 of 7 cards with two in view)
-      press('[data-carousel-prev]');
-      expect(scrolled.at(-1)).toBe(5 * 524);
-      await scrollTo(track, 5 * 524);
-      expect(active()).toBe(5);
-
-      // at the end, next wraps to the start
-      press('[data-carousel-next]');
-      expect(scrolled.at(-1)).toBe(0);
-    });
-
-    it('a dot goes to its card', async () => {
-      const { track } = stubLayout(root(), 2);
-      const scrolled: number[] = [];
-      track.scrollTo = ((opts: ScrollToOptions) => void scrolled.push(opts.left as number)) as typeof track.scrollTo;
-      await runScript(html, 'data-carousel');
-      dots()[3].click();
-      expect(scrolled.at(-1)).toBe(3 * 524);
-      await scrollTo(track, 3 * 524);
-      expect(active()).toBe(3);
+    it('with reduced motion the video never starts and the poster stays', async () => {
+      const { video, play } = stubMedia(true);
+      await runScript(html, 'hero-video');
+      expect(play).not.toHaveBeenCalled();
+      expect(video.preload).toBe('none');
     });
   });
 
-  describe('lazy map', () => {
-    const canvas = () => document.querySelector<HTMLElement>('[data-map-canvas]')!;
-    const list = () => document.querySelector<HTMLElement>('[data-map-locations]')!;
+  describe('stories', () => {
+    const shown = () => [...document.querySelectorAll<HTMLElement>('#cerita .story')].filter((s) => s.hasAttribute('data-active') && !s.inert).map((s) => s.id);
+    const cards = () => [...document.querySelectorAll<HTMLElement>('#cerita [data-story]')];
+    const current = () => cards().map((c) => c.getAttribute('aria-current') === 'true');
+    it('a small photo shows its story and becomes current; the ring on the large photo ending shows the next story, wrapping', async () => {
+      await runScript(html, 'data-stories');
+      const ids = [...document.querySelectorAll<HTMLElement>('#cerita .story')].map((s) => s.id);
+      expect(shown()).toEqual([ids[0]]);
+      expect(current()).toEqual(ids.map((_, i) => i === 0));
+      cards()[3].click();
+      expect(shown()).toEqual([ids[3]]);
+      expect(current()).toEqual(ids.map((_, i) => i === 3));
+      cards()[ids.length - 1].click();
+      document.getElementById(ids.at(-1)!)!.querySelector('.story-bar')!.dispatchEvent(new Event('animationend'));
+      expect(shown()).toEqual([ids[0]]);
+      expect(cards()[0].hasAttribute('data-active')).toBe(true);
+    });
+  });
 
-    it('does not load Leaflet until the panel is near the viewport', async () => {
-      const observed: Element[] = [];
-      vi.stubGlobal(
-        'IntersectionObserver',
-        class {
-          observe(el: Element) {
-            observed.push(el);
-          }
-          disconnect() {}
-        },
-      );
-      await runScript(html, 'data-impact-map');
-      expect(observed).toHaveLength(1);
-      expect(observed[0]).toBe(document.querySelector('[data-impact-map]'));
-      expect(canvas().querySelector('.leaflet-container, .leaflet-pane')).toBeNull();
-      expect(list().hidden).toBe(false); // the list is what a visitor sees until then
-      expect(document.head.querySelectorAll('style').length).toBe(html.match(/<style/g)!.length); // no Leaflet CSS yet
+  describe('floating navbar', () => {
+    it('is transparent at the top, solid once the page scrolls or the mobile menu opens', async () => {
+      const nav = document.getElementById('site-nav')!;
+      expect(nav.hasAttribute('data-overlay')).toBe(true);
+      await runScript(html, 'nav-toggle');
+      expect(nav.hasAttribute('data-solid')).toBe(false);
+      document.getElementById('nav-toggle')!.click();
+      expect(nav.hasAttribute('data-solid')).toBe(true);
+      document.getElementById('nav-toggle')!.click();
+      expect(nav.hasAttribute('data-solid')).toBe(false);
+      Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
+      window.dispatchEvent(new Event('scroll'));
+      expect(nav.hasAttribute('data-solid')).toBe(true);
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
     });
 
-    it('when the panel intersects: loads Leaflet and its CSS, draws one marker per branch, swaps the list for the map', async () => {
-      vi.stubGlobal(
-        'IntersectionObserver',
-        class {
-          constructor(private cb: (entries: { isIntersecting: boolean }[]) => void) {}
-          observe() {
-            this.cb([{ isIntersecting: true }]);
-          }
-          disconnect() {}
-        },
-      );
-      // Leaflet needs a size to fit the bounds; happy-dom has no layout
-      Object.defineProperty(canvas(), 'clientWidth', { value: 800, configurable: true });
-      Object.defineProperty(canvas(), 'clientHeight', { value: 500, configurable: true });
-
-      await runScript(html, 'data-impact-map');
-      await vi.waitFor(() => expect(canvas().querySelectorAll('.leaflet-marker-icon')).toHaveLength(mapLocations.length), { timeout: 5000 });
-
-      const markers = [...canvas().querySelectorAll<HTMLElement>('.leaflet-marker-icon')];
-      expect(markers.map((m) => m.title).sort()).toEqual(mapLocations.map((l) => l.name).sort());
-      for (const m of markers) {
-        expect(m.getAttribute('role')).toBe('button'); // Leaflet's keyboard-operable markers
-        expect(m.tabIndex).toBe(0);
-      }
-      expect(list().hidden).toBe(true);
-      expect(document.querySelector<HTMLElement>('[data-map-legend]')!.hidden).toBe(false);
-      expect(document.head.textContent).toContain('.leaflet-container');
-      expect(document.head.textContent).toContain('map-pulse');
-      expect(canvas().textContent).toContain('OpenStreetMap');
-
-      // a marker opens the popup of its branch, built from the same markup as the list
-      markers.find((m) => m.title === 'Sakola Kembara Bandung')!.click();
-      const popup = canvas().querySelector('.leaflet-popup-content');
-      expect(popup?.textContent).toContain('Sakola Kembara Bandung');
-      expect(popup?.textContent).toContain('Kota Bandung');
-      expect(popup?.textContent).toContain('Bimbel Aktif');
-    });
-
-    it('if the map cannot be built, the list stays, the legend stays hidden and nothing is thrown at the page', async () => {
-      vi.stubGlobal(
-        'IntersectionObserver',
-        class {
-          constructor(private cb: (entries: { isIntersecting: boolean }[]) => void) {}
-          observe() {
-            this.cb([{ isIntersecting: true }]);
-          }
-          disconnect() {}
-        },
-      );
-      // Leaflet reads the container's size while fitting the bounds: make that fail
-      Object.defineProperty(canvas(), 'clientWidth', {
-        get() {
-          throw new Error('no layout');
-        },
-        configurable: true,
-      });
-      await runScript(html, 'data-impact-map');
-      await new Promise((r) => setTimeout(r, 100));
-      expect(list().hidden).toBe(false);
-      expect(document.querySelector<HTMLElement>('[data-map-legend]')!.hidden).toBe(true);
+    it('hides while the page scrolls down, shows again on a scroll up, stays while the mobile menu is open', async () => {
+      const nav = document.getElementById('site-nav')!;
+      await runScript(html, 'nav-toggle');
+      const scrollTo = (y: number) => {
+        Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      };
+      scrollTo(60);
+      expect(nav.hasAttribute('data-hidden')).toBe(false); // near the top
+      scrollTo(500);
+      expect(nav.hasAttribute('data-hidden')).toBe(true);
+      scrollTo(450);
+      expect(nav.hasAttribute('data-hidden')).toBe(false);
+      document.getElementById('nav-toggle')!.click();
+      scrollTo(900);
+      expect(nav.hasAttribute('data-hidden')).toBe(false);
+      scrollTo(0);
     });
   });
 });

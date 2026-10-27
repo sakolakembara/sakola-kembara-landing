@@ -1,88 +1,62 @@
 ---
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
-import { impactMetrics, mapStats, type ImpactMetricColor } from '~/lib/home-data';
-import ImpactMap from './ImpactMap.astro';
-import TestimonialCarousel from './TestimonialCarousel.astro';
+import Img from '~/components/Img.astro';
+import { impactMetrics } from '~/lib/home-data';
+import { buttonClasses } from '~/lib/ui';
 
 /**
- * Homepage "Dampak Kami": metrics, the map of branch locations and the alumni
- * testimonial carousel. Copy is verbatim from the root ImpactSection.tsx +
- * lib/data.ts. The two interactive parts are their own components, each with
- * the smallest script that does the job (see docs/cloudflare/web-skeleton.md,
- * "JS and CSS budget").
+ * Homepage impact "Dari Desa ke Kampus Impian" (SAKEM-111; option C of the Pencapaian wireframe Dzul chose on
+ * 2026-10-27, after BYQ Nextwell "Stats Section with Animated Counters"): one screen tall, a documentation photo
+ * under a navy gradient, the title top left, the lead and "Cerita Sukses Alumni" top right, and the four metrics of impactMetrics in a
+ * row along the bottom; the top-3 figure carries the three universities' logos. It follows "Mengapa
+ * Kami Ada?" (Dzul swapped the two the same day). Figures and labels are verbatim from home-data.ts; the title was
+ * "Pencapaian Sakola Kembara". The photo (students in their campus jackets, from the foundation's documentation Drive) is
+ * decorative.
  */
-const metricColors: Record<ImpactMetricColor, string> = {
-  blue: 'from-primary-blue to-accent-navy',
-  yellow: 'from-secondary-yellow to-orange-500',
-  green: 'from-secondary-green to-green-700',
-  dark: 'from-blue-yonder to-accent-navy',
-};
+// The three universities of the top-3 figure, their logos from the universities' own sites (UI, UGM) and the partner set (ITB).
+const universities = [
+  { name: 'Universitas Indonesia', logo: '/images/universitas/ui.png' },
+  { name: 'Institut Teknologi Bandung', logo: '/images/partners/itb.png' },
+  { name: 'Universitas Gadjah Mada', logo: '/images/universitas/ugm.png' },
+];
+const stats = [
+  { metric: impactMetrics[0] },
+  { metric: impactMetrics[1] },
+  { metric: impactMetrics[2], logos: true },
+  { metric: impactMetrics[3] },
+];
 ---
 
-<section class="py-16 md:py-24 bg-white" id="impact">
-  <Container>
-    <SectionHeader
-      class="mb-12 md:mb-16 anim-reveal"
-      eyebrow="Dampak Kami"
-      title="Pencapaian Sakola Kembara"
-      lead="Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan."
-    />
+<section id="impact" class="relative isolate flex min-h-[100svh] flex-col justify-between gap-14 overflow-hidden bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-24">
+  <Img src="/images/home/impact-kampus.jpg" alt="" sizes="100vw" class="absolute inset-0 -z-20 h-full w-full object-cover object-[50%_60%]" />
+  <span aria-hidden="true" class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.6)_0%,rgba(13,31,82,0.75)_45%,rgba(13,31,82,0.95)_100%)]" />
 
-    {/* Metrics */}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 md:mb-16">
-      {
-        impactMetrics.map((metric, index) => (
-          <div
-            class={`bg-gradient-to-br ${metricColors[metric.color]} rounded-2xl p-5 sm:p-8 text-white text-center relative overflow-hidden anim-reveal`}
-            style={`--i:${index}`}
-          >
-            <div
-              aria-hidden="true"
-              class="absolute -top-1/2 -right-1/2 w-full h-full bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)]"
-            >
-            </div>
-            <div class="text-[26px] sm:text-4xl md:text-5xl font-extrabold leading-none mb-2 relative z-10 break-words">
-              {metric.number}
-            </div>
-            <div class="text-[13px] sm:text-sm opacity-90 relative z-10 leading-snug">{metric.label}</div>
-          </div>
-        ))
-      }
+  <div class="grid items-start gap-6 md:grid-cols-2 md:gap-12 anim-reveal">
+    <h2 class="font-body text-[clamp(32px,3.9vw,56px)] font-medium leading-[1.15] tracking-[-0.025em]">Dari Desa <br />ke Kampus Impian</h2>
+    <div class="flex flex-col gap-6 md:items-end md:pt-3 md:text-right">
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-white/85 md:text-lg">
+        Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.
+      </p>
+      <a href="#cerita" class={buttonClasses({ variant: 'outline-on-navy', className: 'self-start md:self-end' })}>Cerita Sukses Alumni</a>
     </div>
+  </div>
 
-    {/* Map */}
-    <div class="mb-12 md:mb-16 anim-reveal">
-      <div class="text-center mb-8">
-        <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Peta Penyebaran Sakola Kembara</h3>
-        <p class="text-sm sm:text-base text-gray-600">Jangkauan program kami di berbagai wilayah Pulau Jawa</p>
-      </div>
-
-      <div class="bg-gray-100 rounded-3xl overflow-hidden shadow-lg">
-        <ImpactMap />
-
-        {/* Map stats bar */}
-        <div class="flex flex-wrap justify-center gap-y-5 gap-x-10 sm:gap-x-16 px-4 py-6 bg-white border-t border-gray-100">
-          {
-            mapStats.map((stat) => (
-              <div class="text-center min-w-[110px]">
-                <div class="text-2xl md:text-3xl font-extrabold text-primary-blue leading-none">{stat.number}</div>
-                <div class="text-[13px] text-gray-600 mt-1">{stat.label}</div>
-              </div>
-            ))
-          }
-        </div>
-      </div>
-    </div>
-
-    {/* Testimonials */}
-    <div class="anim-reveal">
-      <div class="mb-8">
-        <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Cerita Sukses Alumni</h3>
-        <p class="text-sm sm:text-base text-gray-600">Perjalanan inspiratif dari siswa-siswa kami</p>
-      </div>
-
-      <TestimonialCarousel />
-    </div>
-  </Container>
+  <ul class="grid grid-cols-2 gap-x-6 gap-y-10 border-t border-white/25 pt-8 lg:grid-cols-4 lg:gap-x-10">
+    {
+      stats.map(({ metric, logos }, index) => (
+        <li class="flex flex-col gap-4 anim-reveal" style={`--i:${index}`}>
+          <span class="font-body text-[clamp(40px,4.4vw,72px)] font-medium leading-none tracking-[-0.03em] text-secondary-yellow">{metric.number}</span>
+          <span class="max-w-[18em] text-[15px] leading-snug text-white/85 md:text-base">{metric.label}</span>
+          {logos && (
+            <span class="flex gap-2">
+              {universities.map((u) => (
+                <span class="flex size-11 items-center justify-center rounded-full bg-white p-1.5" title={u.name}>
+                  <Img src={u.logo} alt={u.name} sizes="44px" class="h-full w-full object-contain" />
+                </span>
+              ))}
+            </span>
+          )}
+        </li>
+      ))
+    }
+  </ul>
 </section>

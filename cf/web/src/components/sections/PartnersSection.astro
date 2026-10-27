@@ -6,14 +6,15 @@ import rumahAmalSalmanLogo from '@root/public/images/partners/rumah-amal-salman.
 import salamSetaraLogo from '@root/public/images/partners/salam-setara.png';
 import talentsMappingLogo from '@root/public/images/partners/talents-mapping.png';
 import zurichSyariahLogo from '@root/public/images/partners/zurich-syariah.png';
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
 import { activePartners, pastPartners, type Partner } from '~/lib/home-data';
 
 /**
- * Homepage "Partner Kami": a row of logo cards under its own subheading, split
- * into active and past partners so visitors can tell who we work with right now
- * from who has supported us before. Copy is verbatim from the root
+ * Homepage "Partner Kami" (SAKEM-111; layout after BYQ Genesis "Trusted Logo
+ * Grid"; Dzul, 2026-10-27): all centred, the title, then the logos in one row
+ * (one row from xl, wrapping below), muted until hovered, then the thanks in at most two
+ * lines; each logo's alt is the partner's name. Active partners first, then past
+ * ones (the past partner's "Pernah Didukung & Bermitra Dengan" caption was removed by
+ * Dzul, 2026-10-27). Copy is verbatim from the root
  * PartnersSection.tsx + lib/data.ts; logos are resized at build time.
  */
 const logos: Record<string, ImageMetadata> = {
@@ -25,62 +26,38 @@ const logos: Record<string, ImageMetadata> = {
   'salam-setara': salamSetaraLogo,
 };
 
-const groups: { title: string; partners: Partner[] }[] = [
-  { title: 'Partner & Pendukung Aktif', partners: activePartners },
-  { title: 'Pernah Didukung & Bermitra Dengan', partners: pastPartners },
-].filter((group) => group.partners.length > 0);
+const partners: Partner[] = [...activePartners, ...pastPartners];
 ---
 
-<section class="py-16 md:py-24 bg-[#F5F7FA]" id="partners">
-  <Container>
-    <SectionHeader
-      class="mb-12 anim-reveal"
-      eyebrow="Partner Kami"
-      title="Bersama Mewujudkan Perubahan"
-      lead="Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara."
-    />
+<section class="px-6 py-20 md:px-10 md:py-28" id="partners">
+  <div class="flex w-full flex-col items-center gap-14 text-center md:gap-20">
+    <h2 class="max-w-[14em] text-balance font-body text-[clamp(32px,3.9vw,56px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark anim-reveal">
+      Bersama Mewujudkan Perubahan
+    </h2>
 
-    <div class="space-y-12 md:space-y-14">
+    <ul class="flex flex-wrap items-start justify-center gap-x-12 gap-y-10 xl:flex-nowrap xl:gap-x-16 anim-reveal">
       {
-        groups.map((group) => (
-          <div class="anim-reveal">
-            {/* Subheading with hairlines that shrink to nothing on narrow screens */}
-            <div class="flex items-center gap-4 mb-6 md:mb-8">
-              <span class="hidden sm:block h-px flex-1 bg-gray-200" aria-hidden="true" />
-              <h3 class="text-xs sm:text-sm font-semibold text-accent-navy uppercase tracking-wider text-center">
-                {group.title}
-              </h3>
-              <span class="hidden sm:block h-px flex-1 bg-gray-200" aria-hidden="true" />
-            </div>
-
-            {/* items-stretch keeps every card the same height even when a partner name wraps to two or three lines. */}
-            <ul class="flex justify-center items-stretch flex-wrap gap-4 sm:gap-6 md:gap-8">
-              {group.partners.map((partner) => (
-                <li class="w-[136px] sm:w-40 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col items-center gap-2.5 px-3 py-4 hover:border-primary-blue/40 hover:shadow-md transition-all">
-                  <div class="h-11 sm:h-12 flex items-center justify-center">
-                    {/* Decorative: the partner name is spelled out right below, so announcing it twice would only add noise for screen readers. */}
-                    <Image
-                      src={logos[partner.id]}
-                      alt=""
-                      width={272}
-                      widths={[136, 272]}
-                      sizes="136px"
-                      format="webp"
-                      quality={80}
-                      loading="lazy"
-                      decoding="async"
-                      class="max-h-full w-auto object-contain"
-                    />
-                  </div>
-                  <span class="mt-auto text-[11px] sm:text-xs text-gray-700 font-medium text-center leading-snug text-balance">
-                    {partner.name}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        partners.map((partner) => (
+          <li class="flex flex-col items-center justify-center gap-3 text-center">
+            <Image
+              src={logos[partner.id]}
+              alt={partner.name}
+              width={360}
+              widths={[180, 360]}
+              sizes="180px"
+              format="webp"
+              quality={80}
+              loading="lazy"
+              decoding="async"
+              class="h-14 w-auto max-w-[180px] object-contain opacity-70 grayscale transition duration-300 hover:opacity-100 hover:grayscale-0 md:h-16"
+            />
+          </li>
         ))
       }
-    </div>
-  </Container>
+    </ul>
+
+    <p class="max-w-[46em] text-balance text-[17px] leading-[1.65] text-gray-600">
+      Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.
+    </p>
+  </div>
 </section>

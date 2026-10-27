@@ -28,3 +28,8 @@
     animation: none;
   }
 }
+
+/* Once the GSAP motion has started (home-motion.ts), it runs the reveals: the CSS one stands down. */
+.gsap-motion .anim-reveal {
+  animation: none;
+}

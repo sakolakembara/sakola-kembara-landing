@@ -40,6 +40,22 @@ export const navLinks = [
 // keeps "Laporan" between Donasi and Blog, where it has always been, now pointing at the section of /donasi that took
 // the page's place (SAKEM-105), and carries Kontak, which lives only in the footer. Written out so that a change of
 // the menu cannot move a footer link by accident (tests/copy.test.ts pins the list).
+/**
+ * The branches (bimbel) listed in the footer, each linking to its own Instagram (SAKEM-111, asked by Dzul on
+ * 2026-10-27). Names and regions are the legacy lib/data.ts map pins. `instagram` is the account handle without "@"
+ * (the four Dzul gave on 2026-10-27); a branch without one is listed as plain text, not linked.
+ */
+export const branches: { name: string; region: string; instagram: string | null }[] = [
+  { name: 'Bandung', region: 'Kota Bandung', instagram: 'sakembandung_' },
+  { name: 'Cililin', region: 'Bandung Barat', instagram: null },
+  { name: 'Cibodas', region: 'Bandung Barat', instagram: 'sakemcibodas' },
+  { name: 'Cisarua', region: 'Bandung Barat', instagram: null },
+  { name: 'Bojong', region: 'Purwakarta', instagram: 'sakembojong' },
+  { name: 'Cirebon', region: 'Cirebon', instagram: 'sakolakembaracirebon' },
+  { name: 'Purbalingga', region: 'Purbalingga', instagram: null },
+  { name: 'Samarinda', region: 'Kalimantan Timur', instagram: null },
+];
+
 export const footerLinks = [
   { href: '/tim', label: 'Team' },
   { href: '/gabung-siswa', label: 'Siswa' },
@@ -47,12 +63,6 @@ export const footerLinks = [
   { href: REPORTS_SECTION_PATH, label: 'Laporan' },
   { href: '/blog', label: 'Blog' },
   { href: '/kontak', label: 'Kontak' },
-];
-
-export const heroStats = [
-  { number: '600+', label: 'Siswa Terbantu' },
-  { number: '84%', label: 'Berkuliah' },
-  { number: '8', label: 'Wilayah Jangkauan' },
 ];
 
 export interface ProgramCard {

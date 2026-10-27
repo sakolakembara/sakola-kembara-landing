@@ -1,11 +1,13 @@
 ---
 import ActivitiesSection from '~/components/sections/ActivitiesSection.astro';
+import BranchMapSection from '~/components/sections/BranchMapSection.astro';
 import CTASection from '~/components/sections/CTASection.astro';
 import HeroSection from '~/components/sections/HeroSection.astro';
 import ImpactSection from '~/components/sections/ImpactSection.astro';
 import NewsSection from '~/components/sections/NewsSection.astro';
 import PartnersSection from '~/components/sections/PartnersSection.astro';
 import ProblemSection from '~/components/sections/ProblemSection.astro';
+import StoriesSection from '~/components/sections/StoriesSection.astro';
 import Base from '~/layouts/Base.astro';
 import { getAllArticles } from '~/lib/blog';
 import '~/styles/reveal.css';
@@ -15,17 +17,29 @@ import '~/styles/reveal.css';
 // article needs a rebuild (the same as the article pages themselves).
 export const prerender = true;
 
-const latestArticles = getAllArticles().slice(0, 3);
+const latestArticles = getAllArticles().slice(0, 4);
 ---
 
-<Base seo={{ kind: 'home' }}>
-  <main>
+<Base seo={{ kind: 'home' }} navOverlay headingFont="jakarta" preloader>
+  {/* SAKEM-111: design "Opsi C" in the BYQ "Sustainability Hub" system (one sans, no Lora): the hero video under a
+      floating navbar, then the sections on a cream canvas. */}
+  <main class="bg-[#FBFBF5]">
     <HeroSection />
     <ProblemSection />
-    <ActivitiesSection />
     <ImpactSection />
+    <BranchMapSection />
+    <ActivitiesSection />
+    <StoriesSection />
     <PartnersSection />
-    <CTASection />
     <NewsSection articles={latestArticles} />
+    <CTASection />
   </main>
+  <script>
+    // GSAP motion (src/scripts/home-motion.ts), fetched after the page has loaded and the browser is idle, never with
+    // reduced motion: the first view never waits for it, and without it everything simply shows.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const go = () => import('../scripts/home-motion').then((m) => m.start());
+      addEventListener('load', () => ('requestIdleCallback' in window ? requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 200)), { once: true });
+    }
+  </script>
 </Base>

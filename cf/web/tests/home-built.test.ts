@@ -3,12 +3,12 @@ import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { getAllArticles } from '~/lib/blog';
-import { activePartners, impactMetrics, mapLocations, mapStats, pastPartners, problemStats, testimonials } from '~/lib/home-data';
-import { programCards } from '~/lib/site';
+import { activePartners, impactMetrics, pastPartners, problemStats, testimonials } from '~/lib/home-data';
+import { branches, programCards } from '~/lib/site';
 import { webRoot } from './helpers';
 
-// The built home page (dist/client/index.html): structure of the seven sections, images, and the
-// JS/CSS budget. Needs `pnpm build` first and is skipped, not failed, without dist/.
+// The built home page (dist/client/index.html), design "Opsi C" (SAKEM-111): the video hero, seven
+// sections, images, and the JS/CSS budget. Needs `pnpm build` first and is skipped, not failed, without dist/.
 const client = path.join(webRoot, 'dist/client');
 const built = existsSync(path.join(client, 'index.html'));
 
@@ -18,152 +18,188 @@ const text = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&
 const all = (html: string, re: RegExp) => [...html.matchAll(re)].map((m) => m[0]);
 
 /**
- * The JS and CSS budget of the home page. The numbers are what `pnpm build` measured when the
- * sections were ported (SAKEM-080), plus a margin of about 15% for JS: the test fails when the page ships
- * more JS than that, so growth is a decision, not an accident. The CSS limit is looser: the one
- * stylesheet is shared by all pages and grows with every ported page. Update the numbers in this
- * file and in docs/cloudflare/web-skeleton.md ("JS and CSS budget") together.
+ * The JS and CSS budget of the home page. The numbers are what `pnpm build` measured, plus a margin of
+ * about 15% for JS: the test fails when the page ships more JS than that, so growth is a decision, not an
+ * accident. The CSS limit is looser: the one stylesheet is shared by all pages and grows with every
+ * ported page. Update the numbers in this file and in docs/cloudflare/web-skeleton.md ("JS and CSS
+ * budget") together.
  *
- * Measured: eager JS 7,803 B raw / 3,870 B gzip (navbar 3,444 + stat dialog 266 + carousel 1,028 inline,
- * plus the 3,065 B map loader); lazy map chunks 166,150 B raw / 49,994 B gzip; CSS 62,103 B raw / 11,041 B gzip
- * (after the program and donation pages joined the shared stylesheet).
+ * Measured (SAKEM-111, when the map and the carousel left the page): eager JS 4,267 B raw / 2,088 B gzip, all inline
+ * (navbar 3,394 + stat dialog 266 + hero video 607); CSS 63,488 B raw / 11,580 B gzip. The limits were kept.
  */
 const BUDGET = {
   eagerJs: { raw: 9_000, gzip: 4_600 },
-  lazyMap: { raw: 190_000, gzip: 58_000 },
-  css: { raw: 75_000, gzip: 13_500 },
+  css: { raw: 85_000, gzip: 15_500 },
 };
 
 describe.skipIf(!built)('home page build output', () => {
   const html = read('index.html');
+  const hero = html.match(/<header[\s>][\s\S]*?<\/header>/)![0];
   // <section> never nests on the home page, so splitting on its tags yields one block per section.
-  const [hero, problem, activities, impact, partners, cta, news] = all(html, /<section[\s>][\s\S]*?<\/section>/g);
+  const [problem, impact, branchMap, activities, stories, partners, news, cta] = all(html, /<section[\s>][\s\S]*?<\/section>/g);
 
-  it('has the seven sections in the legacy order and one h1', () => {
-    expect(all(html, /<section[\s>]/g)).toHaveLength(7);
+  it('has the video hero, then the eight sections in order, and one h1', () => {
+    expect(all(html, /<section[\s>]/g)).toHaveLength(8);
+    expect(branchMap).toContain('id="cabang"');
+    expect(impact).toContain('id="impact"');
     expect(problem).toContain('Mengapa Kami Ada?');
     expect(activities).toContain('id="activities"');
-    expect(impact).toContain('id="impact"');
+    expect(stories).toContain('id="cerita"');
     expect(partners).toContain('id="partners"');
-    expect(cta).toContain('Jadilah Bagian dari Perubahan');
     expect(news).toContain('id="blog"');
+    expect(cta).toContain('id="gabung"');
     expect(all(html, /<h1[\s>]/g)).toHaveLength(1);
     expect(hero).toContain('<h1');
+    expect(text(hero)).toContain('Membuka Pintu Pendidikan Tinggi untuk Setiap Anak Indonesia');
   });
 
-  it('headings: section h2s in order, the sub-headings of Impact and Partners', () => {
+  it('headings: section h2s in order, the sub-headings of Program and News', () => {
     const h2 = all(html, /<h2[^>]*>[\s\S]*?<\/h2>/g).map(text);
     expect(h2).toEqual([
       'Mengapa Kami Ada?',
-      'Mengapa ini terjadi?', // the heading of the stat dialog, in the HTML for crawlers
+      'Dari Desa ke Kampus Impian',
+      'Kami hadir dari Bandung sampai Samarinda',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
-      'Pencapaian Sakola Kembara',
+      'Cerita Sukses Alumni',
       'Bersama Mewujudkan Perubahan',
-      'Jadilah Bagian dari Perubahan',
       'Cerita & Inspirasi',
+      'Mari Menjadi Bagian Perubahan',
     ]);
-    expect(all(impact, /<h3[^>]*>[\s\S]*?<\/h3>/g).map(text)).toEqual(['Peta Penyebaran Sakola Kembara', 'Cerita Sukses Alumni']);
-    expect(all(partners, /<h3[^>]*>[\s\S]*?<\/h3>/g).map(text)).toEqual(['Partner & Pendukung Aktif', 'Pernah Didukung & Bermitra Dengan']);
+    expect(all(activities, /<h3[^>]*>[\s\S]*?<\/h3>/g).map(text)).toEqual(programCards.map((p) => p.title));
+    expect(all(partners, /<h3[\s>]/g)).toHaveLength(0);
   });
 
-  describe('Problem', () => {
-    it('shows the three figures with a chart each, and one stat detail dialog wired to its button', () => {
-      expect(all(problem, /<article[\s>]/g)).toHaveLength(problemStats.length);
-      for (const stat of problemStats) {
-        expect(text(problem)).toContain(stat.number);
-        expect(text(problem)).toContain(stat.text);
-      }
-      const charts = all(problem, /<div role="img" aria-label="[^"]+"/g);
-      expect(charts).toHaveLength(3);
-      for (const stat of problemStats) expect(charts.join('\n')).toContain(`aria-label="${stat.chart.label}"`);
+  it('one typeface: no Lora on the page (BYQ "Sustainability Hub", Dzul 2026-10-27), and the preloads are the two Jakarta weights it paints first', () => {
+    expect(html).not.toContain('font-display');
+    const preloads = all(html, /<link rel="preload"[^>]*as="font"[^>]*>/g).join(' ');
+    expect(preloads).toMatch(/plus-jakarta-sans-latin-400-normal/);
+    expect(preloads).toMatch(/plus-jakarta-sans-latin-500-normal/);
+    expect(preloads).not.toMatch(/lora/i);
+  });
 
-      const detailCount = problemStats.filter((s) => s.detail).length;
-      expect(all(problem, /<dialog[\s>]/g)).toHaveLength(detailCount);
-      const dialogId = problem.match(/<dialog id="([^"]+)" aria-labelledby="([^"]+)"/);
-      expect(dialogId).not.toBeNull();
-      const [, id, labelledby] = dialogId as RegExpMatchArray;
-      expect(problem).toContain(`id="${labelledby}"`); // the dialog's label exists
-      expect(problem).toMatch(new RegExp(`<button[^>]*aria-haspopup="dialog"[^>]*data-dialog-open="${id}"`));
-      expect(problem).toContain('<form method="dialog">'); // "Tutup" closes natively
-      expect(text(problem)).toContain(problemStats.find((s) => s.detail)!.detail as string);
+  describe('Hero', () => {
+    it('the video is silent, looped, inline, not preloaded, and has a phone size; no pause button (Dzul, 2026-10-27)', () => {
+      const video = hero.match(/<video[^>]*>/)![0];
+      for (const a of ['muted', 'loop', 'playsinline', 'preload="none"', 'aria-hidden="true"']) expect(video).toContain(a);
+      expect(video).not.toContain('autoplay'); // the script starts it, unless the visitor asked for reduced motion or data saving
+      expect(hero).toContain('<source src="/images/home/hero-loop-720.mp4" type="video/mp4" media="(max-width: 767px)">');
+      expect(hero).toContain('<source src="/images/home/hero-loop.mp4" type="video/mp4">');
+      expect(hero).not.toMatch(/<button[\s>]/);
+    });
+    it('the two actions: the program section and the donation page', () => {
+      const links = all(hero, /<a href="[^"]+"[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
+      expect(links).toEqual([
+        ['#activities', 'Lihat Program Kami'],
+        ['/donasi', 'Dukung Misi Kami'],
+      ]);
     });
   });
 
   describe('Impact', () => {
-    it('has the four metrics', () => {
-      for (const m of impactMetrics) {
-        expect(text(impact)).toContain(m.number);
-        expect(text(impact)).toContain(m.label);
-      }
-      expect(all(impact, /<div class="bg-gradient-to-br /g)).toHaveLength(impactMetrics.length);
+    it('the four metrics as rising cards, the total last, with their labels verbatim', () => {
+      const cards = all(impact, /<li[\s>][\s\S]*?<\/li>/g).map(text);
+      expect(cards.map((c, i) => c.startsWith(`${impactMetrics[i].number} ${impactMetrics[i].label}`))).toEqual([true, true, true, true]);
+      for (const u of ['Universitas Indonesia', 'Institut Teknologi Bandung', 'Universitas Gadjah Mada']) expect(impact).toContain(`alt="${u}"`);
+      expect(text(impact)).toContain('Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.');
+      expect(impact).toContain('<a href="#cerita"');
     });
+  });
 
-    it('has the map: every branch is in the HTML (the no-JS and crawler view), with coordinates for the script', () => {
-      const items = all(impact, /<li class="bg-white rounded-xl shadow-sm"[^>]*>/g);
-      expect(items).toHaveLength(mapLocations.length);
-      for (const loc of mapLocations) {
-        expect(impact).toContain(`data-lat="${loc.lat}" data-lng="${loc.lng}" data-title="${loc.name}" data-color="#1E88E5"`);
-        expect(text(impact)).toContain(loc.name);
-        expect(text(impact)).toContain(loc.region);
-      }
-      expect(impact).toContain('aria-label="Lokasi Sakola Kembara"');
-      for (const s of mapStats) expect(text(impact)).toContain(s.label);
-      // the legend belongs to the map, so it stays hidden until the script shows the map
-      expect(impact).toMatch(/data-map-legend hidden/);
+  describe('Problem', () => {
+    it('one centred paragraph per fact, as written, with its decorative infographic, then the closing line; no stat dialog any more', () => {
+      const facts = all(problem, /<p data-fact[\s\S]*?<\/p>/g);
+      expect(facts).toHaveLength(problemStats.length);
+      // the sentence as written once the charts' popovers (hidden until hover, focus or click) are left out
+      const withoutPops = (html: string) => html.replace(/<span id="problem-chart-\d"[\s\S]*?<\/span><\/span>(?=\.?(?:<\/p>| ))/g, '');
+      problemStats.forEach((stat, i) => expect(text(withoutPops(facts[i]))).toContain(`${stat.text}.`));
+      const charts = all(problem, /<button type="button" aria-expanded="false" aria-controls="problem-chart-\d" aria-label="[^"]+"/g);
+      expect(charts.map((c) => c.match(/aria-label="([^"]+)"/)![1])).toEqual(problemStats.map((s) => s.chart.label));
+      expect(text(problem)).toContain(problemStats.find((s) => s.detail)!.detail as string); // in the second chart's popover
+      expect(text(problem)).toContain('Kami hadir untuk mengubah realitas ini.');
+      expect(problem).toMatch(/<h2 class="sr-only"[^>]*>Mengapa Kami Ada\?<\/h2>/);
+      expect(problem).not.toContain('<dialog');
+      // every word has its own slice of the one fill timeline, in reading order
+      const starts = all(problem, /--a:([\d.]+)%/g).map((m) => Number(m.match(/[\d.]+/)![0]));
+      expect(starts.length).toBeGreaterThan(30);
+      expect([...starts].sort((p, q) => p - q)).toEqual(starts);
     });
+  });
 
-    it('has the carousel: a labelled, focusable region; one card per testimonial; controls hidden until the script runs', () => {
-      expect(impact).toMatch(/<div role="region" aria-roledescription="carousel" aria-label="Cerita Sukses Alumni" tabindex="0" data-carousel-track/);
-      const cards = all(impact, /<li class="snap-start[^"]*">/g);
-      expect(cards).toHaveLength(testimonials.length);
+  describe('Branch map', () => {
+    it('a point and a chip per branch on the dotted map, the names for screen readers, three arcs from Bandung', () => {
+      expect(branchMap).toContain('src="/images/peta/indonesia-dots.svg"');
+      expect(all(branchMap, /<circle [^>]*fill="#0D1F52"/g)).toHaveLength(branches.length);
+      const items = all(branchMap, /<li[\s>][\s\S]*?<\/li>/g); // the screen-reader list (not the leader <line>s)
+      expect(items.map(text)).toEqual(branches.map((b) => `${b.name}, ${b.region}`));
+      expect(all(branchMap, /<span aria-hidden="true" class="pointer-events-none absolute whitespace-nowrap rounded-full[^>]*>[^<]*<\/span>/g).map(text)).toEqual(
+        ['Bojong', 'Cibodas', 'Cisarua', 'Bandung', 'Cililin', 'Cirebon', 'Purbalingga', 'Samarinda'],
+      ); // a chip per branch
+      expect(branchMap).not.toContain('instagram.com');
+      expect(branchMap).toMatch(new RegExp(`aria-label="Peta cabang Sakola Kembara: ${branches.map((b) => b.name).join(', ')}"`));
+      expect(all(branchMap, /class="branch-arc/g)).toHaveLength(3);
+    });
+  });
+
+  describe('Program', () => {
+    it('one step per program (a header button and a panel), its photo and a link to its page; only the first is open', () => {
+      expect(all(activities, /<button[^>]*aria-expanded="(?:true|false)"/g).map((b) => b.includes('"true"'))).toEqual(programCards.map((_, i) => i === 0));
+      expect(all(activities, /<div[^>]*role="region"[^>]*>/g).map((d) => /\shidden[\s>]/.test(d))).toEqual(programCards.map((_, i) => i !== 0));
+      expect(all(activities, /<img [^>]*>/g)).toHaveLength(programCards.length);
+      for (const p of programCards) {
+        expect(text(activities)).toContain(p.title);
+        expect(text(activities)).toContain(`${p.points.join('. ')}.`);
+        expect(activities).toContain(`href="/program/${p.id}"`);
+      }
+    });
+  });
+
+  describe('Stories', () => {
+    it('one letter per testimonial (only the first active, the others inert) with the whole quote, and a small photo per alumnus, the first one current', () => {
+      expect(all(stories, /<figure[\s>]/g)).toHaveLength(testimonials.length);
+      const panels = all(stories, /<div id="cerita-\d+"[^>]*>/g);
+      expect(panels.map((p) => /\sinert[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i !== 0));
+      expect(panels.map((p) => /\sdata-active[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i === 0));
       for (const t of testimonials) {
-        expect(text(impact)).toContain(t.name);
-        expect(text(impact)).toContain(t.quote);
-        expect(text(impact)).toContain(t.major);
-        expect(text(impact)).toContain(t.university);
+        expect(text(stories)).toContain(t.quote);
+        expect(text(stories)).toContain(t.university);
+        expect(stories).toContain(`alt="${t.name}"`);
+        expect(stories).toContain(`aria-label="Tampilkan cerita ${t.name}"`);
       }
-      // previous/next: real <button>s with Indonesian labels (the overlay pair and the phone pair)
-      expect(all(impact, /<button[^>]*aria-label="Testimoni sebelumnya"[^>]*>/g)).toHaveLength(2);
-      expect(all(impact, /<button[^>]*aria-label="Testimoni berikutnya"[^>]*>/g)).toHaveLength(2);
-      for (let i = 1; i <= testimonials.length; i++) expect(impact).toContain(`aria-label="Tampilkan testimoni ${i}"`);
-      // nothing interactive that needs the script is visible without it
-      const ui = all(impact, /<(?:button|div)[^>]*data-carousel-ui[^>]*>/g);
-      expect(ui).toHaveLength(3);
-      for (const el of ui) expect(el, el).toMatch(/\shidden[\s>]/);
-      // every button is a native <button type="button">, so Enter and Space work
-      for (const b of all(impact, /<button[^>]*>/g).filter((b) => b.includes('data-carousel'))) expect(b, b).toContain('type="button"');
+      expect(stories).not.toContain('<dialog');
+      const thumbs = all(stories, /<button[^>]*data-story="\d+"[^>]*>/g);
+      expect(thumbs).toHaveLength(testimonials.length);
+      expect(thumbs.map((t) => t.includes('aria-current="true"'))).toEqual(testimonials.map((_, i) => i === 0));
+      expect(text(stories)).not.toContain('Perjalanan inspiratif');
     });
   });
 
   describe('Partners', () => {
-    it('lists the active and the past partners, logos decorative (the name is the text next to them)', () => {
-      const [active, past] = partners.split('Pernah Didukung &amp; Bermitra Dengan');
-      expect(all(active, /<li[\s>]/g)).toHaveLength(activePartners.length);
-      expect(all(past, /<li[\s>]/g)).toHaveLength(pastPartners.length);
-      for (const p of [...activePartners, ...pastPartners]) expect(text(partners)).toContain(p.name);
+    it('one logo per partner, its alt the partner\'s name; no caption any more', () => {
       const logos = all(partners, /<img [^>]*>/g);
       expect(logos).toHaveLength(activePartners.length + pastPartners.length);
-      for (const logo of logos) expect(logo, logo).toMatch(/\salt[\s>]/); // empty alt
+      [...activePartners, ...pastPartners].forEach((p, i) => expect(logos[i]).toContain(`alt="${p.name.replace(/&/g, '&amp;')}"`));
+      expect(partners).not.toContain('Pernah Didukung');
     });
   });
 
   describe('CTA', () => {
-    it('has the four role cards with their links', () => {
-      const links = all(cta, /<a href="[^"]+" class="mt-auto[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
+    it('has the four role rows, each one link with the role and its action, and a decorative photo chip (the poster, SAKEM-111)', () => {
+      const links = all(cta, /<a href="[^"]+" class="group[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
-        ['/daftar', 'Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink (it was the information page, /gabung-siswa)
-        ['/donasi', 'Donasi Sekarang'],
-        ['/kontak', 'Gabung Tim'],
-        ['/kontak', 'Hubungi Kami'],
+        ['/daftar', 'Menjadi Siswa Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink
+        ['/donasi', 'Menjadi Donatur Donasi Sekarang'],
+        ['/kontak', 'Menjadi Relawan Gabung Tim'],
+        ['/kontak', 'Menjadi Partner Hubungi Kami'],
       ]);
-      expect(all(cta, /<h3[\s>]/g)).toHaveLength(4);
-      expect(text(cta)).toContain('Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami bantu mencarikannya.');
+      const chips = all(cta, /<img [^>]*>/g);
+      expect(chips).toHaveLength(4); // a photo chip per role (the mascots were removed)
+      for (const img of chips) expect(img, img).toMatch(/\salt[\s>]/); // decorative: the link text says it all
     });
   });
 
   describe('News', () => {
-    const latest = getAllArticles().slice(0, 3);
-    it('shows the three newest articles of the build-time index, each linking to its article page (rendered by the Worker from the API)', () => {
+    const latest = getAllArticles().slice(0, 4);
+    it('shows the four newest articles of the build-time index, each linking to its article page (rendered by the Worker from the API)', () => {
       const links = all(news, /<a href="\/blog\/[^"]+"/g).map((a) => a.match(/href="([^"]+)"/)![1]);
       expect(links).toEqual(latest.map((a) => `/blog/${a.id}`));
       for (const a of latest) {
@@ -185,42 +221,40 @@ describe.skipIf(!built)('home page build output', () => {
   describe('images', () => {
     const imgs = all(html, /<img [^>]*>/g);
     const attr = (img: string, name: string) => img.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
+    const isLogo = (img: string) => /logo-sakola-kembara[.-]/.test(img);
 
     it('every <img> has a src, numeric width and height, and an alt; below the fold they are lazy', () => {
-      expect(imgs.length).toBeGreaterThanOrEqual(22);
+      expect(imgs.length).toBeGreaterThanOrEqual(18);
       for (const img of imgs) {
         expect(attr(img, 'src'), img).toBeTruthy();
         expect(attr(img, 'width'), img).toMatch(/^\d+$/);
         expect(attr(img, 'height'), img).toMatch(/^\d+$/);
         expect(img, img).toMatch(/\salt(=|\s|>)/);
-        if (!img.includes('Siswa Sakola Kembara belajar bersama') && !img.includes('logo-sakola-kembara.')) {
-          expect(img, img).toContain('loading="lazy"');
-        }
+        if (!img.includes('fetchpriority="high"') && !isLogo(img)) expect(img, img).toContain('loading="lazy"');
       }
     });
 
-    it('only the hero photo is the LCP image: eager, fetchpriority high, and the only one that is', () => {
+    it('only the hero poster is the LCP image: eager, fetchpriority high, a WebP ladder, and the only one that is', () => {
       expect(all(html, /fetchpriority="high"/g)).toHaveLength(1);
       expect(all(html, /loading="eager"/g)).toHaveLength(1);
       const heroImg = imgs.find((i) => i.includes('fetchpriority="high"'))!;
-      expect(heroImg).toContain('Siswa Sakola Kembara belajar bersama');
+      expect(hero).toContain(heroImg);
+      expect(heroImg).toContain('src="/images/home/hero-poster.jpg"');
       expect(heroImg).toContain('loading="eager"');
+      expect(heroImg).toContain('srcset=');
     });
 
-    it('the photos and logos are build-time derivatives: webp under 200 KB each, no multi-MB originals', () => {
-      const files = new Set(all(html, /\/_astro\/[\w.-]+\.(?:webp|png|jpe?g)/g));
-      // 3 program photos, 7 testimonial photos, 6 logos, hero, 2 footer/navbar logos (+ srcset variants)
-      expect(files.size).toBeGreaterThanOrEqual(19);
-      for (const f of files) {
-        const size = statSync(path.join(client, f)).size;
-        expect(size, f).toBeLessThan(200_000);
-      }
-      const names = [...files].join(' ');
-      for (const t of testimonials) expect(names).toContain(t.name.toLowerCase().replace(/ /g, '-'));
-    });
-
-    it('the program cards of the section before are still there', () => {
-      for (const p of programCards) expect(text(activities)).toContain(p.title);
+    it('the photos and logos are build-time derivatives: webp under 200 KB each (the hero poster: 300 KB), no multi-MB originals', () => {
+      // Imported logos (navbar, partners) are Astro's own derivatives; the photos are the WebP ladder of the asset pipeline.
+      const logos = new Set(all(html, /\/_astro\/[\w.-]+\.(?:webp|png|jpe?g)/g));
+      expect(logos.size).toBeGreaterThanOrEqual(8);
+      for (const f of logos) expect(statSync(path.join(client, f)).size, f).toBeLessThan(200_000);
+      // The poster fills the screen, so its widest rung (1600 px) may weigh more.
+      const poster = all(imgs.find((i) => i.includes('fetchpriority="high"'))!, /\/_img\/[\w.-]+\.webp/g);
+      expect(poster.length).toBeGreaterThanOrEqual(3);
+      for (const f of poster) expect(statSync(path.join(client, f)).size, f).toBeLessThan(300_000);
+      // Every raster photo has the ladder; the branch map's dots are one vector file (SVG), served as is.
+      for (const img of imgs.filter((i) => i.includes('/images/') && !/src="[^"]+\.svg"/.test(i))) expect(img, img).toContain('srcset="/_img/');
     });
   });
 
@@ -233,24 +267,18 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerRaw = eager.reduce((n, b) => n + b.length, 0);
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
-    it(`eager JS (the page's own scripts, inline and file) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, stat dialog, carousel (inline) and the map loader (a file, because it holds dynamic imports)
-      expect(scripts).toHaveLength(4);
+    it(`eager JS (the page's own scripts, inline but for the motion loader) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
+      // the preloader's head gate and its count/iris script, navbar, problem charts, program steps, alumni stories, hero
+      // video, and the GSAP motion loader (a module file: it holds a dynamic import, so Astro emits it as a file)
+      expect(scripts).toHaveLength(8);
+      expect(scripts.filter((m) => /\ssrc=/.test(m[1])).map((m) => m[1].match(/src="\/_astro\/([\w.]+?)\./)![1])).toEqual(['index']);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);
     });
 
-    it('Leaflet and its CSS are lazy: nothing of them is referenced by the HTML, only imported dynamically by the map loader', () => {
-      expect(html).not.toMatch(/leaflet/i); // no script, link, preload or modulepreload
+    it('no map library ships any more (the branch map left the page with SAKEM-111)', () => {
+      expect(html).not.toMatch(/leaflet/i);
       expect(html).not.toContain('rel="modulepreload"');
-      const loader = scripts.map((m) => m[1].match(/\ssrc="([^"]+)"/)?.[1]).find((s) => s?.includes('ImpactMap'))!;
-      const loaderCode = read(loader.slice(1));
-      const chunks = [...loaderCode.matchAll(/import\("\.\/([\w.-]+\.js)"\)/g)].map((m) => m[1]);
-      expect(chunks.length).toBe(3); // leaflet, leaflet css (as a string), map css (as a string)
-      expect(loaderCode).not.toMatch(/^import /m); // no static import: nothing is fetched before the dynamic ones
-      const files = chunks.map((c) => readFileSync(path.join(client, '_astro', c)));
-      expect(files.reduce((n, b) => n + b.length, 0)).toBeLessThanOrEqual(BUDGET.lazyMap.raw);
-      expect(files.reduce((n, b) => n + gz(b), 0)).toBeLessThanOrEqual(BUDGET.lazyMap.gzip);
     });
 
     it(`CSS (one stylesheet plus inline <style>) stays within ${BUDGET.css.raw} B raw / ${BUDGET.css.gzip} B gzip`, () => {
@@ -262,12 +290,15 @@ describe.skipIf(!built)('home page build output', () => {
       expect(gz(css)).toBeLessThanOrEqual(BUDGET.css.gzip);
     });
 
-    it('no animation or UI library ships: entrance motion is CSS (scroll-driven, behind @supports)', () => {
+    it('GSAP is fetched lazily (after load, when idle, never with reduced motion) as a chunk of its own; the CSS reveal stays as the no-JS fallback', () => {
       const css = html.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
       expect(css).toContain('animation-timeline');
-      expect(css).toMatch(/@supports\s*\(animation-timeline:\s*view\(\)\)/);
-      expect(css).toMatch(/prefers-reduced-motion:\s*reduce\)\s*{\s*\.anim-reveal\s*{\s*animation:\s*none/);
-      for (const m of scripts) expect(m[2]).not.toMatch(/framer|gsap|IntersectionObserver\(.*reveal/);
+      for (const m of scripts.filter((s) => !/\ssrc=/.test(s[1]))) expect(m[2]).not.toMatch(/gsap|ScrollTrigger/);
+      const loader = readFileSync(path.join(client, scripts.find((m) => /\ssrc=/.test(m[1]))![1].match(/src="([^"]+)"/)![1]), 'utf8');
+      expect(loader).toContain('prefers-reduced-motion: reduce');
+      expect(loader).toContain('requestIdleCallback');
+      expect(loader).toMatch(/home-motion\.[\w-]+\.js/);
+      expect(html).not.toMatch(/home-motion/); // not preloaded by the page itself
     });
   });
 });

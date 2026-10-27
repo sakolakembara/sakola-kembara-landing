@@ -1,94 +1,95 @@
 ---
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
+import Img from '~/components/Img.astro';
 import { REGISTRATION_PATH } from '~/lib/site';
 
 /**
- * Homepage "Bergabung Bersama Kami": four ways to take part, one card each.
- * Copy is verbatim from the root CTASection.tsx. The cards' colored buttons are
- * a documented exception to the Button variants (DESIGN.md, Color): orange
- * appears nowhere else. Every class is spelled out in full so Tailwind finds it.
+ * Homepage "Mari Menjadi Bagian Perubahan" (SAKEM-111, the poster Dzul chose on 2026-10-27; title reworded by Dzul the
+ * same day, it was "Jadilah Bagian dari Perubahan"): a cream band, the headline on the left, vertically centred, and the
+ * four ways to take part as rows on the right (from md), rules between the rows only. Each row is one link: the role, a
+ * photo chip to its right that pops out over the row on hover (a scale, so the row does not move), an arrow. The action
+ * ("Daftar Sekarang"...) is in the link for screen readers only. The photos are decorative (alt=""): the link text says it all.
+ * One screen tall; the title top left and a quote of Ki Hajar Dewantara top right, the roles full width at the bottom
+ * (Dzul, 2026-10-27; the mascots that were here were removed the same day). Every arrow is outlined until its row is hovered.
  */
 const ctaOptions = [
   {
     id: 'siswa',
+    photo: '/images/program/pembinaan.jpg',
     title: 'Menjadi Siswa',
-    description:
-      'Pembinaan penuh selama satu tahun, Agustus hingga April, tanpa biaya. Terbuka bagi siswa kelas 12 dan lulusan yang menyiapkan UTBK maupun ujian mandiri.',
     buttonText: 'Daftar Sekarang',
     // SAKEM-103: straight to the registration shortlink (it was /gabung-siswa, the information page).
     href: REGISTRATION_PATH,
-    color: 'bg-orange-500 hover:bg-orange-600 text-white',
   },
   {
     id: 'donatur',
+    photo: '/images/home/hero-poster.jpg',
     title: 'Menjadi Donatur',
-    description:
-      'Donasi mulai Rp50.000 dapat membantu menopang kegiatan belajar pekanan, asrama, dan pendampingan beasiswa hingga siswa benar-benar duduk di bangku kuliah.',
     buttonText: 'Donasi Sekarang',
     href: '/donasi',
-    color: 'bg-primary-blue hover:bg-primary-blue-dark text-white',
   },
   {
     id: 'relawan',
+    photo: '/images/hero-team.png',
     title: 'Menjadi Relawan',
-    description:
-      'Mengajar di kelas pekanan, mendampingi asrama, atau menopang operasional cabang. Sekitar separuh relawan kami adalah alumni yang kembali.',
     buttonText: 'Gabung Tim',
     href: '/kontak',
-    color: 'bg-secondary-green hover:bg-green-600 text-white',
   },
   {
     id: 'partner',
+    photo: '/images/program/pasca-pembinaan.jpg',
     title: 'Menjadi Partner',
-    description:
-      'Dukungan institusi memperluas jangkauan kami dari delapan cabang di tiga provinsi ke daerah yang belum terjangkau.',
     buttonText: 'Hubungi Kami',
     href: '/kontak',
-    color: 'bg-secondary-yellow hover:bg-secondary-yellow/90 text-gray-900',
   },
 ];
 ---
 
-<section class="py-14 md:py-16 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
-  {/* Background decoration */}
-  <div class="absolute inset-0" aria-hidden="true">
-    <div class="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl"></div>
+<section id="gabung" class="flex min-h-[100svh] flex-col gap-12 bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24">
+  <div class="grid items-start gap-8 md:grid-cols-2 md:gap-x-16">
+    <h2 class="font-body text-[clamp(32px,3.9vw,56px)] font-medium leading-[1.15] tracking-[-0.025em] text-balance anim-reveal">
+      Mari Menjadi <br />Bagian Perubahan
+    </h2>
+    <figure class="flex flex-col gap-4 md:items-end md:justify-self-end md:pt-2 md:text-right">
+      <span aria-hidden="true" class="font-body text-[64px] font-medium leading-[0.5] text-secondary-yellow">“</span>
+      <blockquote class="text-[clamp(20px,1.8vw,26px)] font-medium leading-snug tracking-[-0.01em]">
+        <span class="md:whitespace-nowrap">Setiap orang menjadi guru,</span><br /> <span class="md:whitespace-nowrap">setiap rumah menjadi sekolah.</span>
+      </blockquote>
+      <figcaption class="flex items-center gap-3 text-sm text-gray-600">
+        <span aria-hidden="true" class="h-px w-6 bg-gray-400"></span>Ki Hajar Dewantara
+      </figcaption>
+    </figure>
   </div>
-
-  <Container class="relative z-10">
-    <SectionHeader
-      class="mb-10 anim-reveal"
-      tone="dark"
-      eyebrow="Bergabung Bersama Kami"
-      title="Jadilah Bagian dari Perubahan"
-      lead="Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya. Empat peran berikut membuat program kami terus berjalan, dan semuanya terbuka lebar untuk Anda."
-    />
-
-    <div class="grid md:grid-cols-2 gap-5 max-w-[1000px] mx-auto">
+  <div class="mt-auto">
+    <ul class="w-full divide-y divide-primary-blue-dark/25">
       {
-        ctaOptions.map((option, index) => (
-          <div
-            class="bg-white rounded-2xl p-5 sm:p-6 flex flex-col hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 anim-reveal"
-            style={`--i:${index}`}
-          >
-            <h3 class="text-lg font-bold text-gray-900 mb-1.5">{option.title}</h3>
-            <p class="text-sm text-gray-600 leading-snug mb-4">{option.description}</p>
-            {/* mt-auto keeps the buttons on a common baseline when two cards in a row have blurbs of different lengths. */}
-            <a
-              href={option.href}
-              class={`mt-auto inline-flex w-full sm:w-auto sm:self-start items-center justify-center sm:min-w-[160px] px-4 py-2.5 sm:py-2 ${option.color} text-sm font-semibold rounded-lg transition-colors`}
-            >
-              {option.buttonText}
+        ctaOptions.map((option) => (
+          <li>
+            <a href={option.href} class="group flex items-center justify-between gap-4 py-5 md:gap-6 md:py-7">
+              <span class="flex min-w-0 items-center gap-4 transition-transform duration-300 group-hover:translate-x-1.5 motion-reduce:transition-none md:gap-5">
+                <span class="font-body text-[clamp(26px,2.8vw,48px)] font-medium leading-none tracking-[-0.03em]">{option.title}</span>
+                <Img
+                  src={option.photo}
+                  alt=""
+                  sizes="(min-width: 768px) 240px, 64px"
+                  class="relative h-10 w-16 shrink-0 origin-left rounded-[10px] object-cover transition-[transform,box-shadow] duration-300 ease-out md:h-14 md:w-24 md:group-hover:z-10 md:group-hover:scale-[2.5] md:group-hover:shadow-[0_18px_40px_rgba(13,31,82,0.3)] motion-reduce:transition-none"
+                />
+                <span class="sr-only">{option.buttonText}</span>
+              </span>
+              <span
+                aria-hidden="true"
+                class:list={[
+                  'inline-flex size-11 items-center justify-center rounded-full border-[1.5px] border-primary-blue-dark transition-colors group-hover:bg-primary-blue-dark group-hover:text-secondary-yellow md:size-14',
+                ]}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </span>
             </a>
-          </div>
+          </li>
         ))
       }
-    </div>
-
-    <p class="text-center text-white/60 mt-8 text-sm anim-reveal">
-      Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami bantu mencarikannya.
-    </p>
-  </Container>
+    </ul>
+  </div>
 </section>

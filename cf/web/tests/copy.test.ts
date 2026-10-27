@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { footerLinks, heroStats, navLinks, programCards } from '~/lib/site';
+import { branches, footerLinks, navLinks, programCards } from '~/lib/site';
 import { CATEGORY_DESCRIPTION } from '~/lib/team-types';
 import { readRoot, readWeb } from './helpers';
 
@@ -17,14 +17,13 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     web: 'src/components/sections/HeroSection.astro',
     root: ['components/sections/HeroSection.tsx'],
     phrases: [
-      'Pendidikan Untuk Semua',
+      // SAKEM-111 ("Opsi C") drops the eyebrow and the photo's alt, and sets the headline in two lines.
       'Membuka Pintu',
-      'Pendidikan Tinggi</span> untuk',
-      'Setiap Anak Indonesia',
+      'Pendidikan Tinggi',
+      'untuk Setiap Anak Indonesia',
       'Kami hadir untuk mendobrak hambatan ekonomi dan geografis yang menghalangi siswa dari daerah terpencil dan keluarga kurang mampu dalam meraih impian mereka ke perguruan tinggi.',
       'Lihat Program Kami',
       'Dukung Misi Kami',
-      'Siswa Sakola Kembara belajar bersama',
     ],
   },
   {
@@ -32,7 +31,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     web: 'src/components/sections/ActivitiesSection.astro',
     root: ['components/sections/ActivitiesSection.tsx'],
     phrases: [
-      'Program Kami',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka panjang.',
       'Lihat Detail',
@@ -44,8 +42,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     root: ['components/layout/footer.tsx'],
     phrases: [
       'Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia.',
-      'Bandung, Jawa Barat, Indonesia',
-      'Jelajahi',
       'contact@sakolakembara.org',
       'Social Media',
       'Yayasan Sakola Kembara Indonesia. All rights reserved.',
@@ -347,10 +343,6 @@ describe('data copied from lib/data.ts and lib/team-types.ts', () => {
     for (const l of [...navLinks, ...footerLinks]) expect(l.href, l.label).not.toMatch(/^\/laporan/);
   });
 
-  it('hero stats', () => {
-    for (const s of heroStats) expect(data).toContain(`{ number: "${s.number}", label: "${s.label}" }`);
-  });
-
   it('the three program cards: title, tag and every bullet', () => {
     expect(programCards.map((p) => p.id)).toEqual(['prapembinaan', 'pembinaan', 'pasca-pembinaan']);
     for (const p of programCards) {
@@ -363,5 +355,26 @@ describe('data copied from lib/data.ts and lib/team-types.ts', () => {
   it('team category descriptions', () => {
     const root = norm(readRoot('app/(public)/tim/_tim-content.tsx'));
     for (const text of Object.values(CATEGORY_DESCRIPTION)) expect(root).toContain(text);
+  });
+});
+
+describe('footer branches (SAKEM-111)', () => {
+  const legacy = readRoot('lib/data.ts');
+  const footer = readWeb('src/components/Footer.astro');
+  it.each(branches.map((b) => [b.name, b.region] as const))('%s (%s) is a branch of the legacy map data', (name, region) => {
+    expect(legacy).toContain(`name: "Sakola Kembara ${name}"`);
+    expect(legacy).toContain(`region: "${region}"`);
+  });
+  it('the four branches with an account (Dzul, 2026-10-27) link to it in a new tab; the others are plain text', () => {
+    expect(branches).toHaveLength(8);
+    expect(Object.fromEntries(branches.filter((b) => b.instagram).map((b) => [b.name, b.instagram]))).toEqual({
+      Bandung: 'sakembandung_',
+      Cibodas: 'sakemcibodas',
+      Bojong: 'sakembojong',
+      Cirebon: 'sakolakembaracirebon',
+    });
+    expect(footer).toContain('href={`https://instagram.com/${branch.instagram}`}');
+    expect(footer).toContain('rel="noopener noreferrer"');
+    expect(footer).toContain('>{branch.name}</span>');
   });
 });

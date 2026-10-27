@@ -1,92 +1,79 @@
 ---
-import Button from '~/components/Button.astro';
-import Container from '~/components/Container.astro';
-import Eyebrow from '~/components/Eyebrow.astro';
-import Heading from '~/components/Heading.astro';
+import { buttonClasses } from '~/lib/ui';
 import Img from '~/components/Img.astro';
-import { heroStats } from '~/lib/site';
 
 /**
- * Homepage hero. Copy is verbatim from the root components/sections/HeroSection.tsx.
- * The photo is the LCP element: eager, fetchpriority="high", a WebP ladder made
- * at build time (the original is a 1.4 MB PNG; the 1304 px WebP is about 180 KB),
- * width/height set. Entrance motion is
- * pure CSS (.anim-fade-up); the photo panel only scales in, it does not fade,
- * so it can paint as LCP right away.
+ * Homepage hero (SAKEM-111, design "Opsi C"): a full-screen video loop with the
+ * headline bottom-left and the actions bottom-right. The navbar floats over it
+ * (Base's `navOverlay`). Copy is verbatim from the root HeroSection.tsx.
+ *
+ * The poster is the LCP element: a real <img> (eager, fetchpriority="high",
+ * WebP ladder), with the video laid over it. The video is silent, 16 s, and
+ * comes in two sizes (720p for phones, 1080p above). It is not in the HTML as
+ * a playing element: the script below adds `autoplay` only when the visitor has
+ * not asked for reduced motion or data saving, so those visitors see the poster.
+ * There is no pause button (Dzul, 2026-10-27): reduced motion is the way out,
+ * a known gap against WCAG 2.2.2 (moving content longer than five seconds).
  */
 ---
 
-<section
-  class="pt-[var(--hero-top,8rem)] md:pt-40 pb-16 md:pb-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden"
->
+<header class="relative isolate flex min-h-[max(100svh,40rem)] flex-col overflow-hidden bg-primary-blue-dark text-white">
+  <Img
+    src="/images/home/hero-poster.jpg"
+    alt=""
+    sizes="100vw"
+    loading="eager"
+    fetchpriority="high"
+    class="absolute inset-0 -z-20 h-full w-full object-cover"
+  />
+  <video
+    id="hero-video"
+    muted
+    loop
+    playsinline
+    preload="none"
+    aria-hidden="true"
+    class="absolute inset-0 -z-20 h-full w-full object-cover"
+  >
+    <source src="/images/home/hero-loop-720.mp4" type="video/mp4" media="(max-width: 767px)" />
+    <source src="/images/home/hero-loop.mp4" type="video/mp4" />
+  </video>
+  {/* Navy at the top for the navbar, navy at the bottom for the headline; the middle stays clear. */}
   <div
     aria-hidden="true"
-    class="absolute -top-1/2 -right-1/5 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(30,136,229,0.08)_0%,transparent_70%)] rounded-full"
+    class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.55)_0%,rgba(13,31,82,0)_22%,rgba(13,31,82,0)_45%,rgba(13,31,82,0.88)_100%)]"
   >
   </div>
 
-  <Container>
-    <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-      <div class="anim-fade-up">
-        <Eyebrow class="mb-4">Pendidikan Untuk Semua</Eyebrow>
+  <div class="flex w-full grow flex-col justify-end gap-5 px-6 pb-12 pt-32 md:px-10">
+    <h1 class="font-body text-[clamp(34px,4.2vw,66px)] font-medium leading-[1.12] tracking-[-0.025em] text-white">
+      <span class="block md:whitespace-nowrap">Membuka Pintu <em class="font-medium not-italic text-secondary-yellow">Pendidikan Tinggi</em></span>{' '}
+      <span class="block md:whitespace-nowrap">untuk Setiap Anak Indonesia</span>
+    </h1>
 
-        <Heading level="display" class="text-gray-900 mb-5 md:mb-6">
-          Membuka Pintu <span class="text-primary-blue">Pendidikan Tinggi</span> untuk Setiap Anak Indonesia
-        </Heading>
-
-        <p class="text-base md:text-lg text-gray-600 mb-7 md:mb-8 leading-relaxed">
-          Kami hadir untuk mendobrak hambatan ekonomi dan geografis yang menghalangi siswa dari daerah terpencil
-          dan keluarga kurang mampu dalam meraih impian mereka ke perguruan tinggi.
-        </p>
-
-        <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
-          {/* The lift on hover is the hero's own touch (DESIGN.md, Buttons). */}
-          <Button
-            href="#activities"
-            class="transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-blue/30"
-          >
-            Lihat Program Kami
-          </Button>
-          <Button href="/donasi" variant="subtle">Dukung Misi Kami</Button>
-        </div>
-
-        {/* A grid, not a flex row: as a flex row the three items could not shrink below their
-            min-content width and pushed the document wider than a phone screen. */}
-        <div class="grid grid-cols-3 gap-4 sm:gap-8 mt-10 md:mt-12 pt-8 border-t border-gray-200">
-          {
-            heroStats.map((stat, index) => (
-              <div class="text-left anim-fade-up" style={`animation-delay:${0.2 + index * 0.1}s`}>
-                <div class="text-[28px] sm:text-4xl font-extrabold text-primary-blue leading-none">
-                  {stat.number.includes('+') || stat.number.includes('%') ? (
-                    <>
-                      {stat.number.replace(/[+%]/g, '')}
-                      <span class="text-secondary-yellow">{stat.number.includes('+') ? '+' : '%'}</span>
-                    </>
-                  ) : (
-                    stat.number
-                  )}
-                </div>
-                <div class="text-xs sm:text-sm text-gray-500 mt-1.5 sm:mt-2 leading-snug">{stat.label}</div>
-              </div>
-            ))
-          }
-        </div>
-      </div>
-
-      <div class="relative" style="animation:scale-in 0.6s ease-out 0.3s both">
-        <div
-          class="w-full aspect-[4/3] md:aspect-auto md:h-[450px] rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl overflow-hidden relative"
-        >
-          <Img
-            src="/images/hero-team.png"
-            alt="Siswa Sakola Kembara belajar bersama"
-            sizes="(min-width: 1024px) 560px, 100vw"
-            loading="eager"
-            fetchpriority="high"
-            class="absolute inset-0 h-full w-full object-cover"
-          />
-        </div>
+    <div class="flex flex-wrap items-end justify-between gap-x-12 gap-y-6">
+      <p class="max-w-[46em] text-balance text-[17px] leading-relaxed md:text-lg text-white/90">
+        Kami hadir untuk mendobrak hambatan ekonomi dan geografis yang menghalangi siswa dari daerah terpencil
+        dan keluarga kurang mampu dalam meraih impian mereka ke perguruan tinggi.
+      </p>
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+        <a href="#activities" class={buttonClasses({ variant: 'white-on-navy', size: 'lg', className: 'px-6 text-primary-blue-dark' })}>
+          Lihat Program Kami
+        </a>
+        <a href="/donasi" class={buttonClasses({ variant: 'outline-on-navy', size: 'lg', className: 'px-6 border-white/75' })}>
+          Dukung Misi Kami
+        </a>
       </div>
     </div>
-  </Container>
-</section>
+  </div>
+</header>
+
+<script>
+  // Start the loop unless the visitor asked for less motion or less data: they keep the still poster.
+  const video = document.getElementById('hero-video') as HTMLVideoElement | null;
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  if (video && !saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    video.preload = 'auto';
+    video.play().catch(() => {}); // Autoplay refused (a low-power mode, say): the poster stays.
+  }
+</script>
