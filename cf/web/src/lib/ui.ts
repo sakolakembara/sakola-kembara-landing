@@ -142,3 +142,15 @@ export const eyebrowClasses = (tone: 'light' | 'dark' = 'light', className?: str
     tone === 'dark' ? 'text-secondary-yellow' : 'text-primary-blue',
     className,
   );
+
+/**
+ * The homepage's polaroid frame (SAKEM-111): a thin frame with a deeper bottom strip, tilted by `--tilt` and
+ * straightened and lifted when its `group` is hovered. Shared by "Cerita & Inspirasi" and "Cerita Sukses Alumni"; the
+ * caller adds the paper colour and a shadow for its background. `polaroidTilted` is the tilt and hover alone (for a card
+ * with its own padding); `polaroidTilt(i)` gives the i-th card its tilt, in order.
+ */
+export const polaroidTilted =
+  'transition-transform duration-300 ease-out [transform:rotate(var(--tilt))] group-hover:[transform:rotate(0deg)_translateY(-6px)] motion-reduce:transition-none';
+export const polaroidFrame = `${polaroidTilted} rounded-[4px] p-1.5 pb-6 md:p-2 md:pb-7`;
+const POLAROID_TILTS = [-1.2, 0.8, -0.6, 1];
+export const polaroidTilt = (index: number) => `--tilt:${POLAROID_TILTS[index % POLAROID_TILTS.length]}deg`;

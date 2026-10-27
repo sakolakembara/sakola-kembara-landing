@@ -1,16 +1,17 @@
 ---
 import Img from '~/components/Img.astro';
 import { impactMetrics, testimonials } from '~/lib/home-data';
+import { polaroidFrame, polaroidTilt, polaroidTilted } from '~/lib/ui';
 
 /**
- * Homepage "Cerita Sukses Alumni" (SAKEM-111; layout after BYQ Truebase "Case
- * Studies Testimonials Grid", option 1 of the mock Dzul chose on 2026-10-27):
- * a centred title, then one portrait card per alumnus of home-data.ts with the
- * quote always shown under the photo (no hover needed, so phones see it too),
- * clamped to four lines. A quote longer than that gets "Baca selengkapnya",
+ * Homepage "Cerita Sukses Alumni" (SAKEM-111; option 1 of the mock Dzul chose on
+ * 2026-10-27, then given the polaroid frame of "Cerita & Inspirasi" the same day):
+ * a centred title, then one tilted polaroid per alumnus of home-data.ts, the
+ * portrait with the name and major on the frame's strip, and the quote under it
+ * (no hover needed, so phones see it too), clamped to four lines. A quote longer than that gets "Baca selengkapnya",
  * which opens the whole quote in a native <dialog> (opened by the document-wide
- * [data-dialog-open] script below). The sunglow card carries the
- * college figure. From md the cards sit in a grid of four; on a phone they
+ * [data-dialog-open] script below). The sunglow note (tilted
+ * like the polaroids) carries the college figure. From md the cards sit in a grid of four; on a phone they
  * scroll sideways, one and a bit at a time.
  */
 const photos: Record<number, string> = {
@@ -48,37 +49,42 @@ const card = 'w-[78%] shrink-0 snap-start md:w-auto';
           return (
             <>
               {index === 3 && (
-                <li class:list={[card, 'flex min-h-[320px] flex-col justify-end gap-2 rounded-xl bg-secondary-yellow p-6 text-primary-blue-dark']}>
-                  <span class="text-[clamp(56px,6vw,88px)] font-medium leading-none tracking-[-0.03em]">{college.number}</span>
-                  <span class="text-[15px]">{college.label}</span>
+                <li class:list={[card, 'group self-start']}>
+                  <div
+                    class:list={[polaroidTilted, 'flex aspect-[4/5] flex-col justify-end gap-2 rounded-[4px] bg-secondary-yellow p-6 text-primary-blue-dark shadow-[0_18px_36px_-16px_rgba(13,31,82,0.4)]']}
+                    style={polaroidTilt(index)}
+                  >
+                    <span class="text-[clamp(56px,6vw,88px)] font-medium leading-none tracking-[-0.03em]">{college.number}</span>
+                    <span class="text-[15px]">{college.label}</span>
+                  </div>
                 </li>
               )}
-              <li class:list={[card, 'flex flex-col overflow-hidden rounded-xl bg-[#FBFBF5] anim-reveal']} style={`--i:${index % 4}`}>
-                <Img
-                  src={photos[story.id]}
-                  alt={story.name}
-                  sizes="(min-width: 768px) 25vw, 78vw"
-                  class="aspect-[4/5] w-full object-cover"
-                />
-                <figure class="flex grow flex-col gap-4 p-5">
-                  <blockquote class="line-clamp-4 text-[15px] leading-relaxed text-gray-700">“{story.quote}”</blockquote>
-                  <figcaption class="mt-auto flex items-end justify-between gap-3">
-                    <span class="flex flex-col">
-                      <strong class="font-semibold text-primary-blue-dark">{story.name}</strong>
-                      <span class="text-sm text-gray-600">{story.major}</span>
-                    </span>
-                    {long && (
-                      <button
-                        type="button"
-                        aria-haspopup="dialog"
-                        data-dialog-open={id}
-                        class="shrink-0 text-sm font-semibold text-primary-blue-dark underline-offset-4 hover:underline"
-                      >
-                        Baca selengkapnya
-                      </button>
-                    )}
+              <li class:list={[card, 'group flex flex-col gap-5 anim-reveal']} style={`--i:${index % 4}`}>
+                <figure class:list={[polaroidFrame, 'bg-white shadow-[0_18px_36px_-16px_rgba(13,31,82,0.4)]']} style={polaroidTilt(index + (index >= 3 ? 1 : 0))}>
+                  <Img
+                    src={photos[story.id]}
+                    alt={story.name}
+                    sizes="(min-width: 768px) 25vw, 78vw"
+                    class="aspect-[4/5] w-full rounded-[3px] object-cover"
+                  />
+                  <figcaption class="flex flex-col px-1 pt-3">
+                    <strong class="font-semibold text-primary-blue-dark">{story.name}</strong>
+                    <span class="text-sm text-gray-600">{story.major}</span>
                   </figcaption>
                 </figure>
+                <div class="flex flex-col gap-2 px-1">
+                  <blockquote class="line-clamp-4 text-[15px] leading-relaxed text-gray-700">“{story.quote}”</blockquote>
+                  {long && (
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      data-dialog-open={id}
+                      class="self-start text-sm font-semibold text-primary-blue-dark underline-offset-4 hover:underline"
+                    >
+                      Baca selengkapnya
+                    </button>
+                  )}
+                </div>
                 {long && (
                   <dialog
                     id={id}

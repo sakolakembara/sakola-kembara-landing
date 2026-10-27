@@ -1,5 +1,6 @@
 ---
 import Button from '~/components/Button.astro';
+import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 import type { BlogMeta } from '~/lib/blog-types';
 
 /**
@@ -18,8 +19,6 @@ interface Props {
   articles: BlogMeta[];
 }
 const { articles } = Astro.props;
-// A polaroid tilt per card, in order: playful but readable (Dzul, 2026-10-27).
-const tilts = [-1.2, 0.8, -0.6, 1];
 ---
 
 <section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28" id="blog">
@@ -34,10 +33,7 @@ const tilts = [-1.2, 0.8, -0.6, 1];
         articles.map((article, index) => (
           <article class="anim-reveal" style={`--i:${index % 4}`}>
             <a href={`/blog/${article.id}`} class="group flex h-full flex-col gap-6">
-              <div
-                class="rounded-[4px] bg-[#FBFBF5] p-1.5 pb-6 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out [transform:rotate(var(--tilt))] group-hover:[transform:rotate(0deg)_translateY(-6px)] motion-reduce:transition-none md:p-2 md:pb-7"
-                style={`--tilt:${tilts[index % tilts.length]}deg`}
-              >
+              <div class:list={[polaroidFrame, 'bg-[#FBFBF5] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]']} style={polaroidTilt(index)}>
                 <div class="relative aspect-[4/3] overflow-hidden rounded-[3px] bg-primary-blue-dark/10">
                   {article.image && (
                     <img
