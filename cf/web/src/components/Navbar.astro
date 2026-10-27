@@ -4,8 +4,7 @@ import logoLightUrl from '@root/public/images/logo-sakola-kembara-light.png?url'
 import logoUrl from '@root/public/images/logo-sakola-kembara.png?url';
 import { BUILD_PORTAL_ENABLED, portalEnabled } from '~/lib/portal-enabled';
 import { navLinks } from '~/lib/site';
-import { buttonClasses } from '~/lib/ui';
-import Container from './Container.astro';
+import { buttonClasses, containerClasses } from '~/lib/ui';
 import Icon from './Icon.astro';
 import NavbarSession from './NavbarSession.astro';
 
@@ -50,6 +49,11 @@ interface Props {
   overlay?: boolean;
 }
 const { overlay = false } = Astro.props;
+// The menu's one button (SAKEM-111): Donasi, last, in sunglow. The other destinations stay text links.
+const menuLinks = navLinks.filter((link) => link.href !== '/donasi');
+const donate = navLinks.find((link) => link.href === '/donasi')!;
+const donateClass = buttonClasses({ variant: 'yellow-on-navy', size: 'sm', className: 'font-bold text-primary-blue-dark' });
+const barClass = 'py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]';
 const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_PORTAL_ENABLED, runtime: env.PORTAL_ENABLED });
 ---
 
@@ -60,7 +64,8 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
 >
   {/* The announcement strip is inserted here by the script, when there is one. */}
   <div id="announcement-slot"></div>
-  <Container class="py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]">
+  {/* Floating over the full-bleed hero, the bar spans the full width, its edges in line with the hero's (SAKEM-111). */}
+  <div class={overlay ? `w-full px-6 md:px-10 ${barClass}` : containerClasses('page', barClass)}>
     <a href="/" aria-label="Sakola Kembara" class="flex items-center justify-self-start">
       <img src={logoUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" data-logo-solid={overlay || undefined} />
       {overlay && <img src={logoLightUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" data-logo-overlay />}
@@ -68,7 +73,7 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
 
     <ul class:list={['hidden md:flex items-center gap-6 lg:gap-7', !portalOn && 'md:col-start-3 md:justify-end']}>
       {
-        navLinks.map((link) => (
+        menuLinks.map((link) => (
           <li>
             <a
               href={link.href}
@@ -79,6 +84,7 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
           </li>
         ))
       }
+      <li><a href={donate.href} data-nav-cta class={donateClass}>{donate.label}</a></li>
     </ul>
 
     {
@@ -100,12 +106,12 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
       <Icon name="menu" data-icon-open />
       <Icon name="x" class="hidden" data-icon-close />
     </button>
-  </Container>
+  </div>
 
   <div id="mobile-menu" hidden class="md:hidden bg-white border-t border-gray-100 py-4 px-6">
     <ul class="flex flex-col gap-4">
       {
-        navLinks.map((link) => (
+        menuLinks.map((link) => (
           <li>
             <a
               href={link.href}
@@ -116,6 +122,7 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
           </li>
         ))
       }
+      <li><a href={donate.href} data-nav-cta class={`${donateClass} w-full`}>{donate.label}</a></li>
     </ul>{
       portalOn && (
         <div class="flex flex-col mt-6">

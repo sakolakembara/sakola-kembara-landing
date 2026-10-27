@@ -12,8 +12,8 @@ import Img from '~/components/Img.astro';
  * comes in two sizes (720p for phones, 1080p above). It is not in the HTML as
  * a playing element: the script below adds `autoplay` only when the visitor has
  * not asked for reduced motion or data saving, so those visitors see the poster.
- * The pause button stops the loop for anyone (WCAG 2.2.2: moving content longer
- * than five seconds needs a way to pause it).
+ * There is no pause button (Dzul, 2026-10-27): reduced motion is the way out,
+ * a known gap against WCAG 2.2.2 (moving content longer than five seconds).
  */
 ---
 
@@ -45,7 +45,7 @@ import Img from '~/components/Img.astro';
   >
   </div>
 
-  <div class="mx-auto flex w-full max-w-[1280px] grow flex-col justify-end gap-8 px-6 pb-12 pt-32">
+  <div class="flex w-full grow flex-col justify-end gap-8 px-6 pb-12 pt-32 md:px-10">
     <h1 class="font-display text-[clamp(32px,3.6vw,52px)] font-medium leading-[1.12] tracking-[-0.025em] text-white">
       <span class="block md:whitespace-nowrap">Membuka Pintu <em class="font-medium">Pendidikan Tinggi</em></span>{' '}
       <span class="block md:whitespace-nowrap">untuk Setiap Anak Indonesia</span>
@@ -63,51 +63,17 @@ import Img from '~/components/Img.astro';
         <a href="/donasi" class={buttonClasses({ variant: 'outline-on-navy', size: 'lg', className: 'px-6 border-white/75' })}>
           Dukung Misi Kami
         </a>
-        <button
-          id="hero-video-toggle"
-          type="button"
-          hidden
-          aria-label="Jeda video"
-          class="flex size-12 items-center justify-center rounded-full border-[1.5px] border-white/60 bg-primary-blue-dark/35 text-white transition-colors hover:bg-primary-blue-dark/60"
-        >
-          <svg data-icon-pause width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <rect x="3" y="2" width="3.5" height="12" rx="1" fill="currentColor"></rect>
-            <rect x="9.5" y="2" width="3.5" height="12" rx="1" fill="currentColor"></rect>
-          </svg>
-          <svg data-icon-play class="hidden" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M4 2.5v11a.6.6 0 0 0 .9.5l9-5.5a.6.6 0 0 0 0-1l-9-5.5a.6.6 0 0 0-.9.5z" fill="currentColor"></path>
-          </svg>
-        </button>
       </div>
     </div>
   </div>
 </header>
 
 <script>
-  // Start the loop unless the visitor asked for less motion or less data; then show the pause button.
+  // Start the loop unless the visitor asked for less motion or less data: they keep the still poster.
   const video = document.getElementById('hero-video') as HTMLVideoElement | null;
-  const toggle = document.getElementById('hero-video-toggle');
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-  if (video && toggle && !saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const show = (playing: boolean) => {
-      toggle.setAttribute('aria-label', playing ? 'Jeda video' : 'Putar video');
-      toggle.querySelector('[data-icon-pause]')?.classList.toggle('hidden', !playing);
-      toggle.querySelector('[data-icon-play]')?.classList.toggle('hidden', playing);
-    };
+  if (video && !saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     video.preload = 'auto';
-    video.play().then(
-      () => {
-        toggle.hidden = false;
-        show(true);
-      },
-      () => {}, // Autoplay refused (a low-power mode, say): the poster stays, and so does the hidden button.
-    );
-    toggle.addEventListener('click', () => {
-      if (video.paused) void video.play().then(() => show(true));
-      else {
-        video.pause();
-        show(false);
-      }
-    });
+    video.play().catch(() => {}); // Autoplay refused (a low-power mode, say): the poster stays.
   }
 </script>

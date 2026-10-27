@@ -3,50 +3,37 @@ import { problemStats } from '~/lib/home-data';
 import StatDetail from './problem/StatDetail.astro';
 
 /**
- * Homepage "Mengapa Kami Ada?" (SAKEM-111, design "Opsi C"): the three figures
- * of problemStats. The first and third are written out in the sentence on the
- * left (keep them in step with home-data.ts); the one with a
- * detail text is drawn as a bar, with "Mengapa ini terjadi?" opening that text
- * in a <dialog> (StatDetail; the opener script is below).
+ * Homepage "Mengapa Kami Ada?" (SAKEM-111; layout after BYQ Lavender Shore
+ * "Statistics with Large Numbers"): a navy band, the title and the answer on
+ * top, then one ruled row per figure of problemStats, the sentence on the left
+ * and the figure large on the right (first on a phone). The figure with a detail text carries
+ * "Mengapa ini terjadi?", which opens that text in a <dialog> (StatDetail; the
+ * opener script is below).
  */
-const share = problemStats[1];
-if (share.chart.kind !== 'share') throw new Error('problemStats[1] must be the share chart');
-const chart = share.chart;
-const strong = 'font-semibold text-primary-blue-dark';
 ---
 
-<section class="bg-white px-6 py-16 md:py-24">
-  <div class="mx-auto grid max-w-[1280px] items-center gap-14 lg:grid-cols-2">
-    <div class="flex flex-col gap-5 anim-reveal">
-      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
-        Mengapa Kami Ada?
-      </h2>
-      <p class="text-lg leading-relaxed text-gray-700">
-        Hanya <strong class={strong}>3 dari 10</strong> anak Indonesia yang memiliki akses ke pendidikan tinggi. Anak kota punya
-        kesempatan <strong class={strong}>2x lebih besar</strong> untuk kuliah.
+<section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28">
+  <div class="mx-auto flex max-w-[1440px] flex-col gap-14 md:gap-20">
+    <div class="grid items-end gap-6 md:grid-cols-2 anim-reveal">
+      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em]">Mengapa Kami Ada?</h2>
+      <p class="font-display text-[clamp(22px,2.2vw,30px)] italic leading-snug text-secondary-yellow md:justify-self-end">
+        Kami hadir untuk mengubah realitas ini.
       </p>
-      <p class="font-display text-[26px] italic text-primary-blue-dark">Kami hadir untuk mengubah realitas ini.</p>
     </div>
 
-    <figure class="flex flex-col gap-4 rounded-[20px] bg-[#FAFAF7] p-6 md:p-8 anim-reveal" style="--i:1">
-      <figcaption class="text-base font-semibold text-gray-800">{chart.caption}</figcaption>
-      <div role="img" aria-label={chart.label} class="flex h-16 overflow-hidden rounded-xl">
-        <div class="flex items-center bg-primary-blue-dark px-4 font-bold text-white" style={`width:${chart.share * 100}%`}>
-          {share.number}
-        </div>
-        <div class="grow bg-[#E3E8F1]"></div>
-      </div>
-      <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-700">
-        <span class="flex items-center gap-2">
-          <span aria-hidden="true" class="inline-block size-3 rounded-[3px] bg-primary-blue-dark"></span>{chart.highlightLabel}
-        </span>
-        <span class="flex items-center gap-2">
-          <span aria-hidden="true" class="inline-block size-3 rounded-[3px] border border-[#C5CEDD] bg-[#E3E8F1]"></span>{chart.restLabel}
-        </span>
-      </div>
-      <p class="text-[15px] leading-relaxed text-gray-600">{share.text}.</p>
-      {share.detail && <StatDetail id="problem-detail-2" stat={share} />}
-    </figure>
+    <ul class="border-b border-white/15">
+      {
+        problemStats.map((stat, index) => (
+          <li class="grid gap-4 border-t border-white/15 py-8 md:grid-cols-2 md:gap-10 md:py-10 anim-reveal" style={`--i:${index}`}>
+            <p class="font-display text-[clamp(64px,8vw,120px)] font-medium leading-[0.9] tracking-[-0.04em] md:order-2">{stat.number}</p>
+            <div class="flex flex-col items-start gap-5 md:order-1">
+              <p class="max-w-[28em] text-lg leading-relaxed text-white/85">{stat.text}.</p>
+              {stat.detail && <StatDetail id={`problem-detail-${index + 1}`} stat={stat} />}
+            </div>
+          </li>
+        ))
+      }
+    </ul>
   </div>
 </section>
 

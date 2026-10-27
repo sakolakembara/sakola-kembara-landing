@@ -118,7 +118,7 @@ html {
   backdrop-filter: none;
 }
 
-#site-nav[data-overlay]:not([data-solid]) :is(ul a, #nav-toggle) {
+#site-nav[data-overlay]:not([data-solid]) :is(ul a:not([data-nav-cta]), #nav-toggle) {
   color: var(--white);
 }
 

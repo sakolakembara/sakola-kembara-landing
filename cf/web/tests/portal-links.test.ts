@@ -26,8 +26,9 @@ describe('the navbar button follows the portal switch (SAKEM-103, Phase A)', () 
     expect(navbar).not.toContain('REGISTRATION_PATH');
     expect(navbar).not.toMatch(/portalOn \?/);
     expect(navbar).not.toContain('/daftar');
-    // the links of the source: the logo, the bar's navLinks list, the menu's navLinks list, and the two Masuk links (portal on only)
-    expect(navbar.match(/<a\b/g)).toHaveLength(1 + 1 + 1 + 2);
+    // the links of the source: the logo, the bar's and the menu's lists of text links, the Donasi button of each (SAKEM-111),
+    // and the two Masuk links (portal on only)
+    expect(navbar.match(/<a\b/g)).toHaveLength(1 + 1 + 1 + 2 + 2);
   });
 
   it('the desktop menu follows the switch (Dzul, 2026-10-16): packed to the RIGHT in the third column while the portal is off, in the centre column as before while it is on; the grid, the logo and the mobile menu do not change', () => {

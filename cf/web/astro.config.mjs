@@ -113,7 +113,8 @@ export default defineConfig({
       }),
     ],
     resolve: { alias: { '@root': repoRoot.replace(/\/$/, '') } },
-    // Dev server only: allow imports of the legacy repo's public/ images.
-    server: { fs: { allow: [repoRoot] } },
+    // Dev server only: allow imports of the legacy repo's public/ images, and answer on the tailnet host
+    // (`tailscale serve` previews, *.ts.net) besides localhost.
+    server: { fs: { allow: [repoRoot] }, allowedHosts: ['.ts.net'] },
   },
 });

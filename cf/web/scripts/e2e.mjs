@@ -81,7 +81,7 @@ const MENU_OFF = '<ul class="hidden md:flex items-center gap-6 lg:gap-7 md:col-s
 const menuLists = (nav) => nav.match(/<ul class="hidden md:flex[^"]*">/g) ?? [];
 function navbarProblems(html) {
   const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
-  const menu = ['/', '/tim', '/gabung-siswa', '/donasi', '/blog']; // five items since SAKEM-105: the reports are a section of /donasi
+  const menu = ['/', '/tim', '/gabung-siswa', '/blog', '/donasi']; // five items since SAKEM-105; Donasi last, the one button, since SAKEM-111: the reports are a section of /donasi
   const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
   const problems = [];
   if (JSON.stringify(hrefs) !== JSON.stringify(['/', ...menu, ...menu])) problems.push(`links: ${hrefs.join(' ')}`);
@@ -1809,9 +1809,11 @@ await check('home', '/ has the video hero, then the seven sections in order (des
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.equal(stubHits().length, 0);
 });
-await check('home', '/ content counts: 1 share chart, 3 program tiles, 2 stories, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
+await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program tiles, 2 stories, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
   const html = await homeHtml();
-  assert.equal((html.match(/<div role="img" aria-label=/g) ?? []).length, 1);
+  const between = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
+  assert.equal((between('id="impact"', 'Mengapa Kami Ada?').match(/<li[\s>]/g) ?? []).length, 4);
+  assert.equal((between('Mengapa Kami Ada?', 'id="activities"').match(/<li[\s>]/g) ?? []).length, 3);
   assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
   assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 2);
   assert.equal((html.match(/<li class="w-\[136px\]/g) ?? []).length, 6);

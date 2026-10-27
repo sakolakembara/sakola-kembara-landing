@@ -55,7 +55,7 @@ describe.skipIf(!built)('home page build output', () => {
   it('headings: section h2s in order, the sub-headings of Program and Partners', () => {
     const h2 = all(html, /<h2[^>]*>[\s\S]*?<\/h2>/g).map(text);
     expect(h2).toEqual([
-      'Total Siswa Terbantu',
+      'Pencapaian Sakola Kembara',
       'Mengapa Kami Ada?',
       'Mengapa ini terjadi?', // the heading of the stat dialog, in the HTML for crawlers
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
@@ -69,13 +69,13 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Hero', () => {
-    it('the video is silent, looped, inline, not preloaded, and has a phone size; the pause button waits for the script', () => {
+    it('the video is silent, looped, inline, not preloaded, and has a phone size; no pause button (Dzul, 2026-10-27)', () => {
       const video = hero.match(/<video[^>]*>/)![0];
       for (const a of ['muted', 'loop', 'playsinline', 'preload="none"', 'aria-hidden="true"']) expect(video).toContain(a);
       expect(video).not.toContain('autoplay'); // the script starts it, unless the visitor asked for reduced motion or data saving
       expect(hero).toContain('<source src="/images/home/hero-loop-720.mp4" type="video/mp4" media="(max-width: 767px)">');
       expect(hero).toContain('<source src="/images/home/hero-loop.mp4" type="video/mp4">');
-      expect(hero).toMatch(/<button id="hero-video-toggle" type="button" hidden aria-label="Jeda video"/);
+      expect(hero).not.toMatch(/<button[\s>]/);
     });
     it('the two actions: the program section and the donation page', () => {
       const links = all(hero, /<a href="[^"]+"[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
@@ -87,23 +87,23 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Impact', () => {
-    it('has the four metrics: the total as the figure, the other three in the sentence', () => {
-      for (const m of impactMetrics) expect(text(impact)).toContain(m.number);
-      expect(text(impact)).toContain(`${impactMetrics[0].number} ${impactMetrics[0].label}`);
-      expect(text(impact)).toContain('84% berkuliah (60% di PTN), 19 siswa diterima di Top 3 Universitas di Indonesia, dan 172 siswa di Program 2026/2027.');
+    it('the four metrics as rising cards, the total last, with their labels verbatim', () => {
+      const cards = all(impact, /<li[\s>][\s\S]*?<\/li>/g).map(text);
+      expect(cards).toEqual([impactMetrics[3], impactMetrics[2], impactMetrics[1], impactMetrics[0]].map((m) => `${m.number} ${m.label}`));
+      expect(text(impact)).toContain('Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.');
       expect(impact).toContain('<a href="#cerita"');
     });
   });
 
   describe('Problem', () => {
-    it('reads the three figures, draws the share, and wires the one stat detail dialog to its button', () => {
-      expect(text(problem)).toContain('Hanya 3 dari 10 anak Indonesia yang memiliki akses ke pendidikan tinggi.');
-      expect(text(problem)).toContain('Anak kota punya kesempatan 2x lebih besar untuk kuliah.');
-      const share = problemStats[1];
-      expect(text(problem)).toContain(share.number);
-      expect(text(problem)).toContain(share.text);
-      const charts = all(problem, /<div role="img" aria-label="[^"]+"/g);
-      expect(charts).toEqual([`<div role="img" aria-label="${share.chart.label}"`]);
+    it('one ruled row per figure, and the one stat detail dialog wired to its button', () => {
+      const rows = all(problem, /<li[\s>][\s\S]*?<\/li>/g);
+      expect(rows).toHaveLength(problemStats.length);
+      problemStats.forEach((stat, i) => {
+        expect(text(rows[i])).toContain(stat.number);
+        expect(text(rows[i])).toContain(`${stat.text}.`);
+      });
+      expect(text(problem)).toContain('Kami hadir untuk mengubah realitas ini.');
 
       const detailCount = problemStats.filter((s) => s.detail).length;
       expect(all(problem, /<dialog[\s>]/g)).toHaveLength(detailCount);

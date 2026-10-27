@@ -85,38 +85,24 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     /** Stubs what happy-dom lacks: playback, and the reduced-motion query. */
     function stubMedia(reducedMotion: boolean) {
       const video = document.getElementById('hero-video') as HTMLVideoElement;
-      let paused = true;
-      Object.defineProperty(video, 'paused', { get: () => paused, configurable: true });
-      const play = vi.fn(() => ((paused = false), Promise.resolve()));
+      const play = vi.fn(() => Promise.resolve());
       video.play = play;
-      video.pause = vi.fn(() => void (paused = true));
       vi.stubGlobal('matchMedia', (q: string) => ({ matches: reducedMotion && q.includes('reduce') }));
-      return { video, play, toggle: document.getElementById('hero-video-toggle') as HTMLButtonElement };
+      return { video, play };
     }
 
-    it('plays the loop, then shows the pause button, which pauses and resumes it', async () => {
-      const { video, play, toggle } = stubMedia(false);
-      expect(toggle.hidden).toBe(true);
+    it('plays the loop', async () => {
+      const { video, play } = stubMedia(false);
       await runScript(html, 'hero-video');
-      await Promise.resolve();
       expect(play).toHaveBeenCalledTimes(1);
       expect(video.preload).toBe('auto');
-      expect(toggle.hidden).toBe(false);
-      expect(toggle.getAttribute('aria-label')).toBe('Jeda video');
-      toggle.click();
-      expect(video.paused).toBe(true);
-      expect(toggle.getAttribute('aria-label')).toBe('Putar video');
-      toggle.click();
-      await Promise.resolve();
-      expect(video.paused).toBe(false);
-      expect(toggle.getAttribute('aria-label')).toBe('Jeda video');
     });
 
-    it('with reduced motion the video never starts and the poster stays, without a button', async () => {
-      const { play, toggle } = stubMedia(true);
+    it('with reduced motion the video never starts and the poster stays', async () => {
+      const { video, play } = stubMedia(true);
       await runScript(html, 'hero-video');
       expect(play).not.toHaveBeenCalled();
-      expect(toggle.hidden).toBe(true);
+      expect(video.preload).toBe('none');
     });
   });
 
