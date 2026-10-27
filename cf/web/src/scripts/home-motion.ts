@@ -4,7 +4,9 @@
  * reduced motion. Nothing is hidden before this runs: without JS, before it loads, or if it fails, every element simply
  * shows. Only elements still below the fold when it starts are animated, so nothing visible flickers.
  *
- * - Section titles (h2, not the screen-reader-only one): their words rise into place, line by line (SplitText).
+ * - Section titles (h2, not the screen-reader-only one): their words rise into place, line by line (SplitText). Each line's
+ *   mask is as tall as the line box, which cuts the descenders (j, g, p) at line-height 1.15: the mask gets room below
+ *   (padding, taken back by a negative margin so nothing moves), and the split is undone once the words are in place.
  * - `.anim-reveal` blocks: fade and rise, in batches as they enter, staggered within a batch.
  * - The impact band's photo drifts a little against the scroll (parallax).
  * The triggers are measured again when a lazy image loads, since that moves everything under it.
@@ -22,12 +24,14 @@ export function start() {
   for (const title of document.querySelectorAll<HTMLElement>('main h2:not(.sr-only)')) {
     if (!below(title)) continue;
     const split = SplitText.create(title, { type: 'lines,words', mask: 'lines', aria: 'auto' });
+    gsap.set(split.masks, { paddingBottom: '0.2em', marginBottom: '-0.2em' });
     gsap.from(split.words, {
       yPercent: 110,
       duration: 0.9,
       ease: 'power3.out',
       stagger: 0.04,
       scrollTrigger: { trigger: title, start: 'top 85%', once: true },
+      onComplete: () => split.revert(),
     });
   }
 
