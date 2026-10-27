@@ -137,7 +137,7 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Stories', () => {
-    it('one letter per testimonial (only the first active, the others inert) with the whole quote, and a small card per alumnus (the first one hidden)', () => {
+    it('one letter per testimonial (only the first active, the others inert) with the whole quote, and a small photo per alumnus, the first one current', () => {
       expect(all(stories, /<figure[\s>]/g)).toHaveLength(testimonials.length);
       const panels = all(stories, /<div id="cerita-\d+"[^>]*>/g);
       expect(panels.map((p) => /\sinert[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i !== 0));
@@ -149,6 +149,9 @@ describe.skipIf(!built)('home page build output', () => {
         expect(stories).toContain(`aria-label="Tampilkan cerita ${t.name}"`);
       }
       expect(stories).not.toContain('<dialog');
+      const thumbs = all(stories, /<button[^>]*data-story="\d+"[^>]*>/g);
+      expect(thumbs).toHaveLength(testimonials.length);
+      expect(thumbs.map((t) => t.includes('aria-current="true"'))).toEqual(testimonials.map((_, i) => i === 0));
       expect(text(stories)).not.toContain('Perjalanan inspiratif');
     });
   });

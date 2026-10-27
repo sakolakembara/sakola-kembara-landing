@@ -130,19 +130,19 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
   describe('stories', () => {
     const shown = () => [...document.querySelectorAll<HTMLElement>('#cerita .story')].filter((s) => s.hasAttribute('data-active') && !s.inert).map((s) => s.id);
     const cards = () => [...document.querySelectorAll<HTMLElement>('#cerita [data-story]')];
-    it('a small card shows its story large (and leaves the cards); the bar ending shows the next story, wrapping', async () => {
+    const current = () => cards().map((c) => c.getAttribute('aria-current') === 'true');
+    it('a small photo shows its story and becomes current; its outline ending shows the next story, wrapping', async () => {
       await runScript(html, 'data-stories');
       const ids = [...document.querySelectorAll<HTMLElement>('#cerita .story')].map((s) => s.id);
       expect(shown()).toEqual([ids[0]]);
-      expect(cards().map((c) => c.parentElement!.hidden)).toEqual(ids.map((_, i) => i === 0));
+      expect(current()).toEqual(ids.map((_, i) => i === 0));
       cards()[3].click();
       expect(shown()).toEqual([ids[3]]);
-      expect(cards()[3].parentElement!.hidden).toBe(true);
-      expect(cards()[0].parentElement!.hidden).toBe(false);
-      const last = document.getElementById(ids.at(-1)!)!;
+      expect(current()).toEqual(ids.map((_, i) => i === 3));
       cards()[ids.length - 1].click();
-      last.querySelector('.story-bar')!.dispatchEvent(new Event('animationend'));
+      cards()[ids.length - 1].querySelector('.story-bar')!.dispatchEvent(new Event('animationend'));
       expect(shown()).toEqual([ids[0]]);
+      expect(cards()[0].hasAttribute('data-active')).toBe(true);
     });
   });
 
