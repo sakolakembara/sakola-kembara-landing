@@ -49,12 +49,6 @@ export const footerLinks = [
   { href: '/kontak', label: 'Kontak' },
 ];
 
-export const heroStats = [
-  { number: '600+', label: 'Siswa Terbantu' },
-  { number: '84%', label: 'Berkuliah' },
-  { number: '8', label: 'Wilayah Jangkauan' },
-];
-
 export interface ProgramCard {
   id: string;
   title: string;

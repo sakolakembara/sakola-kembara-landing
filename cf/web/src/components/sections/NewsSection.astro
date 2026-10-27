@@ -1,12 +1,11 @@
 ---
 import Button from '~/components/Button.astro';
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
 import Tag from '~/components/Tag.astro';
 import type { BlogMeta } from '~/lib/blog-types';
 
 /**
- * Homepage "Cerita & Inspirasi": the newest articles, as the root NewsSection
+ * Homepage "Cerita & Inspirasi" (restyled for SAKEM-111, design "Opsi C"): the
+ * newest articles, as the root NewsSection
  * does. The caller passes them (the home page takes the three newest from the
  * blog index at build time). A cover is optional: dashboard-authored posts can
  * have none, and then the card shows no <img> at all rather than an empty src.
@@ -19,11 +18,13 @@ interface Props {
 const { articles } = Astro.props;
 ---
 
-<section class="py-14 md:py-16 bg-white" id="blog">
-  <Container>
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8 anim-reveal">
-      <SectionHeader align="left" eyebrow="Blog" title="Cerita & Inspirasi" />
-      <Button href="/blog" variant="outline" class="self-start sm:self-auto">Lihat Semua</Button>
+<section class="px-6 py-20 md:py-28" id="blog">
+  <div class="mx-auto max-w-[1280px]">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-10 anim-reveal">
+      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
+        Cerita &amp; Inspirasi
+      </h2>
+      <Button href="/blog" variant="outline-navy" class="self-start sm:self-auto">Lihat Semua</Button>
     </div>
 
     {/* Compact article list */}
@@ -33,14 +34,14 @@ const { articles } = Astro.props;
           <article class="anim-reveal" style={`--i:${index}`}>
             <a
               href={`/blog/${article.id}`}
-              class="group block bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all"
+              class="group block"
             >
-              <div class="h-[160px] relative overflow-hidden">
+              <div class="aspect-[4/3] relative overflow-hidden rounded-[20px] bg-gray-100">
                 {article.image && (
                   <img
                     src={article.image}
                     srcset={article.imageSrcset ?? undefined}
-                    sizes="(min-width: 1200px) 368px, (min-width: 768px) 33vw, 100vw"
+                    sizes="(min-width: 1280px) 410px, (min-width: 768px) 33vw, 100vw"
                     alt={article.title}
                     width={article.imageWidth ?? undefined}
                     height={article.imageHeight ?? undefined}
@@ -53,9 +54,9 @@ const { articles } = Astro.props;
                   {article.category}
                 </Tag>
               </div>
-              <div class="p-4">
-                <p class="text-xs text-gray-400 mb-2">{article.date}</p>
-                <h3 class="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 group-hover:text-primary-blue transition-colors">
+              <div class="pt-4">
+                <p class="text-sm text-gray-500 mb-1.5">{article.date}</p>
+                <h3 class="text-lg font-semibold text-gray-800 leading-snug line-clamp-2 group-hover:text-primary-blue-dark transition-colors">
                   {article.title}
                 </h3>
               </div>
@@ -64,5 +65,5 @@ const { articles } = Astro.props;
         ))
       }
     </div>
-  </Container>
+  </div>
 </section>

@@ -1,94 +1,87 @@
 ---
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
+import Img from '~/components/Img.astro';
 import { REGISTRATION_PATH } from '~/lib/site';
 
 /**
- * Homepage "Bergabung Bersama Kami": four ways to take part, one card each.
- * Copy is verbatim from the root CTASection.tsx. The cards' colored buttons are
- * a documented exception to the Button variants (DESIGN.md, Color): orange
- * appears nowhere else. Every class is spelled out in full so Tailwind finds it.
+ * Homepage "Jadilah Bagian dari Perubahan" (SAKEM-111, design "Opsi C"): four
+ * ways to take part, a photo card each with the role and its action only. The
+ * donor card's button is the one sunglow button of the section. The photos
+ * are decorative (alt=""): the card's link text is the role and its action.
  */
 const ctaOptions = [
   {
     id: 'siswa',
     title: 'Menjadi Siswa',
-    description:
-      'Pembinaan penuh selama satu tahun, Agustus hingga April, tanpa biaya. Terbuka bagi siswa kelas 12 dan lulusan yang menyiapkan UTBK maupun ujian mandiri.',
     buttonText: 'Daftar Sekarang',
     // SAKEM-103: straight to the registration shortlink (it was /gabung-siswa, the information page).
     href: REGISTRATION_PATH,
-    color: 'bg-orange-500 hover:bg-orange-600 text-white',
+    photo: '/images/program/pembinaan.jpg',
   },
   {
     id: 'donatur',
     title: 'Menjadi Donatur',
-    description:
-      'Donasi mulai Rp50.000 dapat membantu menopang kegiatan belajar pekanan, asrama, dan pendampingan beasiswa hingga siswa benar-benar duduk di bangku kuliah.',
     buttonText: 'Donasi Sekarang',
     href: '/donasi',
-    color: 'bg-primary-blue hover:bg-primary-blue-dark text-white',
+    photo: '/images/home/hero-poster.jpg',
   },
   {
     id: 'relawan',
     title: 'Menjadi Relawan',
-    description:
-      'Mengajar di kelas pekanan, mendampingi asrama, atau menopang operasional cabang. Sekitar separuh relawan kami adalah alumni yang kembali.',
     buttonText: 'Gabung Tim',
     href: '/kontak',
-    color: 'bg-secondary-green hover:bg-green-600 text-white',
+    photo: '/images/hero-team.png',
   },
   {
     id: 'partner',
     title: 'Menjadi Partner',
-    description:
-      'Dukungan institusi memperluas jangkauan kami dari delapan cabang di tiga provinsi ke daerah yang belum terjangkau.',
     buttonText: 'Hubungi Kami',
     href: '/kontak',
-    color: 'bg-secondary-yellow hover:bg-secondary-yellow/90 text-gray-900',
+    photo: '/images/program/pasca-pembinaan.jpg',
   },
 ];
 ---
 
-<section class="py-14 md:py-16 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden">
-  {/* Background decoration */}
-  <div class="absolute inset-0" aria-hidden="true">
-    <div class="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl"></div>
-  </div>
-
-  <Container class="relative z-10">
-    <SectionHeader
-      class="mb-10 anim-reveal"
-      tone="dark"
-      eyebrow="Bergabung Bersama Kami"
-      title="Jadilah Bagian dari Perubahan"
-      lead="Pintu menuju pendidikan tinggi tidak terbuka dengan sendirinya. Empat peran berikut membuat program kami terus berjalan, dan semuanya terbuka lebar untuk Anda."
-    />
-
-    <div class="grid md:grid-cols-2 gap-5 max-w-[1000px] mx-auto">
+<section id="gabung" class="bg-[#F7F4EC] px-6 py-20 md:py-28">
+  <div class="mx-auto flex max-w-[1280px] flex-col gap-12">
+    <h2 class="text-center font-display text-[clamp(36px,4.4vw,60px)] font-medium leading-[1.1] tracking-[-0.03em] text-primary-blue-dark anim-reveal">
+      Jadilah Bagian <br />dari Perubahan
+    </h2>
+    <div class="grid gap-4 md:grid-cols-2">
       {
         ctaOptions.map((option, index) => (
-          <div
-            class="bg-white rounded-2xl p-5 sm:p-6 flex flex-col hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 anim-reveal"
-            style={`--i:${index}`}
+          <a
+            href={option.href}
+            class="group relative isolate flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[20px] bg-primary-blue-dark p-8 text-white md:min-h-[400px] anim-reveal"
+            style={`--i:${index % 2}`}
           >
-            <h3 class="text-lg font-bold text-gray-900 mb-1.5">{option.title}</h3>
-            <p class="text-sm text-gray-600 leading-snug mb-4">{option.description}</p>
-            {/* mt-auto keeps the buttons on a common baseline when two cards in a row have blurbs of different lengths. */}
-            <a
-              href={option.href}
-              class={`mt-auto inline-flex w-full sm:w-auto sm:self-start items-center justify-center sm:min-w-[160px] px-4 py-2.5 sm:py-2 ${option.color} text-sm font-semibold rounded-lg transition-colors`}
+            <Img
+              src={option.photo}
+              alt=""
+              sizes="(min-width: 768px) 640px, 100vw"
+              class="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+            <span
+              aria-hidden="true"
+              class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.55)_0%,rgba(13,31,82,0.1)_40%,rgba(13,31,82,0.7)_100%)]"
+            />
+            <span class="font-display text-[clamp(32px,3.2vw,44px)] font-medium leading-[1.05] tracking-[-0.02em]">{option.title}</span>
+            <span
+              class:list={[
+                'inline-flex items-center gap-2.5 self-start rounded-lg border-[1.5px] px-[18px] py-3 text-[15px] transition-colors',
+                option.id === 'donatur'
+                  ? 'border-secondary-yellow bg-secondary-yellow font-bold text-primary-blue-dark group-hover:bg-secondary-yellow/90'
+                  : 'border-white/80 bg-primary-blue-dark/35 font-semibold group-hover:bg-primary-blue-dark/60',
+              ]}
             >
               {option.buttonText}
-            </a>
-          </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14" />
+                <path d="m13 6 6 6-6 6" />
+              </svg>
+            </span>
+          </a>
         ))
       }
     </div>
-
-    <p class="text-center text-white/60 mt-8 text-sm anim-reveal">
-      Belum yakin peran mana yang paling sesuai? Hubungi kami, dan kami bantu mencarikannya.
-    </p>
-  </Container>
+  </div>
 </section>

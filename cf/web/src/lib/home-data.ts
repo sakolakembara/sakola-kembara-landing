@@ -78,35 +78,6 @@ export const impactMetrics = [
   { number: '172', label: 'Siswa Program 2026/2027', color: 'dark' },
 ] as const;
 
-export type ImpactMetricColor = (typeof impactMetrics)[number]['color'];
-
-export interface MapLocation {
-  id: number;
-  name: string;
-  region: string;
-  lat: number;
-  lng: number;
-  type: 'bimbel' | 'roadshow';
-}
-
-// Map pins. Bimbel branches only (see the note above mapLocations in the root
-// lib/data.ts): a roadshow pin can be added back as a { type: 'roadshow' } entry.
-export const mapLocations: MapLocation[] = [
-  { id: 1, name: 'Sakola Kembara Cililin', region: 'Bandung Barat', lat: -6.9167, lng: 107.4667, type: 'bimbel' },
-  { id: 2, name: 'Sakola Kembara Bojong', region: 'Purwakarta', lat: -6.5844, lng: 107.4367, type: 'bimbel' },
-  { id: 3, name: 'Sakola Kembara Bandung', region: 'Kota Bandung', lat: -6.9175, lng: 107.6191, type: 'bimbel' },
-  { id: 4, name: 'Sakola Kembara Cibodas', region: 'Bandung Barat', lat: -6.7833, lng: 107.5167, type: 'bimbel' },
-  { id: 5, name: 'Sakola Kembara Cirebon', region: 'Cirebon', lat: -6.7063, lng: 108.557, type: 'bimbel' },
-  { id: 6, name: 'Sakola Kembara Purbalingga', region: 'Purbalingga', lat: -7.3903, lng: 109.3639, type: 'bimbel' },
-  { id: 8, name: 'Sakola Kembara Cisarua', region: 'Bandung Barat', lat: -6.7833, lng: 107.55, type: 'bimbel' },
-  { id: 9, name: 'Sakola Kembara Samarinda', region: 'Kalimantan Timur', lat: -0.5017, lng: 117.1536, type: 'bimbel' },
-];
-
-export const mapStats = [
-  { number: '8', label: 'Bimbel Aktif' },
-  { number: '3', label: 'Provinsi' },
-];
-
 export interface Testimonial {
   id: number;
   quote: string;

@@ -14,6 +14,7 @@ export const cx = (...parts: ClassValue[]): string => parts.filter(Boolean).join
 export type ButtonVariant =
   | 'primary'
   | 'outline'
+  | 'outline-navy'
   | 'outline-on-navy'
   | 'yellow-on-navy'
   | 'white-on-navy'
@@ -28,6 +29,8 @@ const buttonBase =
 const buttonVariant: Record<ButtonVariant, string> = {
   primary: 'bg-primary-blue text-white hover:bg-primary-blue-dark',
   outline: 'border-[1.5px] border-primary-blue text-primary-blue hover:bg-primary-blue/5',
+  // The outlined action of the homepage (SAKEM-111): deep navy on light sections.
+  'outline-navy': 'border-[1.5px] border-primary-blue-dark text-primary-blue-dark hover:bg-primary-blue-dark/5',
   'outline-on-navy': 'border-[1.5px] border-white/60 text-white hover:bg-white/10',
   'yellow-on-navy': 'bg-secondary-yellow text-gray-900 hover:bg-secondary-yellow/90',
   'white-on-navy': 'bg-white text-primary-blue hover:bg-gray-50',

@@ -26,8 +26,10 @@ import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph
 interface Props {
   seo: SeoInput;
   jsonLd?: unknown[];
+  /** The navbar floats, transparent, over a full-bleed hero until the page scrolls (the homepage, SAKEM-111). */
+  navOverlay?: boolean;
 }
-const { seo, jsonLd = [] } = Astro.props;
+const { seo, jsonLd = [], navOverlay = false } = Astro.props;
 const s = buildSeo(seo);
 const graph = buildGraph(seo);
 ---
@@ -88,7 +90,7 @@ const graph = buildGraph(seo);
       >
         Lewat ke konten utama
       </a>
-      <Navbar />
+      <Navbar overlay={navOverlay} />
       <div id="konten-utama">
         <slot />
       </div>

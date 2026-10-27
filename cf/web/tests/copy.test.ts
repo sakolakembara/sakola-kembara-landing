@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { footerLinks, heroStats, navLinks, programCards } from '~/lib/site';
+import { footerLinks, navLinks, programCards } from '~/lib/site';
 import { CATEGORY_DESCRIPTION } from '~/lib/team-types';
 import { readRoot, readWeb } from './helpers';
 
@@ -17,14 +17,13 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     web: 'src/components/sections/HeroSection.astro',
     root: ['components/sections/HeroSection.tsx'],
     phrases: [
-      'Pendidikan Untuk Semua',
+      // SAKEM-111 ("Opsi C") drops the eyebrow and the photo's alt, and sets the headline in two lines.
       'Membuka Pintu',
-      'Pendidikan Tinggi</span> untuk',
-      'Setiap Anak Indonesia',
+      'Pendidikan Tinggi',
+      'untuk Setiap Anak Indonesia',
       'Kami hadir untuk mendobrak hambatan ekonomi dan geografis yang menghalangi siswa dari daerah terpencil dan keluarga kurang mampu dalam meraih impian mereka ke perguruan tinggi.',
       'Lihat Program Kami',
       'Dukung Misi Kami',
-      'Siswa Sakola Kembara belajar bersama',
     ],
   },
   {
@@ -32,7 +31,6 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     web: 'src/components/sections/ActivitiesSection.astro',
     root: ['components/sections/ActivitiesSection.tsx'],
     phrases: [
-      'Program Kami',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka panjang.',
       'Lihat Detail',
@@ -345,10 +343,6 @@ describe('data copied from lib/data.ts and lib/team-types.ts', () => {
     expect(footerLinks.filter((l) => !['/donasi#laporan', '/kontak'].includes(l.href)).map((l) => l.href)).toEqual(menu);
     // no link of the site points at the page that is gone
     for (const l of [...navLinks, ...footerLinks]) expect(l.href, l.label).not.toMatch(/^\/laporan/);
-  });
-
-  it('hero stats', () => {
-    for (const s of heroStats) expect(data).toContain(`{ number: "${s.number}", label: "${s.label}" }`);
   });
 
   it('the three program cards: title, tag and every bullet', () => {

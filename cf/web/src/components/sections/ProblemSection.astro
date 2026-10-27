@@ -1,52 +1,53 @@
 ---
-import Container from '~/components/Container.astro';
-import Heading from '~/components/Heading.astro';
 import { problemStats } from '~/lib/home-data';
-import StatChart from './problem/StatChart.astro';
 import StatDetail from './problem/StatDetail.astro';
 
 /**
- * Homepage "Mengapa Kami Ada?". Copy and figures are verbatim from the root
- * ProblemSection.tsx + lib/data.ts. Entrance motion is CSS (.anim-reveal,
- * styles/reveal.css); the only script (below) opens the stat detail <dialog>.
+ * Homepage "Mengapa Kami Ada?" (SAKEM-111, design "Opsi C"): the three figures
+ * of problemStats. The first and third are written out in the sentence on the
+ * left (keep them in step with home-data.ts); the one with a
+ * detail text is drawn as a bar, with "Mengapa ini terjadi?" opening that text
+ * in a <dialog> (StatDetail; the opener script is below).
  */
+const share = problemStats[1];
+if (share.chart.kind !== 'share') throw new Error('problemStats[1] must be the share chart');
+const chart = share.chart;
+const strong = 'font-semibold text-primary-blue-dark';
 ---
 
-<section class="py-16 md:py-24 bg-gradient-to-b from-primary-blue to-accent-navy text-white relative overflow-hidden">
-  {/* Pattern overlay */}
-  <div
-    class="absolute inset-0 opacity-30"
-    aria-hidden="true"
-    style={`background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`}
-  >
-  </div>
-
-  <Container class="relative z-10">
-    <Heading level="section" class="text-center mb-10 md:mb-12 anim-reveal">Mengapa Kami Ada?</Heading>
-
-    <div class="grid md:grid-cols-3 gap-5 md:gap-6 mb-10 md:mb-12">
-      {
-        problemStats.map((stat, index) => (
-          <article
-            class="flex flex-col gap-4 p-6 md:p-7 bg-white/[0.07] rounded-2xl border border-white/15 anim-reveal"
-            style={`--i:${index}`}
-          >
-            <StatChart chart={stat.chart} />
-            <div class="text-5xl md:text-[56px] font-extrabold text-secondary-yellow leading-none">
-              {stat.number}
-            </div>
-            <p class="text-[15px] md:text-base text-white/85 leading-relaxed">{stat.text}</p>
-            {stat.detail && <StatDetail id={`problem-detail-${index + 1}`} stat={stat} />}
-          </article>
-        ))
-      }
+<section class="bg-white px-6 py-16 md:py-24">
+  <div class="mx-auto grid max-w-[1280px] items-center gap-14 lg:grid-cols-2">
+    <div class="flex flex-col gap-5 anim-reveal">
+      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
+        Mengapa Kami Ada?
+      </h2>
+      <p class="text-lg leading-relaxed text-gray-700">
+        Hanya <strong class={strong}>3 dari 10</strong> anak Indonesia yang memiliki akses ke pendidikan tinggi. Anak kota punya
+        kesempatan <strong class={strong}>2x lebih besar</strong> untuk kuliah.
+      </p>
+      <p class="font-display text-[26px] italic text-primary-blue-dark">Kami hadir untuk mengubah realitas ini.</p>
     </div>
 
-    <p class="text-xl md:text-2xl font-semibold text-center anim-reveal">
-      Kami hadir untuk{' '}
-      <span class="text-secondary-yellow">mengubah realitas ini.</span>
-    </p>
-  </Container>
+    <figure class="flex flex-col gap-4 rounded-[20px] bg-[#FAFAF7] p-6 md:p-8 anim-reveal" style="--i:1">
+      <figcaption class="text-base font-semibold text-gray-800">{chart.caption}</figcaption>
+      <div role="img" aria-label={chart.label} class="flex h-16 overflow-hidden rounded-xl">
+        <div class="flex items-center bg-primary-blue-dark px-4 font-bold text-white" style={`width:${chart.share * 100}%`}>
+          {share.number}
+        </div>
+        <div class="grow bg-[#E3E8F1]"></div>
+      </div>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-700">
+        <span class="flex items-center gap-2">
+          <span aria-hidden="true" class="inline-block size-3 rounded-[3px] bg-primary-blue-dark"></span>{chart.highlightLabel}
+        </span>
+        <span class="flex items-center gap-2">
+          <span aria-hidden="true" class="inline-block size-3 rounded-[3px] border border-[#C5CEDD] bg-[#E3E8F1]"></span>{chart.restLabel}
+        </span>
+      </div>
+      <p class="text-[15px] leading-relaxed text-gray-600">{share.text}.</p>
+      {share.detail && <StatDetail id="problem-detail-2" stat={share} />}
+    </figure>
+  </div>
 </section>
 
 <script>

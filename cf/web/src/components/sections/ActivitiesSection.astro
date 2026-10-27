@@ -1,17 +1,13 @@
 ---
-import Container from '~/components/Container.astro';
-import Heading from '~/components/Heading.astro';
 import Img from '~/components/Img.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
-import Tag from '~/components/Tag.astro';
 import { programCards } from '~/lib/site';
 import { buttonClasses } from '~/lib/ui';
 
 /**
- * Homepage "Program Kami" section (the target of the hero's "Lihat Program
- * Kami"). Copy is verbatim from the root ActivitiesSection + lib/data.ts. The
- * cards link to /program/<id>, which the Worker still passes to the legacy app
- * until the program pages are ported.
+ * Homepage "Program Kami" (SAKEM-111, design "Opsi C"; the target of the hero's
+ * "Lihat Program Kami"): three photo tiles with the caption below. Copy is
+ * verbatim from the root ActivitiesSection + lib/data.ts. Each tile links to
+ * /program/<id>.
  */
 const photos: Record<string, string> = {
   prapembinaan: '/images/program/prapembinaan.jpg',
@@ -20,69 +16,43 @@ const photos: Record<string, string> = {
 };
 ---
 
-<section
-  class="py-16 md:py-24 bg-gradient-to-br from-primary-blue to-accent-navy relative overflow-hidden"
-  id="activities"
->
-  <div class="absolute inset-0" aria-hidden="true">
-    <div class="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary-yellow/20 rounded-full blur-3xl"></div>
-  </div>
+<section id="activities" class="scroll-mt-24 px-6 py-20 md:py-28">
+  <div class="mx-auto flex max-w-[1280px] flex-col gap-12">
+    <div class="grid items-end gap-6 md:grid-cols-2 anim-reveal">
+      <h2 class="text-balance font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.4] tracking-[-0.03em] text-primary-blue-dark">
+        Apa saja yang dilalui penerima manfaat Sakola Kembara?
+      </h2>
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600">
+        Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka
+        panjang.
+      </p>
+    </div>
 
-  <Container class="relative z-10">
-    <SectionHeader
-      class="mb-12 md:mb-16"
-      tone="dark"
-      eyebrow="Program Kami"
-      title="Apa saja yang dilalui penerima manfaat Sakola Kembara?"
-      lead="Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka panjang."
-    />
-
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+    <ol class="grid gap-6 md:grid-cols-3">
       {
-        programCards.map((program) => (
-          <a href={`/program/${program.id}`} class="block h-full">
-            <div class="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:-translate-y-2 hover:shadow-xl hover:border-transparent transition-all duration-300 cursor-pointer h-full flex flex-col">
-              <div class="h-[180px] sm:h-[200px] relative overflow-hidden">
-                <Img
-                  src={photos[program.id]}
-                  alt={program.title}
-                  sizes="(min-width: 1024px) 380px, (min-width: 768px) 50vw, 100vw"
-                  class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <Tag class="absolute top-4 left-4 z-10">{program.tag}</Tag>
-              </div>
-
-              <div class="p-6 flex-1 flex flex-col">
-                <Heading
-                  level="card"
-                  class="text-gray-900 mb-4 group-hover:text-primary-blue transition-colors"
-                >
-                  {program.title}
-                </Heading>
-                <ul class="space-y-2 mb-5">
-                  {program.points.map((point) => (
-                    <li class="flex gap-2 text-[15px] text-gray-600 leading-relaxed">
-                      <span class="mt-2 w-1.5 h-1.5 rounded-full bg-secondary-green flex-shrink-0" />
-                      <span>{point}</span>
-                    </li>
-                  ))}
-                </ul>
-                {/* Inside a card the CTA is filled. The whole card is the link, so this is a
-                    styled span, not a nested link. */}
-                <span
-                  class={buttonClasses({
-                    fullWidth: true,
-                    className: 'mt-auto group-hover:bg-primary-blue-dark',
-                  })}
-                >
-                  Lihat Detail
-                </span>
-              </div>
+        programCards.map((program, index) => (
+          <li class="flex flex-col gap-4 anim-reveal" style={`--i:${index}`}>
+            <Img
+              src={photos[program.id]}
+              alt={program.title}
+              sizes="(min-width: 768px) 410px, 100vw"
+              class="aspect-[4/5] w-full rounded-[20px] object-cover"
+            />
+            <div class="flex items-baseline justify-between gap-3">
+              <h3 class="text-xl font-bold text-gray-800">{program.tag}</h3>
+              <span class="text-sm text-gray-600">{program.title}</span>
             </div>
-          </a>
+            <p class="text-[15px] leading-relaxed text-gray-600">{program.points.join(' · ')}</p>
+            <a
+              href={`/program/${program.id}`}
+              aria-label={`Lihat Detail ${program.tag}`}
+              class={buttonClasses({ variant: 'outline-navy', className: 'mt-auto self-start' })}
+            >
+              Lihat Detail
+            </a>
+          </li>
         ))
       }
-    </div>
-  </Container>
+    </ol>
+  </div>
 </section>

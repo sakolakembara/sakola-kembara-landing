@@ -1799,30 +1799,41 @@ await check('navbar', 'on an article page the navbar script is the only script b
 
 // ---------------------------------------------------------------- home page (SAKEM-080, part A)
 const homeHtml = async () => text(await get('/'));
-await check('home', '/ has the seven sections in order, answered without touching the origin', async () => {
+await check('home', '/ has the video hero, then the seven sections in order (design "Opsi C", SAKEM-111), answered without touching the origin', async () => {
   clearStub();
   const html = await homeHtml();
-  const marks = ['Membuka Pintu', 'Mengapa Kami Ada?', 'id="activities"', 'id="impact"', 'id="partners"', 'Jadilah Bagian dari Perubahan', 'id="blog"'];
+  const marks = ['Membuka Pintu', 'id="impact"', 'Mengapa Kami Ada?', 'id="activities"', 'id="cerita"', 'id="partners"', 'id="blog"', 'id="gabung"'];
   const at = marks.map((m) => html.indexOf(m));
   assert.ok(at.every((i) => i > 0), `a section is missing: ${at}`);
   assert.deepEqual([...at].sort((a, b) => a - b), at, 'sections out of order');
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.equal(stubHits().length, 0);
 });
-await check('home', '/ content counts: 3 figures, 4 metrics, 8 branches, 7 testimonials, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
+await check('home', '/ content counts: 1 share chart, 3 program tiles, 2 stories, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
   const html = await homeHtml();
-  assert.equal((html.match(/<article class="flex flex-col gap-4/g) ?? []).length, 3);
-  assert.equal((html.match(/<div class="bg-gradient-to-br /g) ?? []).length, 4);
-  assert.equal((html.match(/<li class="bg-white rounded-xl shadow-sm"/g) ?? []).length, 8);
-  assert.equal((html.match(/<li class="snap-start/g) ?? []).length, 7);
+  assert.equal((html.match(/<div role="img" aria-label=/g) ?? []).length, 1);
+  assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
+  assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 2);
   assert.equal((html.match(/<li class="w-\[136px\]/g) ?? []).length, 6);
-  assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="mt-auto/g) ?? []).length, 4);
+  assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="group/g) ?? []).length, 4);
   const news = html.slice(html.indexOf('id="blog"'));
   assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group block/g) ?? []).length, 3);
 });
-await check('home', 'every /_astro asset the home page references is served by the assets layer: 200, right type, immutable, origin not asked', async () => {
+await check('home', 'the hero video files are static assets: 200 video/mp4, the origin not asked, the phone size the smaller', async () => {
+  clearStub();
+  const sizes = [];
+  for (const url of ['/images/home/hero-loop-720.mp4', '/images/home/hero-loop.mp4']) {
+    const res = await get(url);
+    assert.equal(res.status, 200, url);
+    assert.match(res.headers.get('content-type') ?? '', /video\/mp4/, url);
+    sizes.push((await res.arrayBuffer()).byteLength);
+  }
+  assert.ok(sizes[0] < sizes[1] && sizes[1] < 4 * 1024 * 1024, `video sizes ${sizes}`);
+  assert.equal(stubHits().length, 0);
+});
+await check('home', 'every /_astro and /_img asset the home page references is served by the assets layer: 200, right type, immutable, origin not asked', async () => {
   const html = await homeHtml();
-  const urls = [...new Set(html.match(/\/_astro\/[\w.-]+\.(?:webp|png|css|js|woff2)/g) ?? [])];
+  const urls = [...new Set(html.match(/\/_(?:astro|img)\/[\w.-]+\.(?:webp|png|css|js|woff2)/g) ?? [])];
   assert.ok(urls.length >= 25, `only ${urls.length} assets`);
   const types = { webp: /image\/webp/, png: /image\/png/, css: /text\/css/, js: /javascript/, woff2: /font\/woff2|octet-stream/ };
   clearStub();
@@ -1835,30 +1846,10 @@ await check('home', 'every /_astro asset the home page references is served by t
   }
   assert.equal(stubHits().length, 0, 'an asset went to the origin');
 });
-await check('home', 'the map loads lazily: the HTML never names Leaflet, and its chunks are plain static files', async () => {
-  const html = await homeHtml();
-  assert.doesNotMatch(html, /leaflet/i);
-  const loader = tag(html, /<script type="module" src="(\/_astro\/ImpactMap[^"]+\.js)"/);
-  assert.ok(loader, 'map loader script');
-  const code = await text(await get(loader));
-  const chunks = [...code.matchAll(/import\("\.\/([\w.-]+\.js)"\)/g)].map((m) => m[1]);
-  assert.equal(chunks.length, 3);
-  clearStub();
-  let bytes = 0;
-  for (const chunk of chunks) {
-    const res = await get(`/_astro/${chunk}`);
-    assert.equal(res.status, 200, chunk);
-    assert.match(res.headers.get('content-type'), /javascript/);
-    assert.match(res.headers.get('cache-control'), /immutable/);
-    bytes += (await res.arrayBuffer()).byteLength;
-  }
-  assert.ok(bytes > 100_000 && bytes < 190_000, `lazy map chunks are ${bytes} bytes`); // Leaflet itself is about 150 KB
-  assert.equal(stubHits().length, 0);
-});
-await check('home', 'eager JS of the home page (inline scripts + the map loader), as served, stays inside the budget', async () => {
+await check('home', 'eager JS of the home page (all inline), as served, stays inside the budget', async () => {
   const html = await homeHtml();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-  assert.equal(scripts.length, 4); // navbar, stat dialog, carousel, map loader
+  assert.equal(scripts.length, 3); // navbar, stat dialog, hero video
   let bytes = 0;
   for (const m of scripts) {
     const src = m[1].match(/\ssrc="([^"]+)"/)?.[1];

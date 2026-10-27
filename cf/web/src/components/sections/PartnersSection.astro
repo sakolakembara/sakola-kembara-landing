@@ -6,12 +6,11 @@ import rumahAmalSalmanLogo from '@root/public/images/partners/rumah-amal-salman.
 import salamSetaraLogo from '@root/public/images/partners/salam-setara.png';
 import talentsMappingLogo from '@root/public/images/partners/talents-mapping.png';
 import zurichSyariahLogo from '@root/public/images/partners/zurich-syariah.png';
-import Container from '~/components/Container.astro';
-import SectionHeader from '~/components/SectionHeader.astro';
 import { activePartners, pastPartners, type Partner } from '~/lib/home-data';
 
 /**
- * Homepage "Partner Kami": a row of logo cards under its own subheading, split
+ * Homepage "Partner Kami" (restyled for SAKEM-111, design "Opsi C": a Lora
+ * title, no eyebrow): a row of logo cards under its own subheading, split
  * into active and past partners so visitors can tell who we work with right now
  * from who has supported us before. Copy is verbatim from the root
  * PartnersSection.tsx + lib/data.ts; logos are resized at build time.
@@ -31,14 +30,16 @@ const groups: { title: string; partners: Partner[] }[] = [
 ].filter((group) => group.partners.length > 0);
 ---
 
-<section class="py-16 md:py-24 bg-[#F5F7FA]" id="partners">
-  <Container>
-    <SectionHeader
-      class="mb-12 anim-reveal"
-      eyebrow="Partner Kami"
-      title="Bersama Mewujudkan Perubahan"
-      lead="Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara."
-    />
+<section class="bg-white px-6 py-20 md:py-28" id="partners">
+  <div class="mx-auto max-w-[1280px]">
+    <div class="mb-12 grid items-end gap-6 md:grid-cols-2 anim-reveal">
+      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
+        Bersama Mewujudkan Perubahan
+      </h2>
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600">
+        Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.
+      </p>
+    </div>
 
     <div class="space-y-12 md:space-y-14">
       {
@@ -47,7 +48,7 @@ const groups: { title: string; partners: Partner[] }[] = [
             {/* Subheading with hairlines that shrink to nothing on narrow screens */}
             <div class="flex items-center gap-4 mb-6 md:mb-8">
               <span class="hidden sm:block h-px flex-1 bg-gray-200" aria-hidden="true" />
-              <h3 class="text-xs sm:text-sm font-semibold text-accent-navy uppercase tracking-wider text-center">
+              <h3 class="text-sm font-semibold text-gray-600 text-center">
                 {group.title}
               </h3>
               <span class="hidden sm:block h-px flex-1 bg-gray-200" aria-hidden="true" />
@@ -56,7 +57,7 @@ const groups: { title: string; partners: Partner[] }[] = [
             {/* items-stretch keeps every card the same height even when a partner name wraps to two or three lines. */}
             <ul class="flex justify-center items-stretch flex-wrap gap-4 sm:gap-6 md:gap-8">
               {group.partners.map((partner) => (
-                <li class="w-[136px] sm:w-40 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col items-center gap-2.5 px-3 py-4 hover:border-primary-blue/40 hover:shadow-md transition-all">
+                <li class="w-[136px] sm:w-40 bg-[#FAFAF7] rounded-[14px] border border-gray-200 flex flex-col items-center gap-2.5 px-3 py-4 hover:border-primary-blue/40 hover:shadow-md transition-all">
                   <div class="h-11 sm:h-12 flex items-center justify-center">
                     {/* Decorative: the partner name is spelled out right below, so announcing it twice would only add noise for screen readers. */}
                     <Image
@@ -82,5 +83,5 @@ const groups: { title: string; partners: Partner[] }[] = [
         ))
       }
     </div>
-  </Container>
+  </div>
 </section>

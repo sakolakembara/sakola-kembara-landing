@@ -6,6 +6,7 @@ import ImpactSection from '~/components/sections/ImpactSection.astro';
 import NewsSection from '~/components/sections/NewsSection.astro';
 import PartnersSection from '~/components/sections/PartnersSection.astro';
 import ProblemSection from '~/components/sections/ProblemSection.astro';
+import StoriesSection from '~/components/sections/StoriesSection.astro';
 import Base from '~/layouts/Base.astro';
 import { getAllArticles } from '~/lib/blog';
 import '~/styles/reveal.css';
@@ -18,14 +19,16 @@ export const prerender = true;
 const latestArticles = getAllArticles().slice(0, 3);
 ---
 
-<Base seo={{ kind: 'home' }}>
-  <main>
+<Base seo={{ kind: 'home' }} navOverlay>
+  {/* SAKEM-111, design "Opsi C": the hero video under a floating navbar, then the sections on a warm off-white. */}
+  <main class="bg-[#FAFAF7]">
     <HeroSection />
+    <ImpactSection />
     <ProblemSection />
     <ActivitiesSection />
-    <ImpactSection />
+    <StoriesSection />
     <PartnersSection />
-    <CTASection />
     <NewsSection articles={latestArticles} />
+    <CTASection />
   </main>
 </Base>
