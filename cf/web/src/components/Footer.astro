@@ -1,11 +1,11 @@
 ---
-import { MAIN_INSTAGRAM, branches, footerLinks } from '~/lib/site';
+import { branches, footerLinks } from '~/lib/site';
 import Icon from './Icon.astro';
 import SocialLinks from './SocialLinks.astro';
 
 /**
  * Site footer (SAKEM-111, design "Opsi C"): the name as a full-width wordmark,
- * the mission, site links in two columns, the branches (each to its Instagram), contact, then copyright and social
+ * the mission, site links in two columns, the branches (to their Instagram where they have one), contact, then copyright and social
  * links. The wordmark is SVG text stretched to the width (textLength), so it
  * fills the row at every screen size in the site's own Lora.
  */
@@ -54,16 +54,19 @@ const rule = 'border-t border-white/15';
         <ul class="grid grid-cols-2 gap-x-6">
           {
             branches.map((branch) => (
-              <li>
-                <a
-                  href={`https://instagram.com/${branch.instagram ?? MAIN_INSTAGRAM}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={branch.region}
-                  class="block py-1.5 text-base text-white/85 transition-colors hover:text-white"
-                >
-                  {branch.name}
-                </a>
+              <li title={branch.region}>
+                {branch.instagram ? (
+                  <a
+                    href={`https://instagram.com/${branch.instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="block py-1.5 text-base text-white/85 transition-colors hover:text-white"
+                  >
+                    {branch.name}
+                  </a>
+                ) : (
+                  <span class="block py-1.5 text-base text-white/60">{branch.name}</span>
+                )}
               </li>
             ))
           }

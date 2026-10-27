@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAIN_INSTAGRAM, branches, footerLinks, navLinks, programCards } from '~/lib/site';
+import { branches, footerLinks, navLinks, programCards } from '~/lib/site';
 import { CATEGORY_DESCRIPTION } from '~/lib/team-types';
 import { readRoot, readWeb } from './helpers';
 
@@ -367,10 +367,16 @@ describe('footer branches (SAKEM-111)', () => {
     expect(legacy).toContain(`name: "Sakola Kembara ${name}"`);
     expect(legacy).toContain(`region: "${region}"`);
   });
-  it('every branch links to its own Instagram, or to the foundation\'s while its account is unknown; in a new tab', () => {
+  it('the four branches with an account (Dzul, 2026-10-27) link to it in a new tab; the others are plain text', () => {
     expect(branches).toHaveLength(8);
-    for (const b of branches) expect(b.instagram ?? MAIN_INSTAGRAM).toMatch(/^[a-z0-9._]+$/);
-    expect(footer).toContain('href={`https://instagram.com/${branch.instagram ?? MAIN_INSTAGRAM}`}');
+    expect(Object.fromEntries(branches.filter((b) => b.instagram).map((b) => [b.name, b.instagram]))).toEqual({
+      Bandung: 'sakembandung_',
+      Cibodas: 'sakemcibodas',
+      Bojong: 'sakembojong',
+      Cirebon: 'sakolakembaracirebon',
+    });
+    expect(footer).toContain('href={`https://instagram.com/${branch.instagram}`}');
     expect(footer).toContain('rel="noopener noreferrer"');
+    expect(footer).toMatch(/<span class="[^"]*">\{branch\.name\}<\/span>/);
   });
 });
