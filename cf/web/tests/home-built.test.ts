@@ -105,12 +105,11 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Problem', () => {
-    it('one paragraph: each fact as written with its decorative infographic, the closing line, and the stat detail dialog wired to its button', () => {
-      // Each fact runs from its <span data-fact ...> to the next one (the last to the closing line).
-      const facts = problem.split('<span data-fact').slice(1).map((f) => f.split('<span class="underline')[0]);
+    it('one centred paragraph per fact, as written, with its decorative infographic, then the closing line; the stat detail dialog wired to its button', () => {
+      const facts = all(problem, /<p data-fact[\s\S]*?<\/p>/g);
       expect(facts).toHaveLength(problemStats.length);
       problemStats.forEach((stat, i) => expect(text(facts[i])).toContain(`${stat.text}.`));
-      expect(all(problem, /<span aria-hidden="true" class="[^"]*rounded-full bg-\[#E3E8F1\]/g)).toHaveLength(problemStats.length);
+      expect(all(problem, /<span aria-hidden="true" class="[^"]*rounded-full bg-primary-blue-dark px-\[0\.4em\]/g)).toHaveLength(problemStats.length);
       expect(text(problem)).toContain('Kami hadir untuk mengubah realitas ini.');
 
       const detailCount = problemStats.filter((s) => s.detail).length;
