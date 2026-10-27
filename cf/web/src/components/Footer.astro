@@ -4,8 +4,8 @@ import SocialLinks from './SocialLinks.astro';
 
 /**
  * Site footer (SAKEM-111; option B of the footer mock Dzul chose on 2026-10-27, after BYQ Kelvin "Full Footer with
- * Navigation Columns"): the name and the mission on top, then the email as the contact call, the site pages and the
- * branches, then copyright and social links. No column headings: the groups read by their form (pages as large text,
+ * Navigation Columns"): the name and the mission on top, then the email as the contact call with the site pages in one row
+ * under it, the branches on the right, then copyright and social links. No column headings: the groups read by their form (pages as one row of text,
  * branches as chips). A branch with an Instagram account is a link to it; the others are plain chips.
  */
 // Build-time value; the navbar script rewrites it to the current year in the browser.
@@ -23,30 +23,31 @@ const chip = 'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm
       </p>
     </div>
 
-    <div class="grid items-start gap-10 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)]">
-      <a
-        href="mailto:contact@sakolakembara.org"
-        class="text-[clamp(22px,2.4vw,34px)] font-medium tracking-[-0.02em] [overflow-wrap:anywhere] transition-colors hover:text-secondary-yellow md:col-span-2 xl:col-span-1"
-      >
-        contact@sakolakembara.org
-      </a>
+    <div class="grid items-start gap-10 md:grid-cols-2">
+      <div class="flex flex-col gap-6">
+        <a
+          href="mailto:contact@sakolakembara.org"
+          class="self-start text-[clamp(22px,2.4vw,34px)] font-medium tracking-[-0.02em] [overflow-wrap:anywhere] transition-colors hover:text-secondary-yellow"
+        >
+          contact@sakolakembara.org
+        </a>
+        <nav aria-label="Halaman">
+          <ul class="flex flex-wrap gap-x-7 gap-y-2">
+            {
+              footerLinks.map((link) => (
+                <li>
+                  <a href={link.href} class="text-lg font-medium text-white/85 transition-colors hover:text-secondary-yellow">
+                    {link.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
 
-      <nav aria-label="Halaman">
-        <ul class="grid grid-cols-[repeat(2,max-content)] gap-x-8">
-          {
-            footerLinks.map((link) => (
-              <li>
-                <a href={link.href} class="block text-[clamp(20px,2vw,26px)] font-medium leading-normal tracking-[-0.01em] transition-colors hover:text-secondary-yellow">
-                  {link.label}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </nav>
-
-      <nav aria-label="Cabang">
-        <ul class="flex flex-wrap gap-2">
+      <nav aria-label="Cabang" class="md:max-w-[30rem] md:justify-self-end">
+        <ul class="flex flex-wrap gap-2 md:justify-end">
           {
             branches.map((branch) => (
               <li title={branch.region}>
