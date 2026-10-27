@@ -183,7 +183,7 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('CTA', () => {
-    it('has the four role rows, each one link with the role and its action, and a decorative photo chip (the poster, SAKEM-111)', () => {
+    it('has the four role rows, each one link with the role and its action, and a decorative photo shown on hover only (the poster, SAKEM-111)', () => {
       const links = all(cta, /<a href="[^"]+" class="group[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
         ['/daftar', 'Menjadi Siswa Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink
@@ -192,8 +192,12 @@ describe.skipIf(!built)('home page build output', () => {
         ['/kontak', 'Menjadi Partner Hubungi Kami'],
       ]);
       const chips = all(cta, /<img [^>]*>/g);
-      expect(chips).toHaveLength(4); // a photo chip per role (the mascots were removed)
-      for (const img of chips) expect(img, img).toMatch(/\salt[\s>]/); // decorative: the link text says it all
+      expect(chips).toHaveLength(4); // a photo per role (the mascots were removed)
+      for (const img of chips) {
+        expect(img, img).toMatch(/\salt[\s>]/); // decorative: the link text says it all
+        expect(img, img).toMatch(/\bopacity-0\b[^"]*\bmd:group-hover:opacity-100\b/); // hidden until the row is hovered (Dzul, 2026-10-28)
+        expect(img, img).toMatch(/\bhidden\b[^"]*\bmd:block\b/); // no hover on a phone: never shown there
+      }
     });
   });
 
