@@ -1,15 +1,17 @@
 ---
 import Img from '~/components/Img.astro';
-import { testimonials } from '~/lib/home-data';
+import { impactMetrics, testimonials } from '~/lib/home-data';
 
 /**
- * Homepage "Cerita Sukses Alumni" (SAKEM-111; layout after BYQ Stringer
- * "Interactive Member Register"): a register of every alumnus of
- * home-data.ts on the left, the chosen one's portrait and quote on the right.
- * Every quote is in the HTML (crawlers, screen readers, no JS: the first one
- * shows); the script below swaps the panel when a row is hovered, focused or
- * clicked. From xl the two sit side by side, the panel on the register's last line. No auto-advance:
- * the page already has one moving element, the hero.
+ * Homepage "Cerita Sukses Alumni" (SAKEM-111; layout after BYQ Truebase "Case
+ * Studies Testimonials Grid", option 1 of the mock Dzul chose on 2026-10-27):
+ * a centred title, then one portrait card per alumnus of home-data.ts with the
+ * quote always shown under the photo (no hover needed, so phones see it too),
+ * clamped to four lines. A quote longer than that gets "Baca selengkapnya",
+ * which opens the whole quote in a native <dialog> (opened by the document-wide
+ * [data-dialog-open] script of ProblemSection). The sunglow card carries the
+ * college figure. From md the cards sit in a grid of four; on a phone they
+ * scroll sideways, one and a bit at a time.
  */
 const photos: Record<number, string> = {
   1: '/images/testimoni/daffa-najwan.jpg',
@@ -20,82 +22,91 @@ const photos: Record<number, string> = {
   6: '/images/testimoni/jesika-marsha-yoanika.jpg',
   7: '/images/testimoni/fathya-sahla-humaira.jpg',
 };
-const pad = (n: number) => String(n).padStart(2, '0');
+// About four lines of the card at its narrowest; longer quotes get the "Baca selengkapnya" dialog.
+const LONG_QUOTE = 170;
+const college = impactMetrics[1];
+const card = 'w-[78%] shrink-0 snap-start md:w-auto';
 ---
 
-<section id="cerita" class="scroll-mt-24 bg-[#EEF1F6] px-6 py-20 md:px-10 md:py-36" data-stories>
-  <div class="grid w-full gap-12 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-end xl:gap-20">
-    <div class="flex flex-col gap-8 anim-reveal">
-      <div class="flex flex-col gap-3">
-        <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
-          Cerita Sukses Alumni
-        </h2>
-        <p class="text-[17px] leading-[1.65] text-gray-600">Perjalanan inspiratif dari siswa-siswa kami</p>
-      </div>
-      <ul class="border-t border-primary-blue-dark">
-        {
-          testimonials.map((story, index) => (
-            <li>
-              <button
-                type="button"
-                data-story-tab={index}
-                aria-pressed={index === 0 ? 'true' : 'false'}
-                aria-controls={`story-${story.id}`}
-                class="group grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-gray-200 py-3.5 text-left transition-colors hover:bg-[#FBFBF5] sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] aria-pressed:bg-[#FBFBF5]"
-              >
-                <span class="text-sm tabular-nums text-gray-500 group-aria-pressed:text-primary-blue-dark">{pad(index + 1)}</span>
-                <span class="font-semibold text-gray-800 group-aria-pressed:text-primary-blue-dark">{story.name}</span>
-                <span class="col-start-2 text-sm text-gray-600 sm:col-start-3">{story.major}</span>
-              </button>
-            </li>
-          ))
-        }
-      </ul>
+<section id="cerita" class="scroll-mt-24 bg-[#EEF1F6] py-20 md:py-36">
+  <div class="flex w-full flex-col gap-10 md:gap-12">
+    <div class="flex flex-col items-center gap-3 px-6 text-center md:px-10 anim-reveal">
+      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
+        Cerita Sukses Alumni
+      </h2>
+      <p class="text-[17px] leading-[1.65] text-gray-600">Perjalanan inspiratif dari siswa-siswa kami</p>
     </div>
 
-    <div aria-live="polite" class="anim-reveal" style="--i:1">
+    <ul
+      class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-6 px-6 pb-2 md:grid md:grid-cols-4 md:overflow-visible md:px-10 md:pb-0"
+      aria-label="Cerita alumni"
+    >
       {
-        testimonials.map((story, index) => (
-          <figure id={`story-${story.id}`} data-story-panel={index} hidden={index !== 0} class="grid gap-8 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-end">
-            <Img
-              src={photos[story.id]}
-              alt={story.name}
-              sizes="(min-width: 1024px) 300px, (min-width: 640px) 40vw, 100vw"
-              class="aspect-square w-full max-w-[280px] rounded-full object-cover"
-            />
-            <div class="flex flex-col gap-5">
-              <blockquote
-                class:list={[
-                  'font-body font-medium leading-[1.35] tracking-[-0.01em] text-primary-blue-dark',
-                  story.quote.length > 280 ? 'text-[clamp(19px,1.6vw,23px)]' : 'text-[clamp(24px,2.3vw,32px)]',
-                ]}
-              >
-                “{story.quote}”
-              </blockquote>
-              <figcaption class="border-t border-gray-200 pt-4 text-sm text-gray-600">
-                <strong class="text-gray-800">{story.name}</strong> · {story.major}
-              </figcaption>
-            </div>
-          </figure>
-        ))
+        testimonials.map((story, index) => {
+          const long = story.quote.length > LONG_QUOTE;
+          const id = `cerita-${story.id}`;
+          return (
+            <>
+              {index === 3 && (
+                <li class:list={[card, 'flex min-h-[320px] flex-col justify-end gap-2 rounded-xl bg-secondary-yellow p-6 text-primary-blue-dark']}>
+                  <span class="text-[clamp(56px,6vw,88px)] font-medium leading-none tracking-[-0.03em]">{college.number}</span>
+                  <span class="text-[15px]">{college.label}</span>
+                </li>
+              )}
+              <li class:list={[card, 'flex flex-col overflow-hidden rounded-xl bg-[#FBFBF5] anim-reveal']} style={`--i:${index % 4}`}>
+                <Img
+                  src={photos[story.id]}
+                  alt={story.name}
+                  sizes="(min-width: 768px) 25vw, 78vw"
+                  class="aspect-[4/5] w-full object-cover"
+                />
+                <figure class="flex grow flex-col gap-4 p-5">
+                  <blockquote class="line-clamp-4 text-[15px] leading-relaxed text-gray-700">“{story.quote}”</blockquote>
+                  <figcaption class="mt-auto flex items-end justify-between gap-3">
+                    <span class="flex flex-col">
+                      <strong class="font-semibold text-primary-blue-dark">{story.name}</strong>
+                      <span class="text-sm text-gray-600">{story.major}</span>
+                    </span>
+                    {long && (
+                      <button
+                        type="button"
+                        aria-haspopup="dialog"
+                        data-dialog-open={id}
+                        class="shrink-0 text-sm font-semibold text-primary-blue-dark underline-offset-4 hover:underline"
+                      >
+                        Baca selengkapnya
+                      </button>
+                    )}
+                  </figcaption>
+                </figure>
+                {long && (
+                  <dialog
+                    id={id}
+                    aria-labelledby={`${id}-title`}
+                    class="m-auto w-[calc(100%-2.5rem)] max-w-xl max-h-[calc(100dvh-2.5rem)] overflow-y-auto rounded-xl bg-[#FBFBF5] p-0 text-gray-800 shadow-2xl backdrop:bg-primary-blue-dark/70 backdrop:backdrop-blur-sm"
+                  >
+                    <div class="flex flex-col gap-6 p-6 md:p-8">
+                      <div class="flex items-center gap-4">
+                        <Img src={photos[story.id]} alt="" sizes="64px" class="size-16 rounded-full object-cover" />
+                        <div>
+                          <h3 id={`${id}-title`} class="text-lg font-semibold text-primary-blue-dark">{story.name}</h3>
+                          <p class="text-sm text-gray-600">{story.major}</p>
+                        </div>
+                      </div>
+                      <p class="text-lg leading-relaxed text-gray-800">“{story.quote}”</p>
+                      <form method="dialog">
+                        <button type="submit" class="rounded-[10px] bg-primary-blue-dark px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-primary-blue">
+                          Tutup
+                        </button>
+                      </form>
+                    </div>
+                  </dialog>
+                )}
+              </li>
+            </>
+          );
+        })
       }
-    </div>
+    </ul>
   </div>
 </section>
-
-<script>
-  // Show the story of the row that is hovered, focused or clicked (about 0.4 KB).
-  const root = document.querySelector('[data-stories]');
-  if (root) {
-    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-story-tab]')];
-    const panels = [...root.querySelectorAll<HTMLElement>('[data-story-panel]')];
-    const show = (i: number) => {
-      tabs.forEach((t, n) => t.setAttribute('aria-pressed', String(n === i)));
-      panels.forEach((p, n) => (p.hidden = n !== i));
-    };
-    for (const tab of tabs) {
-      const i = Number(tab.dataset.storyTab);
-      for (const type of ['click', 'focus', 'mouseenter']) tab.addEventListener(type, () => show(i));
-    }
-  }
-</script>

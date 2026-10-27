@@ -137,21 +137,20 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Stories', () => {
-    it('a register row and a panel per testimonial, every quote in the HTML, only the first panel shown', () => {
-      const tabs = all(stories, /<button[^>]*data-story-tab[^>]*>/g);
-      const panels = all(stories, /<figure[^>]*data-story-panel[^>]*>/g);
-      expect(tabs).toHaveLength(testimonials.length);
-      expect(panels).toHaveLength(testimonials.length);
-      tabs.forEach((t, i) => {
-        expect(t).toContain('type="button"');
-        expect(t).toContain(`aria-pressed="${i === 0}"`);
-        expect(t).toContain(`aria-controls="story-${testimonials[i].id}"`);
-      });
-      panels.forEach((p, i) => expect(/\shidden[\s>]/.test(p), p).toBe(i !== 0));
+    it('a portrait card per testimonial with its quote shown; long quotes open in a dialog; the college figure card', () => {
+      expect(all(stories, /<figure[\s>]/g)).toHaveLength(testimonials.length);
       for (const t of testimonials) {
         expect(text(stories)).toContain(t.quote);
-        expect(text(stories)).toContain(`${t.name} · ${t.major}`);
+        expect(stories).toContain(`alt="${t.name}"`);
       }
+      const long = testimonials.filter((t) => t.quote.length > 170);
+      expect(long.length).toBeGreaterThan(0);
+      expect(all(stories, /<dialog[\s>]/g)).toHaveLength(long.length);
+      for (const t of long) {
+        expect(stories).toMatch(new RegExp(`<button[^>]*aria-haspopup="dialog"[^>]*data-dialog-open="cerita-${t.id}"`));
+        expect(stories).toContain(`<dialog id="cerita-${t.id}" aria-labelledby="cerita-${t.id}-title"`);
+      }
+      expect(text(stories)).toContain(`${impactMetrics[1].number} ${impactMetrics[1].label}`);
     });
   });
 
@@ -247,8 +246,8 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
     it(`eager JS (the page's own scripts, all inline) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, stat dialog, hero video, stories register
-      expect(scripts).toHaveLength(4);
+      // navbar, dialogs (the stat and the stories share one opener), hero video
+      expect(scripts).toHaveLength(3);
       expect(scripts.every((m) => !/\ssrc=/.test(m[1]))).toBe(true);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);

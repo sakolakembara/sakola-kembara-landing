@@ -45,7 +45,8 @@ import StatDetail from './problem/StatDetail.astro';
 </section>
 
 <script>
-  // The only client JS of this section (about 0.3 KB): open a stat's <dialog> from its button, and
+  // The only client JS of this section (about 0.3 KB), document-wide on purpose: it also opens the story dialogs of
+  // StoriesSection. Open a <dialog> from its [data-dialog-open] button, and
   // close it on a click on the backdrop (the dialog element itself). "Tutup" is a
   // <form method="dialog">; Escape and focus return come from the browser.
   document.addEventListener('click', (event) => {

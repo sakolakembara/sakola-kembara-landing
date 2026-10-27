@@ -60,8 +60,8 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     vi.unstubAllGlobals();
   });
 
-  it('the four scripts of the page run without a console error', async () => {
-    for (const marker of ['nav-toggle', 'data-dialog-open', 'hero-video', 'data-story-tab']) await runScript(html, marker);
+  it('the three scripts of the page run without a console error', async () => {
+    for (const marker of ['nav-toggle', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
     await new Promise((r) => setTimeout(r, 20));
   });
 
@@ -106,21 +106,17 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     });
   });
 
-  describe('stories register', () => {
-    it('a click, a focus or a hover on a row shows its story and marks the row', async () => {
-      await runScript(html, 'data-story-tab');
-      const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-story-tab]')];
-      const panels = [...document.querySelectorAll<HTMLElement>('[data-story-panel]')];
-      const shown = () => panels.findIndex((p) => !p.hidden);
-      const pressed = () => tabs.findIndex((t) => t.getAttribute('aria-pressed') === 'true');
-      expect([shown(), pressed()]).toEqual([0, 0]);
-      tabs[2].click();
-      expect([shown(), pressed()]).toEqual([2, 2]);
-      tabs[4].dispatchEvent(new Event('focus'));
-      expect([shown(), pressed()]).toEqual([4, 4]);
-      tabs[1].dispatchEvent(new Event('mouseenter'));
-      expect([shown(), pressed()]).toEqual([1, 1]);
-      expect(panels.filter((p) => !p.hidden)).toHaveLength(1);
+  describe('stories', () => {
+    it('"Baca selengkapnya" opens the whole quote, "Tutup" lives in a method=dialog form', async () => {
+      await runScript(html, 'data-dialog-open');
+      const button = document.querySelector<HTMLElement>('#cerita [data-dialog-open]')!;
+      const dialog = document.getElementById(button.dataset.dialogOpen!) as HTMLDialogElement;
+      expect(dialog.open).toBe(false);
+      button.click();
+      expect(dialog.open).toBe(true);
+      expect(dialog.querySelector('form[method="dialog"]')).not.toBeNull();
+      dialog.click();
+      expect(dialog.open).toBe(false);
     });
   });
 

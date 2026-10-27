@@ -1851,7 +1851,7 @@ await check('home', 'every /_astro and /_img asset the home page references is s
 await check('home', 'eager JS of the home page (all inline), as served, stays inside the budget', async () => {
   const html = await homeHtml();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-  assert.equal(scripts.length, 4); // navbar, stat dialog, hero video, stories register
+  assert.equal(scripts.length, 3); // navbar, dialogs, hero video
   let bytes = 0;
   for (const m of scripts) {
     const src = m[1].match(/\ssrc="([^"]+)"/)?.[1];
