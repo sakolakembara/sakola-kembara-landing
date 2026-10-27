@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { getAllArticles } from '~/lib/blog';
 import { activePartners, impactMetrics, pastPartners, problemStats, testimonials } from '~/lib/home-data';
-import { programCards } from '~/lib/site';
+import { branches, programCards } from '~/lib/site';
 import { webRoot } from './helpers';
 
 // The built home page (dist/client/index.html), design "Opsi C" (SAKEM-111): the video hero, seven
@@ -36,10 +36,11 @@ describe.skipIf(!built)('home page build output', () => {
   const html = read('index.html');
   const hero = html.match(/<header[\s>][\s\S]*?<\/header>/)![0];
   // <section> never nests on the home page, so splitting on its tags yields one block per section.
-  const [problem, impact, activities, stories, partners, news, cta] = all(html, /<section[\s>][\s\S]*?<\/section>/g);
+  const [problem, impact, branchMap, activities, stories, partners, news, cta] = all(html, /<section[\s>][\s\S]*?<\/section>/g);
 
-  it('has the video hero, then the seven sections in order, and one h1', () => {
-    expect(all(html, /<section[\s>]/g)).toHaveLength(7);
+  it('has the video hero, then the eight sections in order, and one h1', () => {
+    expect(all(html, /<section[\s>]/g)).toHaveLength(8);
+    expect(branchMap).toContain('id="cabang"');
     expect(impact).toContain('id="impact"');
     expect(problem).toContain('Mengapa Kami Ada?');
     expect(activities).toContain('id="activities"');
@@ -57,6 +58,7 @@ describe.skipIf(!built)('home page build output', () => {
     expect(h2).toEqual([
       'Mengapa Kami Ada?',
       'Dari Desa ke Kampus Impian',
+      'Hadir dari Bandung sampai Samarinda',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Cerita Sukses Alumni',
       'Bersama Mewujudkan Perubahan',
@@ -120,6 +122,16 @@ describe.skipIf(!built)('home page build output', () => {
       const starts = all(problem, /--a:([\d.]+)%/g).map((m) => Number(m.match(/[\d.]+/)![0]));
       expect(starts.length).toBeGreaterThan(30);
       expect([...starts].sort((p, q) => p - q)).toEqual(starts);
+    });
+  });
+
+  describe('Branch map', () => {
+    it('a point per branch on the dotted map, every branch named for screen readers, three arcs from Bandung', () => {
+      expect(branchMap).toContain('src="/images/peta/indonesia-dots.svg"');
+      expect(all(branchMap, /<circle [^>]*fill="#0D1F52"/g)).toHaveLength(branches.length);
+      expect(all(branchMap, /<li[^>]*>[^<]*<\/li>/g).map(text)).toEqual(branches.map((b) => `${b.name}, ${b.region}`));
+      expect(branchMap).toMatch(new RegExp(`aria-label="Peta cabang Sakola Kembara: ${branches.map((b) => b.name).join(', ')}"`));
+      expect(all(branchMap, /class="branch-arc/g)).toHaveLength(3);
     });
   });
 
@@ -237,7 +249,8 @@ describe.skipIf(!built)('home page build output', () => {
       const poster = all(imgs.find((i) => i.includes('fetchpriority="high"'))!, /\/_img\/[\w.-]+\.webp/g);
       expect(poster.length).toBeGreaterThanOrEqual(3);
       for (const f of poster) expect(statSync(path.join(client, f)).size, f).toBeLessThan(300_000);
-      for (const img of imgs.filter((i) => i.includes('/images/'))) expect(img, img).toContain('srcset="/_img/');
+      // Every raster photo has the ladder; the branch map's dots are one vector file (SVG), served as is.
+      for (const img of imgs.filter((i) => i.includes('/images/') && !/src="[^"]+\.svg"/.test(i))) expect(img, img).toContain('srcset="/_img/');
     });
   });
 

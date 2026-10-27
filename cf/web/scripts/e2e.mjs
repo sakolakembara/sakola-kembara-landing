@@ -1799,10 +1799,10 @@ await check('navbar', 'on an article page the navbar script is the only script b
 
 // ---------------------------------------------------------------- home page (SAKEM-080, part A)
 const homeHtml = async () => text(await get('/'));
-await check('home', '/ has the video hero, then the seven sections in order (design "Opsi C", SAKEM-111), answered without touching the origin', async () => {
+await check('home', '/ has the video hero, then the eight sections in order (design "Opsi C", SAKEM-111), answered without touching the origin', async () => {
   clearStub();
   const html = await homeHtml();
-  const marks = ['Membuka Pintu', 'Mengapa Kami Ada?', 'id="impact"', 'id="activities"', 'id="cerita"', 'id="partners"', 'id="blog"', 'id="gabung"'];
+  const marks = ['Membuka Pintu', 'Mengapa Kami Ada?', 'id="impact"', 'id="cabang"', 'id="activities"', 'id="cerita"', 'id="partners"', 'id="blog"', 'id="gabung"'];
   const at = marks.map((m) => html.indexOf(m));
   assert.ok(at.every((i) => i > 0), `a section is missing: ${at}`);
   assert.deepEqual([...at].sort((a, b) => a - b), at, 'sections out of order');
@@ -1813,7 +1813,7 @@ await check('home', '/ content counts: 4 metric cards, 3 problem facts, 3 progra
   const html = await homeHtml();
   const between = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
   assert.equal((between('Mengapa Kami Ada?', 'id="impact"').match(/<p data-fact[ >]/g) ?? []).length, 3);
-  assert.equal((between('id="impact"', 'id="activities"').match(/<li[\s>]/g) ?? []).length, 4);
+  assert.equal((between('id="impact"', 'id="cabang"').match(/<li[\s>]/g) ?? []).length, 4);
   assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
   assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 7);
   assert.equal((between('id="partners"', 'id="blog"').match(/<li[\s>]/g) ?? []).length, 6);
