@@ -325,6 +325,27 @@ Each kind reads **only its own source**, with no fallback either way (`webAnalyt
 
 **Not verified (needs the real account and zone).** That a beacon reaches Cloudflare and one hit shows in the Web Analytics dashboard (runbook T-26); that the module script loads in real browsers on the real host (the headers say it may); that the zone's automatic injection is off for the hostname and the page then carries exactly one snippet; what ad blockers do to it; the EEA/EU behaviour of a manual snippet. **Visual QA was not done**, and there is nothing to see: the tag is invisible.
 
+## Google Tag Manager (SAKEM-108)
+
+**Decision (Dzul, 2026-10-27):** Google Tag Manager is added **next to** Cloudflare Web Analytics (D-07 changed, see [`cutover-runbook.md`](cutover-runbook.md), D-07 and P-26), on the **public pages only**, **without a consent banner**. The container (`GTM-…`, in Dzul's Google account) decides what fires, a Google Analytics 4 tag in the first place; nothing about GA4 is configured in this repository.
+
+**Google's install code, in two parts**, rendered only when a valid id is configured:
+
+- `src/components/GoogleTagManager.astro`: the inline script, right after `<meta charset>` in `<head>` (Google asks for it as high as possible). The code is `gtmHeadScript` in `src/lib/google-tag-manager.ts`: Google's snippet with its line breaks removed and the id written as a JSON string.
+- `src/components/GoogleTagManagerNoscript.astro`: the `<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=…">` right after the opening `<body>` tag, for visitors without JavaScript.
+
+`src/layouts/Base.astro` includes each once, with no whitespace before it, so a page built without the id is the same HTML as before.
+
+**One variable, `GTM_CONTAINER_ID`, with the same two sources as the beacon id** (the table above applies word for word): the shell of the build for the prerendered pages (`__GTM_CONTAINER_ID__`, set by `astro.config.mjs`), the Worker variable for the pages the Worker renders, no fallback either way, never `.dev.vars`. Valid is `GTM-` and 4 to 12 upper-case letters or digits (`google-tag-manager.config.mjs`); anything else is nothing, with one fixed build warning or one fixed log line per isolate and no value in it. The id is written into an inline script, so only that exact shape can reach the page.
+
+**Production only.** The staging printer refuses `GTM_CONTAINER_ID` (a staging visit would be counted in the real Google Analytics), and local runs, tests and e2e leave it unset. The production printer requires it, prints it on the build line and as a `--var` from the one line of `.production.vars`, and refuses a `dist/` whose prerendered home page lacks it or carries another id.
+
+**What it changes, unlike the beacon.** Google Analytics through Tag Manager **sets cookies in the browser** (from Google's script, not from the Worker: the Worker's answers still carry no `set-cookie`), and it loads further scripts the container decides. The privacy policy (SAKEM-056) must say so; running it without a consent banner is Dzul's decision of 2026-10-27, recorded in the runbook. **Content-Security-Policy:** none is sent today; one added later would need `script-src https://www.googletagmanager.com` plus a nonce or hash for the inline script, `frame-src https://www.googletagmanager.com`, and whatever the container's tags load (for GA4, Google's own hosts). Nothing on the **admin or portal**: they are other Workers and `cf/admin` never names Tag Manager, which a test scans for.
+
+**Tests.** `tests/google-tag-manager.test.ts` (the id's shape, which page reads which source, the log line, the two parts, the layout, nothing in `cf/admin`, the declarations, both printers); `tests/production-scripts.test.ts` (the required variable, the build line, the `dist/` check); `scripts/e2e.mjs` group `gtm` (the plain build has none; with the Worker variable each rendered page has one script in `<head>` and one frame at the start of `<body>`; an invalid value is ignored and reported once); `scripts/e2e-analytics.mjs` (a second build with the id: every prerendered page has both parts, and both kinds carry the same id); `scripts/negative-checks-gtm.mjs` (`pnpm test:negative:gtm`).
+
+**Not verified (needs the real container and host).** That the container is published with a GA4 tag and one visit shows in Google Analytics (runbook T-28); what ad blockers hide. **Visual QA was not done**: the parts are invisible.
+
 ## JS and CSS budget (home page)
 
 The home page ships the most client weight of the site (the other pages add at most a 0.7 KB inline script to the navbar one), so it is fixed in a test: `tests/home-built.test.ts` (needs `pnpm build`) fails when the page ships more than the numbers below. The JS limits are what the build measured plus about 15%; raising one is a decision, made in the PR that needs it, with the reason written here. The CSS limit is looser because the one stylesheet is shared and grows with every ported page (it went from 58,373 to 62,103 B raw when the program and donation pages were merged in).

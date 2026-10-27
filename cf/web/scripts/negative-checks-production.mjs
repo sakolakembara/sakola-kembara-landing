@@ -74,8 +74,8 @@ const checks = [
 
   { name: 'printer: PORTAL_ENABLED=true is accepted in Phase A', file: PRINTER, from: '      if (value === \'true\') return \'refused in Phase A:', to: '      if (false) return \'refused in Phase A:', tests: SCRIPTS },
   { name: 'printer: PORTAL_ENABLED may be any text', file: PRINTER, from: '      return value === \'false\' ? null : \'exactly true or false\';', to: '      return null;', tests: SCRIPTS },
-  { name: 'printer: the build line carries the beacon id only (PORTAL_ENABLED is left out of it)', file: PRINTER, from: '[\'WEB_ANALYTICS_BEACON_ID\', \'PORTAL_ENABLED\']\n', to: '[\'WEB_ANALYTICS_BEACON_ID\']\n', tests: SCRIPTS },
-  { name: 'printer: the build line carries the portal switch only (the beacon id is left out of it)', file: PRINTER, from: '[\'WEB_ANALYTICS_BEACON_ID\', \'PORTAL_ENABLED\']\n', to: '[\'PORTAL_ENABLED\']\n', tests: SCRIPTS },
+  { name: 'printer: the build line leaves PORTAL_ENABLED out', file: PRINTER, from: '[\'WEB_ANALYTICS_BEACON_ID\', \'GTM_CONTAINER_ID\', \'PORTAL_ENABLED\']\n', to: '[\'WEB_ANALYTICS_BEACON_ID\', \'GTM_CONTAINER_ID\']\n', tests: SCRIPTS },
+  { name: 'printer: the build line leaves the beacon id out', file: PRINTER, from: '[\'WEB_ANALYTICS_BEACON_ID\', \'GTM_CONTAINER_ID\', \'PORTAL_ENABLED\']\n', to: '[\'GTM_CONTAINER_ID\', \'PORTAL_ENABLED\']\n', tests: SCRIPTS },
   { name: 'printer: a dist/ whose home page offers the portal is accepted', file: PRINTER, from: '  if (!enabled && (hasSession || hasLink)) return [', to: '  if (false) return [', tests: SCRIPTS },
   { name: 'printer: a dist/ without the portal is accepted when the file says true', file: PRINTER, from: '  if (enabled && !(hasSession && hasLink)) return [', to: '  if (false) return [', tests: SCRIPTS },
   { name: 'printer: the portal switch of dist/ is not compared with the file', file: PRINTER, from: '    problems.push(...builtPortalProblems(html, portalOn).map(', to: '    problems.push(...[].map(', tests: SCRIPTS },

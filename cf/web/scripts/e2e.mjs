@@ -2973,6 +2973,57 @@ await check('analytics', 'unset is silent: the default stack\'s Worker output ha
   assert.doesNotMatch(stack.output(), /WEB_ANALYTICS_BEACON_ID|beacon/i, 'nothing to say when it is unset');
 });
 
+// ---------------------------------------------------------------- Google Tag Manager (SAKEM-108)
+// Google's two parts, only when a valid GTM_CONTAINER_ID is configured: the inline script right after <meta charset> and the
+// <noscript> frame right after <body>. The pages the Worker renders take the Worker variable (checked here); the prerendered
+// ones take the build's value (scripts/e2e-analytics.mjs). The plain build and the default stack have none. The id is invented.
+const GTM_ID = 'GTM-TEST123';
+const GTM_ANYWHERE = /googletagmanager|GTM-[0-9A-Z]{4,}/i;
+const gtmParts = (html) => ({ scripts: html.split('googletagmanager.com/gtm.js').length - 1, frames: html.split('googletagmanager.com/ns.html').length - 1 });
+
+await check('gtm', 'no container id configured (the plain build, no Worker variable): no page of either kind names Tag Manager', async () => {
+  for (const p of [...BEACON_PRERENDERED, ...BEACON_RENDERED]) assert.doesNotMatch(await text(await get(p)), GTM_ANYWHERE, p);
+  assert.doesNotMatch(stack.output(), /GTM_CONTAINER_ID|tag manager/i, 'nothing to say when it is unset');
+});
+
+await check('gtm', 'a stack with the Worker variable: every rendered page has one script right after <meta charset> and one frame right after <body>, with the id; the prerendered pages and the answers that are not HTML have none', async () => {
+  const s = await startStack({ port: 8815, stubPort: 4439, fixturePort: 4440, inspectorPort: 9355, vars: { GTM_CONTAINER_ID: GTM_ID, ADMIN_URL: 'https://admin.example.test' } });
+  try {
+    for (const p of BEACON_RENDERED) {
+      const res = await fetch(`${s.base}${p}`, { redirect: 'manual' });
+      const html = await res.text();
+      assert.deepEqual(gtmParts(html), { scripts: 1, frames: 1 }, p);
+      assert.ok(html.includes(`'dataLayer',"${GTM_ID}");</script>`), `${p}: the id in the script`);
+      assert.match(html, /<meta charset="utf-8"><script>\(function\(w,d,s,l,i\)/, `${p}: the script right after the charset`);
+      assert.ok(html.includes(`<body class="antialiased"><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${GTM_ID}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>`), `${p}: the frame right after <body>`);
+      assert.equal(res.headers.get('set-cookie'), null, p);
+      assert.equal(res.headers.get('content-security-policy'), null, p);
+    }
+    for (const p of BEACON_PRERENDERED) assert.doesNotMatch(await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text(), GTM_ANYWHERE, `${p}: static HTML cannot see a Worker variable`);
+    for (const p of ['/robots.txt', '/sitemap.xml', '/api/anything']) assert.doesNotMatch(await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text(), GTM_ANYWHERE, p);
+  } finally {
+    await s.stop();
+  }
+});
+
+await check('gtm', 'an invalid Worker variable is ignored: no part on any rendered page, the value is in no page and no log line, and the Worker says once that it is wrong', async () => {
+  const hostile = 'GTM-X");alert(1);("';
+  const s = await startStack({ port: 8816, stubPort: 4441, fixturePort: 4442, inspectorPort: 9356, vars: { GTM_CONTAINER_ID: hostile } });
+  try {
+    for (const p of ['/blog', '/tim', '/kontak', '/no-such-page', '/blog']) {
+      const html = await (await fetch(`${s.base}${p}`, { redirect: 'manual' })).text();
+      assert.doesNotMatch(html, /googletagmanager|alert\(1\)/, p);
+    }
+    for (let i = 0; i < 30 && !/GTM_CONTAINER_ID is set but is not a container id/.test(s.output()); i++) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 300));
+    const out = s.output();
+    assert.equal(out.split('GTM_CONTAINER_ID is set but is not a container id').length - 1, 1, 'one line per isolate');
+    assert.doesNotMatch(out, /alert\(1\)/);
+  } finally {
+    await s.stop();
+  }
+});
+
 // ---------------------------------------------------------------- the student portal switch (SAKEM-103, Phase A of the cutover)
 // The navbar's "Masuk" link and its session script exist only while PORTAL_ENABLED says the portal is live. Default OFF: the plain stack above
 // has neither anywhere (group `portal-paths`). A page gets the value from its own source: the pages the Worker renders from the Worker variable

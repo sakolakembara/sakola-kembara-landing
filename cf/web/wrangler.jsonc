@@ -89,6 +89,11 @@
   //   are static files and take the same name from the shell environment of the BUILD: `WEB_ANALYTICS_BEACON_ID=<...> pnpm build`
   //   (never from .dev.vars). Set it in both places, from one value. Unset or invalid: no beacon script and no tag at all, which
   //   is what local runs, tests and staging do. src/lib/web-analytics.ts, docs/cloudflare/web-skeleton.md ("Web Analytics").
+  // - GTM_CONTAINER_ID (a "vars" entry too, optional, PUBLIC; SAKEM-108): the Google Tag Manager container id (`GTM-` and 4 to 12
+  //   upper-case letters or digits; it is in every page's HTML). PRODUCTION ONLY: the staging printer refuses it, so no test visit
+  //   is counted in Google Analytics. The same two sources as the beacon: `--var GTM_CONTAINER_ID:<id>` for the pages the WORKER
+  //   renders, `GTM_CONTAINER_ID=<id> pnpm build` in the shell of the BUILD for the prerendered ones (never .dev.vars). Unset or
+  //   invalid: no Tag Manager at all. src/lib/google-tag-manager.ts, docs/cloudflare/web-skeleton.md ("Google Tag Manager").
   // - PORTAL_ENABLED (a "vars" entry too, optional, PUBLIC; SAKEM-103, Phase A of the cutover): whether the student portal is live.
   //   Exactly `true` puts the navbar's "Masuk" link and its session script on the page; unset, `false` or anything else (the Worker
   //   says so once, without the value) leaves both out and the slot of the link stays empty (no button in the navbar). The default

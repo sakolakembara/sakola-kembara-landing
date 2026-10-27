@@ -1,0 +1,11 @@
+---
+import { env } from 'cloudflare:workers';
+import { BUILD_GTM_ID, gtmContainerId, gtmNoscriptSrc } from '~/lib/google-tag-manager';
+
+/**
+ * The <body> part of Google Tag Manager (SAKEM-108): Google's <noscript> iframe, the first thing in <body>, for visitors
+ * without JavaScript. Same id and same rule as GoogleTagManager.astro: unset, nothing at all.
+ */
+const id = gtmContainerId({ prerendered: Astro.isPrerendered, build: BUILD_GTM_ID, runtime: env.GTM_CONTAINER_ID });
+---
+{id && <noscript><iframe src={gtmNoscriptSrc(id)} height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>}

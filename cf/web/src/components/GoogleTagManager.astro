@@ -1,0 +1,13 @@
+---
+import { env } from 'cloudflare:workers';
+import { BUILD_GTM_ID, gtmContainerId, gtmHeadScript } from '~/lib/google-tag-manager';
+
+/**
+ * The <head> part of Google Tag Manager (SAKEM-108): ONE inline script, right after <meta charset> (Google asks for it as
+ * high in <head> as possible), and only when a valid container id is configured. Unset: nothing at all. A prerendered page
+ * takes the build's value, a page the Worker renders takes the Worker variable (src/lib/google-tag-manager.ts). The <body>
+ * part is GoogleTagManagerNoscript.astro.
+ */
+const id = gtmContainerId({ prerendered: Astro.isPrerendered, build: BUILD_GTM_ID, runtime: env.GTM_CONTAINER_ID });
+---
+{id && <script is:inline set:html={gtmHeadScript(id)} />}

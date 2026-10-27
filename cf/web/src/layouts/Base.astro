@@ -3,6 +3,8 @@ import '~/styles/global.css';
 import lora700 from '@fontsource/lora/files/lora-latin-700-normal.woff2?url';
 import jakarta400 from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-400-normal.woff2?url';
 import Footer from '~/components/Footer.astro';
+import GoogleTagManager from '~/components/GoogleTagManager.astro';
+import GoogleTagManagerNoscript from '~/components/GoogleTagManagerNoscript.astro';
 import Navbar from '~/components/Navbar.astro';
 import WebAnalytics from '~/components/WebAnalytics.astro';
 import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph, buildSeo, jsonLdScript, type SeoInput } from '~/lib/seo';
@@ -17,6 +19,9 @@ import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph
  *
  * <WebAnalytics /> (SAKEM-095) renders the Cloudflare Web Analytics beacon, and only when one is configured; it sits
  * right after <Footer /> with no whitespace between them, so a page without it is byte for byte what it was before.
+ * <GoogleTagManager /> and <GoogleTagManagerNoscript /> (SAKEM-108) render Google Tag Manager's two parts, also only when one is
+ * configured: the script right after the charset meta tag, the noscript frame right after the opening body tag, each with no
+ * whitespace before it.
  */
 interface Props {
   seo: SeoInput;
@@ -30,7 +35,7 @@ const graph = buildGraph(seo);
 <!doctype html>
 <html lang={SITE_LANGUAGE} class="scroll-smooth">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8" /><GoogleTagManager />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content={THEME_COLOR} />
 
@@ -74,7 +79,7 @@ const graph = buildGraph(seo);
     {graph && <script type="application/ld+json" set:html={jsonLdScript(graph)} />}
     {jsonLd.map((data) => <script type="application/ld+json" set:html={jsonLdScript(data)} />)}
   </head>
-  <body class="antialiased">
+  <body class="antialiased"><GoogleTagManagerNoscript />
     {/* Hero sections read --hero-top (global.css) to clear the fixed navbar. */}
     <div class="nav-clearance">
       <a
