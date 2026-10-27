@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The built home page, in a DOM, with its own scripts run for real: the navbar (and its floating mode,
-// SAKEM-111), the stat dialog opener and the hero video. This is the check that the markup and the
+// SAKEM-111), the dialog opener and the hero video. This is the check that the markup and the
 // scripts agree (selectors, hidden/un-hidden controls) and that rendering the page logs no console
 // errors. It is NOT a browser: there is no layout and no media playback (play() is stubbed), and no
 // pixel was looked at.
@@ -60,9 +60,30 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     vi.unstubAllGlobals();
   });
 
-  it('the four scripts of the page run without a console error', async () => {
-    for (const marker of ['nav-toggle', 'data-steps', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
+  it('the five scripts of the page run without a console error', async () => {
+    for (const marker of ['nav-toggle', 'data-chart', 'data-steps', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
     await new Promise((r) => setTimeout(r, 20));
+  });
+
+  describe('problem charts', () => {
+    it('a click opens a chart\'s popover and closes the others; a click elsewhere or Escape closes it', async () => {
+      await runScript(html, 'data-chart');
+      const charts = [...document.querySelectorAll<HTMLElement>('[data-chart]')];
+      const button = (i: number) => charts[i].querySelector('button')!;
+      expect(charts).toHaveLength(3);
+      button(0).click();
+      expect(charts.map((c) => c.hasAttribute('data-open'))).toEqual([true, false, false]);
+      expect(button(0).getAttribute('aria-expanded')).toBe('true');
+      button(1).click();
+      expect(charts.map((c) => c.hasAttribute('data-open'))).toEqual([false, true, false]);
+      charts[1].querySelector<HTMLElement>('.problem-pop')!.click(); // a click inside the popover keeps it open
+      expect(charts[1].hasAttribute('data-open')).toBe(true);
+      document.body.click();
+      expect(charts.some((c) => c.hasAttribute('data-open'))).toBe(false);
+      button(2).click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(charts[2].hasAttribute('data-open')).toBe(false);
+    });
   });
 
   describe('program steps', () => {
@@ -81,8 +102,8 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     });
   });
 
-  describe('stat dialog', () => {
-    it('opens from its button and closes on a click on the backdrop', async () => {
+  describe('dialog opener', () => {
+    it('opens a dialog from its button and closes it on a click on the backdrop', async () => {
       await runScript(html, 'data-dialog-open');
       const button = document.querySelector<HTMLElement>('[data-dialog-open]')!;
       const dialog = document.getElementById(button.dataset.dialogOpen!) as HTMLDialogElement;

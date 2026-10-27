@@ -9,7 +9,7 @@ import { impactMetrics, testimonials } from '~/lib/home-data';
  * quote always shown under the photo (no hover needed, so phones see it too),
  * clamped to four lines. A quote longer than that gets "Baca selengkapnya",
  * which opens the whole quote in a native <dialog> (opened by the document-wide
- * [data-dialog-open] script of ProblemSection). The sunglow card carries the
+ * [data-dialog-open] script below). The sunglow card carries the
  * college figure. From md the cards sit in a grid of four; on a phone they
  * scroll sideways, one and a bit at a time.
  */
@@ -110,3 +110,18 @@ const card = 'w-[78%] shrink-0 snap-start md:w-auto';
     </ul>
   </div>
 </section>
+
+<script>
+  // Open a <dialog> from its [data-dialog-open] button (about 0.3 KB, document-wide), and close it on a click on the
+  // backdrop (the dialog element itself). "Tutup" is a <form method="dialog">; Escape and focus return come from the
+  // browser. It lived in ProblemSection until that section's stat dialog left (SAKEM-111).
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const opener = target.closest<HTMLElement>('[data-dialog-open]');
+    if (opener?.dataset.dialogOpen) {
+      (document.getElementById(opener.dataset.dialogOpen) as HTMLDialogElement | null)?.showModal();
+    } else if (target instanceof HTMLDialogElement) {
+      target.close();
+    }
+  });
+</script>

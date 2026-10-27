@@ -17,9 +17,10 @@ const norm = (s: string) =>
 const cases: { name: string; web: string[]; root: string[]; phrases: string[] }[] = [
   {
     name: 'Problem ("Mengapa Kami Ada?")',
-    web: ['src/components/sections/ProblemSection.astro', 'src/components/sections/problem/StatDetail.astro'],
+    web: ['src/components/sections/ProblemSection.astro'],
     root: ['components/sections/ProblemSection.tsx'],
-    phrases: ['Mengapa Kami Ada?', 'Kami hadir untuk', 'mengubah realitas ini.', 'Mengapa ini terjadi?', 'Tutup', 'aria-haspopup="dialog"'],
+    // "Mengapa ini terjadi?" and its dialog were removed by Dzul, 2026-10-27 (SAKEM-111).
+    phrases: ['Mengapa Kami Ada?', 'Kami hadir untuk', 'mengubah realitas ini.'],
   },
   {
     name: 'Impact and stories',

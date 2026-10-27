@@ -1,106 +1,149 @@
 ---
 import { problemStats } from '~/lib/home-data';
-import StatDetail from './problem/StatDetail.astro';
 
 /**
  * Homepage "Mengapa Kami Ada?" (SAKEM-111; concept A of the second wireframe, Dzul 2026-10-27, after BYQ Stringer
- * "Scroll-Triggered Word Reveal" and Altum "Centered Intro Story Headline"): one screen tall on cream, the title with
- * "Mengapa ini terjadi?" on the right, then the three facts of problemStats and "Kami hadir untuk mengubah realitas
- * ini." as four centred paragraphs, each fact with a small infographic inside its sentence (ten children with three
- * lit, the 55/45 bar, the city and village bars; decorative, the sentence says it). Each paragraph fills from grey to
- * navy, line after line, as it scrolls up (a background clipped to the text, CSS scroll-driven behind @supports; with
- * reduced motion or without support it is navy from the start). "Mengapa ini terjadi?" opens the detail text in a
- * <dialog> (StatDetail; the opener script is below).
+ * "Scroll-Triggered Word Reveal" and Altum "Centered Intro Story Headline"): one screen tall on cream, the three facts
+ * of problemStats and "Kami hadir untuk mengubah realitas ini." as four centred paragraphs, each fact with a small
+ * infographic inside its sentence (ten children with three lit, the 55/45 bar, the city and village bars; decorative,
+ * the sentence says it). The title is for screen readers only and "Mengapa ini terjadi?" is gone (both removed from
+ * view by Dzul). Scroll text fill: every word turns from grey to navy in reading order on ONE timeline, the text
+ * block's own view timeline, each word on its own slice of it, so the fill runs through the four paragraphs as the
+ * block scrolls up (CSS scroll-driven behind @supports; with reduced motion or without support the words are navy).
  */
 // Where each fact's infographic sits: right after this phrase of its sentence.
 const anchors = ['Hanya', 'keluarga 20% terkaya', 'kesempatan 2x'];
+const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const NAVY = 'bg-primary-blue-dark';
+const GREY = 'bg-[#C9D0DE]';
 const kid = (on: boolean) =>
-  `<svg viewBox="0 0 20 34" class="h-[0.6em] w-[0.35em] ${on ? 'text-secondary-yellow' : 'text-white/25'}"><circle cx="10" cy="6" r="5" fill="currentColor"/><path d="M3 15a7 7 0 0 1 14 0v8h-3v11H6V23H3Z" fill="currentColor"/></svg>`;
-// The infographics: navy pills with sunglow marks. Markup without whitespace, so the sentence around them reads as written.
-const chip = (inner: string) =>
-  `<span aria-hidden="true" class="mx-[0.12em] inline-flex h-[0.95em] translate-y-[0.1em] items-center gap-[0.1em] rounded-full bg-primary-blue-dark px-[0.4em] align-baseline shadow-[0_0.1em_0.3em_-0.1em_rgba(13,31,82,0.5)]">${inner}</span>`;
-const charts = [
-  Array.from({ length: 10 }, (_, i) => kid(i < 3)).join(''),
-  '<span class="flex h-[0.26em] w-[2.6em] overflow-hidden rounded-full bg-white/25"><span class="problem-grow-x w-[55%] origin-left rounded-full bg-secondary-yellow"></span></span>',
-  '<span class="flex h-[0.56em] items-end gap-[0.12em]"><span class="problem-grow-y h-full w-[0.32em] origin-bottom rounded-[0.08em] bg-secondary-yellow"></span><span class="problem-grow-y h-1/2 w-[0.32em] origin-bottom rounded-[0.08em] bg-white/40"></span></span>',
-];
-const facts = problemStats.map((stat, index) => {
-  const at = stat.text.indexOf(anchors[index]) + anchors[index].length;
-  const head = stat.text.slice(0, at);
-  const tail = stat.text.slice(at);
-  // The chip sits after the anchor's space when the sentence goes on, or right against the full stop when it ends there.
-  return tail.trim() ? `${head} ${chip(charts[index])}${tail}.` : `${head}${chip(charts[index])}.`;
+  `<svg viewBox="0 0 20 34" aria-hidden="true" class="h-[0.62em] w-[0.36em] ${on ? 'text-primary-blue-dark' : 'text-[#C9D0DE]'}"><circle cx="10" cy="6" r="5" fill="currentColor"/><path d="M3 15a7 7 0 0 1 14 0v8h-3v11H6V23H3Z" fill="currentColor"/></svg>`;
+const swatch = (tone: string) => `<span class="inline-block size-2.5 shrink-0 rounded-full ${tone}"></span>`;
+const legend = (rows: [string, string][]) =>
+  `<span class="flex flex-col gap-1.5">${rows.map(([tone, label]) => `<span class="flex items-center gap-2">${swatch(tone)}${escape(label)}</span>`).join('')}</span>`;
+// Each chart: the marks drawn in the line of text (no fill behind them), and what its popover says. The popover is the
+// chart's legend, plus the long "Mengapa ini terjadi?" text where the fact has one.
+const charts = problemStats.map((stat) => {
+  const c = stat.chart;
+  if (c.kind === 'pictogram') {
+    return {
+      marks: `<span class="flex items-end gap-[0.06em]">${Array.from({ length: c.total }, (_, i) => kid(i < c.highlighted)).join('')}</span>`,
+      body: legend([[NAVY, `${c.highlighted} dari ${c.total} anak memiliki akses ke pendidikan tinggi`], [GREY, `${c.total - c.highlighted} lainnya belum`]]),
+    };
+  }
+  if (c.kind === 'share') {
+    return {
+      // A small pie, the share in navy from twelve o'clock (a bar read lopsided next to the other charts; Dzul, 2026-10-27).
+      marks: `<svg viewBox="0 0 20 20" aria-hidden="true" class="h-[0.72em] w-[0.72em] -rotate-90"><circle cx="10" cy="10" r="9" fill="#C9D0DE"/><circle cx="10" cy="10" r="4.5" fill="none" stroke="#0D1F52" stroke-width="9" pathLength="100" stroke-dasharray="${c.share * 100} 100"/></svg>`,
+      body: legend([[NAVY, c.highlightLabel], [GREY, c.restLabel]]),
+    };
+  }
+  const max = Math.max(...c.bars.map((bar) => bar.value));
+  return {
+    marks: `<span class="flex h-[0.62em] items-end gap-[0.08em]">${c.bars.map((bar, i) => `<span class="w-[0.3em] rounded-[0.06em] ${i === 0 ? NAVY : GREY}" style="height:${(bar.value / max) * 100}%"></span>`).join('')}</span>`,
+    body: legend(c.bars.map((bar, i) => [i === 0 ? NAVY : GREY, `${bar.name}: ${bar.value}x`])),
+  };
 });
-const detailIndex = problemStats.findIndex((s) => s.detail);
+// A chart as a button with its popover: shown on hover, on keyboard focus, and while clicked open (the script below
+// toggles data-open). The button's name is the chart's own description from home-data.
+const chartHtml = (index: number) => {
+  const stat = problemStats[index];
+  const { marks, body } = charts[index];
+  const id = `problem-chart-${index + 1}`;
+  const detail = stat.detail ? `<span class="block border-t border-primary-blue-dark/10 pt-3 leading-relaxed text-gray-600"><span class="mb-1 block font-semibold text-primary-blue-dark">Mengapa ini terjadi?</span>${escape(stat.detail)}</span>` : '';
+  return (
+    `<span class="problem-chart relative inline-block align-baseline" data-chart>` +
+    `<button type="button" aria-expanded="false" aria-controls="${id}" aria-label="${escape(stat.chart.label)}" class="mx-[0.1em] inline-flex translate-y-[0.06em] cursor-pointer items-end rounded-[0.15em] px-[0.08em] py-[0.04em] align-baseline outline-offset-4 transition-colors hover:bg-primary-blue-dark/[0.06]">${marks}</button>` +
+    `<span id="${id}" role="tooltip" class="problem-pop absolute top-[calc(100%+0.35em)] left-1/2 z-20 w-max max-w-[min(28rem,calc(100vw-2rem))] max-h-[min(60vh,26rem)] -translate-x-1/2 flex-col overflow-y-auto overscroll-contain gap-3 rounded-xl border border-primary-blue-dark/10 bg-white p-4 text-left text-sm font-normal leading-snug tracking-normal text-primary-blue-dark shadow-[0_18px_40px_-16px_rgba(13,31,82,0.35)]">` +
+    `<span class="text-2xl font-medium tracking-[-0.02em]">${escape(stat.number)}</span>${body}${detail}</span>` +
+    `</span>`
+  );
+};
+
+// Every paragraph as words; a chip token after its anchor. Each word gets its slice of the fill ('--a' to '--b', in % of
+// the timeline), handed out in reading order over FILL_FROM..FILL_TO across all four paragraphs.
+const FILL_FROM = 22;
+const FILL_TO = 50;
+const paragraphs = [
+  ...problemStats.map((stat, index) => {
+    const at = stat.text.indexOf(anchors[index]) + anchors[index].length;
+    const tail = stat.text.slice(at).trim();
+    const words = [...stat.text.slice(0, at).split(' '), `chip${index}`, ...(tail ? tail.split(' ') : [])];
+    words[words.length - 1] += '.';
+    return words;
+  }),
+  'Kami hadir untuk mengubah realitas ini.'.split(' '),
+];
+const total = paragraphs.flat().length;
+let n = 0;
+const html = paragraphs.map((words) =>
+  words
+    .map((word) => {
+      const a = (FILL_FROM + ((FILL_TO - FILL_FROM) * n) / total).toFixed(2);
+      const b = (FILL_FROM + ((FILL_TO - FILL_FROM) * (n + 1.5)) / total).toFixed(2);
+      n += 1;
+      const style = `style="--a:${a}%;--b:${b}%"`;
+      const chip = /^chip(\d)(\.?)$/.exec(word);
+      // The chart sits against a full stop that ends the sentence right after the anchor.
+      if (chip) return `${chartHtml(Number(chip[1]))}${chip[2]}`;
+      return `<span class="problem-word" ${style}>${word}</span>`;
+    })
+    // Words are joined by spaces, except before a chip that carries the full stop (it sits against the word before).
+    .reduce((out, part, i) => (i === 0 ? part : out + (/^<span class="problem-chart[\s\S]*\.$/.test(part) ? '' : ' ') + part), ''),
+);
 ---
 
-<section class="flex min-h-[100svh] flex-col gap-14 bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24" data-problem>
-  <div class="flex flex-wrap items-start justify-between gap-6">
-    <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em]">Mengapa Kami Ada?</h2>
-    {detailIndex >= 0 && <StatDetail id={`problem-detail-${detailIndex + 1}`} stat={problemStats[detailIndex]} variant="outline-navy" />}
-  </div>
-
-  <div class="mx-auto flex max-w-[24em] grow flex-col justify-center gap-[0.9em] text-center font-body text-[clamp(28px,3.6vw,58px)] font-medium leading-[1.25] tracking-[-0.025em] text-balance">
-    {facts.map((html) => <p data-fact><span class="problem-fill" set:html={html} /></p>)}
-    <p><span class="problem-fill underline decoration-secondary-yellow decoration-[0.12em] underline-offset-[0.18em]">Kami hadir untuk mengubah realitas ini.</span></p>
+<section class="flex min-h-[100svh] flex-col justify-center bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24" data-problem>
+  <h2 class="sr-only">Mengapa Kami Ada?</h2>
+  <div class="problem-text mx-auto flex max-w-[24em] flex-col gap-[0.9em] text-center font-body text-[clamp(28px,3.6vw,58px)] font-medium leading-[1.25] tracking-[-0.025em] text-balance">
+    {html.slice(0, 3).map((p) => <p data-fact set:html={p} />)}
+    <p class="underline decoration-secondary-yellow decoration-[0.12em] underline-offset-[0.18em]" set:html={html[3]} />
   </div>
 </section>
 
 <style>
-  /* Scroll text fill: each paragraph is navy on its left half and grey on its right, the background clipped to the
-     text; sliding it left fills the lines in reading order as the paragraph scrolls up. The charts grow with it. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      [data-problem] .problem-fill {
-        background: linear-gradient(90deg, var(--primary-blue-dark) 50%, #c3cada 50%) 100% 0 / 200% 100% no-repeat;
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-        animation: problem-fill linear both;
-        animation-timeline: view();
-        animation-range: entry 40% cover 55%;
+      .problem-text {
+        view-timeline-name: --problem;
       }
-      [data-problem] :global(.problem-grow-x) {
-        animation: problem-grow-x linear both;
-        animation-timeline: view();
-        animation-range: entry 60% cover 50%;
-      }
-      [data-problem] :global(.problem-grow-y) {
-        animation: problem-grow-y linear both;
-        animation-timeline: view();
-        animation-range: entry 60% cover 50%;
+      .problem-text :global(.problem-word) {
+        color: #c3cada;
+        animation: problem-word linear both;
+        animation-timeline: --problem;
+        animation-range: cover var(--a) cover var(--b);
       }
     }
   }
-  @keyframes problem-fill {
+  @keyframes problem-word {
     to {
-      background-position: 0 0;
+      color: var(--primary-blue-dark);
     }
   }
-  @keyframes problem-grow-x {
-    from {
-      scale: 0 1;
-    }
+  /* A chart's popover: on hover, on keyboard focus, and while clicked open. */
+  .problem-text :global(.problem-pop) {
+    display: none;
   }
-  @keyframes problem-grow-y {
-    from {
-      scale: 1 0;
-    }
+  .problem-text :global(.problem-chart:hover .problem-pop),
+  .problem-text :global(.problem-chart[data-open] .problem-pop),
+  .problem-text :global(.problem-chart:has(button:focus-visible) .problem-pop) {
+    display: flex;
   }
 </style>
 
 <script>
-  // The only client JS of this section (about 0.3 KB), document-wide on purpose: it also opens the story dialogs of
-  // StoriesSection. Open a <dialog> from its [data-dialog-open] button, and
-  // close it on a click on the backdrop (the dialog element itself). "Tutup" is a
-  // <form method="dialog">; Escape and focus return come from the browser.
+  // The charts' popovers on touch and click: a click toggles the chart it is on and closes the others; a click elsewhere
+  // or Escape closes them all. Hover and keyboard focus need no script (CSS above).
+  const charts = [...document.querySelectorAll<HTMLElement>('[data-chart]')];
+  const setOpen = (chart: HTMLElement, open: boolean) => {
+    chart.toggleAttribute('data-open', open);
+    chart.querySelector('button')?.setAttribute('aria-expanded', String(open));
+  };
   document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement;
-    const opener = target.closest<HTMLElement>('[data-dialog-open]');
-    if (opener?.dataset.dialogOpen) {
-      (document.getElementById(opener.dataset.dialogOpen) as HTMLDialogElement | null)?.showModal();
-    } else if (target instanceof HTMLDialogElement) {
-      target.close();
-    }
+    const hit = (event.target as HTMLElement).closest<HTMLElement>('[data-chart]');
+    for (const chart of charts) setOpen(chart, chart === hit && !(event.target as HTMLElement).closest('.problem-pop') ? !chart.hasAttribute('data-open') : chart === hit && chart.hasAttribute('data-open'));
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') for (const chart of charts) setOpen(chart, false);
   });
 </script>

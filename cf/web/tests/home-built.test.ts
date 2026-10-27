@@ -56,7 +56,6 @@ describe.skipIf(!built)('home page build output', () => {
     const h2 = all(html, /<h2[^>]*>[\s\S]*?<\/h2>/g).map(text);
     expect(h2).toEqual([
       'Mengapa Kami Ada?',
-      'Mengapa ini terjadi?', // the heading of the stat dialog, in the HTML for crawlers
       'Dari Desa ke Kampus Impian',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Cerita Sukses Alumni',
@@ -105,22 +104,22 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Problem', () => {
-    it('one centred paragraph per fact, as written, with its decorative infographic, then the closing line; the stat detail dialog wired to its button', () => {
+    it('one centred paragraph per fact, as written, with its decorative infographic, then the closing line; no stat dialog any more', () => {
       const facts = all(problem, /<p data-fact[\s\S]*?<\/p>/g);
       expect(facts).toHaveLength(problemStats.length);
-      problemStats.forEach((stat, i) => expect(text(facts[i])).toContain(`${stat.text}.`));
-      expect(all(problem, /<span aria-hidden="true" class="[^"]*rounded-full bg-primary-blue-dark px-\[0\.4em\]/g)).toHaveLength(problemStats.length);
+      // the sentence as written once the charts' popovers (hidden until hover, focus or click) are left out
+      const withoutPops = (html: string) => html.replace(/<span id="problem-chart-\d"[\s\S]*?<\/span><\/span>(?=\.?(?:<\/p>| ))/g, '');
+      problemStats.forEach((stat, i) => expect(text(withoutPops(facts[i]))).toContain(`${stat.text}.`));
+      const charts = all(problem, /<button type="button" aria-expanded="false" aria-controls="problem-chart-\d" aria-label="[^"]+"/g);
+      expect(charts.map((c) => c.match(/aria-label="([^"]+)"/)![1])).toEqual(problemStats.map((s) => s.chart.label));
+      expect(text(problem)).toContain(problemStats.find((s) => s.detail)!.detail as string); // in the second chart's popover
       expect(text(problem)).toContain('Kami hadir untuk mengubah realitas ini.');
-
-      const detailCount = problemStats.filter((s) => s.detail).length;
-      expect(all(problem, /<dialog[\s>]/g)).toHaveLength(detailCount);
-      const dialogId = problem.match(/<dialog id="([^"]+)" aria-labelledby="([^"]+)"/);
-      expect(dialogId).not.toBeNull();
-      const [, id, labelledby] = dialogId as RegExpMatchArray;
-      expect(problem).toContain(`id="${labelledby}"`); // the dialog's label exists
-      expect(problem).toMatch(new RegExp(`<button[^>]*aria-haspopup="dialog"[^>]*data-dialog-open="${id}"`));
-      expect(problem).toContain('<form method="dialog">'); // "Tutup" closes natively
-      expect(text(problem)).toContain(problemStats.find((s) => s.detail)!.detail as string);
+      expect(problem).toMatch(/<h2 class="sr-only"[^>]*>Mengapa Kami Ada\?<\/h2>/);
+      expect(problem).not.toContain('<dialog');
+      // every word has its own slice of the one fill timeline, in reading order
+      const starts = all(problem, /--a:([\d.]+)%/g).map((m) => Number(m.match(/[\d.]+/)![0]));
+      expect(starts.length).toBeGreaterThan(30);
+      expect([...starts].sort((p, q) => p - q)).toEqual(starts);
     });
   });
 
@@ -249,8 +248,8 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
     it(`eager JS (the page's own scripts, all inline) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, program steps, dialogs (the stat and the stories share one opener), hero video
-      expect(scripts).toHaveLength(4);
+      // navbar, problem charts, program steps, story dialogs, hero video
+      expect(scripts).toHaveLength(5);
       expect(scripts.every((m) => !/\ssrc=/.test(m[1]))).toBe(true);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);
