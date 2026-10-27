@@ -6,7 +6,7 @@ import { buttonClasses } from '~/lib/ui';
 /**
  * Homepage "Program Kami" (SAKEM-111; the target of the hero's "Lihat Program Kami"), a full-screen step showcase
  * (Dzul, 2026-10-27): the title left and the lead right, then the three steps as photo cards side by side (stacked on a
- * phone). The open card is wide and shows the step's subtitle, its points as one description clamped to two lines, and "Lihat Detail" to /program/<id> over its photo, with a
+ * phone). The open card is wide and shows the step's name (the program title, "Roadshow & Seleksi"..., not the stage tag, Dzul 2026-10-27), its points as one description clamped to two lines, and "Lihat Detail" to /program/<id> over its photo, with a
  * progress ring top right; every card has its number top left, and the closed ones are narrow and show their name only (the whole card is their header button). The
  * steps change on their own: the open card's ring fills in 7 s and its `animationend` opens the next one, so pausing the
  * ring (hover, keyboard focus, the section out of view) pauses the rotation, and with reduced motion there is no
@@ -40,7 +40,7 @@ const covers: Record<string, string> = {
         >
           <Img
             src={covers[step.id]}
-            alt={step.title}
+            alt=""
             sizes="(min-width: 768px) 60vw, 100vw"
             class="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none"
           />
@@ -57,17 +57,14 @@ const covers: Record<string, string> = {
               aria-expanded={index === 0 ? 'true' : 'false'}
               class="text-left after:absolute after:inset-0 aria-expanded:after:hidden"
             >
-              {step.tag}
+              {step.title}
             </button>
           </h3>
           <div id={`tahap-${step.id}`} role="region" aria-labelledby={`tahap-${step.id}-tab`} hidden={index !== 0} class="mt-3 flex flex-col gap-5">
-            <div class="flex flex-col gap-2">
-              <p class="text-lg font-medium text-white">{step.title}</p>
-              <p class="line-clamp-2 max-w-[42em] text-[15px] leading-relaxed text-white/75">{step.points.join('. ')}.</p>
-            </div>
+            <p class="line-clamp-2 max-w-[42em] text-[15px] leading-relaxed text-white/75">{step.points.join('. ')}.</p>
             <a
               href={`/program/${step.id}`}
-              aria-label={`Lihat Detail ${step.tag}`}
+              aria-label={`Lihat Detail ${step.title}`}
               class={buttonClasses({ variant: 'yellow-on-navy', className: 'self-start font-bold text-primary-blue-dark' })}
             >
               Lihat Detail
