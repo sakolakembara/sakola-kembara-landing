@@ -1,11 +1,11 @@
 ---
-import { footerLinks } from '~/lib/site';
+import { MAIN_INSTAGRAM, branches, footerLinks } from '~/lib/site';
 import Icon from './Icon.astro';
 import SocialLinks from './SocialLinks.astro';
 
 /**
  * Site footer (SAKEM-111, design "Opsi C"): the name as a full-width wordmark,
- * the mission, site links in two columns, contact, then copyright and social
+ * the mission, site links in two columns, the branches (each to its Instagram), contact, then copyright and social
  * links. The wordmark is SVG text stretched to the width (textLength), so it
  * fills the row at every screen size in the site's own Lora.
  */
@@ -29,7 +29,7 @@ const rule = 'border-t border-white/15';
       </svg>
     </a>
 
-    <div class="grid items-start gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="grid items-start gap-x-12 gap-y-10 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))]">
       <p class="max-w-[22em] text-[22px] font-medium leading-[1.4]">
         Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia.
       </p>
@@ -42,6 +42,27 @@ const rule = 'border-t border-white/15';
               <li>
                 <a href={link.href} class="block py-1.5 text-base text-white/85 transition-colors hover:text-white">
                   {link.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <nav aria-labelledby="footer-branches-heading">
+        <h4 id="footer-branches-heading" class="mb-2.5 text-sm font-semibold text-white/60">Cabang</h4>
+        <ul class="grid grid-cols-2 gap-x-6">
+          {
+            branches.map((branch) => (
+              <li>
+                <a
+                  href={`https://instagram.com/${branch.instagram ?? MAIN_INSTAGRAM}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={branch.region}
+                  class="block py-1.5 text-base text-white/85 transition-colors hover:text-white"
+                >
+                  {branch.name}
                 </a>
               </li>
             ))
