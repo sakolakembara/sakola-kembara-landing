@@ -68,6 +68,14 @@ describe.skipIf(!built)('home page build output', () => {
     expect(all(partners, /<h3[\s>]/g)).toHaveLength(0);
   });
 
+  it('one typeface: no Lora on the page (BYQ "Sustainability Hub", Dzul 2026-10-27), and the preloads are the two Jakarta weights it paints first', () => {
+    expect(html).not.toContain('font-display');
+    const preloads = all(html, /<link rel="preload"[^>]*as="font"[^>]*>/g).join(' ');
+    expect(preloads).toMatch(/plus-jakarta-sans-latin-400-normal/);
+    expect(preloads).toMatch(/plus-jakarta-sans-latin-500-normal/);
+    expect(preloads).not.toMatch(/lora/i);
+  });
+
   describe('Hero', () => {
     it('the video is silent, looped, inline, not preloaded, and has a phone size; no pause button (Dzul, 2026-10-27)', () => {
       const video = hero.match(/<video[^>]*>/)![0];

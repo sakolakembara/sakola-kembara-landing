@@ -19,8 +19,9 @@ export const prerender = true;
 const latestArticles = getAllArticles().slice(0, 4);
 ---
 
-<Base seo={{ kind: 'home' }} navOverlay>
-  {/* SAKEM-111, design "Opsi C": the hero video under a floating navbar, then the sections on a warm off-white. */}
+<Base seo={{ kind: 'home' }} navOverlay headingFont="jakarta">
+  {/* SAKEM-111: design "Opsi C" in the BYQ "Sustainability Hub" system (one sans, no Lora): the hero video under a
+      floating navbar, then the sections on a cream canvas. */}
   <main class="bg-[#FBFBF5]">
     <HeroSection />
     <ImpactSection />
