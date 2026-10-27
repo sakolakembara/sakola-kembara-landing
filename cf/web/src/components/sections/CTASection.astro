@@ -8,9 +8,8 @@ import { REGISTRATION_PATH } from '~/lib/site';
  * four ways to take part as rows on the right (from md), rules between the rows only. Each row is one link: the role, a
  * photo chip to its right that pops out over the row on hover (a scale, so the row does not move), an arrow. The action
  * ("Daftar Sekarang"...) is in the link for screen readers only. The photos are decorative (alt=""): the link text says it all.
- * One screen tall; the title sits at the top of the left column, three of the foundation's mascots (Kucing "Semangat",
- * Bara "Hi!", Kerbau "Yes!", decorative, floating gently) in its middle and a quote of Ki Hajar Dewantara at its bottom
- * (all Dzul, 2026-10-27). Every arrow is outlined until its row is hovered.
+ * One screen tall; the title top left and a quote of Ki Hajar Dewantara top right, the roles full width at the bottom
+ * (Dzul, 2026-10-27; the mascots that were here were removed the same day). Every arrow is outlined until its row is hovered.
  */
 const ctaOptions = [
   {
@@ -45,23 +44,23 @@ const ctaOptions = [
 ];
 ---
 
-<section id="gabung" class="flex min-h-[100svh] bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24">
-  <div class="grid w-full items-center gap-12 md:grid-cols-2 md:gap-x-16">
-    <div class="flex flex-col justify-between gap-12 self-stretch">
-      <h2 class="font-body text-[clamp(32px,3.9vw,56px)] font-medium leading-[1.15] tracking-[-0.025em] text-balance anim-reveal">
-        Mari Menjadi <br />Bagian Perubahan
-      </h2>
-      <div aria-hidden="true" class="flex items-end">
-        <Img src="/images/maskot/kucing-semangat.png" alt="" sizes="(min-width: 768px) 9rem, 6rem" class="maskot h-28 w-auto md:h-40" />
-        <Img src="/images/maskot/bara-hi.png" alt="" sizes="(min-width: 768px) 11rem, 7rem" class="maskot -ml-3 h-36 w-auto [animation-delay:-1.2s] md:-ml-5 md:h-52" />
-        <Img src="/images/maskot/kerbau-yes.png" alt="" sizes="(min-width: 768px) 7rem, 5rem" class="maskot -ml-2 h-24 w-auto [animation-delay:-2.4s] md:-ml-3 md:h-32" />
-      </div>
-      <figure class="flex max-w-[26em] flex-col gap-3 border-l-2 border-secondary-yellow pl-5">
-        <blockquote class="text-[clamp(18px,1.5vw,22px)] font-medium leading-snug">“Setiap orang menjadi guru, setiap rumah menjadi sekolah.”</blockquote>
-        <figcaption class="text-sm text-gray-600">Ki Hajar Dewantara</figcaption>
-      </figure>
-    </div>
-    <ul class="divide-y divide-primary-blue-dark/25">
+<section id="gabung" class="flex min-h-[100svh] flex-col gap-12 bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24">
+  <div class="grid items-start gap-8 md:grid-cols-2 md:gap-x-16">
+    <h2 class="font-body text-[clamp(32px,3.9vw,56px)] font-medium leading-[1.15] tracking-[-0.025em] text-balance anim-reveal">
+      Mari Menjadi <br />Bagian Perubahan
+    </h2>
+    <figure class="flex max-w-[22em] flex-col gap-4 md:items-end md:justify-self-end md:pt-2 md:text-right">
+      <span aria-hidden="true" class="font-body text-[64px] font-medium leading-[0.5] text-secondary-yellow">“</span>
+      <blockquote class="text-[clamp(20px,1.8vw,26px)] font-medium leading-snug tracking-[-0.01em]">
+        Setiap orang menjadi guru,<br /> setiap rumah menjadi sekolah.
+      </blockquote>
+      <figcaption class="flex items-center gap-3 text-sm text-gray-600">
+        <span aria-hidden="true" class="h-px w-6 bg-gray-400"></span>Ki Hajar Dewantara
+      </figcaption>
+    </figure>
+  </div>
+  <div class="mt-auto">
+    <ul class="w-full divide-y divide-primary-blue-dark/25">
       {
         ctaOptions.map((option) => (
           <li>
@@ -94,17 +93,3 @@ const ctaOptions = [
     </ul>
   </div>
 </section>
-
-<style>
-  /* The mascots float gently, each a beat apart; not with reduced motion. */
-  @media (prefers-reduced-motion: no-preference) {
-    .maskot {
-      animation: maskot-float 3.6s ease-in-out infinite;
-    }
-  }
-  @keyframes maskot-float {
-    50% {
-      translate: 0 -8px;
-    }
-  }
-</style>
