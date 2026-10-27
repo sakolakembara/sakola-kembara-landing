@@ -126,10 +126,9 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Program', () => {
-    it('one step per program (a tab and a panel), its points, photos and a link to its page; only the first panel shows', () => {
-      expect(all(activities, /role="tab"/g)).toHaveLength(programCards.length);
-      expect(all(activities, /role="tabpanel"/g)).toHaveLength(programCards.length);
-      expect(all(activities, /<div role="tabpanel"[^>]*>/g).map((d) => /\shidden[\s>]/.test(d))).toEqual(programCards.map((_, i) => i !== 0));
+    it('one step per program (a header button and a panel), its points, photos and a link to its page; only the first is open', () => {
+      expect(all(activities, /<button[^>]*aria-expanded="(?:true|false)"/g).map((b) => b.includes('"true"'))).toEqual(programCards.map((_, i) => i === 0));
+      expect(all(activities, /<div[^>]*role="region"[^>]*>/g).map((d) => /\shidden[\s>]/.test(d))).toEqual(programCards.map((_, i) => i !== 0));
       expect(all(activities, /<img [^>]*>/g)).toHaveLength(programCards.length * 3);
       for (const p of programCards) {
         expect(text(activities)).toContain(p.title);

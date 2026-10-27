@@ -6,12 +6,14 @@ import { buttonClasses } from '~/lib/ui';
 
 /**
  * Homepage "Program Kami" (SAKEM-111; the target of the hero's "Lihat Program Kami"), a full-screen step showcase
- * (Dzul, 2026-10-27): the title and the lead on the left, the three steps as tabs on the right, and below them one
- * step at a time: its photos (the cover and the first two of its gallery) and its short explanation with "Lihat
- * Detail" to /program/<id>. The steps change on their own: the active tab's bar fills in 7 s and its `animationend`
- * moves to the next step, so pausing the bar (hover, focus, the section out of view) pauses the rotation, and with
- * reduced motion there is no animation and so no rotation. Without JS the first step shows and the tabs do nothing
- * (its "Lihat Detail" and the program pages still work). Copy is verbatim from the root ActivitiesSection + lib/data.ts.
+ * (Dzul, 2026-10-27) after BYQ Babka "Scroll-Driven Accordion Process Steps": the title left and the lead right, then
+ * the three steps as stacked tiles. The open tile shows the step in two equal halves, its short explanation with
+ * "Lihat Detail" to /program/<id> on the left and its photos (the cover and the first two of its gallery) on the
+ * right; the others show their header only. The steps change on their own: the open tile's bar fills in 7 s and its
+ * `animationend` opens the next one, so pausing the bar (hover, keyboard focus, the section out of view) pauses the
+ * rotation, and with reduced motion there is no animation and so no rotation. Without JS the first step stays open and
+ * the headers do nothing (its "Lihat Detail" and the program pages still work). Copy is verbatim from the root
+ * ActivitiesSection + lib/data.ts.
  */
 const covers: Record<string, string> = {
   prapembinaan: '/images/program/prapembinaan.jpg',
@@ -24,87 +26,85 @@ const steps = programCards.map((program) => ({
 }));
 ---
 
-<section id="activities" class="scroll-mt-24 flex min-h-[100svh] flex-col gap-8 px-6 py-16 md:gap-10 md:px-10 md:py-20" data-steps>
-  <div class="grid items-end gap-8 md:grid-cols-2">
-    <div class="flex flex-col gap-4 anim-reveal">
-      <h2 class="text-balance font-body text-[clamp(32px,3.6vw,56px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
-        Apa saja yang dilalui penerima manfaat Sakola Kembara?
-      </h2>
-      <p class="max-w-[34em] text-base leading-[1.65] text-gray-600">
-        Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka
-        panjang.
-      </p>
-    </div>
-    <div role="tablist" aria-label="Tahap program" class="grid grid-cols-3 gap-3 md:gap-5">
-      {
-        steps.map((step, index) => (
-          <button
-            type="button"
-            role="tab"
-            id={`tahap-${step.id}-tab`}
-            aria-controls={`tahap-${step.id}`}
-            aria-selected={index === 0 ? 'true' : 'false'}
-            tabindex={index === 0 ? 0 : -1}
-            class="step-tab group flex flex-col gap-3 text-left text-primary-blue-dark/55 transition-colors hover:text-primary-blue-dark aria-selected:text-primary-blue-dark"
-          >
-            <span class="relative h-[3px] w-full overflow-hidden rounded-full bg-primary-blue-dark/15">
-              <span class="step-bar absolute inset-y-0 left-0 w-0 rounded-full bg-primary-blue-dark" />
-            </span>
-            <span class="text-xs font-semibold tabular-nums md:text-sm">0{index + 1}</span>
-            <span class="text-sm font-semibold leading-tight md:text-lg">{step.tag}</span>
-          </button>
-        ))
-      }
-    </div>
+
+<section id="activities" class="scroll-mt-24 flex min-h-[100svh] flex-col justify-center gap-8 px-6 py-16 md:gap-10 md:px-10 md:py-20" data-steps>
+  <div class="grid items-end gap-6 md:grid-cols-2 anim-reveal">
+    <h2 class="text-balance font-body text-[clamp(32px,3.6vw,56px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
+      Apa saja yang dilalui penerima manfaat Sakola Kembara?
+    </h2>
+    <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600 md:justify-self-end md:text-right">
+      Program pembinaan komprehensif dari penjangkauan siswa hingga pendampingan alumni untuk memastikan keberhasilan jangka
+      panjang.
+    </p>
   </div>
 
-  {
-    steps.map((step, index) => (
-      <div
-        role="tabpanel"
-        id={`tahap-${step.id}`}
-        aria-labelledby={`tahap-${step.id}-tab`}
-        hidden={index !== 0}
-        class="grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] md:gap-10"
-      >
-        <div class="grid min-h-[320px] grid-cols-3 grid-rows-2 gap-3 md:min-h-[420px]">
-          {step.photos.map((photo, i) => (
-            <Img
-              src={photo}
-              alt={i === 0 ? step.title : `Dokumentasi ${step.title} ${i}`}
-              sizes={i === 0 ? '(min-width: 768px) 40vw, 66vw' : '(min-width: 768px) 20vw, 33vw'}
-              class:list={['h-full w-full rounded-xl object-cover', i === 0 ? 'col-span-2 row-span-2' : '']}
-            />
-          ))}
-        </div>
-        <div class="flex flex-col justify-between gap-8">
-          <div class="flex flex-col gap-5">
-            <div class="flex flex-col gap-1">
-              <h3 class="text-[clamp(26px,2.4vw,36px)] font-medium tracking-[-0.02em] text-primary-blue-dark">{step.tag}</h3>
-              <span class="text-gray-600">{step.title}</span>
-            </div>
-            <ul class="flex flex-col divide-y divide-primary-blue-dark/15 border-y border-primary-blue-dark/15">
-              {step.points.map((point) => (
-                <li class="py-3.5 text-[15px] leading-relaxed text-gray-700 md:text-base">{point}</li>
-              ))}
-            </ul>
-          </div>
-          <a
-            href={`/program/${step.id}`}
-            aria-label={`Lihat Detail ${step.tag}`}
-            class={buttonClasses({ variant: 'outline-navy', className: 'self-start' })}
+  <ol class="flex flex-col gap-3">
+    {
+      steps.map((step, index) => (
+        <li class="step rounded-xl border border-primary-blue-dark/10 bg-white" data-open={index === 0 ? '' : undefined}>
+          <h3 class="text-[clamp(22px,2vw,30px)] font-medium tracking-[-0.02em]">
+            <button
+              type="button"
+              id={`tahap-${step.id}-tab`}
+              aria-controls={`tahap-${step.id}`}
+              aria-expanded={index === 0 ? 'true' : 'false'}
+              data-n={`0${index + 1}`}
+              class="flex w-full items-baseline gap-4 px-5 py-4 text-left text-primary-blue-dark/45 transition-colors before:text-sm before:font-semibold before:tabular-nums before:content-[attr(data-n)] hover:text-primary-blue-dark aria-expanded:text-primary-blue-dark md:px-7 md:py-5"
+            >
+              {step.tag}
+            </button>
+          </h3>
+          <div
+            id={`tahap-${step.id}`}
+            role="region"
+            aria-labelledby={`tahap-${step.id}-tab`}
+            hidden={index !== 0}
+            class="px-5 pb-5 md:px-7 md:pb-7"
           >
-            Lihat Detail
-          </a>
-        </div>
-      </div>
-    ))
-  }
+            <div class="grid gap-6 md:grid-cols-2 md:gap-10">
+              <div class="flex flex-col justify-between gap-6">
+                <div class="flex flex-col gap-4">
+                  <p class="text-lg text-gray-600">{step.title}</p>
+                  <ul class="flex flex-col divide-y divide-primary-blue-dark/10 rounded-lg bg-[#EEF1F6] px-4">
+                    {step.points.map((point) => (
+                      <li class="py-3 text-[15px] leading-relaxed text-gray-700 md:text-base">{point}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div class="flex flex-col gap-5">
+                  <a
+                    href={`/program/${step.id}`}
+                    aria-label={`Lihat Detail ${step.tag}`}
+                    class={buttonClasses({ variant: 'outline-navy', className: 'self-start' })}
+                  >
+                    Lihat Detail
+                  </a>
+                  <span aria-hidden="true" class="relative h-[3px] w-full overflow-hidden rounded-full bg-primary-blue-dark/10">
+                    <span class="step-bar absolute inset-y-0 left-0 w-0 rounded-full bg-primary-blue-dark" />
+                  </span>
+                </div>
+              </div>
+              <div class="grid h-[clamp(260px,38svh,420px)] grid-cols-3 grid-rows-2 gap-2.5">
+                {step.photos.map((photo, i) => (
+                  <Img
+                    src={photo}
+                    alt={i === 0 ? step.title : `Dokumentasi ${step.title} ${i}`}
+                    sizes={i === 0 ? '(min-width: 768px) 30vw, 66vw' : '(min-width: 768px) 15vw, 33vw'}
+                    class:list={['h-full w-full rounded-lg object-cover', i === 0 ? 'col-span-2 row-span-2' : '']}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </li>
+      ))
+    }
+  </ol>
 </section>
 
 <style>
-  /* The active tab's bar fills in 7 s; its animationend moves to the next step (the script). */
-  .step-tab[aria-selected='true'] .step-bar {
+  /* The open tile's bar fills in 7 s; its animationend opens the next step (the script). */
+  .step[data-open] .step-bar {
     animation: step-fill 7s linear forwards;
   }
   [data-steps][data-paused] .step-bar {
@@ -116,7 +116,7 @@ const steps = programCards.map((program) => ({
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .step-tab[aria-selected='true'] .step-bar {
+    .step[data-open] .step-bar {
       animation: none;
       width: 100%;
     }
@@ -124,31 +124,25 @@ const steps = programCards.map((program) => ({
 </style>
 
 <script>
-  // Tabs for the program steps, and the rotation: the active bar's animationend selects the next step.
+  // The program steps: one tile open at a time; the open bar's animationend opens the next one.
   const section = document.querySelector<HTMLElement>('[data-steps]');
   if (section) {
-    const tabs = [...section.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-    const select = (next: number, focus = false) => {
-      tabs.forEach((tab, i) => {
+    const tiles = [...section.querySelectorAll<HTMLElement>('.step')];
+    const open = (next: number) =>
+      tiles.forEach((tile, i) => {
         const on = i === next;
-        tab.setAttribute('aria-selected', String(on));
-        tab.tabIndex = on ? 0 : -1;
-        document.getElementById(tab.getAttribute('aria-controls')!)!.hidden = !on;
+        const button = tile.querySelector('button')!;
+        tile.toggleAttribute('data-open', on);
+        button.setAttribute('aria-expanded', String(on));
+        document.getElementById(button.getAttribute('aria-controls')!)!.hidden = !on;
       });
-      if (focus) tabs[next].focus();
-    };
-    const current = () => tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
-    tabs.forEach((tab, i) => {
-      tab.addEventListener('click', () => select(i));
-      tab.addEventListener('keydown', (event) => {
-        const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-        if (step) select((i + step + tabs.length) % tabs.length, true);
-      });
-      tab.querySelector('.step-bar')!.addEventListener('animationend', () => select((current() + 1) % tabs.length));
+    tiles.forEach((tile, i) => {
+      tile.querySelector('button')!.addEventListener('click', () => open(i));
+      tile.querySelector('.step-bar')!.addEventListener('animationend', () => open((i + 1) % tiles.length));
     });
     let hovered = false;
     let visible = true;
-    // Keyboard focus pauses; a mouse click on a tab leaves focus there, so it only counts while visible as such.
+    // Keyboard focus pauses; a mouse click leaves focus on a header, so focus only counts while visible as such.
     const pause = () => section.toggleAttribute('data-paused', hovered || !visible || !!section.querySelector(':focus-visible'));
     section.addEventListener('pointerenter', () => ((hovered = true), pause()));
     section.addEventListener('pointerleave', () => ((hovered = false), pause()));

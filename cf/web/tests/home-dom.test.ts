@@ -66,17 +66,17 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
   });
 
   describe('program steps', () => {
-    const shown = () => [...document.querySelectorAll<HTMLElement>('[role="tabpanel"]')].filter((p) => !p.hidden).map((p) => p.id);
-    it('the bar ending moves to the next step (wrapping), a click selects a step', async () => {
+    const shown = () => [...document.querySelectorAll<HTMLElement>('[data-steps] [role="region"]')].filter((p) => !p.hidden).map((p) => p.id);
+    it('the bar ending opens the next step (wrapping), a click on a header opens that step', async () => {
       await runScript(html, 'data-steps');
-      const tabs = [...document.querySelectorAll<HTMLElement>('[role="tab"]')];
+      const tiles = [...document.querySelectorAll<HTMLElement>('.step')];
       expect(shown()).toEqual(['tahap-prapembinaan']);
-      tabs[0].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
+      tiles[0].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
       expect(shown()).toEqual(['tahap-pembinaan']);
-      expect(tabs.map((t) => t.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false']);
-      tabs[2].click();
+      expect(tiles.map((t) => t.querySelector('button')!.getAttribute('aria-expanded'))).toEqual(['false', 'true', 'false']);
+      tiles[2].querySelector('button')!.click();
       expect(shown()).toEqual(['tahap-pasca-pembinaan']);
-      tabs[2].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
+      tiles[2].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
       expect(shown()).toEqual(['tahap-prapembinaan']);
     });
   });
