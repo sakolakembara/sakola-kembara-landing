@@ -30,6 +30,7 @@
     "test:negative:shortlink": "node scripts/negative-checks-shortlink.mjs",
     "test:negative:page-cache": "node scripts/negative-checks-page-cache.mjs",
     "test:negative:web-analytics": "node scripts/negative-checks-web-analytics.mjs",
+    "test:negative:gtm": "node scripts/negative-checks-gtm.mjs",
     "test:negative:phase-a": "node scripts/negative-checks-phase-a.mjs",
     "test:negative:staging": "node scripts/negative-checks-staging.mjs",
     "test:negative:production": "node scripts/negative-checks-production.mjs",

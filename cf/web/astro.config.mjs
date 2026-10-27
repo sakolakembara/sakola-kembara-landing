@@ -7,6 +7,7 @@ import blogContent from './plugins/blog-content.mjs';
 import { mirroredUploadRules, slashFoldPaths, toUnderscoreRedirects } from './redirects.config.mjs';
 import { PORTAL_ENABLED_VARIABLE, parsePortalEnabled } from './portal-enabled.config.mjs';
 import { BEACON_ID_VARIABLE, parseBeaconId } from './web-analytics.config.mjs';
+import { GTM_ID_VARIABLE, parseGtmId } from './google-tag-manager.config.mjs';
 
 // The legacy Next app lives two folders up. Its content/blog markdown is read in
 // place (no copy); its public/ images go through scripts/build-assets.mjs, which
@@ -29,6 +30,13 @@ if (blogSource !== 'api' && blogSource !== 'markdown') {
 const beaconId = parseBeaconId(process.env[BEACON_ID_VARIABLE]);
 if (beaconId === null && (process.env[BEACON_ID_VARIABLE] ?? '').trim() !== '') {
   console.warn(`${BEACON_ID_VARIABLE} is set but is not a beacon id (32 hexadecimal characters): the prerendered pages are built without the beacon`);
+}
+
+// The Google Tag Manager container id of the PRERENDERED pages (SAKEM-108): the same two-source rule as the beacon id above,
+// from the shell environment of this build only (`GTM_CONTAINER_ID=GTM-XXXXXXX pnpm build`). See src/lib/google-tag-manager.ts.
+const gtmId = parseGtmId(process.env[GTM_ID_VARIABLE]);
+if (gtmId === null && (process.env[GTM_ID_VARIABLE] ?? '').trim() !== '') {
+  console.warn(`${GTM_ID_VARIABLE} is set but is not a container id (GTM- and 4 to 12 letters or digits): the prerendered pages are built without Google Tag Manager`);
 }
 
 // Whether the PRERENDERED pages offer the student portal ("Masuk" and the session script of the navbar; SAKEM-103, Phase A of
@@ -96,7 +104,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   server: { host: true, port: process.env.PORT ? Number(process.env.PORT) : 4321 },
   vite: {
-    define: { __BLOG_SOURCE__: JSON.stringify(blogSource), __WEB_ANALYTICS_BEACON_ID__: JSON.stringify(beaconId), __PORTAL_ENABLED__: JSON.stringify(portalEnabled) },
+    define: { __BLOG_SOURCE__: JSON.stringify(blogSource), __WEB_ANALYTICS_BEACON_ID__: JSON.stringify(beaconId), __GTM_CONTAINER_ID__: JSON.stringify(gtmId), __PORTAL_ENABLED__: JSON.stringify(portalEnabled) },
     plugins: [
       tailwindcss(),
       blogContent({

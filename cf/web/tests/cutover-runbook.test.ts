@@ -250,7 +250,7 @@ describe('section 14 says what the code does', () => {
   });
 
   it('PORTAL_ENABLED is in the variables table as optional and `false`, the build line of the commands carries it, and the production example sets it to false', () => {
-    expect(phaseA).toContain('WEB_ANALYTICS_BEACON_ID=<the id> PORTAL_ENABLED=false pnpm build:prod');
+    expect(phaseA).toContain('WEB_ANALYTICS_BEACON_ID=<the id> GTM_CONTAINER_ID=<GTM-id> PORTAL_ENABLED=false pnpm build:prod');
     const row = rows(phaseA).find((cells) => cells[0] === '`PORTAL_ENABLED`')!;
     expect(row[1]).toBe('site');
     expect(row[2]).toBe('public var, optional');

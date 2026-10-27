@@ -47,6 +47,13 @@ declare namespace Cloudflare {
      */
     WEB_ANALYTICS_BEACON_ID?: string;
     /**
+     * The Google Tag Manager container id (SAKEM-108; a PUBLIC value: it is in every page's HTML). Set per deploy with `--var`,
+     * in production only, never in git. Valid = `GTM-` and 4 to 12 upper-case letters or digits; unset or anything else: the
+     * pages the Worker renders carry no Tag Manager at all. Like the beacon id it reaches those pages only: the prerendered ones
+     * take the same name from the BUILD's environment (astro.config.mjs). src/lib/google-tag-manager.ts.
+     */
+    GTM_CONTAINER_ID?: string;
+    /**
      * Whether the student portal is live (SAKEM-103, Phase A of the cutover). A PUBLIC variable, set per deploy with `--var`, never in
      * git. Exactly `true` shows the navbar's "Masuk" link and its session script on the pages the Worker renders; unset, `false`
      * or anything else (one log line, no value in it) leaves both out, and the slot of the link stays empty (no

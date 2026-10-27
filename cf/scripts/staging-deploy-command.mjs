@@ -73,6 +73,7 @@ const NEVER = [
   [/^PRIVATE_FILES_BUDGET_BYTES$|^(DRAFT|REJECTED_FILES|ACCEPTED_FILES)_RETENTION_DAYS$/, 'a fixed setting of the wrangler configuration (the private bucket budget, the "never delete" retention), not a per-deploy value'],
   [/^BETTER_AUTH_SECRET$|SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE/i, 'a secret: use `wrangler secret put`, typed at its prompt'],
   [/^COOKIE_DOMAIN$|^TRUSTED_ORIGINS$/, 'not used on staging (host-only cookies, same-origin writes)'],
+  [/^GTM_CONTAINER_ID$/, 'production only (SAKEM-108): a staging visit would be counted in the real Google Analytics'],
 ];
 
 /** `KEY=VALUE` lines (dotenv style, `#` comments, optional "double" or 'single' quotes) -> [{ name, value, line }]. */

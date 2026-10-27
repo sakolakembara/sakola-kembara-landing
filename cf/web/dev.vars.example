@@ -30,6 +30,10 @@ ADMIN_URL=http://localhost:5173
 # unset locally: no beacon script, no tag. Set, it reaches the pages the Worker renders; the prerendered pages take the same
 # name from the shell environment of the BUILD, never from this file. src/lib/web-analytics.ts.
 # WEB_ANALYTICS_BEACON_ID=
+# Optional: the Google Tag Manager container id (GTM- and 4 to 12 upper-case letters or digits). Leave it unset locally: no Tag
+# Manager, so no local visit is counted in Google Analytics. Set, it reaches the pages the Worker renders; the prerendered pages
+# take the same name from the shell environment of the BUILD, never from this file. src/lib/google-tag-manager.ts.
+# GTM_CONTAINER_ID=
 # Optional: whether the student portal is live (Phase B). Leave it unset locally (Phase A): the navbar has no "Masuk" link, no
 # session call and no button at all (the slot stays empty). Exactly `true` switches the Masuk link and its script on for the pages
 # the Worker renders; the prerendered pages take the same name from the shell environment of the BUILD (PORTAL_ENABLED=true pnpm build),

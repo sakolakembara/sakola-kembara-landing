@@ -17,6 +17,7 @@ import {
   buildLine,
   builtBeaconProblems,
   builtConfigProblems,
+  builtGtmProblems,
   builtPortalProblems,
   describeResources,
   missingRequired,
@@ -25,6 +26,7 @@ import {
 } from '../../scripts/production-deploy-command.mjs';
 import { TARGETS, checkProductionDryRun, productionDryRunEnv } from '../../scripts/production-dry-run.mjs';
 import { parseBeaconId } from '../web-analytics.config.mjs';
+import { parseGtmId } from '../google-tag-manager.config.mjs';
 import { parsePortalEnabled } from '../portal-enabled.config.mjs';
 import { readRoot, repoRoot, webRoot } from './helpers';
 
@@ -36,10 +38,12 @@ type WorkerName = 'admin' | 'web';
 const WORKER_NAMES: WorkerName[] = ['admin', 'web'];
 const validate = (worker: WorkerName, text: string) => validateVars(worker, parseVarsFile(text));
 
-// Invented, public-shaped values (none is a real key): a site key, a 32-character beacon id.
+// Invented, public-shaped values (none is a real key): a site key, a 32-character beacon id, a Tag Manager container id.
 const KEY = '0x4AAAAAAAdemoKey123456';
 const BEACON = '0123456789abcdef0123456789abcdef';
 const OTHER_BEACON = 'fedcba9876543210fedcba9876543210';
+const GTM = 'GTM-TEST123';
+const OTHER_GTM = 'GTM-OTHER99';
 
 const GOOD = {
   admin: [`TURNSTILE_SITE_KEY=${KEY}`, `UPLOADS_BASE_URL=${PRODUCTION_ORIGINS.UPLOADS_BASE_URL}`, `SITE_URL=${PRODUCTION_ORIGINS.SITE_URL}`].join('\n'),
@@ -48,6 +52,7 @@ const GOOD = {
     `ADMIN_URL=${PRODUCTION_ORIGINS.ADMIN_URL}`,
     `UPLOADS_BASE_URL=${PRODUCTION_ORIGINS.UPLOADS_BASE_URL}`,
     `WEB_ANALYTICS_BEACON_ID=${BEACON}`,
+    `GTM_CONTAINER_ID=${GTM}`,
     'PAGE_CACHE_SECONDS=30',
   ].join('\n'),
 };
@@ -85,7 +90,7 @@ describe('production-deploy-command: what it accepts', () => {
 
   it('a filled example (placeholders replaced by invented values) is accepted, shows every required name, and prints a command', () => {
     for (const worker of WORKER_NAMES) {
-      const filled = readFileSync(path.join(repoRoot, exampleOf(worker)), 'utf8').replace('<site key of the production widget>', KEY).replace('<32 hexadecimal characters of the site token>', BEACON);
+      const filled = readFileSync(path.join(repoRoot, exampleOf(worker)), 'utf8').replace('<site key of the production widget>', KEY).replace('<32 hexadecimal characters of the site token>', BEACON).replace('<GTM- container id from Tag Manager>', GTM);
       const entries = parseVarsFile(filled);
       expect(() => validateVars(worker, entries), worker).not.toThrow();
       expect(missingRequired(worker, entries), worker).toEqual([]);
@@ -252,7 +257,7 @@ describe('production-deploy-command: what it refuses', () => {
       }
       expect(missingRequired(worker, parseVarsFile(GOOD[worker]))).toEqual([]);
     }
-    expect(SPECS.web.filter((s) => s.required).map((s) => s.name)).toEqual(expect.arrayContaining(['WEB_ANALYTICS_BEACON_ID', 'PAGE_CACHE_SECONDS']));
+    expect(SPECS.web.filter((s) => s.required).map((s) => s.name)).toEqual(expect.arrayContaining(['WEB_ANALYTICS_BEACON_ID', 'GTM_CONTAINER_ID', 'PAGE_CACHE_SECONDS']));
   });
 });
 
@@ -314,11 +319,12 @@ describe('production-deploy-command: the printed command', () => {
     const command = buildCommand('web', entries);
     expect(command.startsWith('pnpm exec wrangler deploy -c dist/server/wrangler.json --var ')).toBe(true);
     expect(command).toContain(`--var 'WEB_ANALYTICS_BEACON_ID:${BEACON}'`);
-    expect(buildLine('web', entries)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
+    expect(command).toContain(`--var 'GTM_CONTAINER_ID:${GTM}'`);
+    expect(buildLine('web', entries)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
     expect(buildLine('admin', parseVarsFile(GOOD.admin))).toBe('pnpm build:spa');
     // PORTAL_ENABLED, when the file has it, is on the build line from the same file as the --var
     const withPortal = parseVarsFile(`${GOOD.web}\nPORTAL_ENABLED=false`);
-    expect(buildLine('web', withPortal)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} PORTAL_ENABLED=false pnpm build:prod`);
+    expect(buildLine('web', withPortal)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} PORTAL_ENABLED=false pnpm build:prod`);
     expect(buildCommand('web', withPortal)).toContain("--var 'PORTAL_ENABLED:false'");
     expect(buildCommand('web', withPortal)).toContain(`--var 'WEB_ANALYTICS_BEACON_ID:${BEACON}'`);
   });
@@ -355,7 +361,7 @@ describe('production-deploy-command: the program', () => {
     throw new Error(`expected a failure: ${args.join(' ')}`);
   };
   /** A fake `dist/` of the site: the config the build writes, and the home page with (or without) the beacon. */
-  const writeDist = (dir: string, over: { name?: string; service?: string; vars?: object; workersDev?: boolean; beacon?: string | null; tags?: number; portal?: boolean } = {}) => {
+  const writeDist = (dir: string, over: { name?: string; service?: string; vars?: object; workersDev?: boolean; beacon?: string | null; tags?: number; portal?: boolean; gtm?: string | null; gtmParts?: number } = {}) => {
     mkdirSync(path.join(dir, 'dist/server'), { recursive: true });
     mkdirSync(path.join(dir, 'dist/client'), { recursive: true });
     writeFileSync(
@@ -366,7 +372,12 @@ describe('production-deploy-command: the program', () => {
     const beacon = over.beacon === undefined ? BEACON : over.beacon;
     const body = beacon === null ? '' : Array.from({ length: over.tags ?? 1 }, () => tag(beacon)).join('');
     const portal = over.portal ? '<a href="/portal/login" data-auth-link>Masuk</a><script>fetch("/portal/api/auth/get-session")</script>' : '';
-    writeFileSync(path.join(dir, 'dist/client/index.html'), `<html lang="id-ID"><body><nav>menu${portal}</nav>home${body}</body></html>`);
+    // the two parts of Google Tag Manager as the layout renders them (src/lib/google-tag-manager.ts)
+    const gtm = over.gtm === undefined ? GTM : over.gtm;
+    const times = (n: number, s: string) => Array.from({ length: n }, () => s).join('');
+    const gtmHead = gtm === null ? '' : times(over.gtmParts ?? 1, `<script>(function(w,d,s,l,i){j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;})(window,document,'script','dataLayer',"${gtm}");</script>`);
+    const gtmBody = gtm === null ? '' : times(over.gtmParts ?? 1, `<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${gtm}" height="0" width="0"></iframe></noscript>`);
+    writeFileSync(path.join(dir, 'dist/client/index.html'), `<html lang="id-ID"><head>${gtmHead}</head><body>${gtmBody}<nav>menu${portal}</nav>home${body}</body></html>`);
   };
 
   it('admin: prints the command on standard output and the notes on standard error, and exits 0', async () => {
@@ -414,7 +425,7 @@ describe('production-deploy-command: the program', () => {
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\nTURNSTILE_SECRET_KEY=abc\n`);
     const secret = await fails(dir, ['web']);
     expect(secret.code).toBe(1);
-    expect(secret.stderr).toContain('line 6 (TURNSTILE_SECRET_KEY)');
+    expect(secret.stderr).toContain('line 7 (TURNSTILE_SECRET_KEY)');
     expect(secret.stdout).toBe('');
     writeFileSync(path.join(dir, '.production.vars'), `TURNSTILE_SITE_KEY=${KEY}\n`);
     const incomplete = await fails(dir, ['admin']);
@@ -439,7 +450,7 @@ describe('production-deploy-command: the program', () => {
     const notBuilt = await exec(dir, ['web']);
     expect(notBuilt.stdout.trim().startsWith('pnpm exec wrangler deploy -c dist/server/wrangler.json --var ')).toBe(true);
     expect(notBuilt.stderr).toContain('dist/ is not built yet');
-    expect(notBuilt.stderr).toContain(`WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
+    expect(notBuilt.stderr).toContain(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
     writeDist(dir);
     const built = await exec(dir, ['web']);
     expect(built.stdout).toBe(notBuilt.stdout);
@@ -456,6 +467,9 @@ describe('production-deploy-command: the program', () => {
       ['a build made without the beacon id', { beacon: null }, /no Web Analytics beacon/],
       ['a build made with another beacon id', { beacon: OTHER_BEACON }, /not the one in the vars file/],
       ['two beacon tags', { tags: 2 }, /2 beacon tags/],
+      ['a build made without the Tag Manager id', { gtm: null }, /no Google Tag Manager/],
+      ['a build made with another Tag Manager id', { gtm: OTHER_GTM }, /Google Tag Manager id of the prerendered home page is not the one/],
+      ['the Tag Manager parts twice', { gtmParts: 2 }, /2 Tag Manager scripts and 2 noscript frames/],
       ['a variable in the build', { vars: { CONTENT_API_URL: 'http://127.0.0.1:1' } }, /carries variables \(CONTENT_API_URL\)/],
       ['workers.dev left on', { workersDev: true }, /workers_dev is not false/],
     ];
@@ -465,7 +479,7 @@ describe('production-deploy-command: the program', () => {
       expect(failure.code, label).toBe(1);
       expect(failure.stdout, label).toBe('');
       expect(failure.stderr, label).toMatch(why);
-      expect(failure.stderr, label).toContain(`Build with: WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
+      expect(failure.stderr, label).toContain(`Build with: WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
     }
   });
 
@@ -475,7 +489,7 @@ describe('production-deploy-command: the program', () => {
     writeDist(dir);
     const ok = await exec(dir, ['web']);
     expect(ok.stdout).toContain("--var 'PORTAL_ENABLED:false'");
-    expect(ok.stderr).toContain(`# 2. WEB_ANALYTICS_BEACON_ID=${BEACON} PORTAL_ENABLED=false pnpm build:prod`);
+    expect(ok.stderr).toContain(`# 2. WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} PORTAL_ENABLED=false pnpm build:prod`);
     expect(ok.stderr).toContain('the portal is OFF there as the file says');
     writeDist(dir, { portal: true });
     const on = await fails(dir, ['web']);
@@ -487,14 +501,14 @@ describe('production-deploy-command: the program', () => {
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\n`);
     const noLine = await fails(dir, ['web']);
     expect(noLine.stderr).toContain('offers the student portal');
-    expect(noLine.stderr).toContain(`Build with: WEB_ANALYTICS_BEACON_ID=${BEACON} pnpm build:prod`);
+    expect(noLine.stderr).toContain(`Build with: WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
     writeDist(dir);
     const clean = await exec(dir, ['web']);
     expect(clean.stderr).toContain("PORTAL_ENABLED is not in the file: the portal is OFF (the default)");
     expect(clean.stdout).not.toContain('PORTAL_ENABLED');
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\nPORTAL_ENABLED=true\n`);
     const refused = await fails(dir, ['web']);
-    expect(refused.stderr).toContain('line 6 (PORTAL_ENABLED)');
+    expect(refused.stderr).toContain('line 7 (PORTAL_ENABLED)');
     expect(refused.stdout).toBe('');
   });
 
