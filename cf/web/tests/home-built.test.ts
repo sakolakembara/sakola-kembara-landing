@@ -132,6 +132,7 @@ describe.skipIf(!built)('home page build output', () => {
       expect(all(activities, /<img [^>]*>/g)).toHaveLength(programCards.length);
       for (const p of programCards) {
         expect(text(activities)).toContain(p.title);
+        expect(text(activities)).toContain(`${p.points.join('. ')}.`);
         expect(activities).toContain(`href="/program/${p.id}"`);
       }
     });

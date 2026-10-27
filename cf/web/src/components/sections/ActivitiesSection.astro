@@ -6,7 +6,7 @@ import { buttonClasses } from '~/lib/ui';
 /**
  * Homepage "Program Kami" (SAKEM-111; the target of the hero's "Lihat Program Kami"), a full-screen step showcase
  * (Dzul, 2026-10-27): the title left and the lead right, then the three steps as photo cards side by side (stacked on a
- * phone). The open card is wide and shows the step's subtitle and "Lihat Detail" to /program/<id> over its photo, with a
+ * phone). The open card is wide and shows the step's subtitle, its points as one description clamped to two lines, and "Lihat Detail" to /program/<id> over its photo, with a
  * progress ring top right; every card has its number top left, and the closed ones are narrow and show their name only (the whole card is their header button). The
  * steps change on their own: the open card's ring fills in 7 s and its `animationend` opens the next one, so pausing the
  * ring (hover, keyboard focus, the section out of view) pauses the rotation, and with reduced motion there is no
@@ -46,9 +46,9 @@ const covers: Record<string, string> = {
           />
           <span
             aria-hidden="true"
-            class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.25)_0%,rgba(13,31,82,0.88)_100%)] group-data-open:bg-[linear-gradient(180deg,rgba(13,31,82,0)_35%,rgba(13,31,82,0.85)_100%)]"
+            class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.6)_0%,rgba(13,31,82,0.3)_30%,rgba(13,31,82,0.9)_100%)] group-data-open:bg-[linear-gradient(180deg,rgba(13,31,82,0.55)_0%,rgba(13,31,82,0)_22%,rgba(13,31,82,0)_40%,rgba(13,31,82,0.88)_100%)]"
           />
-          <span aria-hidden="true" class="absolute left-5 top-5 text-sm font-semibold tabular-nums text-secondary-yellow md:left-7 md:top-7">0{index + 1}</span>
+          <span aria-hidden="true" class="absolute left-5 top-5 text-lg font-bold tabular-nums leading-none text-secondary-yellow md:left-7 md:top-7 md:text-xl">0{index + 1}</span>
           <h3 class="text-[clamp(22px,2vw,32px)] font-medium leading-tight tracking-[-0.02em]">
             <button
               type="button"
@@ -61,7 +61,10 @@ const covers: Record<string, string> = {
             </button>
           </h3>
           <div id={`tahap-${step.id}`} role="region" aria-labelledby={`tahap-${step.id}-tab`} hidden={index !== 0} class="mt-3 flex flex-col gap-5">
-            <p class="text-lg text-white/85">{step.title}</p>
+            <div class="flex flex-col gap-2">
+              <p class="text-lg font-medium text-white">{step.title}</p>
+              <p class="line-clamp-2 max-w-[42em] text-[15px] leading-relaxed text-white/75">{step.points.join('. ')}.</p>
+            </div>
             <a
               href={`/program/${step.id}`}
               aria-label={`Lihat Detail ${step.tag}`}
