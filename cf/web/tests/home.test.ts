@@ -45,8 +45,6 @@ const cases: { name: string; web: string[]; root: string[]; phrases: string[] }[
     web: ['src/components/sections/CTASection.astro'],
     root: ['components/sections/CTASection.tsx'],
     phrases: [
-      'Jadilah Bagian',
-      'dari Perubahan',
       'Menjadi Siswa',
       'Daftar Sekarang',
       'Menjadi Donatur',
@@ -101,6 +99,15 @@ describe('data is the legacy lib/data.ts, value for value', async () => {
   it('partners, active and past (the logo is imported by the component, keyed by id)', () => {
     expect(activePartners).toEqual(legacy.activePartners.map(({ logo: _logo, ...rest }) => rest));
     expect(pastPartners).toEqual(legacy.pastPartners.map(({ logo: _logo, ...rest }) => rest));
+  });
+});
+
+// Dzul, 2026-10-27: the join section's title is reworded from the legacy "Jadilah Bagian dari Perubahan".
+describe('the join section title (SAKEM-111)', () => {
+  it('is "Mari Menjadi Bagian Perubahan"', () => {
+    const cta = norm(readWeb('src/components/sections/CTASection.astro'));
+    expect(cta).toContain('Mari Menjadi <br />Bagian Perubahan');
+    expect(cta).not.toContain('Jadilah Bagian <br />');
   });
 });
 

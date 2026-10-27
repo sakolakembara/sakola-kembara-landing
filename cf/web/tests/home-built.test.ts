@@ -62,7 +62,7 @@ describe.skipIf(!built)('home page build output', () => {
       'Cerita Sukses Alumni',
       'Bersama Mewujudkan Perubahan',
       'Cerita & Inspirasi',
-      'Jadilah Bagian dari Perubahan',
+      'Mari Menjadi Bagian Perubahan',
     ]);
     expect(all(activities, /<h3[^>]*>[\s\S]*?<\/h3>/g).map(text)).toEqual(programCards.map((p) => p.tag));
     expect(all(partners, /<h3[\s>]/g)).toHaveLength(0);

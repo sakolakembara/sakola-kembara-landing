@@ -3,7 +3,8 @@ import Img from '~/components/Img.astro';
 import { REGISTRATION_PATH } from '~/lib/site';
 
 /**
- * Homepage "Jadilah Bagian dari Perubahan" (SAKEM-111, the poster Dzul chose on 2026-10-27): a sunglow band with the
+ * Homepage "Mari Menjadi Bagian Perubahan" (SAKEM-111, the poster Dzul chose on 2026-10-27; title reworded by Dzul the same day,
+ * it was "Jadilah Bagian dari Perubahan"): a cream band with the
  * headline on the left and the four ways to take part as ruled rows on the right (from md), each row one link: the role, a
  * photo chip to its right that pops out over the row on hover (a scale, so the row does not move), an arrow. The action
  * ("Daftar Sekarang"...) is in the link for screen readers only. The photos are decorative (alt=""): the link text says it all.
@@ -42,10 +43,10 @@ const ctaOptions = [
 ];
 ---
 
-<section id="gabung" class="bg-secondary-yellow px-6 md:px-10 py-20 text-primary-blue-dark md:py-32">
+<section id="gabung" class="bg-[#FBFBF5] px-6 md:px-10 py-20 text-primary-blue-dark md:py-32">
   <div class="grid w-full items-start gap-12 md:grid-cols-2 md:gap-x-16">
     <h2 class="font-body text-[clamp(48px,6.6vw,120px)] font-medium leading-[0.95] tracking-[-0.045em] text-balance anim-reveal">
-      Jadilah Bagian <br />dari Perubahan
+      Mari Menjadi <br />Bagian Perubahan
     </h2>
     <ul class="border-b border-primary-blue-dark/25">
       {
