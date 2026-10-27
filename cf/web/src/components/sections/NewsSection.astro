@@ -6,7 +6,7 @@ import type { BlogMeta } from '~/lib/blog-types';
  * Homepage "Cerita & Inspirasi" (SAKEM-111; after BYQ Jake Carter "Blog Posts
  * Grid Layout", header after Babka "Blog Card Grid with Hover"): a navy band,
  * the title left and "Lihat Semua" right, then the articles in ONE row of up to
- * four (Dzul, 2026-10-27): the cover, then category and date, then the title.
+ * four (Dzul, 2026-10-27): the cover with the category and the date as chips on it, then the title.
  * The caller passes the articles (the home page takes the
  * four newest from the blog index at build time). A cover is optional: dashboard-authored posts can
  * have none, and then the card shows no <img> at all rather than an empty src.
@@ -45,13 +45,12 @@ const { articles } = Astro.props;
                     class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
                   />
                 )}
-              </div>
-              <div class="flex flex-col gap-2.5">
-                <p class="text-sm text-white/65">
-                  <span class="text-secondary-yellow">{article.category}</span> · {article.date}
+                <p class="absolute left-3 top-3 flex flex-wrap gap-1.5 text-xs font-semibold text-primary-blue-dark">
+                  <span class="rounded-full bg-secondary-yellow px-2.5 py-1">{article.category}</span>
+                  <span class="rounded-full bg-white/90 px-2.5 py-1">{article.date}</span>
                 </p>
-                <h3 class="line-clamp-3 text-lg font-medium leading-snug transition-colors group-hover:text-secondary-yellow">{article.title}</h3>
               </div>
+              <h3 class="line-clamp-3 text-lg font-medium leading-snug transition-colors group-hover:text-secondary-yellow">{article.title}</h3>
             </a>
           </article>
         ))
