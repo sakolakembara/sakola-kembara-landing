@@ -268,9 +268,9 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
     it(`eager JS (the page's own scripts, inline but for the motion loader) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, problem charts, program steps, alumni stories, hero video, and the GSAP motion loader (a module file: it
-      // holds a dynamic import, so Astro emits it as a file)
-      expect(scripts).toHaveLength(6);
+      // the preloader's head gate and its count/iris script, navbar, problem charts, program steps, alumni stories, hero
+      // video, and the GSAP motion loader (a module file: it holds a dynamic import, so Astro emits it as a file)
+      expect(scripts).toHaveLength(8);
       expect(scripts.filter((m) => /\ssrc=/.test(m[1])).map((m) => m[1].match(/src="\/_astro\/([\w.]+?)\./)![1])).toEqual(['index']);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);

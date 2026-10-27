@@ -65,6 +65,25 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     await new Promise((r) => setTimeout(r, 20));
   });
 
+  describe('preloader gate (the inline head script)', () => {
+    const gate = () => html.match(/<script>([^<]*sk-preloaded[^<]*)<\/script>/)![1];
+    const run = (reduce: boolean) => {
+      document.documentElement.classList.remove('preload');
+      vi.stubGlobal('matchMedia', (q: string) => ({ matches: reduce && q.includes('reduce') }));
+      new Function(gate())();
+      return document.documentElement.classList.contains('preload');
+    };
+    it('shows the loader on the first visit only, and never with reduced motion', () => {
+      sessionStorage.removeItem('sk-preloaded');
+      expect(run(false)).toBe(true);
+      expect(run(true)).toBe(false);
+      sessionStorage.setItem('sk-preloaded', '1');
+      expect(run(false)).toBe(false);
+      sessionStorage.removeItem('sk-preloaded');
+      document.documentElement.classList.remove('preload');
+    });
+  });
+
   describe('problem charts', () => {
     it('a click opens a chart\'s popover and closes the others; a click elsewhere or Escape closes it', async () => {
       await runScript(html, 'data-chart');

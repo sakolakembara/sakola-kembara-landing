@@ -7,6 +7,7 @@ import Footer from '~/components/Footer.astro';
 import GoogleTagManager from '~/components/GoogleTagManager.astro';
 import GoogleTagManagerNoscript from '~/components/GoogleTagManagerNoscript.astro';
 import Navbar from '~/components/Navbar.astro';
+import Preloader from '~/components/Preloader.astro';
 import WebAnalytics from '~/components/WebAnalytics.astro';
 import { KEYWORDS, LEGAL_NAME, SITE_LANGUAGE, SITE_NAME, THEME_COLOR, buildGraph, buildSeo, jsonLdScript, type SeoInput } from '~/lib/seo';
 
@@ -34,8 +35,12 @@ interface Props {
    * no Lora (the homepage since SAKEM-111, design "Sustainability Hub"), Plus Jakarta Sans 500.
    */
   headingFont?: 'lora' | 'jakarta';
+  /** The loading screen (Preloader.astro): the homepage only, once per visit (SAKEM-111). */
+  preloader?: boolean;
 }
-const { seo, jsonLd = [], navOverlay = false, headingFont = 'lora' } = Astro.props;
+const { seo, jsonLd = [], navOverlay = false, headingFont = 'lora', preloader = false } = Astro.props;
+// The loader's gate, run in <head> before the first paint (Preloader.astro).
+const PRELOAD_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&!sessionStorage.getItem('sk-preloaded'))document.documentElement.classList.add('preload')}catch(e){}`;
 const s = buildSeo(seo);
 const graph = buildGraph(seo);
 ---
@@ -84,10 +89,20 @@ const graph = buildGraph(seo);
     <link rel="preload" href={headingFont === 'lora' ? lora700 : jakarta500} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={jakarta400} as="font" type="font/woff2" crossorigin />
 
+    {/* Before the first paint: show the homepage loader (Preloader.astro) only on the first visit and without reduced motion. */}
+    {
+      preloader && (
+        <script
+          is:inline
+          set:html={PRELOAD_GATE}
+        />
+      )
+    }
     {graph && <script type="application/ld+json" set:html={jsonLdScript(graph)} />}
     {jsonLd.map((data) => <script type="application/ld+json" set:html={jsonLdScript(data)} />)}
   </head>
   <body class="antialiased"><GoogleTagManagerNoscript />
+    {preloader && <Preloader />}
     {/* Hero sections read --hero-top (global.css) to clear the fixed navbar. */}
     <div class="nav-clearance">
       <a

@@ -1,0 +1,97 @@
+---
+/**
+ * The homepage's loading screen (SAKEM-111; concept A of the loader demo, Dzul 2026-10-27, after the BYQ gem "Iris
+ * Wipe Preloader"): navy, a sunglow percentage counting to 100, then a circle opens from the centre and reveals the
+ * page. It shows once per visit (sessionStorage), never with reduced motion and never without JS: the tiny head script
+ * in Base.astro adds `preload` to <html> before the first paint only when it should run, and without that class the
+ * overlay is not displayed at all. The count takes about 1.3 s and the opening 0.9 s; it waits for `load` at most until
+ * 2.5 s, and a CSS fail-safe hides the overlay after 4.5 s whatever the script does.
+ */
+---
+
+<div id="preloader" aria-hidden="true">
+  <span class="preloader-count"><span data-preloader-count>0</span><small>%</small></span>
+</div>
+
+<style is:global>
+  #preloader {
+    display: none;
+  }
+  html.preload body {
+    overflow: hidden;
+  }
+  @property --preloader-r {
+    syntax: '<length-percentage>';
+    inherits: false;
+    initial-value: 0%;
+  }
+  html.preload #preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    background: var(--primary-blue-dark);
+    --preloader-r: 0%;
+    -webkit-mask: radial-gradient(circle at 50% 50%, transparent var(--preloader-r), #000 calc(var(--preloader-r) + 1px));
+    mask: radial-gradient(circle at 50% 50%, transparent var(--preloader-r), #000 calc(var(--preloader-r) + 1px));
+    animation: preloader-failsafe 0s linear 4.5s forwards;
+  }
+  html.preload #preloader.is-open {
+    animation: preloader-iris 0.9s cubic-bezier(0.7, 0, 0.2, 1) forwards;
+  }
+  .preloader-count {
+    font-size: clamp(64px, 9vw, 140px);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    color: var(--secondary-yellow);
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.25s ease;
+  }
+  .preloader-count small {
+    font-size: 0.45em;
+    color: #fff;
+  }
+  #preloader.is-open .preloader-count {
+    opacity: 0;
+  }
+  @keyframes preloader-iris {
+    to {
+      --preloader-r: 80%;
+    }
+  }
+  @keyframes preloader-failsafe {
+    to {
+      visibility: hidden;
+    }
+  }
+</style>
+
+<script>
+  // Count to 100 (and to `load`, at most 2.5 s), open the circle, then take the loader away for this visit.
+  const root = document.documentElement;
+  const el = document.getElementById('preloader');
+  if (el && root.classList.contains('preload')) {
+    const count = el.querySelector('[data-preloader-count]')!;
+    const start = performance.now();
+    let loaded = document.readyState === 'complete';
+    addEventListener('load', () => (loaded = true), { once: true });
+    const done = () => {
+      root.classList.remove('preload');
+      el.remove();
+      try {
+        sessionStorage.setItem('sk-preloaded', '1');
+      } catch {}
+    };
+    const tick = (now: number) => {
+      const t = now - start;
+      count.textContent = String(Math.min(100, Math.round((t / 1300) * 100)));
+      if (t >= 1300 && (loaded || t >= 2500)) {
+        el.addEventListener('animationend', done, { once: true });
+        el.classList.add('is-open');
+        setTimeout(done, 1200); // in case animationend never comes
+      } else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+</script>
