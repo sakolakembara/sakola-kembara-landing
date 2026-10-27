@@ -1816,7 +1816,7 @@ await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program
   assert.equal((between('Mengapa Kami Ada?', 'id="activities"').match(/<li[\s>]/g) ?? []).length, 3);
   assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
   assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 7);
-  assert.equal((html.match(/<li class="w-\[136px\]/g) ?? []).length, 6);
+  assert.equal((between('id="partners"', 'id="blog"').match(/<li[\s>]/g) ?? []).length, 6);
   assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="group/g) ?? []).length, 4);
   const news = html.slice(html.indexOf('id="blog"'));
   assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group block/g) ?? []).length, 3);

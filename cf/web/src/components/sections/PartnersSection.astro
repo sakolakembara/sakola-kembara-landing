@@ -9,8 +9,9 @@ import zurichSyariahLogo from '@root/public/images/partners/zurich-syariah.png';
 import { activePartners, pastPartners, type Partner } from '~/lib/home-data';
 
 /**
- * Homepage "Partner Kami" (restyled for SAKEM-111, design "Opsi C": a Lora
- * title, no eyebrow): a row of logo cards under its own subheading, split
+ * Homepage "Partner Kami" (SAKEM-111; layout after BYQ ALL ABT "Selected
+ * Clients"): the title and the thanks on the left, on the right one ruled
+ * card per partner, its name on the left and its logo on the right, split
  * into active and past partners so visitors can tell who we work with right now
  * from who has supported us before. Copy is verbatim from the root
  * PartnersSection.tsx + lib/data.ts; logos are resized at build time.
@@ -30,52 +31,39 @@ const groups: { title: string; partners: Partner[] }[] = [
 ].filter((group) => group.partners.length > 0);
 ---
 
-<section class="bg-white px-6 md:px-10 py-20 md:py-28" id="partners">
-  <div class="mx-auto max-w-[1440px]">
-    <div class="mb-12 grid items-end gap-6 md:grid-cols-2 anim-reveal">
+<section class="bg-white px-6 py-20 md:px-10 md:py-28" id="partners">
+  <div class="mx-auto grid max-w-[1440px] gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
+    <div class="flex flex-col gap-5 lg:sticky lg:top-28 lg:self-start anim-reveal">
       <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
         Bersama Mewujudkan Perubahan
       </h2>
-      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600">
+      <p class="max-w-[26em] text-[17px] leading-[1.65] text-gray-600">
         Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.
       </p>
     </div>
 
-    <div class="space-y-12 md:space-y-14">
+    <div class="flex flex-col gap-10">
       {
         groups.map((group) => (
-          <div class="anim-reveal">
-            {/* Subheading with hairlines that shrink to nothing on narrow screens */}
-            <div class="flex items-center gap-4 mb-6 md:mb-8">
-              <span class="hidden sm:block h-px flex-1 bg-gray-200" aria-hidden="true" />
-              <h3 class="text-sm font-semibold text-gray-600 text-center">
-                {group.title}
-              </h3>
-              <span class="hidden sm:block h-px flex-1 bg-gray-200" aria-hidden="true" />
-            </div>
-
-            {/* items-stretch keeps every card the same height even when a partner name wraps to two or three lines. */}
-            <ul class="flex justify-center items-stretch flex-wrap gap-4 sm:gap-6 md:gap-8">
+          <div class="flex flex-col gap-4 anim-reveal">
+            <h3 class="text-sm font-semibold text-gray-600">{group.title}</h3>
+            <ul class="flex flex-col gap-3">
               {group.partners.map((partner) => (
-                <li class="w-[136px] sm:w-40 bg-[#FAFAF7] rounded-[14px] border border-gray-200 flex flex-col items-center gap-2.5 px-3 py-4 hover:border-primary-blue/40 hover:shadow-md transition-all">
-                  <div class="h-11 sm:h-12 flex items-center justify-center">
-                    {/* Decorative: the partner name is spelled out right below, so announcing it twice would only add noise for screen readers. */}
-                    <Image
-                      src={logos[partner.id]}
-                      alt=""
-                      width={272}
-                      widths={[136, 272]}
-                      sizes="136px"
-                      format="webp"
-                      quality={80}
-                      loading="lazy"
-                      decoding="async"
-                      class="max-h-full w-auto object-contain"
-                    />
-                  </div>
-                  <span class="mt-auto text-[11px] sm:text-xs text-gray-700 font-medium text-center leading-snug text-balance">
-                    {partner.name}
-                  </span>
+                <li class="flex min-h-24 items-center justify-between gap-6 rounded-[14px] border border-gray-300 px-5 py-4 transition-colors hover:border-primary-blue-dark md:px-7">
+                  <span class="text-[15px] font-medium leading-snug text-gray-800">{partner.name}</span>
+                  {/* Decorative: the partner's name is spelled out on the left. */}
+                  <Image
+                    src={logos[partner.id]}
+                    alt=""
+                    width={320}
+                    widths={[160, 320]}
+                    sizes="160px"
+                    format="webp"
+                    quality={80}
+                    loading="lazy"
+                    decoding="async"
+                    class="h-12 w-auto max-w-[160px] shrink-0 object-contain"
+                  />
                 </li>
               ))}
             </ul>
