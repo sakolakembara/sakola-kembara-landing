@@ -8,8 +8,9 @@ import { REGISTRATION_PATH } from '~/lib/site';
  * four ways to take part as rows on the right (from md), rules between the rows only. Each row is one link: the role, a
  * photo chip to its right that pops out over the row on hover (a scale, so the row does not move), an arrow. The action
  * ("Daftar Sekarang"...) is in the link for screen readers only. The photos are decorative (alt=""): the link text says it all.
- * One screen tall; the title sits at the top of the left column and a quote of Ki Hajar Dewantara at its bottom (both
- * Dzul, 2026-10-27). Every arrow is outlined until its row is hovered.
+ * One screen tall; the title sits at the top of the left column, three of the foundation's mascots (Kucing "Semangat",
+ * Bara "Hi!", Kerbau "Yes!", decorative, floating gently) in its middle and a quote of Ki Hajar Dewantara at its bottom
+ * (all Dzul, 2026-10-27). Every arrow is outlined until its row is hovered.
  */
 const ctaOptions = [
   {
@@ -50,6 +51,11 @@ const ctaOptions = [
       <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-balance anim-reveal">
         Mari Menjadi <br />Bagian Perubahan
       </h2>
+      <div aria-hidden="true" class="flex items-end">
+        <Img src="/images/maskot/kucing-semangat.png" alt="" sizes="(min-width: 768px) 9rem, 6rem" class="maskot h-28 w-auto md:h-40" />
+        <Img src="/images/maskot/bara-hi.png" alt="" sizes="(min-width: 768px) 11rem, 7rem" class="maskot -ml-3 h-36 w-auto [animation-delay:-1.2s] md:-ml-5 md:h-52" />
+        <Img src="/images/maskot/kerbau-yes.png" alt="" sizes="(min-width: 768px) 7rem, 5rem" class="maskot -ml-2 h-24 w-auto [animation-delay:-2.4s] md:-ml-3 md:h-32" />
+      </div>
       <figure class="flex max-w-[26em] flex-col gap-3 border-l-2 border-secondary-yellow pl-5">
         <blockquote class="text-[clamp(18px,1.5vw,22px)] font-medium leading-snug">“Setiap orang menjadi guru, setiap rumah menjadi sekolah.”</blockquote>
         <figcaption class="text-sm text-gray-600">Ki Hajar Dewantara</figcaption>
@@ -88,3 +94,17 @@ const ctaOptions = [
     </ul>
   </div>
 </section>
+
+<style>
+  /* The mascots float gently, each a beat apart; not with reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    .maskot {
+      animation: maskot-float 3.6s ease-in-out infinite;
+    }
+  }
+  @keyframes maskot-float {
+    50% {
+      translate: 0 -8px;
+    }
+  }
+</style>

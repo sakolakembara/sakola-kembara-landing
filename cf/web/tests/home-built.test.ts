@@ -175,7 +175,8 @@ describe.skipIf(!built)('home page build output', () => {
         ['/kontak', 'Menjadi Partner Hubungi Kami'],
       ]);
       const chips = all(cta, /<img [^>]*>/g);
-      expect(chips).toHaveLength(4);
+      expect(chips).toHaveLength(4 + 3); // a photo chip per role, and the three mascots
+      expect(all(cta, /<img [^>]*class="maskot/g)).toHaveLength(3);
       for (const img of chips) expect(img, img).toMatch(/\salt[\s>]/); // decorative: the link text says it all
     });
   });
