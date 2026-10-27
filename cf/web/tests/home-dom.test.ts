@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The built home page, in a DOM, with its own scripts run for real: the navbar (and its floating mode,
-// SAKEM-111), the dialog opener and the hero video. This is the check that the markup and the
+// SAKEM-111), the alumni stories and the hero video. This is the check that the markup and the
 // scripts agree (selectors, hidden/un-hidden controls) and that rendering the page logs no console
 // errors. It is NOT a browser: there is no layout and no media playback (play() is stubbed), and no
 // pixel was looked at.
@@ -61,7 +61,7 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
   });
 
   it('the five scripts of the page run without a console error', async () => {
-    for (const marker of ['nav-toggle', 'data-chart', 'data-steps', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
+    for (const marker of ['nav-toggle', 'data-chart', 'data-steps', 'data-stories', 'hero-video']) await runScript(html, marker);
     await new Promise((r) => setTimeout(r, 20));
   });
 
@@ -102,22 +102,6 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     });
   });
 
-  describe('dialog opener', () => {
-    it('opens a dialog from its button and closes it on a click on the backdrop', async () => {
-      await runScript(html, 'data-dialog-open');
-      const button = document.querySelector<HTMLElement>('[data-dialog-open]')!;
-      const dialog = document.getElementById(button.dataset.dialogOpen!) as HTMLDialogElement;
-      expect(dialog.open).toBe(false);
-      button.click();
-      expect(dialog.open).toBe(true);
-      // a click inside the dialog's content keeps it open, a click on the dialog itself (the backdrop) closes it
-      dialog.querySelector<HTMLElement>('p')!.click();
-      expect(dialog.open).toBe(true);
-      dialog.click();
-      expect(dialog.open).toBe(false);
-    });
-  });
-
   describe('hero video', () => {
     /** Stubs what happy-dom lacks: playback, and the reduced-motion query. */
     function stubMedia(reducedMotion: boolean) {
@@ -144,16 +128,21 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
   });
 
   describe('stories', () => {
-    it('"Baca selengkapnya" opens the whole quote, "Tutup" lives in a method=dialog form', async () => {
-      await runScript(html, 'data-dialog-open');
-      const button = document.querySelector<HTMLElement>('#cerita [data-dialog-open]')!;
-      const dialog = document.getElementById(button.dataset.dialogOpen!) as HTMLDialogElement;
-      expect(dialog.open).toBe(false);
-      button.click();
-      expect(dialog.open).toBe(true);
-      expect(dialog.querySelector('form[method="dialog"]')).not.toBeNull();
-      dialog.click();
-      expect(dialog.open).toBe(false);
+    const shown = () => [...document.querySelectorAll<HTMLElement>('#cerita .story')].filter((s) => !s.hidden).map((s) => s.id);
+    const cards = () => [...document.querySelectorAll<HTMLElement>('#cerita [data-story]')];
+    it('a small card shows its story large (and leaves the cards); the bar ending shows the next story, wrapping', async () => {
+      await runScript(html, 'data-stories');
+      const ids = [...document.querySelectorAll<HTMLElement>('#cerita .story')].map((s) => s.id);
+      expect(shown()).toEqual([ids[0]]);
+      expect(cards().map((c) => c.parentElement!.hidden)).toEqual(ids.map((_, i) => i === 0));
+      cards()[3].click();
+      expect(shown()).toEqual([ids[3]]);
+      expect(cards()[3].parentElement!.hidden).toBe(true);
+      expect(cards()[0].parentElement!.hidden).toBe(false);
+      const last = document.getElementById(ids.at(-1)!)!;
+      cards()[ids.length - 1].click();
+      last.querySelector('.story-bar')!.dispatchEvent(new Event('animationend'));
+      expect(shown()).toEqual([ids[0]]);
     });
   });
 

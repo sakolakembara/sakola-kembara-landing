@@ -1,18 +1,15 @@
 ---
 import Img from '~/components/Img.astro';
-import { impactMetrics, testimonials } from '~/lib/home-data';
-import { polaroidFrame, polaroidTilt, polaroidTilted } from '~/lib/ui';
+import { testimonials } from '~/lib/home-data';
+import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 
 /**
- * Homepage "Cerita Sukses Alumni" (SAKEM-111; option 1 of the mock Dzul chose on
- * 2026-10-27, then given the polaroid frame of "Cerita & Inspirasi" the same day):
- * a centred title, then one tilted polaroid per alumnus of home-data.ts, the
- * portrait with the name and major on the frame's strip, and the quote under it
- * (no hover needed, so phones see it too), clamped to four lines. A quote longer than that gets "Baca selengkapnya",
- * which opens the whole quote in a native <dialog> (opened by the document-wide
- * [data-dialog-open] script below). The sunglow note (tilted
- * like the polaroids) carries the college figure. From md the cards sit in a grid of four; on a phone they
- * scroll sideways, one and a bit at a time.
+ * Homepage "Cerita Sukses Alumni" (SAKEM-111; Dzul, 2026-10-27): one story at a time, large, as a polaroid (the frame of
+ * "Cerita & Inspirasi") with the whole quote beside it, and the other alumni as small cards next to it (photo, name,
+ * campus). A click on a small card makes it the large one; the stories also change on their own every 5 s: the bar
+ * under the quote fills and its `animationend` shows the next story, so pausing the bar (hover, keyboard focus, the
+ * section out of view) pauses the rotation, and with reduced motion there is none. Without JS the first story shows and
+ * the cards do nothing. The subtitle, the college figure card and the quote dialogs went with this layout.
  */
 const photos: Record<number, string> = {
   1: '/images/testimoni/daffa-najwan.jpg',
@@ -23,111 +20,106 @@ const photos: Record<number, string> = {
   6: '/images/testimoni/jesika-marsha-yoanika.jpg',
   7: '/images/testimoni/fathya-sahla-humaira.jpg',
 };
-// About four lines of the card at its narrowest; longer quotes get the "Baca selengkapnya" dialog.
-const LONG_QUOTE = 170;
-const college = impactMetrics[1];
-const card = 'w-[78%] shrink-0 snap-start md:w-auto';
 ---
 
-<section id="cerita" class="scroll-mt-24 bg-[#EEF1F6] py-20 md:py-36">
-  <div class="flex w-full flex-col gap-10 md:gap-12">
-    <div class="flex flex-col items-center gap-3 px-6 text-center md:px-10 anim-reveal">
-      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
-        Cerita Sukses Alumni
-      </h2>
-      <p class="text-[17px] leading-[1.65] text-gray-600">Perjalanan inspiratif dari siswa-siswa kami</p>
-    </div>
+<section id="cerita" class="scroll-mt-24 bg-[#EEF1F6] px-6 py-20 md:px-10 md:py-28" data-stories>
+  <div class="flex w-full flex-col gap-10 md:gap-14">
+    <h2 class="text-center font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark anim-reveal">
+      Cerita Sukses Alumni
+    </h2>
 
-    <ul
-      class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-6 px-6 pb-2 md:grid md:grid-cols-4 md:overflow-visible md:px-10 md:pb-0"
-      aria-label="Cerita alumni"
-    >
-      {
-        testimonials.map((story, index) => {
-          const long = story.quote.length > LONG_QUOTE;
-          const id = `cerita-${story.id}`;
-          return (
-            <>
-              {index === 3 && (
-                <li class:list={[card, 'group self-start']}>
-                  <div
-                    class:list={[polaroidTilted, 'flex aspect-[4/5] flex-col justify-end gap-2 rounded-[4px] bg-secondary-yellow p-6 text-primary-blue-dark shadow-[0_18px_36px_-16px_rgba(13,31,82,0.4)]']}
-                    style={polaroidTilt(index)}
-                  >
-                    <span class="text-[clamp(56px,6vw,88px)] font-medium leading-none tracking-[-0.03em]">{college.number}</span>
-                    <span class="text-[15px]">{college.label}</span>
-                  </div>
-                </li>
-              )}
-              <li class:list={[card, 'group flex flex-col gap-5 anim-reveal']} style={`--i:${index % 4}`}>
-                <figure class:list={[polaroidFrame, 'bg-white shadow-[0_18px_36px_-16px_rgba(13,31,82,0.4)]']} style={polaroidTilt(index + (index >= 3 ? 1 : 0))}>
-                  <Img
-                    src={photos[story.id]}
-                    alt={story.name}
-                    sizes="(min-width: 768px) 25vw, 78vw"
-                    class="aspect-[4/5] w-full rounded-[3px] object-cover"
-                  />
-                  <figcaption class="flex flex-col px-1 pt-3">
-                    <strong class="font-semibold text-primary-blue-dark">{story.name}</strong>
-                    <span class="text-sm text-gray-600">{story.major}</span>
-                  </figcaption>
-                </figure>
-                <div class="flex flex-col gap-2 px-1">
-                  <blockquote class="line-clamp-4 text-[15px] leading-relaxed text-gray-700">“{story.quote}”</blockquote>
-                  {long && (
-                    <button
-                      type="button"
-                      aria-haspopup="dialog"
-                      data-dialog-open={id}
-                      class="self-start text-sm font-semibold text-primary-blue-dark underline-offset-4 hover:underline"
-                    >
-                      Baca selengkapnya
-                    </button>
-                  )}
-                </div>
-                {long && (
-                  <dialog
-                    id={id}
-                    aria-labelledby={`${id}-title`}
-                    class="m-auto w-[calc(100%-2.5rem)] max-w-xl max-h-[calc(100dvh-2.5rem)] overflow-y-auto rounded-xl bg-[#FBFBF5] p-0 text-gray-800 shadow-2xl backdrop:bg-primary-blue-dark/70 backdrop:backdrop-blur-sm"
-                  >
-                    <div class="flex flex-col gap-6 p-6 md:p-8">
-                      <div class="flex items-center gap-4">
-                        <Img src={photos[story.id]} alt="" sizes="64px" class="size-16 rounded-full object-cover" />
-                        <div>
-                          <h3 id={`${id}-title`} class="text-lg font-semibold text-primary-blue-dark">{story.name}</h3>
-                          <p class="text-sm text-gray-600">{story.major}</p>
-                        </div>
-                      </div>
-                      <p class="text-lg leading-relaxed text-gray-800">“{story.quote}”</p>
-                      <form method="dialog">
-                        <button type="submit" class="rounded-[10px] bg-primary-blue-dark px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-primary-blue">
-                          Tutup
-                        </button>
-                      </form>
-                    </div>
-                  </dialog>
-                )}
-              </li>
-            </>
-          );
-        })
-      }
-    </ul>
+    <div class="grid items-center gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:gap-14">
+      <div>
+        {
+          testimonials.map((story, index) => (
+            <article id={`cerita-${story.id}`} class="story grid items-center gap-8 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10" hidden={index !== 0}>
+              <figure class:list={[polaroidFrame, 'bg-white shadow-[0_18px_36px_-16px_rgba(13,31,82,0.4)]']} style={polaroidTilt(index)}>
+                <Img src={photos[story.id]} alt={story.name} sizes="(min-width: 1024px) 26vw, (min-width: 768px) 40vw, 90vw" class="aspect-[4/5] w-full rounded-[3px] object-cover" />
+                <figcaption class="flex flex-col px-1 pt-3">
+                  <strong class="font-semibold text-primary-blue-dark">{story.name}</strong>
+                  <span class="text-sm text-gray-600">{story.major}</span>
+                </figcaption>
+              </figure>
+              <div class="flex flex-col gap-6">
+                <blockquote class="text-[clamp(18px,1.55vw,22px)] font-medium leading-relaxed text-primary-blue-dark">“{story.quote}”</blockquote>
+                <p class="text-[15px] text-gray-600">
+                  <strong class="font-semibold text-primary-blue-dark">{story.name}</strong>, {story.major}, {story.university}
+                </p>
+                <span aria-hidden="true" class="relative h-[3px] w-full overflow-hidden rounded-full bg-primary-blue-dark/10">
+                  <span class="story-bar absolute inset-y-0 left-0 w-0 rounded-full bg-primary-blue-dark" />
+                </span>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <ul class="-mx-6 flex snap-x gap-3 overflow-x-auto scroll-px-6 px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="Cerita alumni lainnya">
+        {
+          testimonials.map((story, index) => (
+            <li class="w-[38%] shrink-0 snap-start sm:w-[24%] lg:w-auto" hidden={index === 0}>
+              <button
+                type="button"
+                aria-controls={`cerita-${story.id}`}
+                aria-label={`Tampilkan cerita ${story.name}`}
+                data-story={index}
+                class="group flex w-full flex-col gap-2 rounded-[4px] bg-white p-1.5 pb-3 text-left shadow-[0_10px_24px_-14px_rgba(13,31,82,0.45)] transition-transform duration-300 hover:-translate-y-1 motion-reduce:transition-none"
+              >
+                <Img src={photos[story.id]} alt="" sizes="(min-width: 1024px) 12vw, 38vw" class="aspect-square w-full rounded-[3px] object-cover" />
+                <span class="flex flex-col px-1">
+                  <span class="text-sm font-semibold leading-tight text-primary-blue-dark">{story.name}</span>
+                  <span class="text-xs leading-snug text-gray-600">{story.university}</span>
+                </span>
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
   </div>
 </section>
 
-<script>
-  // Open a <dialog> from its [data-dialog-open] button (about 0.3 KB, document-wide), and close it on a click on the
-  // backdrop (the dialog element itself). "Tutup" is a <form method="dialog">; Escape and focus return come from the
-  // browser. It lived in ProblemSection until that section's stat dialog left (SAKEM-111).
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement;
-    const opener = target.closest<HTMLElement>('[data-dialog-open]');
-    if (opener?.dataset.dialogOpen) {
-      (document.getElementById(opener.dataset.dialogOpen) as HTMLDialogElement | null)?.showModal();
-    } else if (target instanceof HTMLDialogElement) {
-      target.close();
+<style>
+  /* The shown story's bar fills in 5 s; its animationend shows the next story (the script). */
+  .story:not([hidden]) .story-bar {
+    animation: story-fill 5s linear forwards;
+  }
+  [data-stories][data-paused] .story-bar {
+    animation-play-state: paused;
+  }
+  @keyframes story-fill {
+    to {
+      width: 100%;
     }
-  });
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .story:not([hidden]) .story-bar {
+      animation: none;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  // One story large at a time: a small card's click shows its story, the bar's animationend shows the next one.
+  const section = document.querySelector<HTMLElement>('[data-stories]');
+  if (section) {
+    const stories = [...section.querySelectorAll<HTMLElement>('.story')];
+    const cards = [...section.querySelectorAll<HTMLButtonElement>('[data-story]')];
+    const show = (next: number) => {
+      stories.forEach((story, i) => (story.hidden = i !== next));
+      cards.forEach((card, i) => (card.parentElement!.hidden = i === next));
+    };
+    cards.forEach((card, i) => card.addEventListener('click', () => show(i)));
+    stories.forEach((story, i) => story.querySelector('.story-bar')!.addEventListener('animationend', () => show((i + 1) % stories.length)));
+    let hovered = false;
+    let visible = true;
+    // Keyboard focus pauses; a mouse click leaves focus on a card, so focus only counts while visible as such.
+    const pause = () => section.toggleAttribute('data-paused', hovered || !visible || !!section.querySelector(':focus-visible'));
+    section.addEventListener('pointerenter', () => ((hovered = true), pause()));
+    section.addEventListener('pointerleave', () => ((hovered = false), pause()));
+    section.addEventListener('focusin', pause);
+    section.addEventListener('focusout', () => setTimeout(pause));
+    new IntersectionObserver(([entry]) => ((visible = entry.isIntersecting), pause())).observe(section);
+  }
 </script>

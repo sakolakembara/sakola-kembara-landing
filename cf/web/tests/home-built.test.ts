@@ -137,20 +137,18 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Stories', () => {
-    it('a portrait card per testimonial with its quote shown; long quotes open in a dialog; the college figure card', () => {
+    it('one large story per testimonial (only the first shown) with the whole quote, and a small card per alumnus (the first one hidden)', () => {
       expect(all(stories, /<figure[\s>]/g)).toHaveLength(testimonials.length);
+      const panels = all(stories, /<article id="cerita-\d+"[^>]*>/g);
+      expect(panels.map((p) => /\shidden[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i !== 0));
       for (const t of testimonials) {
         expect(text(stories)).toContain(t.quote);
+        expect(text(stories)).toContain(t.university);
         expect(stories).toContain(`alt="${t.name}"`);
+        expect(stories).toContain(`aria-label="Tampilkan cerita ${t.name}"`);
       }
-      const long = testimonials.filter((t) => t.quote.length > 170);
-      expect(long.length).toBeGreaterThan(0);
-      expect(all(stories, /<dialog[\s>]/g)).toHaveLength(long.length);
-      for (const t of long) {
-        expect(stories).toMatch(new RegExp(`<button[^>]*aria-haspopup="dialog"[^>]*data-dialog-open="cerita-${t.id}"`));
-        expect(stories).toContain(`<dialog id="cerita-${t.id}" aria-labelledby="cerita-${t.id}-title"`);
-      }
-      expect(text(stories)).toContain(`${impactMetrics[1].number} ${impactMetrics[1].label}`);
+      expect(stories).not.toContain('<dialog');
+      expect(text(stories)).not.toContain('Perjalanan inspiratif');
     });
   });
 
@@ -248,7 +246,7 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
     it(`eager JS (the page's own scripts, all inline) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, problem charts, program steps, story dialogs, hero video
+      // navbar, problem charts, program steps, alumni stories, hero video
       expect(scripts).toHaveLength(5);
       expect(scripts.every((m) => !/\ssrc=/.test(m[1]))).toBe(true);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
