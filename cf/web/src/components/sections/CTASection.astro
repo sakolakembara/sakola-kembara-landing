@@ -8,7 +8,8 @@ import { REGISTRATION_PATH } from '~/lib/site';
  * four ways to take part as rows on the right (from md), rules between the rows only. Each row is one link: the role, a
  * photo chip to its right that pops out over the row on hover (a scale, so the row does not move), an arrow. The action
  * ("Daftar Sekarang"...) is in the link for screen readers only. The photos are decorative (alt=""): the link text says it all.
- * The donor row's arrow is filled at rest, the one emphasis of the section.
+ * One screen tall; the title sits at the top of the left column and a quote of Ki Hajar Dewantara at its bottom (both
+ * Dzul, 2026-10-27). Every arrow is outlined until its row is hovered.
  */
 const ctaOptions = [
   {
@@ -43,11 +44,17 @@ const ctaOptions = [
 ];
 ---
 
-<section id="gabung" class="bg-[#FBFBF5] px-6 md:px-10 py-20 text-primary-blue-dark md:py-32">
+<section id="gabung" class="flex min-h-[100svh] bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24">
   <div class="grid w-full items-center gap-12 md:grid-cols-2 md:gap-x-16">
-    <h2 class="font-body text-[clamp(48px,6.6vw,120px)] font-medium leading-[1.08] tracking-[-0.04em] text-balance anim-reveal">
-      Mari Menjadi <br />Bagian Perubahan
-    </h2>
+    <div class="flex flex-col justify-between gap-12 self-stretch">
+      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-balance anim-reveal">
+        Mari Menjadi <br />Bagian Perubahan
+      </h2>
+      <figure class="flex max-w-[26em] flex-col gap-3 border-l-2 border-secondary-yellow pl-5">
+        <blockquote class="text-[clamp(18px,1.5vw,22px)] font-medium leading-snug">“Setiap orang menjadi guru, setiap rumah menjadi sekolah.”</blockquote>
+        <figcaption class="text-sm text-gray-600">Ki Hajar Dewantara</figcaption>
+      </figure>
+    </div>
     <ul class="divide-y divide-primary-blue-dark/25">
       {
         ctaOptions.map((option) => (
@@ -66,10 +73,7 @@ const ctaOptions = [
               <span
                 aria-hidden="true"
                 class:list={[
-                  'inline-flex size-11 items-center justify-center rounded-full border-[1.5px] border-primary-blue-dark transition-colors md:size-14',
-                  option.id === 'donatur'
-                    ? 'bg-primary-blue-dark text-secondary-yellow'
-                    : 'group-hover:bg-primary-blue-dark group-hover:text-secondary-yellow',
+                  'inline-flex size-11 items-center justify-center rounded-full border-[1.5px] border-primary-blue-dark transition-colors group-hover:bg-primary-blue-dark group-hover:text-secondary-yellow md:size-14',
                 ]}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
