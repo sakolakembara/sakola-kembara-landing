@@ -128,7 +128,7 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
   });
 
   describe('stories', () => {
-    const shown = () => [...document.querySelectorAll<HTMLElement>('#cerita .story')].filter((s) => !s.hidden).map((s) => s.id);
+    const shown = () => [...document.querySelectorAll<HTMLElement>('#cerita .story')].filter((s) => s.hasAttribute('data-active') && !s.inert).map((s) => s.id);
     const cards = () => [...document.querySelectorAll<HTMLElement>('#cerita [data-story]')];
     it('a small card shows its story large (and leaves the cards); the bar ending shows the next story, wrapping', async () => {
       await runScript(html, 'data-stories');

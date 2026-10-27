@@ -137,10 +137,11 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Stories', () => {
-    it('one large story per testimonial (only the first shown) with the whole quote, and a small card per alumnus (the first one hidden)', () => {
+    it('one letter per testimonial (only the first active, the others inert) with the whole quote, and a small card per alumnus (the first one hidden)', () => {
       expect(all(stories, /<figure[\s>]/g)).toHaveLength(testimonials.length);
       const panels = all(stories, /<article id="cerita-\d+"[^>]*>/g);
-      expect(panels.map((p) => /\shidden[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i !== 0));
+      expect(panels.map((p) => /\sinert[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i !== 0));
+      expect(panels.map((p) => /\sdata-active[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i === 0));
       for (const t of testimonials) {
         expect(text(stories)).toContain(t.quote);
         expect(text(stories)).toContain(t.university);
