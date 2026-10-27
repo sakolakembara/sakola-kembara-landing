@@ -1809,10 +1809,10 @@ await check('home', '/ has the video hero, then the seven sections in order (des
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.equal(stubHits().length, 0);
 });
-await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program steps, 7 stories, 6 partner logos, 4 CTA cards, 4 news cards', async () => {
+await check('home', '/ content counts: 4 metric cards, 3 problem facts, 3 program steps, 7 stories, 6 partner logos, 4 CTA cards, 4 news cards', async () => {
   const html = await homeHtml();
   const between = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
-  assert.equal((between('Mengapa Kami Ada?', 'id="impact"').match(/<li[\s>]/g) ?? []).length, 3);
+  assert.equal((between('Mengapa Kami Ada?', 'id="impact"').match(/<span data-fact[ >]/g) ?? []).length, 3);
   assert.equal((between('id="impact"', 'id="activities"').match(/<li[\s>]/g) ?? []).length, 4);
   assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
   assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 7);

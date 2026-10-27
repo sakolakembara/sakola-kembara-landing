@@ -1,6 +1,7 @@
 ---
 import Button from '~/components/Button.astro';
 import type { ProblemStat } from '~/lib/home-data';
+import type { ButtonVariant } from '~/lib/ui';
 
 /**
  * "Mengapa ini terjadi?" opens the longer explanation in a modal. A native
@@ -11,11 +12,13 @@ import type { ProblemStat } from '~/lib/home-data';
 interface Props {
   id: string;
   stat: ProblemStat;
+  /** The opener's look: on a navy band (the default) or a light one. */
+  variant?: ButtonVariant;
 }
-const { id, stat } = Astro.props;
+const { id, stat, variant = 'outline-on-navy' } = Astro.props;
 ---
 
-<Button variant="outline-on-navy" class="self-start" aria-haspopup="dialog" data-dialog-open={id}>
+<Button variant={variant} class="self-start" aria-haspopup="dialog" data-dialog-open={id}>
   Mengapa ini terjadi?
 </Button>
 <dialog

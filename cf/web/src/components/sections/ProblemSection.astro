@@ -3,46 +3,80 @@ import { problemStats } from '~/lib/home-data';
 import StatDetail from './problem/StatDetail.astro';
 
 /**
- * Homepage "Mengapa Kami Ada?" (SAKEM-111; layout after BYQ Lavender Shore
- * "Statistics with Large Numbers"): a navy band, the title and the answer on
- * top, then one ruled row per figure of problemStats: the figure large on the
- * left (its unit, "/10", "%+", "x", smaller in sunglow), the sentence on the
- * right on the figure's baseline. The figure with a detail text carries
- * "Mengapa ini terjadi?", which opens that text in a <dialog> (StatDetail; the
- * opener script is below).
+ * Homepage "Mengapa Kami Ada?" (SAKEM-111; concept A of the second wireframe, Dzul 2026-10-27, after BYQ Stringer
+ * "Scroll-Triggered Word Reveal" and Altum "Centered Intro Story Headline"): one screen tall on cream, the three facts
+ * of problemStats and "Kami hadir untuk mengubah realitas ini." read as one paragraph, each fact with a small
+ * infographic inside its sentence (ten children with three lit, the 55/45 bar, the city/village bars; decorative, the
+ * sentence says it). The words turn from grey to navy as the paragraph scrolls up (CSS scroll-driven, behind
+ * @supports; with reduced motion or without support they are navy from the start). "Mengapa ini terjadi?" opens the
+ * detail text in a <dialog> (StatDetail; the opener script is below).
  */
+// Where each fact's infographic sits: right after this phrase of its sentence.
+const anchors = ['Hanya', 'keluarga 20% terkaya', 'kesempatan 2x'];
+// A fact as tokens: its words with the infographic ('chip') after the anchor and the full stop as a token of its own,
+// each followed by a space unless the next is the full stop (or the chip right before it), so the text reads as written.
+const facts = problemStats.map((stat, index) => {
+  const at = stat.text.indexOf(anchors[index]) + anchors[index].length;
+  const tokens = [...stat.text.slice(0, at).split(' '), 'chip', ...stat.text.slice(at).split(' ').filter(Boolean), '.'];
+  return tokens.map((token, i) => ({ token, space: tokens[i + 1] !== undefined && tokens[i + 1] !== '.' && !(tokens[i + 1] === 'chip' && tokens[i + 2] === '.') }));
+});
+// The infographics, as markup without whitespace so the sentence around them reads as written: ten children with three lit,
+// the 55/45 bar, the city and village bars.
+const kid = (on: boolean) =>
+  `<svg viewBox="0 0 20 34" class="h-[0.62em] w-[0.36em] ${on ? 'text-primary-blue-dark' : 'text-[#B9C0D2]'}"><circle cx="10" cy="6" r="5" fill="currentColor"/><path d="M3 15a7 7 0 0 1 14 0v8h-3v11H6V23H3Z" fill="currentColor"/></svg>`;
+const charts = [
+  Array.from({ length: 10 }, (_, i) => kid(i < 3)).join(''),
+  '<span class="flex h-[0.28em] w-[2.4em] overflow-hidden rounded-full bg-[#B9C0D2]"><span class="w-[55%] bg-primary-blue-dark"></span></span>',
+  '<span class="flex h-[0.55em] items-end gap-[0.1em]"><span class="h-full w-[0.3em] rounded-[0.06em] bg-primary-blue-dark"></span><span class="h-1/2 w-[0.3em] rounded-[0.06em] bg-[#B9C0D2]"></span></span>',
+];
+const closing = 'Kami hadir untuk mengubah realitas ini.'.split(' ');
+const detailIndex = problemStats.findIndex((s) => s.detail);
+const chip = 'mx-[0.15em] inline-flex h-[0.9em] translate-y-[0.08em] items-center gap-[0.12em] rounded-full bg-[#E3E8F1] px-[0.35em] align-baseline';
 ---
 
-<section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28">
-  <div class="flex w-full flex-col gap-12 md:gap-16">
-    <div class="flex flex-col gap-3 anim-reveal">
-      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em]">Mengapa Kami Ada?</h2>
-      <p class="text-[clamp(20px,1.9vw,26px)] font-medium leading-snug text-white/70">Kami hadir untuk mengubah realitas ini.</p>
-    </div>
+<section class="flex min-h-[100svh] flex-col justify-between gap-12 bg-[#FBFBF5] px-6 py-20 text-primary-blue-dark md:px-10 md:py-24" data-problem>
+  <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em]">Mengapa Kami Ada?</h2>
 
-    <ul class="border-b border-white/15">
-      {
-        problemStats.map((stat, index) => {
-          const [, lead, unit] = stat.number.match(/^(\d+)(.*)$/) ?? [, stat.number, ''];
-          return (
-            <li
-              class="grid items-end gap-x-12 gap-y-5 border-t border-white/15 py-8 md:grid-cols-2 md:py-10 anim-reveal"
-              style={`--i:${index}`}
-            >
-              <p class="font-body text-[clamp(72px,9vw,136px)] font-medium text-secondary-yellow leading-[0.85] tracking-[-0.04em]">
-                {lead}<span class="text-[0.6em] tracking-[-0.02em] text-secondary-yellow">{unit}</span>
-              </p>
-              <div class="flex flex-col items-start gap-5 md:pb-2">
-                <p class="max-w-[24em] text-[clamp(18px,1.6vw,22px)] leading-normal text-white/90">{stat.text}.</p>
-                {stat.detail && <StatDetail id={`problem-detail-${index + 1}`} stat={stat} />}
-              </div>
-            </li>
-          );
-        })
-      }
-    </ul>
-  </div>
+  <p class="max-w-[34em] text-balance font-body text-[clamp(24px,2.9vw,46px)] font-medium leading-[1.35] tracking-[-0.02em]">
+    {
+      facts.map((tokens, index) => (
+        <span data-fact>
+          {tokens.map(({ token, space }) => (
+            <>{token === 'chip' ? <span aria-hidden="true" class={chip} set:html={charts[index]} /> : <span class="w">{token}</span>}{space && ' '}</>
+          ))}{' '}
+        </span>
+      ))
+    }
+    <span class="underline decoration-secondary-yellow decoration-[0.12em] underline-offset-[0.18em]">
+      {closing.map((word, i) => (
+        <><span class="w">{word}</span>{i < closing.length - 1 && ' '}</>
+      ))}
+    </span>
+  </p>
+
+  {detailIndex >= 0 && <StatDetail id={`problem-detail-${detailIndex + 1}`} stat={problemStats[detailIndex]} variant="outline-navy" />}
 </section>
+
+<style>
+  /* Grey to navy, word by word, as the paragraph scrolls into place. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      [data-problem] .w {
+        animation: problem-word linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 45%;
+      }
+    }
+  }
+  @keyframes problem-word {
+    from {
+      color: #b9c0d2;
+    }
+    to {
+      color: var(--primary-blue-dark);
+    }
+  }
+</style>
 
 <script>
   // The only client JS of this section (about 0.3 KB), document-wide on purpose: it also opens the story dialogs of
