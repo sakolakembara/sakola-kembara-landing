@@ -74,7 +74,8 @@ export const problemStats: ProblemStat[] = [
 export const impactMetrics = [
   { number: '600+', label: 'Total Siswa Terbantu', color: 'blue' },
   { number: '84%', label: 'Berkuliah (60% di PTN)', color: 'yellow' },
-  { number: '19', label: 'Siswa Diterima di Top 3 Universitas di Indonesia', color: 'green' },
+  // Shortened by Dzul, 2026-10-27 (the legacy label is "Siswa Diterima di Top 3 Universitas di Indonesia").
+  { number: '19', label: 'Diterima di Kampus Top 3', color: 'green' },
   { number: '172', label: 'Siswa Program 2026/2027', color: 'dark' },
 ] as const;
 

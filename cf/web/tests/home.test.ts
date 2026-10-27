@@ -90,8 +90,11 @@ describe('data is the legacy lib/data.ts, value for value', async () => {
   it('"Mengapa Kami Ada?" figures, charts and the detail text', () => {
     expect(problemStats).toEqual(legacy.problemStats);
   });
-  it('impact metrics', () => {
-    expect(impactMetrics).toEqual(legacy.impactMetrics);
+  it('impact metrics (the top-3 label shortened by Dzul, 2026-10-27)', () => {
+    const shortened = legacy.impactMetrics.map((m: { number: string; label: string }) =>
+      m.label === 'Siswa Diterima di Top 3 Universitas di Indonesia' ? { ...m, label: 'Diterima di Kampus Top 3' } : m,
+    );
+    expect(impactMetrics).toEqual(shortened);
   });
   it('testimonials (the photo is imported by the component, keyed by id)', () => {
     expect(testimonials).toEqual(legacy.testimonials.map(({ image: _image, ...rest }) => rest));
