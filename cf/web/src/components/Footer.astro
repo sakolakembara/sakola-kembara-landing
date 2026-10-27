@@ -6,7 +6,8 @@ import SocialLinks from './SocialLinks.astro';
  * Site footer (SAKEM-111; option B of the footer mock Dzul chose on 2026-10-27, after BYQ Kelvin "Full Footer with
  * Navigation Columns"): the name and the mission on top, then the email as the contact call with the site pages in one row
  * under it, the branches on the right, then copyright and social links. No column headings: the groups read by their form (pages as one row of text,
- * branches as chips). A branch with an Instagram account is a link to it; the others are plain chips.
+ * branches as chips). A branch with an Instagram account is a link to it; the others are chips that look the same
+ * (not greyed out, Dzul 2026-10-27) without the link. The email is set at the mission's size.
  */
 // Build-time value; the navbar script rewrites it to the current year in the browser.
 const buildYear = new Date().getFullYear();
@@ -27,7 +28,7 @@ const chip = 'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm
       <div class="flex flex-col gap-6">
         <a
           href="mailto:contact@sakolakembara.org"
-          class="self-start text-[clamp(22px,2.4vw,34px)] font-medium tracking-[-0.02em] [overflow-wrap:anywhere] transition-colors hover:text-secondary-yellow"
+          class="self-start text-[clamp(18px,1.7vw,24px)] font-medium [overflow-wrap:anywhere] transition-colors hover:text-secondary-yellow"
         >
           contact@sakolakembara.org
         </a>
@@ -61,7 +62,7 @@ const chip = 'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm
                     {branch.name}
                   </a>
                 ) : (
-                  <span class={`${chip} border-white/15 text-white/60`}>{branch.name}</span>
+                  <span class={`${chip} border-white/40 text-white`}>{branch.name}</span>
                 )}
               </li>
             ))
