@@ -126,12 +126,14 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Branch map', () => {
-    it('a point per branch on the dotted map, the list of branches (no Instagram links for now), three arcs from Bandung', () => {
+    it('a point and a chip per branch on the dotted map, the names for screen readers, three arcs from Bandung', () => {
       expect(branchMap).toContain('src="/images/peta/indonesia-dots.svg"');
       expect(all(branchMap, /<circle [^>]*fill="#0D1F52"/g)).toHaveLength(branches.length);
-      const items = all(branchMap, /<li[\s\S]*?<\/li>/g);
-      expect(items).toHaveLength(branches.length);
-      branches.forEach((b, i) => expect(text(items[i])).toContain(`${b.name} ${b.region}`));
+      const items = all(branchMap, /<li[\s>][\s\S]*?<\/li>/g); // the screen-reader list (not the leader <line>s)
+      expect(items.map(text)).toEqual(branches.map((b) => `${b.name}, ${b.region}`));
+      expect(all(branchMap, /<span aria-hidden="true" class="pointer-events-none absolute whitespace-nowrap rounded-full[^>]*>[^<]*<\/span>/g).map(text)).toEqual(
+        ['Bojong', 'Cibodas', 'Cisarua', 'Bandung', 'Cililin', 'Cirebon', 'Purbalingga', 'Samarinda'],
+      ); // a chip per branch
       expect(branchMap).not.toContain('instagram.com');
       expect(branchMap).toMatch(new RegExp(`aria-label="Peta cabang Sakola Kembara: ${branches.map((b) => b.name).join(', ')}"`));
       expect(all(branchMap, /class="branch-arc/g)).toHaveLength(3);
