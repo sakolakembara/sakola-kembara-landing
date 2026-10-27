@@ -1809,7 +1809,7 @@ await check('home', '/ has the video hero, then the seven sections in order (des
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.equal(stubHits().length, 0);
 });
-await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program tiles, 7 stories, 6 partner logos, 4 CTA cards, 4 news cards', async () => {
+await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program steps, 7 stories, 6 partner logos, 4 CTA cards, 4 news cards', async () => {
   const html = await homeHtml();
   const between = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
   assert.equal((between('id="impact"', 'Mengapa Kami Ada?').match(/<li[\s>]/g) ?? []).length, 4);
@@ -1851,7 +1851,7 @@ await check('home', 'every /_astro and /_img asset the home page references is s
 await check('home', 'eager JS of the home page (all inline), as served, stays inside the budget', async () => {
   const html = await homeHtml();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-  assert.equal(scripts.length, 3); // navbar, dialogs, hero video
+  assert.equal(scripts.length, 4); // navbar, program steps, dialogs, hero video
   let bytes = 0;
   for (const m of scripts) {
     const src = m[1].match(/\ssrc="([^"]+)"/)?.[1];

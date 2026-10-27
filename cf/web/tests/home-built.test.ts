@@ -126,11 +126,14 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Program', () => {
-    it('one tile per program, its points and a link to its page', () => {
-      expect(all(activities, /<li[\s>]/g)).toHaveLength(programCards.length);
+    it('one step per program (a tab and a panel), its points, photos and a link to its page; only the first panel shows', () => {
+      expect(all(activities, /role="tab"/g)).toHaveLength(programCards.length);
+      expect(all(activities, /role="tabpanel"/g)).toHaveLength(programCards.length);
+      expect(all(activities, /<div role="tabpanel"[^>]*>/g).map((d) => /\shidden[\s>]/.test(d))).toEqual(programCards.map((_, i) => i !== 0));
+      expect(all(activities, /<img [^>]*>/g)).toHaveLength(programCards.length * 3);
       for (const p of programCards) {
         expect(text(activities)).toContain(p.title);
-        expect(text(activities)).toContain(p.points.join(' · '));
+        for (const point of p.points) expect(text(activities)).toContain(point);
         expect(activities).toContain(`href="/program/${p.id}"`);
       }
     });
@@ -248,8 +251,8 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
     it(`eager JS (the page's own scripts, all inline) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, dialogs (the stat and the stories share one opener), hero video
-      expect(scripts).toHaveLength(3);
+      // navbar, program steps, dialogs (the stat and the stories share one opener), hero video
+      expect(scripts).toHaveLength(4);
       expect(scripts.every((m) => !/\ssrc=/.test(m[1]))).toBe(true);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);

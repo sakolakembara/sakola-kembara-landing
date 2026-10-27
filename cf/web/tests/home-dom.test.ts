@@ -60,9 +60,25 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     vi.unstubAllGlobals();
   });
 
-  it('the three scripts of the page run without a console error', async () => {
-    for (const marker of ['nav-toggle', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
+  it('the four scripts of the page run without a console error', async () => {
+    for (const marker of ['nav-toggle', 'data-steps', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
     await new Promise((r) => setTimeout(r, 20));
+  });
+
+  describe('program steps', () => {
+    const shown = () => [...document.querySelectorAll<HTMLElement>('[role="tabpanel"]')].filter((p) => !p.hidden).map((p) => p.id);
+    it('the bar ending moves to the next step (wrapping), a click selects a step', async () => {
+      await runScript(html, 'data-steps');
+      const tabs = [...document.querySelectorAll<HTMLElement>('[role="tab"]')];
+      expect(shown()).toEqual(['tahap-prapembinaan']);
+      tabs[0].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
+      expect(shown()).toEqual(['tahap-pembinaan']);
+      expect(tabs.map((t) => t.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false']);
+      tabs[2].click();
+      expect(shown()).toEqual(['tahap-pasca-pembinaan']);
+      tabs[2].querySelector('.step-bar')!.dispatchEvent(new Event('animationend'));
+      expect(shown()).toEqual(['tahap-prapembinaan']);
+    });
   });
 
   describe('stat dialog', () => {
