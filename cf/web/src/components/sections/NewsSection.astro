@@ -3,10 +3,11 @@ import Button from '~/components/Button.astro';
 import type { BlogMeta } from '~/lib/blog-types';
 
 /**
- * Homepage "Cerita & Inspirasi" (SAKEM-111; layout after BYQ Truebase
- * "Success Stories"): a navy band, the title centred above two columns of
- * cards, the cover on top and a dark tile below with the title, category,
- * date and an arrow. The caller passes the articles (the home page takes the
+ * Homepage "Cerita & Inspirasi" (SAKEM-111; after BYQ Jake Carter "Blog Posts
+ * Grid Layout", header after Babka "Blog Card Grid with Hover"): a navy band,
+ * the title left and "Lihat Semua" right, then the articles in ONE row of up to
+ * four (Dzul, 2026-10-27): the cover, then category and date, then the title.
+ * The caller passes the articles (the home page takes the
  * four newest from the blog index at build time). A cover is optional: dashboard-authored posts can
  * have none, and then the card shows no <img> at all rather than an empty src.
  * Cover files are the blog's own /blog/images/*; the metadata index carries their
@@ -19,48 +20,37 @@ const { articles } = Astro.props;
 ---
 
 <section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28" id="blog">
-  <div class="flex w-full flex-col gap-12">
-    <div class="flex flex-col items-center gap-5 text-center anim-reveal">
-      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em]">Cerita &amp; Inspirasi</h2>
+  <div class="flex w-full flex-col gap-10 md:gap-14">
+    <div class="flex flex-wrap items-end justify-between gap-6 anim-reveal">
+      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.1] tracking-[-0.025em]">Cerita &amp; Inspirasi</h2>
       <Button href="/blog" variant="outline-on-navy">Lihat Semua</Button>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
       {
         articles.map((article, index) => (
-          <article class="anim-reveal" style={`--i:${index % 2}`}>
-            <a href={`/blog/${article.id}`} class="group flex h-full flex-col overflow-hidden rounded-[32px] bg-white/[0.06] transition-colors hover:bg-white/10">
-              <div class="relative aspect-[16/9] overflow-hidden bg-white/10">
+          <article class="anim-reveal" style={`--i:${index % 4}`}>
+            <a href={`/blog/${article.id}`} class="group flex h-full flex-col gap-5">
+              <div class="relative aspect-[4/3] overflow-hidden rounded-[12px] bg-white/10">
                 {article.image && (
                   <img
                     src={article.image}
                     srcset={article.imageSrcset ?? undefined}
-                    sizes="(min-width: 768px) 50vw, 100vw"
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                     alt={article.title}
                     width={article.imageWidth ?? undefined}
                     height={article.imageHeight ?? undefined}
                     loading="lazy"
                     decoding="async"
-                    class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
                   />
                 )}
               </div>
-              <div class="flex grow flex-col gap-6 p-6 md:p-7">
-                <h3 class="line-clamp-2 text-xl font-semibold leading-snug">{article.title}</h3>
-                <div class="mt-auto flex items-center justify-between gap-4">
-                  <p class="text-sm text-white/65">
-                    <span class="text-secondary-yellow">{article.category}</span> · {article.date}
-                  </p>
-                  <span
-                    aria-hidden="true"
-                    class="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/30 transition-colors group-hover:border-secondary-yellow group-hover:bg-secondary-yellow group-hover:text-primary-blue-dark"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M5 12h14" />
-                      <path d="m13 6 6 6-6 6" />
-                    </svg>
-                  </span>
-                </div>
+              <div class="flex flex-col gap-2.5">
+                <p class="text-sm text-white/65">
+                  <span class="text-secondary-yellow">{article.category}</span> · {article.date}
+                </p>
+                <h3 class="line-clamp-3 text-lg font-medium leading-snug transition-colors group-hover:text-secondary-yellow">{article.title}</h3>
               </div>
             </a>
           </article>
