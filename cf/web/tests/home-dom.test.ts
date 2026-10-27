@@ -151,5 +151,24 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
       expect(nav.hasAttribute('data-solid')).toBe(true);
       Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
     });
+
+    it('hides while the page scrolls down, shows again on a scroll up, stays while the mobile menu is open', async () => {
+      const nav = document.getElementById('site-nav')!;
+      await runScript(html, 'nav-toggle');
+      const scrollTo = (y: number) => {
+        Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      };
+      scrollTo(60);
+      expect(nav.hasAttribute('data-hidden')).toBe(false); // near the top
+      scrollTo(500);
+      expect(nav.hasAttribute('data-hidden')).toBe(true);
+      scrollTo(450);
+      expect(nav.hasAttribute('data-hidden')).toBe(false);
+      document.getElementById('nav-toggle')!.click();
+      scrollTo(900);
+      expect(nav.hasAttribute('data-hidden')).toBe(false);
+      scrollTo(0);
+    });
   });
 });

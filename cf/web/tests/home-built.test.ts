@@ -126,13 +126,12 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Program', () => {
-    it('one step per program (a header button and a panel), its points, photos and a link to its page; only the first is open', () => {
+    it('one step per program (a header button and a panel), its photo and a link to its page; only the first is open', () => {
       expect(all(activities, /<button[^>]*aria-expanded="(?:true|false)"/g).map((b) => b.includes('"true"'))).toEqual(programCards.map((_, i) => i === 0));
       expect(all(activities, /<div[^>]*role="region"[^>]*>/g).map((d) => /\shidden[\s>]/.test(d))).toEqual(programCards.map((_, i) => i !== 0));
-      expect(all(activities, /<img [^>]*>/g)).toHaveLength(programCards.length * 3);
+      expect(all(activities, /<img [^>]*>/g)).toHaveLength(programCards.length);
       for (const p of programCards) {
         expect(text(activities)).toContain(p.title);
-        for (const point of p.points) expect(text(activities)).toContain(point);
         expect(activities).toContain(`href="/program/${p.id}"`);
       }
     });

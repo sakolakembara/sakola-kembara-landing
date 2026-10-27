@@ -1,31 +1,24 @@
 ---
 import Img from '~/components/Img.astro';
-import { listImages } from '~/lib/images';
 import { programCards } from '~/lib/site';
 import { buttonClasses } from '~/lib/ui';
 
 /**
  * Homepage "Program Kami" (SAKEM-111; the target of the hero's "Lihat Program Kami"), a full-screen step showcase
- * (Dzul, 2026-10-27) after BYQ Babka "Scroll-Driven Accordion Process Steps": the title left and the lead right, then
- * the three steps as stacked tiles. The open tile shows the step in two equal halves, its short explanation with
- * "Lihat Detail" to /program/<id> on the left and its photos (the cover and the first two of its gallery) on the
- * right; the others show their header only. The steps change on their own: the open tile's bar fills in 7 s and its
- * `animationend` opens the next one, so pausing the bar (hover, keyboard focus, the section out of view) pauses the
- * rotation, and with reduced motion there is no animation and so no rotation. Without JS the first step stays open and
- * the headers do nothing (its "Lihat Detail" and the program pages still work). Copy is verbatim from the root
- * ActivitiesSection + lib/data.ts.
+ * (Dzul, 2026-10-27): the title left and the lead right, then the three steps as photo cards side by side (stacked on a
+ * phone). The open card is wide and shows the step's subtitle and "Lihat Detail" to /program/<id> over its photo, with a
+ * progress ring top right; every card has its number top left, and the closed ones are narrow and show their name only (the whole card is their header button). The
+ * steps change on their own: the open card's ring fills in 7 s and its `animationend` opens the next one, so pausing the
+ * ring (hover, keyboard focus, the section out of view) pauses the rotation, and with reduced motion there is no
+ * animation and so no rotation. Without JS the first step stays open and the headers do nothing (its "Lihat Detail" and
+ * the program pages still work). Copy is verbatim from the root ActivitiesSection + lib/data.ts.
  */
 const covers: Record<string, string> = {
   prapembinaan: '/images/program/prapembinaan.jpg',
   pembinaan: '/images/program/pembinaan.jpg',
   'pasca-pembinaan': '/images/program/pasca-pembinaan.jpg',
 };
-const steps = programCards.map((program) => ({
-  ...program,
-  photos: [covers[program.id], ...listImages(`/images/program/galeri/${program.id}`).slice(0, 2).map((p) => p.src)],
-}));
 ---
-
 
 <section id="activities" class="scroll-mt-24 flex min-h-[100svh] flex-col justify-center gap-8 px-6 py-16 md:gap-10 md:px-10 md:py-20" data-steps>
   <div class="grid items-end gap-6 md:grid-cols-2 anim-reveal">
@@ -38,63 +31,48 @@ const steps = programCards.map((program) => ({
     </p>
   </div>
 
-  <ol class="flex flex-col gap-3">
+  <ol class="flex flex-col gap-3 md:h-[clamp(420px,58svh,640px)] md:flex-row">
     {
-      steps.map((step, index) => (
-        <li class="step rounded-xl border border-primary-blue-dark/10 bg-white" data-open={index === 0 ? '' : undefined}>
-          <h3 class="text-[clamp(22px,2vw,30px)] font-medium tracking-[-0.02em]">
+      programCards.map((step, index) => (
+        <li
+          class="step group relative isolate flex h-24 flex-col justify-end overflow-hidden rounded-xl bg-primary-blue-dark p-5 text-white transition-[flex-grow,height] duration-500 ease-out data-open:h-[440px] motion-reduce:transition-none md:h-auto md:flex-1 md:p-7 md:data-open:h-auto md:data-open:flex-[3]"
+          data-open={index === 0 ? '' : undefined}
+        >
+          <Img
+            src={covers[step.id]}
+            alt={step.title}
+            sizes="(min-width: 768px) 60vw, 100vw"
+            class="absolute inset-0 -z-20 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none"
+          />
+          <span
+            aria-hidden="true"
+            class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.25)_0%,rgba(13,31,82,0.88)_100%)] group-data-open:bg-[linear-gradient(180deg,rgba(13,31,82,0)_35%,rgba(13,31,82,0.85)_100%)]"
+          />
+          <span aria-hidden="true" class="absolute left-5 top-5 text-sm font-semibold tabular-nums text-secondary-yellow md:left-7 md:top-7">0{index + 1}</span>
+          <h3 class="text-[clamp(22px,2vw,32px)] font-medium leading-tight tracking-[-0.02em]">
             <button
               type="button"
               id={`tahap-${step.id}-tab`}
               aria-controls={`tahap-${step.id}`}
               aria-expanded={index === 0 ? 'true' : 'false'}
-              data-n={`0${index + 1}`}
-              class="flex w-full items-baseline gap-4 px-5 py-4 text-left text-primary-blue-dark/45 transition-colors before:text-sm before:font-semibold before:tabular-nums before:content-[attr(data-n)] hover:text-primary-blue-dark aria-expanded:text-primary-blue-dark md:px-7 md:py-5"
+              class="text-left after:absolute after:inset-0 aria-expanded:after:hidden"
             >
               {step.tag}
             </button>
           </h3>
-          <div
-            id={`tahap-${step.id}`}
-            role="region"
-            aria-labelledby={`tahap-${step.id}-tab`}
-            hidden={index !== 0}
-            class="px-5 pb-5 md:px-7 md:pb-7"
-          >
-            <div class="grid gap-6 md:grid-cols-2 md:gap-10">
-              <div class="flex flex-col justify-between gap-6">
-                <div class="flex flex-col gap-4">
-                  <p class="text-lg text-gray-600">{step.title}</p>
-                  <ul class="flex flex-col divide-y divide-primary-blue-dark/10 rounded-lg bg-[#EEF1F6] px-4">
-                    {step.points.map((point) => (
-                      <li class="py-3 text-[15px] leading-relaxed text-gray-700 md:text-base">{point}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div class="flex flex-col gap-5">
-                  <a
-                    href={`/program/${step.id}`}
-                    aria-label={`Lihat Detail ${step.tag}`}
-                    class={buttonClasses({ variant: 'outline-navy', className: 'self-start' })}
-                  >
-                    Lihat Detail
-                  </a>
-                  <span aria-hidden="true" class="relative h-[3px] w-full overflow-hidden rounded-full bg-primary-blue-dark/10">
-                    <span class="step-bar absolute inset-y-0 left-0 w-0 rounded-full bg-primary-blue-dark" />
-                  </span>
-                </div>
-              </div>
-              <div class="grid h-[clamp(260px,38svh,420px)] grid-cols-3 grid-rows-2 gap-2.5">
-                {step.photos.map((photo, i) => (
-                  <Img
-                    src={photo}
-                    alt={i === 0 ? step.title : `Dokumentasi ${step.title} ${i}`}
-                    sizes={i === 0 ? '(min-width: 768px) 30vw, 66vw' : '(min-width: 768px) 15vw, 33vw'}
-                    class:list={['h-full w-full rounded-lg object-cover', i === 0 ? 'col-span-2 row-span-2' : '']}
-                  />
-                ))}
-              </div>
-            </div>
+          <div id={`tahap-${step.id}`} role="region" aria-labelledby={`tahap-${step.id}-tab`} hidden={index !== 0} class="mt-3 flex flex-col gap-5">
+            <p class="text-lg text-white/85">{step.title}</p>
+            <a
+              href={`/program/${step.id}`}
+              aria-label={`Lihat Detail ${step.tag}`}
+              class={buttonClasses({ variant: 'yellow-on-navy', className: 'self-start font-bold text-primary-blue-dark' })}
+            >
+              Lihat Detail
+            </a>
+            <svg aria-hidden="true" viewBox="0 0 44 44" class="absolute right-5 top-5 size-11 -rotate-90 md:right-7 md:top-7">
+              <circle cx="22" cy="22" r="19" fill="none" stroke="currentColor" stroke-width="3" class="text-white/25" />
+              <circle cx="22" cy="22" r="19" fill="none" stroke-width="3" pathLength="100" class="step-bar stroke-secondary-yellow" />
+            </svg>
           </div>
         </li>
       ))
@@ -103,7 +81,11 @@ const steps = programCards.map((program) => ({
 </section>
 
 <style>
-  /* The open tile's bar fills in 7 s; its animationend opens the next step (the script). */
+  /* The open card's ring fills in 7 s; its animationend opens the next step (the script). */
+  .step-bar {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+  }
   .step[data-open] .step-bar {
     animation: step-fill 7s linear forwards;
   }
@@ -112,19 +94,19 @@ const steps = programCards.map((program) => ({
   }
   @keyframes step-fill {
     to {
-      width: 100%;
+      stroke-dashoffset: 0;
     }
   }
   @media (prefers-reduced-motion: reduce) {
     .step[data-open] .step-bar {
       animation: none;
-      width: 100%;
+      stroke-dashoffset: 0;
     }
   }
 </style>
 
 <script>
-  // The program steps: one tile open at a time; the open bar's animationend opens the next one.
+  // The program steps: one card open at a time; the open ring's animationend opens the next one.
   const section = document.querySelector<HTMLElement>('[data-steps]');
   if (section) {
     const tiles = [...section.querySelectorAll<HTMLElement>('.step')];

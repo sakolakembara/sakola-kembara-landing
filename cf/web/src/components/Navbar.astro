@@ -148,10 +148,22 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
   const menu = document.getElementById('mobile-menu');
   // The floating navbar of the homepage (SAKEM-111) turns solid once the page scrolls or the mobile menu is open.
   const setSolid = () => nav?.toggleAttribute('data-solid', scrollY > 16 || menu?.hasAttribute('hidden') === false);
-  if (nav?.hasAttribute('data-overlay')) {
-    setSolid();
-    addEventListener('scroll', setSolid, { passive: true });
-  }
+  if (nav?.hasAttribute('data-overlay')) setSolid();
+  // Every page (Dzul, 2026-10-27): the navbar slides away while the page scrolls down and comes back on any scroll up;
+  // never while the mobile menu is open or near the top. global.css keeps it shown while it holds keyboard focus.
+  let lastY = scrollY;
+  addEventListener(
+    'scroll',
+    () => {
+      const y = scrollY;
+      if (Math.abs(y - lastY) > 4) {
+        nav?.toggleAttribute('data-hidden', y > lastY && y > 80 && menu?.hasAttribute('hidden') !== false);
+        lastY = y;
+      }
+      if (nav?.hasAttribute('data-overlay')) setSolid();
+    },
+    { passive: true },
+  );
   if (toggle && menu) {
     toggle.addEventListener('click', () => {
       const open = menu.hasAttribute('hidden');
