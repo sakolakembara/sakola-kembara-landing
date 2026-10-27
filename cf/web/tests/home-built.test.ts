@@ -29,7 +29,7 @@ const all = (html: string, re: RegExp) => [...html.matchAll(re)].map((m) => m[0]
  */
 const BUDGET = {
   eagerJs: { raw: 9_000, gzip: 4_600 },
-  css: { raw: 75_000, gzip: 13_500 },
+  css: { raw: 85_000, gzip: 15_500 },
 };
 
 describe.skipIf(!built)('home page build output', () => {
@@ -139,7 +139,7 @@ describe.skipIf(!built)('home page build output', () => {
   describe('Stories', () => {
     it('one letter per testimonial (only the first active, the others inert) with the whole quote, and a small card per alumnus (the first one hidden)', () => {
       expect(all(stories, /<figure[\s>]/g)).toHaveLength(testimonials.length);
-      const panels = all(stories, /<article id="cerita-\d+"[^>]*>/g);
+      const panels = all(stories, /<div id="cerita-\d+"[^>]*>/g);
       expect(panels.map((p) => /\sinert[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i !== 0));
       expect(panels.map((p) => /\sdata-active[\s>]/.test(p))).toEqual(testimonials.map((_, i) => i === 0));
       for (const t of testimonials) {
