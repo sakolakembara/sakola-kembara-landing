@@ -34,4 +34,12 @@ const latestArticles = getAllArticles().slice(0, 4);
     <NewsSection articles={latestArticles} />
     <CTASection />
   </main>
+  <script>
+    // GSAP motion (src/scripts/home-motion.ts), fetched after the page has loaded and the browser is idle, never with
+    // reduced motion: the first view never waits for it, and without it everything simply shows.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const go = () => import('../scripts/home-motion').then((m) => m.start());
+      addEventListener('load', () => ('requestIdleCallback' in window ? requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 200)), { once: true });
+    }
+  </script>
 </Base>

@@ -1848,10 +1848,10 @@ await check('home', 'every /_astro and /_img asset the home page references is s
   }
   assert.equal(stubHits().length, 0, 'an asset went to the origin');
 });
-await check('home', 'eager JS of the home page (all inline), as served, stays inside the budget', async () => {
+await check('home', 'eager JS of the home page (inline but for the GSAP motion loader), as served, stays inside the budget', async () => {
   const html = await homeHtml();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-  assert.equal(scripts.length, 5); // navbar, problem charts, program steps, alumni stories, hero video
+  assert.equal(scripts.length, 6); // navbar, problem charts, program steps, alumni stories, hero video, GSAP motion loader
   let bytes = 0;
   for (const m of scripts) {
     const src = m[1].match(/\ssrc="([^"]+)"/)?.[1];

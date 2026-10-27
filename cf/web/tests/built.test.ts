@@ -82,9 +82,10 @@ describe.skipIf(!built)('build output', () => {
     }
   });
 
-  it('no page ships a JS file: every script is inline (the home page map and its chunks left with SAKEM-111)', () => {
+  it('the only JS files are the home page\'s GSAP motion and its loader (SAKEM-111); every other script is inline', () => {
     // The home page's scripts and budget are checked in home-built.test.ts; the Worker-rendered pages are checked in e2e.
-    expect(walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js'))).toEqual([]);
+    const files = walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js')).map((f) => path.basename(f).replace(/\.[\w-]+\.js$/, ''));
+    expect(files.sort()).toEqual(['home-motion', 'index.astro_astro_type_script_index_0_lang']);
   });
 
   it('fonts are self-hosted: no request to a font CDN, woff2 emitted, two preloaded', () => {

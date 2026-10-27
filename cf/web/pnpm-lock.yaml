@@ -14,6 +14,9 @@ importers:
       astro:
         specifier: ^6.4.8
         version: 6.4.8(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.64.5)(yaml@2.9.1)
+      gsap:
+        specifier: 3.13.0
+        version: 3.13.0
     devDependencies:
       '@astrojs/check':
         specifier: ^0.9.10
@@ -1582,6 +1585,9 @@ packages:
   gray-matter@4.0.3:
     resolution: {integrity: sha512-5v6yZd4JK3eMI3FqqCouswVqwugaA9r4dNZB1wwcmrD02QkV5H0y7XBQW8QwQqEaZY1pM9aqORSORhJRdNK44Q==}
     engines: {node: '>=6.0'}
+
+  gsap@3.13.0:
+    resolution: {integrity: sha512-QL7MJ2WMjm1PHWsoFrAQH/J8wUeqZvMtHO58qdekHpCfhvhSL4gSiz6vJf5EeMP0LOn3ZCprL2ki/gjED8ghVw==}
 
   h3@1.15.11:
     resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
@@ -4036,6 +4042,8 @@ snapshots:
       kind-of: 6.0.3
       section-matter: 1.0.0
       strip-bom-string: 1.0.0
+
+  gsap@3.13.0: {}
 
   h3@1.15.11:
     dependencies:

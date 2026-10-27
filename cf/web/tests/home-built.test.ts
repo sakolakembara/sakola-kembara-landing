@@ -267,10 +267,11 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerRaw = eager.reduce((n, b) => n + b.length, 0);
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
-    it(`eager JS (the page's own scripts, all inline) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, problem charts, program steps, alumni stories, hero video
-      expect(scripts).toHaveLength(5);
-      expect(scripts.every((m) => !/\ssrc=/.test(m[1]))).toBe(true);
+    it(`eager JS (the page's own scripts, inline but for the motion loader) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
+      // navbar, problem charts, program steps, alumni stories, hero video, and the GSAP motion loader (a module file: it
+      // holds a dynamic import, so Astro emits it as a file)
+      expect(scripts).toHaveLength(6);
+      expect(scripts.filter((m) => /\ssrc=/.test(m[1])).map((m) => m[1].match(/src="\/_astro\/([\w.]+?)\./)![1])).toEqual(['index']);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);
     });
@@ -289,12 +290,15 @@ describe.skipIf(!built)('home page build output', () => {
       expect(gz(css)).toBeLessThanOrEqual(BUDGET.css.gzip);
     });
 
-    it('no animation or UI library ships: entrance motion is CSS (scroll-driven, behind @supports)', () => {
+    it('GSAP is fetched lazily (after load, when idle, never with reduced motion) as a chunk of its own; the CSS reveal stays as the no-JS fallback', () => {
       const css = html.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
       expect(css).toContain('animation-timeline');
-      expect(css).toMatch(/@supports\s*\(animation-timeline:\s*view\(\)\)/);
-      expect(css).toMatch(/prefers-reduced-motion:\s*reduce\)\s*{\s*\.anim-reveal\s*{\s*animation:\s*none/);
-      for (const m of scripts) expect(m[2]).not.toMatch(/framer|gsap|IntersectionObserver\(.*reveal/);
+      for (const m of scripts.filter((s) => !/\ssrc=/.test(s[1]))) expect(m[2]).not.toMatch(/gsap|ScrollTrigger/);
+      const loader = readFileSync(path.join(client, scripts.find((m) => /\ssrc=/.test(m[1]))![1].match(/src="([^"]+)"/)![1]), 'utf8');
+      expect(loader).toContain('prefers-reduced-motion: reduce');
+      expect(loader).toContain('requestIdleCallback');
+      expect(loader).toMatch(/home-motion\.[\w-]+\.js/);
+      expect(html).not.toMatch(/home-motion/); // not preloaded by the page itself
     });
   });
 });
