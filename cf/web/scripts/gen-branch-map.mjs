@@ -1,6 +1,6 @@
 /**
- * Generator of the homepage branch map (SAKEM-111): the part of Indonesia with the branches (west Java to east
- * Kalimantan, zoomed in by Dzul on 2026-10-27) as a dotted map with a point per branch, after the
+ * Generator of the homepage branch map (SAKEM-111): the whole of Indonesia (Dzul, 2026-10-27) as a dotted map with a
+ * point per branch, after the
  * dotted office map of Global DMC (Dzul, 2026-10-27). Run it again rather than editing its output:
  * - public/images/peta/indonesia-dots.svg (repo root): the land as one <path> of dots, navy at 30%
  * - src/lib/branch-map.ts: the canvas size and each branch's point on it
@@ -17,9 +17,9 @@ const mod = await import(pathToFileURL(process.env.DOTTED_MAP ?? 'dotted-map').h
 const DottedMap = mod.default?.default ?? mod.default ?? mod;
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const REGION = { lat: { min: -8.4, max: 1.4 }, lng: { min: 104.6, max: 119.4 } };
-const HEIGHT = 46;
-const RADIUS = 0.36;
+const REGION = { lat: { min: -11.2, max: 6.4 }, lng: { min: 94.6, max: 141.4 } };
+const HEIGHT = 70;
+const RADIUS = 0.32;
 /** Approximate town centres; the key is the branch's name in `branches` (src/lib/site.ts). */
 const PINS = {
   Bandung: { lat: -6.9175, lng: 107.6191 },
