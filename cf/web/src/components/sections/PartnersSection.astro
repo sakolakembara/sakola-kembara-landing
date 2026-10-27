@@ -11,7 +11,7 @@ import { activePartners, pastPartners, type Partner } from '~/lib/home-data';
 /**
  * Homepage "Partner Kami" (SAKEM-111; layout after BYQ Genesis "Trusted Logo
  * Grid"; Dzul, 2026-10-27): all centred, the title, then the logos in one row
- * (wrapping on small screens), muted until hovered, then the thanks in at most two
+ * (one row from xl, wrapping below), muted until hovered, then the thanks in at most two
  * lines; each logo's alt is the partner's name. Active partners first, then past
  * ones (the past partner's "Pernah Didukung & Bermitra Dengan" caption was removed by
  * Dzul, 2026-10-27). Copy is verbatim from the root
@@ -35,7 +35,7 @@ const partners: Partner[] = [...activePartners, ...pastPartners];
       Bersama Mewujudkan Perubahan
     </h2>
 
-    <ul class="flex flex-wrap items-start justify-center gap-x-12 gap-y-10 lg:flex-nowrap lg:gap-x-16 anim-reveal">
+    <ul class="flex flex-wrap items-start justify-center gap-x-12 gap-y-10 xl:flex-nowrap xl:gap-x-16 anim-reveal">
       {
         partners.map((partner) => (
           <li class="flex flex-col items-center justify-center gap-3 text-center">

@@ -58,7 +58,7 @@ describe.skipIf(!built)('home page build output', () => {
     expect(h2).toEqual([
       'Mengapa Kami Ada?',
       'Dari Desa ke Kampus Impian',
-      'Hadir dari Bandung sampai Samarinda',
+      'Kami hadir dari Bandung sampai Samarinda',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Cerita Sukses Alumni',
       'Bersama Mewujudkan Perubahan',

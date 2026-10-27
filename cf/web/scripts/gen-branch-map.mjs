@@ -1,8 +1,9 @@
 /**
- * Generator of the homepage branch map (SAKEM-111): the whole of Indonesia (Dzul, 2026-10-27) as a dotted map with a
+ * Generator of the homepage branch map (SAKEM-111): the whole of Indonesia and, to the north, enough land to reach the
+ * top of the section (Dzul, 2026-10-27) as a dotted map with a
  * point per branch, after the
  * dotted office map of Global DMC (Dzul, 2026-10-27). Run it again rather than editing its output:
- * - public/images/peta/indonesia-dots.svg (repo root): the land as one <path> of dots, navy at 30%
+ * - public/images/peta/indonesia-dots.svg (repo root): the land as one <path> of dots, navy at 32%
  * - src/lib/branch-map.ts: the canvas size and each branch's point on it
  *
  * `dotted-map@2` is NOT a dependency of this repo (the output is static and the page ships no map code). To run:
@@ -17,9 +18,9 @@ const mod = await import(pathToFileURL(process.env.DOTTED_MAP ?? 'dotted-map').h
 const DottedMap = mod.default?.default ?? mod.default ?? mod;
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const REGION = { lat: { min: -11.2, max: 6.4 }, lng: { min: 94.6, max: 141.4 } };
-const HEIGHT = 70;
-const RADIUS = 0.32;
+const REGION = { lat: { min: -11.2, max: 16 }, lng: { min: 94.6, max: 141.4 } };
+const HEIGHT = 90;
+const RADIUS = 0.3;
 /** Approximate town centres; the key is the branch's name in `branches` (src/lib/site.ts). */
 const PINS = {
   Bandung: { lat: -6.9175, lng: 107.6191 },
@@ -41,7 +42,7 @@ const d = pts
   .join('');
 const out = resolve(web, '../../public/images/peta');
 mkdirSync(out, { recursive: true });
-writeFileSync(resolve(out, 'indonesia-dots.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><path fill="#0D1F52" fill-opacity="0.3" d="${d}"/></svg>`);
+writeFileSync(resolve(out, 'indonesia-dots.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><path fill="#0D1F52" fill-opacity="0.32" d="${d}"/></svg>`);
 
 // Each branch projected the way the dots are (Web Mercator over REGION), NOT map.getPin(), which snaps to the nearest
 // dot and would stack the West Java branches on one another.
