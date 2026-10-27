@@ -5,8 +5,9 @@ import { REGISTRATION_PATH } from '~/lib/site';
 /**
  * Homepage "Mari Menjadi Bagian Perubahan" (SAKEM-111, the poster Dzul chose on 2026-10-27; title reworded by Dzul the
  * same day, it was "Jadilah Bagian dari Perubahan"): a cream band, the headline on the left, vertically centred, and the
- * four ways to take part as rows on the right (from md), rules between the rows only. Each row is one link: the role, a
- * photo chip to its right that pops out over the row on hover (a scale, so the row does not move), an arrow. The action
+ * four ways to take part as rows on the right (from md), rules between the rows only. Each row is one link: the role and an
+ * arrow; a photo is hidden until the row is hovered or focused, then fades in to the right of the title so it never covers
+ * the text (from md only: a phone has no hover; Dzul, 2026-10-28, the small chip that was always shown is gone). The action
  * ("Daftar Sekarang"...) is in the link for screen readers only. The photos are decorative (alt=""): the link text says it all.
  * One screen tall; the title top left and a quote of Ki Hajar Dewantara top right, the roles full width at the bottom
  * (Dzul, 2026-10-27; the mascots that were here were removed the same day). Every arrow is outlined until its row is hovered.
@@ -65,13 +66,13 @@ const ctaOptions = [
         ctaOptions.map((option) => (
           <li>
             <a href={option.href} class="group flex items-center justify-between gap-4 py-5 md:gap-6 md:py-7">
-              <span class="flex min-w-0 items-center gap-4 transition-transform duration-300 group-hover:translate-x-1.5 motion-reduce:transition-none md:gap-5">
+              <span class="relative min-w-0 transition-transform duration-300 group-hover:translate-x-1.5 motion-reduce:transition-none">
                 <span class="font-body text-[clamp(26px,2.8vw,48px)] font-medium leading-none tracking-[-0.03em]">{option.title}</span>
                 <Img
                   src={option.photo}
                   alt=""
-                  sizes="(min-width: 768px) 240px, 64px"
-                  class="relative h-10 w-16 shrink-0 origin-left rounded-[10px] object-cover transition-[transform,box-shadow] duration-300 ease-out md:h-14 md:w-24 md:group-hover:z-10 md:group-hover:scale-[2.5] md:group-hover:shadow-[0_18px_40px_rgba(13,31,82,0.3)] motion-reduce:transition-none"
+                  sizes="240px"
+                  class="pointer-events-none absolute left-[calc(100%+28px)] top-1/2 z-10 hidden h-[150px] w-[220px] -translate-y-1/2 -rotate-2 scale-90 rounded-[14px] object-cover opacity-0 shadow-[0_18px_40px_rgba(13,31,82,0.25)] transition-[opacity,transform] duration-300 ease-out md:block md:group-hover:rotate-0 md:group-hover:scale-100 md:group-hover:opacity-100 md:group-focus-visible:rotate-0 md:group-focus-visible:scale-100 md:group-focus-visible:opacity-100 motion-reduce:transition-none"
                 />
                 <span class="sr-only">{option.buttonText}</span>
               </span>
