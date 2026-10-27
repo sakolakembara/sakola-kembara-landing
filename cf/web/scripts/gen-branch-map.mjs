@@ -19,8 +19,8 @@ const DottedMap = mod.default?.default ?? mod.default ?? mod;
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const REGION = { lat: { min: -11.2, max: 16 }, lng: { min: 94.6, max: 141.4 } };
-const HEIGHT = 90;
-const RADIUS = 0.3;
+const HEIGHT = 120;
+const RADIUS = 0.26;
 /** Approximate town centres; the key is the branch's name in `branches` (src/lib/site.ts). */
 const PINS = {
   Bandung: { lat: -6.9175, lng: 107.6191 },
