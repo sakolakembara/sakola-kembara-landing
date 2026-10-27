@@ -6,7 +6,7 @@ import { buttonClasses } from '~/lib/ui';
 /**
  * Homepage impact "Dari Desa ke Kampus Impian" (SAKEM-111; option C of the Pencapaian wireframe Dzul chose on
  * 2026-10-27, after BYQ Nextwell "Stats Section with Animated Counters"): one screen tall, a documentation photo
- * under a navy gradient, the title, lead and "Cerita Sukses Alumni" on top, and the four metrics of impactMetrics in a
+ * under a navy gradient, the title top left, the lead and "Cerita Sukses Alumni" top right, and the four metrics of impactMetrics in a
  * row along the bottom; the top-3 figure carries the three universities' logos. It follows "Mengapa
  * Kami Ada?" (Dzul swapped the two the same day). Figures and labels are verbatim from home-data.ts; the title was
  * "Pencapaian Sakola Kembara". The photo (students in their campus jackets, from the foundation's documentation Drive) is
@@ -30,12 +30,14 @@ const stats = [
   <Img src="/images/home/impact-kampus.jpg" alt="" sizes="100vw" class="absolute inset-0 -z-20 h-full w-full object-cover object-[50%_60%]" />
   <span aria-hidden="true" class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.6)_0%,rgba(13,31,82,0.75)_45%,rgba(13,31,82,0.95)_100%)]" />
 
-  <div class="flex max-w-[44rem] flex-col gap-6 anim-reveal">
+  <div class="grid items-start gap-6 md:grid-cols-2 md:gap-12 anim-reveal">
     <h2 class="font-body text-[clamp(36px,4.6vw,72px)] font-medium leading-[1.08] tracking-[-0.03em]">Dari Desa <br />ke Kampus Impian</h2>
-    <p class="max-w-[30em] text-[17px] leading-[1.65] text-white/85 md:text-lg">
-      Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.
-    </p>
-    <a href="#cerita" class={buttonClasses({ variant: 'outline-on-navy', className: 'self-start' })}>Cerita Sukses Alumni</a>
+    <div class="flex flex-col gap-6 md:items-end md:pt-3 md:text-right">
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-white/85 md:text-lg">
+        Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.
+      </p>
+      <a href="#cerita" class={buttonClasses({ variant: 'outline-on-navy', className: 'self-start md:self-end' })}>Cerita Sukses Alumni</a>
+    </div>
   </div>
 
   <ul class="grid grid-cols-2 gap-x-6 gap-y-10 border-t border-white/25 pt-8 lg:grid-cols-4 lg:gap-x-10">
