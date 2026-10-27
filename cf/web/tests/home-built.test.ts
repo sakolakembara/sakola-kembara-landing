@@ -98,7 +98,7 @@ describe.skipIf(!built)('home page build output', () => {
     it('the four metrics as rising cards, the total last, with their labels verbatim', () => {
       const cards = all(impact, /<li[\s>][\s\S]*?<\/li>/g).map(text);
       expect(cards.map((c, i) => c.startsWith(`${impactMetrics[i].number} ${impactMetrics[i].label}`))).toEqual([true, true, true, true]);
-      for (const u of ['Universitas Indonesia', 'Institut Teknologi Bandung', 'Universitas Gadjah Mada']) expect(impact).toContain(u);
+      for (const u of ['Universitas Indonesia', 'Institut Teknologi Bandung', 'Universitas Gadjah Mada']) expect(impact).toContain(`alt="${u}"`);
       expect(text(impact)).toContain('Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.');
       expect(impact).toContain('<a href="#cerita"');
     });
