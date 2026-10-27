@@ -108,7 +108,7 @@ describe('data is the legacy lib/data.ts, value for value', async () => {
 describe('every photo and logo the page shows is wired', () => {
   const stories = readWeb('src/components/sections/StoriesSection.astro');
   const partners = readWeb('src/components/sections/PartnersSection.astro');
-  it.each(testimonials.slice(0, 2).map((t) => [t.id, t.name] as const))('testimonial %s (%s) has a photo', (id, name) => {
+  it.each(testimonials.map((t) => [t.id, t.name] as const))('testimonial %s (%s) has a photo', (id, name) => {
     expect(stories).toContain(`${id}: '/images/testimoni/${name.toLowerCase().replace(/ /g, '-')}.jpg',`);
   });
   it.each([...activePartners, ...pastPartners].map((p) => p.id))('partner %s has a logo', (id) => {

@@ -60,8 +60,8 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
     vi.unstubAllGlobals();
   });
 
-  it('the three scripts of the page run without a console error', async () => {
-    for (const marker of ['nav-toggle', 'data-dialog-open', 'hero-video']) await runScript(html, marker);
+  it('the four scripts of the page run without a console error', async () => {
+    for (const marker of ['nav-toggle', 'data-dialog-open', 'hero-video', 'data-story-tab']) await runScript(html, marker);
     await new Promise((r) => setTimeout(r, 20));
   });
 
@@ -103,6 +103,24 @@ describe.skipIf(!built)('home page scripts, run against the built HTML', () => {
       await runScript(html, 'hero-video');
       expect(play).not.toHaveBeenCalled();
       expect(video.preload).toBe('none');
+    });
+  });
+
+  describe('stories register', () => {
+    it('a click, a focus or a hover on a row shows its story and marks the row', async () => {
+      await runScript(html, 'data-story-tab');
+      const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-story-tab]')];
+      const panels = [...document.querySelectorAll<HTMLElement>('[data-story-panel]')];
+      const shown = () => panels.findIndex((p) => !p.hidden);
+      const pressed = () => tabs.findIndex((t) => t.getAttribute('aria-pressed') === 'true');
+      expect([shown(), pressed()]).toEqual([0, 0]);
+      tabs[2].click();
+      expect([shown(), pressed()]).toEqual([2, 2]);
+      tabs[4].dispatchEvent(new Event('focus'));
+      expect([shown(), pressed()]).toEqual([4, 4]);
+      tabs[1].dispatchEvent(new Event('mouseenter'));
+      expect([shown(), pressed()]).toEqual([1, 1]);
+      expect(panels.filter((p) => !p.hidden)).toHaveLength(1);
     });
   });
 

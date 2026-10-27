@@ -129,9 +129,18 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Stories', () => {
-    it('the first two testimonials, quote, name and study', () => {
-      expect(all(stories, /<figure[\s>]/g)).toHaveLength(2);
-      for (const t of testimonials.slice(0, 2)) {
+    it('a register row and a panel per testimonial, every quote in the HTML, only the first panel shown', () => {
+      const tabs = all(stories, /<button[^>]*data-story-tab[^>]*>/g);
+      const panels = all(stories, /<figure[^>]*data-story-panel[^>]*>/g);
+      expect(tabs).toHaveLength(testimonials.length);
+      expect(panels).toHaveLength(testimonials.length);
+      tabs.forEach((t, i) => {
+        expect(t).toContain('type="button"');
+        expect(t).toContain(`aria-pressed="${i === 0}"`);
+        expect(t).toContain(`aria-controls="story-${testimonials[i].id}"`);
+      });
+      panels.forEach((p, i) => expect(/\shidden[\s>]/.test(p), p).toBe(i !== 0));
+      for (const t of testimonials) {
         expect(text(stories)).toContain(t.quote);
         expect(text(stories)).toContain(`${t.name} · ${t.major}`);
       }
@@ -233,8 +242,8 @@ describe.skipIf(!built)('home page build output', () => {
     const eagerGzip = eager.reduce((n, b) => n + gz(b), 0);
 
     it(`eager JS (the page's own scripts, all inline) stays within ${BUDGET.eagerJs.raw} B raw / ${BUDGET.eagerJs.gzip} B gzip`, () => {
-      // navbar, stat dialog, hero video
-      expect(scripts).toHaveLength(3);
+      // navbar, stat dialog, hero video, stories register
+      expect(scripts).toHaveLength(4);
       expect(scripts.every((m) => !/\ssrc=/.test(m[1]))).toBe(true);
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);

@@ -1809,13 +1809,13 @@ await check('home', '/ has the video hero, then the seven sections in order (des
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.equal(stubHits().length, 0);
 });
-await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program tiles, 2 stories, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
+await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program tiles, 7 stories, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
   const html = await homeHtml();
   const between = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
   assert.equal((between('id="impact"', 'Mengapa Kami Ada?').match(/<li[\s>]/g) ?? []).length, 4);
   assert.equal((between('Mengapa Kami Ada?', 'id="activities"').match(/<li[\s>]/g) ?? []).length, 3);
   assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
-  assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 2);
+  assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 7);
   assert.equal((html.match(/<li class="w-\[136px\]/g) ?? []).length, 6);
   assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="group/g) ?? []).length, 4);
   const news = html.slice(html.indexOf('id="blog"'));
@@ -1851,7 +1851,7 @@ await check('home', 'every /_astro and /_img asset the home page references is s
 await check('home', 'eager JS of the home page (all inline), as served, stays inside the budget', async () => {
   const html = await homeHtml();
   const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
-  assert.equal(scripts.length, 3); // navbar, stat dialog, hero video
+  assert.equal(scripts.length, 4); // navbar, stat dialog, hero video, stories register
   let bytes = 0;
   for (const m of scripts) {
     const src = m[1].match(/\ssrc="([^"]+)"/)?.[1];
