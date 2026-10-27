@@ -124,11 +124,11 @@ describe('every photo and logo the page shows is wired', () => {
 
 describe('the home page composes the sections of design "Opsi C" (SAKEM-111)', () => {
   const order = (src: string) => [...src.matchAll(/<(\w+Section)[\s/>]/g)].map((m) => m[1]);
-  it('Hero, Impact, Problem, Activities, Stories, Partners, News, CTA', () => {
+  it('Hero, Problem, Impact, Activities, Stories, Partners, News, CTA (Problem and Impact swapped by Dzul, 2026-10-27)', () => {
     expect(order(readWeb('src/pages/index.astro').split('<Base')[1])).toEqual([
       'HeroSection',
-      'ImpactSection',
       'ProblemSection',
+      'ImpactSection',
       'ActivitiesSection',
       'StoriesSection',
       'PartnersSection',

@@ -1,47 +1,71 @@
 ---
+import Img from '~/components/Img.astro';
 import { impactMetrics } from '~/lib/home-data';
 import { buttonClasses } from '~/lib/ui';
 
 /**
- * Homepage impact (SAKEM-111; layout after BYQ Babka "Animated Bar Chart Stats"):
- * the title on the left, the four metrics of impactMetrics as cards that rise
- * from left to right, the total last and tallest. Figures and labels are
- * verbatim from home-data.ts. From md the heights encode the order; below md
- * the cards sit in a 2x2 grid of equal height. Title and cards share a row
- * from xl only: below 1280 px the cards' labels would break into many lines.
+ * Homepage impact "Dari Desa ke Kampus Impian" (SAKEM-111; option C of the Pencapaian wireframe Dzul chose on
+ * 2026-10-27, after BYQ Nextwell "Stats Section with Animated Counters"): one screen tall, a documentation photo
+ * under a navy gradient, the title, lead and "Cerita Sukses Alumni" on top, and the four metrics of impactMetrics in a
+ * row along the bottom, each with an icon; the top-3 figure carries the three universities' logos. It follows "Mengapa
+ * Kami Ada?" (Dzul swapped the two the same day). Figures and labels are verbatim from home-data.ts; the title was
+ * "Pencapaian Sakola Kembara". The photo is decorative.
  */
-const cards = [
-  { metric: impactMetrics[3], tone: 'bg-[#FDF3C4] text-primary-blue-dark', height: 'md:h-[300px]' },
-  { metric: impactMetrics[2], tone: 'bg-[#FCE89A] text-primary-blue-dark', height: 'md:h-[360px]' },
-  { metric: impactMetrics[1], tone: 'bg-[#FBFBF5] text-primary-blue-dark', height: 'md:h-[420px]' },
-  { metric: impactMetrics[0], tone: 'bg-primary-blue-dark text-white', height: 'md:h-[480px]' },
+const icons: Record<string, string> = {
+  // lucide "heart", "school", "graduation-cap", "users" (paths only, 24-unit grid, stroked)
+  heart: 'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 12 5a5.5 5.5 0 0 0-10 3.5c0 2.3 1.5 4 3 5.5l7 7Z',
+  school: 'M4 21V10l8-6 8 6v11M9 21v-6h6v6',
+  cap: 'M22 10 12 5 2 10l10 5 10-5ZM6 12v5c3 2 9 2 12 0v-5',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+};
+// The three universities of the top-3 figure. A logo file that is not in the repository yet shows its short name.
+const universities: { name: string; short: string; logo: string | null }[] = [
+  { name: 'Universitas Indonesia', short: 'UI', logo: null },
+  { name: 'Institut Teknologi Bandung', short: 'ITB', logo: '/images/partners/itb.png' },
+  { name: 'Universitas Gadjah Mada', short: 'UGM', logo: null },
+];
+const stats = [
+  { metric: impactMetrics[0], icon: icons.heart },
+  { metric: impactMetrics[1], icon: icons.school },
+  { metric: impactMetrics[2], icon: icons.cap, logos: true },
+  { metric: impactMetrics[3], icon: icons.users },
 ];
 ---
 
-<section id="impact" class="bg-secondary-yellow px-6 py-20 md:px-10 md:py-28">
-  <div class="grid w-full items-end gap-12 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.6fr)] xl:gap-16">
-    <div class="flex flex-col gap-6 anim-reveal">
-      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
-        Pencapaian Sakola Kembara
-      </h2>
-      <p class="max-w-[26em] text-[17px] leading-[1.65] text-primary-blue-dark/80">
-        Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.
-      </p>
-      <a href="#cerita" class={buttonClasses({ variant: 'outline-navy', className: 'self-start' })}>Cerita Sukses Alumni</a>
-    </div>
+<section id="impact" class="relative isolate flex min-h-[100svh] flex-col justify-between gap-14 overflow-hidden bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-24">
+  <Img src="/images/program/galeri/pasca-pembinaan/1.jpg" alt="" sizes="100vw" class="absolute inset-0 -z-20 h-full w-full object-cover" />
+  <span aria-hidden="true" class="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(13,31,82,0.6)_0%,rgba(13,31,82,0.75)_45%,rgba(13,31,82,0.95)_100%)]" />
 
-    <ul class="grid grid-cols-2 items-end gap-3 md:grid-cols-4">
-      {
-        cards.map(({ metric, tone, height }, index) => (
-          <li
-            class:list={['flex min-h-[200px] flex-col justify-between gap-6 rounded-xl p-5 md:p-6 anim-reveal', tone, height]}
-            style={`--i:${index}`}
-          >
-            <span class="font-body text-[clamp(40px,4.4vw,74px)] font-medium leading-none tracking-[-0.025em]">{metric.number}</span>
-            <span class="text-[15px] leading-snug opacity-85">{metric.label}</span>
-          </li>
-        ))
-      }
-    </ul>
+  <div class="flex max-w-[44rem] flex-col gap-6 anim-reveal">
+    <h2 class="font-body text-[clamp(36px,4.6vw,72px)] font-medium leading-[1.08] tracking-[-0.03em]">Dari Desa ke Kampus Impian</h2>
+    <p class="max-w-[30em] text-[17px] leading-[1.65] text-white/85 md:text-lg">
+      Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.
+    </p>
+    <a href="#cerita" class={buttonClasses({ variant: 'outline-on-navy', className: 'self-start' })}>Cerita Sukses Alumni</a>
   </div>
+
+  <ul class="grid grid-cols-2 gap-x-6 gap-y-10 border-t border-white/25 pt-8 lg:grid-cols-4 lg:gap-x-10">
+    {
+      stats.map(({ metric, icon, logos }, index) => (
+        <li class="flex flex-col gap-4 anim-reveal" style={`--i:${index}`}>
+          <span aria-hidden="true" class="flex size-11 items-center justify-center rounded-full bg-secondary-yellow/15 text-secondary-yellow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d={icon} />
+            </svg>
+          </span>
+          <span class="font-body text-[clamp(40px,4.4vw,72px)] font-medium leading-none tracking-[-0.03em] text-secondary-yellow">{metric.number}</span>
+          <span class="max-w-[18em] text-[15px] leading-snug text-white/85 md:text-base">{metric.label}</span>
+          {logos && (
+            <span class="flex gap-2">
+              {universities.map((u) => (
+                <span class="flex size-11 items-center justify-center rounded-full bg-white p-1.5 text-xs font-bold text-primary-blue-dark" title={u.name}>
+                  {u.logo ? <Img src={u.logo} alt={u.name} sizes="44px" class="h-full w-full object-contain" /> : <span aria-label={u.name}>{u.short}</span>}
+                </span>
+              ))}
+            </span>
+          )}
+        </li>
+      ))
+    }
+  </ul>
 </section>

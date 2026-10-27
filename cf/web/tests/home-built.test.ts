@@ -36,7 +36,7 @@ describe.skipIf(!built)('home page build output', () => {
   const html = read('index.html');
   const hero = html.match(/<header[\s>][\s\S]*?<\/header>/)![0];
   // <section> never nests on the home page, so splitting on its tags yields one block per section.
-  const [impact, problem, activities, stories, partners, news, cta] = all(html, /<section[\s>][\s\S]*?<\/section>/g);
+  const [problem, impact, activities, stories, partners, news, cta] = all(html, /<section[\s>][\s\S]*?<\/section>/g);
 
   it('has the video hero, then the seven sections in order, and one h1', () => {
     expect(all(html, /<section[\s>]/g)).toHaveLength(7);
@@ -55,9 +55,9 @@ describe.skipIf(!built)('home page build output', () => {
   it('headings: section h2s in order, the sub-headings of Program and News', () => {
     const h2 = all(html, /<h2[^>]*>[\s\S]*?<\/h2>/g).map(text);
     expect(h2).toEqual([
-      'Pencapaian Sakola Kembara',
       'Mengapa Kami Ada?',
       'Mengapa ini terjadi?', // the heading of the stat dialog, in the HTML for crawlers
+      'Dari Desa ke Kampus Impian',
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Cerita Sukses Alumni',
       'Bersama Mewujudkan Perubahan',
@@ -97,7 +97,8 @@ describe.skipIf(!built)('home page build output', () => {
   describe('Impact', () => {
     it('the four metrics as rising cards, the total last, with their labels verbatim', () => {
       const cards = all(impact, /<li[\s>][\s\S]*?<\/li>/g).map(text);
-      expect(cards).toEqual([impactMetrics[3], impactMetrics[2], impactMetrics[1], impactMetrics[0]].map((m) => `${m.number} ${m.label}`));
+      expect(cards.map((c, i) => c.startsWith(`${impactMetrics[i].number} ${impactMetrics[i].label}`))).toEqual([true, true, true, true]);
+      for (const u of ['Universitas Indonesia', 'Institut Teknologi Bandung', 'Universitas Gadjah Mada']) expect(impact).toContain(u);
       expect(text(impact)).toContain('Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.');
       expect(impact).toContain('<a href="#cerita"');
     });
