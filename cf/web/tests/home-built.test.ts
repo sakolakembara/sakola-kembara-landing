@@ -126,10 +126,13 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Branch map', () => {
-    it('a point per branch on the dotted map, every branch named for screen readers, three arcs from Bandung', () => {
+    it('a point per branch on the dotted map, the list of branches (no Instagram links for now), three arcs from Bandung', () => {
       expect(branchMap).toContain('src="/images/peta/indonesia-dots.svg"');
       expect(all(branchMap, /<circle [^>]*fill="#0D1F52"/g)).toHaveLength(branches.length);
-      expect(all(branchMap, /<li[^>]*>[^<]*<\/li>/g).map(text)).toEqual(branches.map((b) => `${b.name}, ${b.region}`));
+      const items = all(branchMap, /<li[\s\S]*?<\/li>/g);
+      expect(items).toHaveLength(branches.length);
+      branches.forEach((b, i) => expect(text(items[i])).toContain(`${b.name} ${b.region}`));
+      expect(branchMap).not.toContain('instagram.com');
       expect(branchMap).toMatch(new RegExp(`aria-label="Peta cabang Sakola Kembara: ${branches.map((b) => b.name).join(', ')}"`));
       expect(all(branchMap, /class="branch-arc/g)).toHaveLength(3);
     });
