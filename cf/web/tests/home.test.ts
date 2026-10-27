@@ -37,7 +37,6 @@ const cases: { name: string; web: string[]; root: string[]; phrases: string[] }[
     phrases: [
       'Bersama Mewujudkan Perubahan',
       'Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.',
-      'Partner & Pendukung Aktif',
       'Pernah Didukung & Bermitra Dengan',
     ],
   },

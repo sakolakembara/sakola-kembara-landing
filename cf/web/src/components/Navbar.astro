@@ -53,7 +53,7 @@ const { overlay = false } = Astro.props;
 const menuLinks = navLinks.filter((link) => link.href !== '/donasi');
 const donate = navLinks.find((link) => link.href === '/donasi')!;
 const donateClass = buttonClasses({ variant: 'yellow-on-navy', size: 'sm', className: 'font-bold text-primary-blue-dark' });
-const barClass = 'py-4 flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]';
+const barClass = 'flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]';
 const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_PORTAL_ENABLED, runtime: env.PORTAL_ENABLED });
 ---
 
@@ -64,8 +64,8 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
 >
   {/* The announcement strip is inserted here by the script, when there is one. */}
   <div id="announcement-slot"></div>
-  {/* Floating over the full-bleed hero, the bar spans the full width, its edges in line with the hero's (SAKEM-111). */}
-  <div class={overlay ? `w-full px-6 md:px-10 ${barClass}` : containerClasses('page', barClass)}>
+  {/* Floating over the full-bleed hero, the bar spans the full width, its edges in line with the hero's, 24 px above and below (SAKEM-111). */}
+  <div class={overlay ? `w-full px-6 py-6 md:px-10 ${barClass}` : containerClasses('page', `py-4 ${barClass}`)}>
     <a href="/" aria-label="Sakola Kembara" class="flex items-center justify-self-start">
       <img src={logoUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" data-logo-solid={overlay || undefined} />
       {overlay && <img src={logoLightUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" data-logo-overlay />}

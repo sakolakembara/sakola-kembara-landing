@@ -1809,7 +1809,7 @@ await check('home', '/ has the video hero, then the seven sections in order (des
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   assert.equal(stubHits().length, 0);
 });
-await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program tiles, 7 stories, 6 partner logos, 4 CTA cards, 3 news cards', async () => {
+await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program tiles, 7 stories, 6 partner logos, 4 CTA cards, 4 news cards', async () => {
   const html = await homeHtml();
   const between = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
   assert.equal((between('id="impact"', 'Mengapa Kami Ada?').match(/<li[\s>]/g) ?? []).length, 4);
@@ -1819,7 +1819,7 @@ await check('home', '/ content counts: 4 metric cards, 3 problem rows, 3 program
   assert.equal((between('id="partners"', 'id="blog"').match(/<li[\s>]/g) ?? []).length, 6);
   assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="group/g) ?? []).length, 4);
   const news = html.slice(html.indexOf('id="blog"'));
-  assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group block/g) ?? []).length, 3);
+  assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group/g) ?? []).length, 4);
 });
 await check('home', 'the hero video files are static assets: 200 video/mp4, the origin not asked, the phone size the smaller', async () => {
   clearStub();
@@ -1862,7 +1862,7 @@ await check('home', 'eager JS of the home page (all inline), as served, stays in
 await check('home', "the news covers are the blog's own /blog/images files (the same URLs as on /blog), never page-local copies", async () => {
   const html = await homeHtml();
   const covers = [...html.slice(html.indexOf('id="blog"')).matchAll(/<img src="(\/blog\/images\/[^"]+)"/g)].map((m) => m[1]);
-  assert.equal(covers.length, 3);
+  assert.equal(covers.length, 4);
   for (const cover of covers) assert.doesNotMatch(cover, /^\/_astro\//);
 });
 

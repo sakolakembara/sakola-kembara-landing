@@ -9,9 +9,10 @@ import zurichSyariahLogo from '@root/public/images/partners/zurich-syariah.png';
 import { activePartners, pastPartners, type Partner } from '~/lib/home-data';
 
 /**
- * Homepage "Partner Kami" (SAKEM-111; layout after BYQ ALL ABT "Selected
- * Clients"): the title and the thanks on the left, on the right one ruled
- * card per partner, its name on the left and its logo on the right, split
+ * Homepage "Partner Kami" (SAKEM-111; layout after BYQ Genesis "Trusted Logo
+ * Grid"): the title left and the thanks right above a rule, then the logos in
+ * a quiet grid, muted until hovered; each logo's alt is the partner's name,
+ * and the past partner carries its group's label as a caption. Split
  * into active and past partners so visitors can tell who we work with right now
  * from who has supported us before. Copy is verbatim from the root
  * PartnersSection.tsx + lib/data.ts; logos are resized at build time.
@@ -25,51 +26,43 @@ const logos: Record<string, ImageMetadata> = {
   'salam-setara': salamSetaraLogo,
 };
 
-const groups: { title: string; partners: Partner[] }[] = [
-  { title: 'Partner & Pendukung Aktif', partners: activePartners },
-  { title: 'Pernah Didukung & Bermitra Dengan', partners: pastPartners },
-].filter((group) => group.partners.length > 0);
+const partners: { partner: Partner; caption: string | null }[] = [
+  ...activePartners.map((partner) => ({ partner, caption: null })),
+  ...pastPartners.map((partner) => ({ partner, caption: 'Pernah Didukung & Bermitra Dengan' })),
+];
 ---
 
 <section class="bg-white px-6 py-20 md:px-10 md:py-28" id="partners">
-  <div class="mx-auto grid max-w-[1440px] gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
-    <div class="flex flex-col gap-5 lg:sticky lg:top-28 lg:self-start anim-reveal">
-      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
+  <div class="mx-auto flex max-w-[1440px] flex-col gap-12 md:gap-16">
+    <div class="grid items-start gap-6 border-b border-gray-200 pb-12 md:grid-cols-2 md:pb-16 anim-reveal">
+      <h2 class="max-w-[14em] font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
         Bersama Mewujudkan Perubahan
       </h2>
-      <p class="max-w-[26em] text-[17px] leading-[1.65] text-gray-600">
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600 md:justify-self-end">
         Terima kasih kepada semua partner yang telah mendukung misi kami untuk pendidikan yang setara.
       </p>
     </div>
 
-    <div class="flex flex-col gap-10">
+    <ul class="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 anim-reveal">
       {
-        groups.map((group) => (
-          <div class="flex flex-col gap-4 anim-reveal">
-            <h3 class="text-sm font-semibold text-gray-600">{group.title}</h3>
-            <ul class="flex flex-col gap-3">
-              {group.partners.map((partner) => (
-                <li class="flex min-h-24 items-center justify-between gap-6 rounded-[14px] border border-gray-300 px-5 py-4 transition-colors hover:border-primary-blue-dark md:px-7">
-                  <span class="text-[15px] font-medium leading-snug text-gray-800">{partner.name}</span>
-                  {/* Decorative: the partner's name is spelled out on the left. */}
-                  <Image
-                    src={logos[partner.id]}
-                    alt=""
-                    width={320}
-                    widths={[160, 320]}
-                    sizes="160px"
-                    format="webp"
-                    quality={80}
-                    loading="lazy"
-                    decoding="async"
-                    class="h-12 w-auto max-w-[160px] shrink-0 object-contain"
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
+        partners.map(({ partner, caption }) => (
+          <li class="flex flex-col items-center justify-center gap-3 text-center">
+            <Image
+              src={logos[partner.id]}
+              alt={partner.name}
+              width={360}
+              widths={[180, 360]}
+              sizes="180px"
+              format="webp"
+              quality={80}
+              loading="lazy"
+              decoding="async"
+              class="h-14 w-auto max-w-[180px] object-contain opacity-60 grayscale transition duration-300 hover:opacity-100 hover:grayscale-0 md:h-16"
+            />
+            {caption && <span class="text-xs text-gray-500">{caption}</span>}
+          </li>
         ))
       }
-    </div>
+    </ul>
   </div>
 </section>

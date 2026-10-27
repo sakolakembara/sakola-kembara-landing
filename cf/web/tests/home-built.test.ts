@@ -52,7 +52,7 @@ describe.skipIf(!built)('home page build output', () => {
     expect(text(hero)).toContain('Membuka Pintu Pendidikan Tinggi untuk Setiap Anak Indonesia');
   });
 
-  it('headings: section h2s in order, the sub-headings of Program and Partners', () => {
+  it('headings: section h2s in order, the sub-headings of Program and News', () => {
     const h2 = all(html, /<h2[^>]*>[\s\S]*?<\/h2>/g).map(text);
     expect(h2).toEqual([
       'Pencapaian Sakola Kembara',
@@ -65,7 +65,7 @@ describe.skipIf(!built)('home page build output', () => {
       'Jadilah Bagian dari Perubahan',
     ]);
     expect(all(activities, /<h3[^>]*>[\s\S]*?<\/h3>/g).map(text)).toEqual(programCards.map((p) => p.tag));
-    expect(all(partners, /<h3[^>]*>[\s\S]*?<\/h3>/g).map(text)).toEqual(['Partner & Pendukung Aktif', 'Pernah Didukung & Bermitra Dengan']);
+    expect(all(partners, /<h3[\s>]/g)).toHaveLength(0);
   });
 
   describe('Hero', () => {
@@ -148,14 +148,11 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('Partners', () => {
-    it('lists the active and the past partners, logos decorative (the name is the text next to them)', () => {
-      const [active, past] = partners.split('Pernah Didukung &amp; Bermitra Dengan');
-      expect(all(active, /<li[\s>]/g)).toHaveLength(activePartners.length);
-      expect(all(past, /<li[\s>]/g)).toHaveLength(pastPartners.length);
-      for (const p of [...activePartners, ...pastPartners]) expect(text(partners)).toContain(p.name);
+    it('one logo per partner, its alt the partner\'s name; the past partner captioned with its group', () => {
       const logos = all(partners, /<img [^>]*>/g);
       expect(logos).toHaveLength(activePartners.length + pastPartners.length);
-      for (const logo of logos) expect(logo, logo).toMatch(/\salt[\s>]/); // empty alt
+      [...activePartners, ...pastPartners].forEach((p, i) => expect(logos[i]).toContain(`alt="${p.name.replace(/&/g, '&amp;')}"`));
+      expect(all(partners, /Pernah Didukung &amp; Bermitra Dengan/g)).toHaveLength(pastPartners.length);
     });
   });
 
@@ -173,8 +170,8 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('News', () => {
-    const latest = getAllArticles().slice(0, 3);
-    it('shows the three newest articles of the build-time index, each linking to its article page (rendered by the Worker from the API)', () => {
+    const latest = getAllArticles().slice(0, 4);
+    it('shows the four newest articles of the build-time index, each linking to its article page (rendered by the Worker from the API)', () => {
       const links = all(news, /<a href="\/blog\/[^"]+"/g).map((a) => a.match(/href="([^"]+)"/)![1]);
       expect(links).toEqual(latest.map((a) => `/blog/${a.id}`));
       for (const a of latest) {
