@@ -19,7 +19,7 @@ const { articles } = Astro.props;
 ---
 
 <section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28" id="blog">
-  <div class="mx-auto flex max-w-[1200px] flex-col gap-12">
+  <div class="flex w-full flex-col gap-12">
     <div class="flex flex-col items-center gap-5 text-center anim-reveal">
       <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em]">Cerita &amp; Inspirasi</h2>
       <Button href="/blog" variant="outline-on-navy">Lihat Semua</Button>
@@ -35,7 +35,7 @@ const { articles } = Astro.props;
                   <img
                     src={article.image}
                     srcset={article.imageSrcset ?? undefined}
-                    sizes="(min-width: 1200px) 592px, (min-width: 768px) 50vw, 100vw"
+                    sizes="(min-width: 768px) 50vw, 100vw"
                     alt={article.title}
                     width={article.imageWidth ?? undefined}
                     height={article.imageHeight ?? undefined}
