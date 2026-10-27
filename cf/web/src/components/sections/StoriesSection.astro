@@ -8,7 +8,7 @@ import { testimonials } from '~/lib/home-data';
  * home-data.ts on the left, the chosen one's portrait and quote on the right.
  * Every quote is in the HTML (crawlers, screen readers, no JS: the first one
  * shows); the script below swaps the panel when a row is hovered, focused or
- * clicked. From lg the panel sits on the register's last line. No auto-advance:
+ * clicked. From xl the two sit side by side, the panel on the register's last line. No auto-advance:
  * the page already has one moving element, the hero.
  */
 const photos: Record<number, string> = {
@@ -24,7 +24,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
 <section id="cerita" class="scroll-mt-24 px-6 pb-20 md:px-10 md:pb-28" data-stories>
-  <div class="mx-auto grid max-w-[1440px] gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-end lg:gap-20">
+  <div class="mx-auto grid max-w-[1440px] gap-12 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-end xl:gap-20">
     <div class="flex flex-col gap-8 anim-reveal">
       <div class="flex flex-col gap-3">
         <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">

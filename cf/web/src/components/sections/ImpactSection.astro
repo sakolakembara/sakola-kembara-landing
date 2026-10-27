@@ -7,7 +7,8 @@ import { buttonClasses } from '~/lib/ui';
  * the title on the left, the four metrics of impactMetrics as cards that rise
  * from left to right, the total last and tallest. Figures and labels are
  * verbatim from home-data.ts. From md the heights encode the order; below md
- * the cards sit in a 2x2 grid of equal height.
+ * the cards sit in a 2x2 grid of equal height. Title and cards share a row
+ * from xl only: below 1280 px the cards' labels would break into many lines.
  */
 const cards = [
   { metric: impactMetrics[3], tone: 'bg-[#E9EDF4] text-primary-blue-dark', height: 'md:h-[300px]' },
@@ -18,7 +19,7 @@ const cards = [
 ---
 
 <section id="impact" class="px-6 py-20 md:px-10 md:py-28">
-  <div class="mx-auto grid max-w-[1440px] items-end gap-12 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.6fr)] lg:gap-16">
+  <div class="mx-auto grid max-w-[1440px] items-end gap-12 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.6fr)] xl:gap-16">
     <div class="flex flex-col gap-6 anim-reveal">
       <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
         Pencapaian Sakola Kembara
