@@ -164,7 +164,7 @@ describe.skipIf(!built)('home page build output', () => {
   });
 
   describe('CTA', () => {
-    it('has the four role rows, each one link with the role and its action, and no photos (the poster, SAKEM-111)', () => {
+    it('has the four role rows, each one link with the role and its action, and a decorative photo chip (the poster, SAKEM-111)', () => {
       const links = all(cta, /<a href="[^"]+" class="group[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
         ['/daftar', 'Menjadi Siswa Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink
@@ -172,7 +172,9 @@ describe.skipIf(!built)('home page build output', () => {
         ['/kontak', 'Menjadi Relawan Gabung Tim'],
         ['/kontak', 'Menjadi Partner Hubungi Kami'],
       ]);
-      expect(all(cta, /<img [^>]*>/g)).toEqual([]);
+      const chips = all(cta, /<img [^>]*>/g);
+      expect(chips).toHaveLength(4);
+      for (const img of chips) expect(img, img).toMatch(/\salt[\s>]/); // decorative: the link text says it all
     });
   });
 
