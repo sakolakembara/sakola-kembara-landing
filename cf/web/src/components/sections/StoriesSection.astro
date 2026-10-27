@@ -5,14 +5,14 @@ import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 
 /**
  * Homepage "Cerita Sukses Alumni" (SAKEM-111; Dzul, 2026-10-27): the whole section is one letter, a screen tall: the
- * title top left, the alumnus's photo as a small polaroid (the frame of "Cerita & Inspirasi") clipped on at the top
- * right with name, major and campus under it, the whole quote large in the middle, and the six other alumni as small
- * cards along the bottom (photo, name, campus). Every story's parts sit in the same grid cells (the story wrapper is
- * `display: contents`), so the letter keeps the size of the longest story; only the active one is visible, the others
- * are invisible and inert. A click on a card makes it the active story; the stories also change every 5 s: the ring on
- * the photo (like the program steps') fills and its `animationend` shows the next story, so pausing the ring (hover,
- * keyboard focus, the section out of view) pauses the rotation, and with reduced motion there is none. Without JS the
- * first story shows and the cards do nothing.
+ * title top left with the six other alumni as small photos top right (a click shows that story; name and campus in the
+ * button's name and title), then the whole quote large on the left and, level with it on the right, the alumnus's photo
+ * as a polaroid (the frame of "Cerita & Inspirasi") clipped on, with name, major and campus under it. Every story's
+ * parts sit in the same grid cells (the story wrapper is `display: contents`), so the letter keeps the size of the
+ * longest story; only the active one is visible, the others are invisible and inert. The stories also change every
+ * 5 s: the ring on the photo (like the program steps') fills and its `animationend` shows the next story, so pausing
+ * the ring (hover, keyboard focus, the section out of view) pauses the rotation, and with reduced motion there is
+ * none. Without JS the first story shows and the photos do nothing.
  */
 const photos: Record<number, string> = {
   1: '/images/testimoni/daffa-najwan.jpg',
@@ -26,22 +26,42 @@ const photos: Record<number, string> = {
 ---
 
 <section id="cerita" class="scroll-mt-24 flex min-h-[100svh] bg-[#EEF1F6] px-4 py-6 md:px-10 md:py-10" data-stories>
-  <div class="grid w-full grid-cols-1 content-between gap-8 rounded-[6px] bg-white p-6 shadow-[0_18px_40px_-16px_rgba(13,31,82,0.35)] md:p-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_1fr_auto] lg:gap-x-16 lg:gap-y-10">
-    <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark lg:col-start-1 lg:row-start-1 anim-reveal">
-      Cerita Sukses Alumni
-    </h2>
+  <div class="grid w-full grid-cols-1 content-between gap-8 rounded-[6px] bg-white p-6 shadow-[0_18px_40px_-16px_rgba(13,31,82,0.35)] md:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[auto_1fr] lg:gap-x-16 lg:gap-y-12">
+    <div class="flex flex-wrap items-start justify-between gap-6 [grid-area:1/1] lg:[grid-area:1/1/2/3]">
+      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark anim-reveal">
+        Cerita Sukses Alumni
+      </h2>
+      <ul class="flex flex-wrap gap-2.5" aria-label="Cerita alumni lainnya">
+        {
+          testimonials.map((story, index) => (
+            <li hidden={index === 0}>
+              <button
+                type="button"
+                aria-controls={`cerita-${story.id}`}
+                aria-label={`Tampilkan cerita ${story.name}`}
+                title={`${story.name}, ${story.university}`}
+                data-story={index}
+                class="block rounded-[4px] bg-white p-1 shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] transition-transform duration-300 hover:-translate-y-1 motion-reduce:transition-none"
+              >
+                <Img src={photos[story.id]} alt="" sizes="64px" class="size-12 rounded-[3px] object-cover md:size-16" />
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
 
     {
       testimonials.map((story, index) => (
         <div id={`cerita-${story.id}`} class="story contents" inert={index !== 0} data-active={index === 0 ? '' : undefined}>
-          <div class="story-part flex flex-col gap-3 [grid-area:2/1] lg:[grid-area:1/2/3/3]">
-            <figure class:list={[polaroidFrame, 'relative w-[min(46%,12rem)] bg-white !pb-3 shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] lg:w-48']} style={polaroidTilt(index + 1)}>
+          <div class="story-part flex flex-col gap-3 [grid-area:2/1] lg:[grid-area:2/2]">
+            <figure class:list={[polaroidFrame, 'relative w-[min(60%,16rem)] bg-white !pb-3 shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] lg:w-72']} style={polaroidTilt(index + 1)}>
               <svg aria-hidden="true" viewBox="0 0 40 30" class="absolute -top-4 left-1/2 z-10 h-7 w-10 -translate-x-1/2 text-primary-blue-dark">
                 <path d="M12 17 V6 a8 8 0 0 1 16 0 V17" fill="none" stroke="#9AA3B8" stroke-width="2.4" stroke-linecap="round" />
                 <path d="M6 14 h28 l-3 14 h-22 z" fill="currentColor" />
               </svg>
               <span class="relative block">
-                <Img src={photos[story.id]} alt={story.name} sizes="12rem" class="aspect-[4/5] w-full rounded-[3px] object-cover" />
+                <Img src={photos[story.id]} alt={story.name} sizes="18rem" class="aspect-[4/5] w-full rounded-[3px] object-cover" />
                 <span aria-hidden="true" class="absolute right-1.5 top-1.5 flex rounded-full bg-white/90 p-0.5 shadow-sm">
                   <svg viewBox="0 0 24 24" class="size-5 -rotate-90">
                     <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.5" class="text-primary-blue-dark/15" />
@@ -50,40 +70,19 @@ const photos: Record<number, string> = {
                 </span>
               </span>
             </figure>
-            <p class="flex flex-col lg:max-w-48">
+            <p class="flex flex-col lg:max-w-72">
               <strong class="text-lg font-semibold text-primary-blue-dark">{story.name}</strong>
               <span class="text-sm text-gray-600">{story.major}</span>
               <span class="text-sm text-gray-600">{story.university}</span>
             </p>
           </div>
-          <blockquote class="story-part self-center text-[clamp(20px,2.1vw,32px)] font-medium leading-[1.45] tracking-[-0.01em] text-primary-blue-dark [grid-area:3/1] lg:[grid-area:2/1/3/2]">
+          <blockquote class="story-part self-center text-[clamp(20px,2.1vw,32px)] font-medium leading-[1.45] tracking-[-0.01em] text-primary-blue-dark [grid-area:3/1] lg:[grid-area:2/1]">
             “{story.quote}”
           </blockquote>
         </div>
       ))
     }
 
-    <ul class="-mx-6 flex snap-x gap-3 overflow-x-auto scroll-px-6 px-6 pb-2 [grid-area:4/1] md:-mx-12 md:px-12 lg:mx-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:px-0 lg:pb-0 lg:[grid-area:3/1/4/3]" aria-label="Cerita alumni lainnya">
-      {
-        testimonials.map((story, index) => (
-          <li class="w-[36%] shrink-0 snap-start sm:w-[22%] lg:w-auto" hidden={index === 0}>
-            <button
-              type="button"
-              aria-controls={`cerita-${story.id}`}
-              aria-label={`Tampilkan cerita ${story.name}`}
-              data-story={index}
-              class="flex h-full w-full flex-col gap-2 rounded-[4px] bg-[#FBFBF5] p-1.5 pb-3 text-left shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] transition-transform duration-300 hover:-translate-y-1 motion-reduce:transition-none"
-            >
-              <Img src={photos[story.id]} alt="" sizes="(min-width: 1024px) 14vw, 36vw" class="aspect-square w-full rounded-[3px] object-cover" />
-              <span class="flex flex-col px-1">
-                <span class="text-sm font-semibold leading-tight text-primary-blue-dark">{story.name}</span>
-                <span class="text-xs leading-snug text-gray-600">{story.university}</span>
-              </span>
-            </button>
-          </li>
-        ))
-      }
-    </ul>
   </div>
 </section>
 
