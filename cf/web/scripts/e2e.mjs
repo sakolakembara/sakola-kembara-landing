@@ -65,6 +65,9 @@ const text = async (res) => (await res.text());
 const tag = (html, re) => html.match(re)?.[1];
 // The JSON-LD of a page (SAKEM-090): ONE site graph per indexable page (Organization, WebSite, WebPage, usually a
 // BreadcrumbList; an article adds BlogPosting and Person), then a block of its own where a page has one (a program's).
+// The shared GSAP motion loader (MotionLoader.astro, in <head> of every page since SAKEM-112) is the one script file of ours;
+// the per-page script checks below look past it, and the "motion" group checks it is on every page.
+const isMotionLoader = (attrs) => /\ssrc="\/_astro\/MotionLoader\./.test(attrs);
 const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
 const graphNodes = (html) => ldBlocks(html)[0]?.['@graph'] ?? [];
 const nodeOf = (html, type) => graphNodes(html).find((n) => [].concat(n['@type']).includes(type));
@@ -888,7 +891,7 @@ await check('registration', 'the polite page is the site\'s shell: navbar and fo
     const html = await res.text();
     assert.ok(html.includes('<nav'), 'the navbar');
     assert.ok(html.includes('<footer'), 'the footer');
-    assert.equal([...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json')).length, 1, 'the navbar script is the only script');
+    assert.equal([...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json') && !isMotionLoader(m[1])).length, 1, 'the navbar script is the only script');
     const head = await get('/daftar', { method: 'HEAD' });
     assert.equal(head.status, 404);
     assert.equal(head.headers.get('cache-control'), 'no-store');
@@ -1163,7 +1166,7 @@ const anchorTags = (html) => [...html.matchAll(/<a\s[^>]*>/g)].map((m) => m[0]);
 // Ports here are base ports, as in startStack: E2E_PORT_OFFSET is added.
 const fixtureStats = async (port = 4391) => (await fetch(`http://127.0.0.1:${port + PORT_OFFSET}/__hits`)).json();
 const setMode = (port, mode, only) => fetch(`http://127.0.0.1:${port + PORT_OFFSET}/__mode?m=${mode}${only ? `&for=${only}` : ''}`, { method: 'POST' });
-const inlineScripts = (html) => [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json')).map((m) => m[2]);
+const inlineScripts = (html) => [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json') && !isMotionLoader(m[1])).map((m) => m[2]);
 const notes = [];
 await setMode(4391, 'ok');
 const listLogStart = stack.output().length;
@@ -1231,7 +1234,7 @@ await check('donasi', '/donasi with the section: the payment cards, the QRIS car
   assert.ok(t.includes('Kontak Kami Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu. Hubungi Kami'));
   assert.ok(anchorTags(html).some((a) => attrOf(a, 'href') === '/kontak' && a.includes('bg-white')));
   // no script file, no framework: the navbar script and the copy-button script, both inline (the Worker renders the page, Astro still inlines them)
-  assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0);
+  assert.equal([...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc=/g)].length, 0);
   const scripts = inlineScripts(html);
   assert.equal(scripts.length, 2);
   assert.equal(scripts.filter((c) => c.includes('clipboard')).length, 1);
@@ -1791,10 +1794,10 @@ await check('assets', 'an article page names only static images, each with a Web
 // ---------------------------------------------------------------- announcement markup contract
 await check('navbar', 'on an article page the navbar script is the only script besides JSON-LD: inline, small, no script file', async () => {
   const html = await text(await get(`/blog/${slugs[0]}`));
-  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
+  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json') && !isMotionLoader(m[1]));
   assert.equal(scripts.length, 1);
   assert.ok(scripts[0][2].length < 6000, `script is ${scripts[0][2].length} bytes`);
-  assert.equal([...html.matchAll(/<script[^>]*\ssrc=/g)].length, 0, 'no external script files');
+  assert.equal([...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc=/g)].length, 0, 'no external script files');
 });
 
 // ---------------------------------------------------------------- home page (SAKEM-080, part A)
@@ -1858,6 +1861,14 @@ await check('home', 'eager JS of the home page (inline but for the GSAP motion l
     bytes += src ? (await (await get(src)).arrayBuffer()).byteLength : Buffer.byteLength(m[2]);
   }
   assert.ok(bytes <= 9000, `eager JS is ${bytes} bytes`); // keep equal to BUDGET.eagerJs.raw in tests/home-built.test.ts
+});
+await check('motion', 'every page loads the shared GSAP motion loader once, in <head> (SAKEM-112)', async () => {
+  for (const p of ['/', '/tim', '/donasi', '/kontak', '/gabung-siswa', '/program/pembinaan', '/blog']) {
+    const html = await (await get(p)).text();
+    const head = html.slice(0, html.indexOf('</head>'));
+    assert.equal([...html.matchAll(/<script[^>]*\ssrc="\/_astro\/MotionLoader\.[\w.-]+\.js"/g)].length, 1, p);
+    assert.match(head, /MotionLoader\./, `${p}: in <head>`);
+  }
 });
 await check('home', "the news covers are the blog's own /blog/images files (the same URLs as on /blog), never page-local copies", async () => {
   const html = await homeHtml();
@@ -2096,11 +2107,11 @@ await check('contact', 'GET /kontak: 200 html from the Worker, one h1, SEO tags,
 });
 await check('contact', 'the form\'s own script is inline, under 1 KB, and only toggles the pending state; the page\'s scripts are the navbar\'s, the widget\'s and that one, plus Cloudflare\'s file (see group "turnstile")', async () => {
   const html = await text(await get('/kontak'));
-  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
+  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json') && !isMotionLoader(m[1]));
   const inline = scripts.filter((m) => !/\ssrc=/.test(m[1]));
   assert.equal(inline.length, 3, 'the navbar script, the widget script and the form script');
   assert.deepEqual(
-    [...html.matchAll(/<script[^>]*\ssrc="([^"]*)"/g)].map((m) => m[1]),
+    [...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc="([^"]*)"/g)].map((m) => m[1]),
     ['https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'],
     'no script file of ours: Cloudflare\'s is the only one',
   );
@@ -3044,7 +3055,7 @@ await check('portal', 'the portal switch with the Worker variable true: every pa
       assert.ok(session[0].includes('/portal/api/auth/get-session') && session[0].includes('sk:session') && session[0].includes('super_admin'), `${p}: it is the whole session script`);
       assert.ok(!session[0].includes('announcement'), `${p}: it is a script of its own, apart from the navbar's`);
       assert.equal((html.match(/get-session/g) ?? []).length, 1, p);
-      assert.deepEqual([...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]).filter((src) => !src.startsWith('https://challenges.cloudflare.com/')), [], `${p}: the script is inline: no script file of ours (the contact form has Cloudflare's own)`);
+      assert.deepEqual([...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]).filter((src) => !src.startsWith('https://challenges.cloudflare.com/')), [], `${p}: the script is inline: no script file of ours (the contact form has Cloudflare's own)`);
       // the navbar script itself is the same as without the portal (the announcement strip, the menu, the year)
       assert.equal(portalScripts(html).filter((code) => code.includes('nav-toggle')).length, 1, p);
       // nothing else about the answer changes

@@ -82,10 +82,10 @@ describe.skipIf(!built)('build output', () => {
     }
   });
 
-  it('the only JS files are the home page\'s GSAP motion and its loader (SAKEM-111); every other script is inline', () => {
+  it('the only JS files are the GSAP motion and its loader (MotionLoader.astro; SAKEM-111, on every page since SAKEM-112); every other script is inline', () => {
     // The home page's scripts and budget are checked in home-built.test.ts; the Worker-rendered pages are checked in e2e.
     const files = walk(path.join(dist, 'client')).filter((f) => f.endsWith('.js')).map((f) => path.basename(f).replace(/\.[\w-]+\.js$/, ''));
-    expect(files.sort()).toEqual(['home-motion', 'index.astro_astro_type_script_index_0_lang']);
+    expect(files.sort()).toEqual(['MotionLoader.astro_astro_type_script_index_0_lang', 'motion']);
   });
 
   it('fonts are self-hosted: no request to a font CDN, woff2 emitted, two preloaded', () => {
@@ -95,7 +95,7 @@ describe.skipIf(!built)('build output', () => {
     const css = walk(path.join(dist, 'client/_astro')).filter((f) => f.endsWith('.css'));
     expect(css.length).toBeGreaterThan(0);
     const all = css.map((f) => readFileSync(f, 'utf8')).join('\n');
-    expect(all).toMatch(/font-family:\s*"?Lora"?/);
+    expect(all).not.toMatch(/Lora/); // headings are Plus Jakarta Sans since SAKEM-112 (the homepage standard)
     expect(all).toMatch(/font-family:\s*"?Plus Jakarta Sans"?/);
     expect(all).not.toMatch(/googleapis|gstatic/);
   });

@@ -43,13 +43,13 @@ describe('the catch-all gives /daftar a page of its own, only for the registrati
 
 describe('the polite page: its words (new copy, for Dzul to approve), its head and its shell', () => {
   it('says what it says, in plain formal Indonesian, with the 404 page\'s buttons and no emoji', () => {
-    expect(component).toContain('<Eyebrow class="mb-4">Daftar Siswa</Eyebrow>');
-    expect(component).toContain('<Heading level="page" class="mb-4 text-gray-900">Formulir pendaftaran belum tersedia</Heading>');
+    expect(component).not.toContain('Eyebrow'); // no eyebrows since SAKEM-112
+    expect(component).toContain('<Heading level="page" class="mb-5 text-balance">Formulir pendaftaran belum tersedia</Heading>');
     expect(component.replace(/\s+/g, ' ')).toContain(
       'Saat ini formulir pendaftaran belum dapat dibuka. Silakan coba lagi nanti, atau hubungi kami untuk informasi pendaftaran terbaru.',
     );
-    expect(component).toContain('<Button href="/kontak">Hubungi Kami</Button>');
-    expect(component).toContain('<Button href="/" variant="outline">Kembali ke Beranda</Button>');
+    expect(component).toContain('<Button href="/kontak" class="bg-primary-blue-dark hover:bg-primary-blue">Hubungi Kami</Button>');
+    expect(component).toContain('<Button href="/" variant="outline-navy">Kembali ke Beranda</Button>');
     // no English, no casual words, no emoji
     expect(component.slice(component.indexOf('<Base'))).not.toMatch(/\p{Extended_Pictographic}|\b(Yuk|Ayo|Klik di sini|Sign Up|Register|Learn More)\b/u);
   });

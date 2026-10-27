@@ -76,33 +76,35 @@ const flow = [
   }}
 >
   <main class="min-h-screen bg-white">
-    {/* Hero Section */}
+    {/* Hero: the cream sub-page hero (SAKEM-112), title on the left, lead and actions on the right. */}
     <section
-      class="relative bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-16 md:pb-24 pt-[var(--hero-top,8rem)] overflow-hidden"
+      class="bg-[#FBFBF5] text-primary-blue-dark pb-14 md:pb-20 pt-[calc(var(--hero-top,8rem)_+_2rem)] md:pt-[calc(var(--hero-top,8rem)_+_4rem)]"
     >
-      <Container>
-        <div class="anim-fade-up max-w-[760px]">
+      <Container class="grid items-end gap-8 md:grid-cols-2 md:gap-x-16">
+        <div class="anim-fade-up">
           {/* Hard-coded, as in the legacy page. SAKEM-059 decides which intake this names and where
               the text is edited; until then it is ported as it is. */}
           <span
-            class="inline-block px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider bg-white/15 rounded-full border border-white/25"
+            class="inline-block px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider rounded-full border border-primary-blue-dark/25"
           >
             Open Recruitment Gen 6
           </span>
-          <Heading level="page" class="mb-5">Wujudkan Mimpimu Bersama Sakola Kembara</Heading>
-          <p class="text-base md:text-lg text-white/90 max-w-[600px] mb-8 leading-relaxed">
+          <Heading level="page" class="text-balance">Wujudkan Mimpimu Bersama Sakola Kembara</Heading>
+        </div>
+        <div class="anim-fade-up flex flex-col gap-6 md:justify-self-end">
+          <p class="max-w-[34em] text-[17px] leading-[1.65] text-gray-600 md:text-lg">
             Bergabunglah dengan ratusan siswa lain yang berhasil menembus perguruan tinggi terbaik di Indonesia
             melalui program pembinaan intensif gratis dari Sakola Kembara.
           </p>
-          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <Button href={REGISTRATION_PATH} variant="white-on-navy" size="lg">
+          <div class="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
+            <Button href={REGISTRATION_PATH} variant="primary" size="lg" class="bg-primary-blue-dark px-6 hover:bg-primary-blue">
               <Icon name="clipboard-list" size={18} />
               Daftar Sekarang
             </Button>
-            <Button href="#manfaat" variant="outline-on-navy" size="lg">Pelajari Program</Button>
+            <Button href="#manfaat" variant="outline-navy" size="lg" class="px-6">Pelajari Program</Button>
             <a
               href="/gabung-siswa/docs"
-              class="inline-flex items-center gap-2 px-6 py-3.5 text-white/90 hover:text-white font-semibold underline underline-offset-4 decoration-white/40 hover:decoration-white transition-colors"
+              class="inline-flex items-center gap-2 px-2 py-3.5 font-semibold underline underline-offset-4 decoration-primary-blue-dark/40 hover:decoration-primary-blue-dark transition-colors"
             >
               <Icon name="folder-open" size={16} />
               Pusat Dokumen
@@ -168,7 +170,7 @@ const flow = [
     {/* Bottom CTA. The legacy lead has a second sentence, about the form being split into parts and the progress being saved in the browser,
         which describes the portal wizard. Dzul removed it for Phase A (SAKEM-103), while registration is an external form behind /daftar, and
         nothing takes its place. It belongs back when the wizard is switched on (Phase B). */}
-    <section class="py-16 bg-gradient-to-br from-primary-blue to-accent-navy text-white">
+    <section class="py-16 md:py-24 bg-primary-blue-dark text-white">
       <Container size="reading" class="text-center">
         <div class="anim-reveal">
           <SectionHeader
@@ -177,7 +179,7 @@ const flow = [
             lead="Isi formulir pendaftaran sekarang."
             class="mb-8"
           />
-          <Button href={REGISTRATION_PATH} variant="white-on-navy" size="lg">
+          <Button href={REGISTRATION_PATH} variant="yellow-on-navy" size="lg" class="px-6 font-bold text-primary-blue-dark">
             <Icon name="clipboard-list" size={18} />
             Daftar Sekarang
           </Button>

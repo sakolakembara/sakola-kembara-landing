@@ -47,19 +47,21 @@ const hasAnything = groups.length > 0;
   }}
 >
   <main class="min-h-screen bg-gray-50">
-    {/* Hero */}
+    {/* Hero: the cream sub-page hero (SAKEM-112), title on the left, lead on the right. */}
     <section
-      class="bg-gradient-to-br from-primary-blue to-accent-navy text-white pb-12 md:pb-16 pt-[var(--hero-top,8rem)]"
+      class="bg-[#FBFBF5] text-primary-blue-dark pb-12 md:pb-16 pt-[calc(var(--hero-top,8rem)_+_2rem)] md:pt-[calc(var(--hero-top,8rem)_+_4rem)]"
     >
-      <Container>
-        <a href="/gabung-siswa" class="inline-block text-sm text-white/80 hover:text-white transition-colors mb-4">
-          Kembali ke halaman informasi
-        </a>
-        <Heading level="page" class="mb-4">Pusat Dokumen &amp; Berkas</Heading>
-        <p class="text-base md:text-lg text-white/90 max-w-[600px]">
+      <Container class="grid items-end gap-6 md:grid-cols-2 md:gap-x-16">
+        <div>
+          <a href="/gabung-siswa" class="inline-block text-sm text-gray-600 hover:text-primary-blue-dark transition-colors mb-4">
+            Kembali ke halaman informasi
+          </a>
+          <Heading level="page" class="text-balance">Pusat Dokumen &amp; Berkas</Heading>
+        </div>
+        <p class="max-w-[34em] text-[17px] leading-[1.65] text-gray-600 md:justify-self-end md:text-lg">
           Semua panduan, template berkas, poster, twibbon, dan bahan lain yang perlu kamu siapkan selama proses
           pendaftaran ada di sini. Kalau kamu baru mulai mendaftar, buka
-          <a href={REGISTRATION_PATH} class="underline font-semibold hover:text-white">formulir pendaftaran</a>
+          <a href={REGISTRATION_PATH} class="underline font-semibold text-primary-blue-dark">formulir pendaftaran</a>
           di tab lain agar bisa lihat berkas + isi formulir bersamaan.
         </p>
       </Container>

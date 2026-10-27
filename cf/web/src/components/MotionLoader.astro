@@ -1,0 +1,15 @@
+---
+/**
+ * Loads the GSAP motion (src/scripts/motion.ts) on every page (SAKEM-111 on the homepage, everywhere since SAKEM-112):
+ * after the page has loaded and the browser is idle, never with reduced motion, so the first view never waits for it and
+ * without it everything simply shows. A module script, so it runs after parsing even from <head>; it sits there because
+ * the layout's <body> holds no script (see Base.astro and WebAnalytics).
+ */
+---
+
+<script>
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const go = () => import('../scripts/motion').then((m) => m.start());
+    addEventListener('load', () => ('requestIdleCallback' in window ? requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 200)), { once: true });
+  }
+</script>

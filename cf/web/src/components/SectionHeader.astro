@@ -1,14 +1,13 @@
 ---
 import { cx } from '~/lib/ui';
-import Eyebrow from './Eyebrow.astro';
 import Heading from './Heading.astro';
 
 /**
- * Eyebrow + section heading + optional lead paragraph: the opening of almost
- * every section. `tone="dark"` is for navy backgrounds.
+ * A section's title and optional lead, in the homepage's style (SAKEM-112): no eyebrow, a navy Plus Jakarta Sans title.
+ * Centred: the lead under the title. Left-aligned: the title on the left and the lead on the right from md, like the
+ * homepage sections.
  */
 interface Props {
-  eyebrow?: string;
   title: string;
   lead?: string;
   tone?: 'light' | 'dark';
@@ -16,26 +15,20 @@ interface Props {
   as?: 'h1' | 'h2' | 'h3' | 'p';
   class?: string;
 }
-const { eyebrow, title, lead, tone = 'light', align = 'center', as = 'h2', class: className } = Astro.props;
+const { title, lead, tone = 'light', align = 'center', as = 'h2', class: className } = Astro.props;
 const center = align === 'center';
+const split = !center && lead;
 ---
 
-<div class={cx(center && 'text-center', className)}>
-  {
-    eyebrow && (
-      <Eyebrow tone={tone} class="mb-4">
-        {eyebrow}
-      </Eyebrow>
-    )
-  }
+<div class={cx(center && 'text-center', split && 'grid items-end gap-5 md:grid-cols-2 md:gap-x-16', className)}>
   <Heading
     level="section"
     as={as}
     class={cx(
       'max-w-[760px] text-balance',
       center && 'mx-auto',
-      tone === 'dark' ? 'text-white' : 'text-gray-900',
-      lead && 'mb-5 md:mb-6',
+      tone === 'dark' ? 'text-white' : 'text-primary-blue-dark',
+      lead && center && 'mb-5 md:mb-6',
     )}
   >
     {title}
@@ -44,8 +37,9 @@ const center = align === 'center';
     lead && (
       <p
         class={cx(
-          'max-w-[600px] text-base md:text-lg',
+          'max-w-[34em] text-[17px] leading-[1.65] md:text-lg',
           center && 'mx-auto',
+          split && 'md:justify-self-end',
           tone === 'dark' ? 'text-white/80' : 'text-gray-600',
         )}
       >

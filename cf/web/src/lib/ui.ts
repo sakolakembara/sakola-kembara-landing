@@ -88,14 +88,16 @@ export const containerClasses = (size: ContainerSize = 'page', className?: strin
 export type HeadingLevel = 'display' | 'page' | 'article' | 'section' | 'subsection' | 'panel' | 'card';
 // Written as font-[family-name:var(--font-display)] on purpose (DESIGN.md section 3).
 const display = 'font-[family-name:var(--font-display)]';
+// The homepage's type (SAKEM-111, made the site standard by Dzul on 2026-10-28, SAKEM-112): Plus Jakarta Sans 500, tight
+// tracking, one fluid size per level. --font-display is Plus Jakarta Sans since then (global.css); Lora is no longer used.
 const headingLevel: Record<HeadingLevel, string> = {
-  display: `${display} font-bold text-[28px] leading-[1.2] sm:text-4xl md:text-5xl md:leading-tight lg:text-[56px]`,
-  page: `${display} text-3xl leading-tight sm:text-4xl md:text-5xl lg:text-6xl`,
-  article: `${display} text-3xl leading-tight md:text-4xl lg:text-5xl`,
-  section: `${display} text-[26px] leading-tight sm:text-3xl md:text-4xl`,
-  subsection: `${display} text-2xl leading-tight md:text-3xl`,
-  panel: 'text-2xl font-bold',
-  card: 'text-xl font-bold',
+  display: `${display} font-medium text-[clamp(34px,4.2vw,66px)] leading-[1.12] tracking-[-0.025em]`,
+  page: `${display} font-medium text-[clamp(36px,4.6vw,64px)] leading-[1.1] tracking-[-0.025em]`,
+  article: `${display} font-medium text-[clamp(30px,3.6vw,52px)] leading-[1.15] tracking-[-0.025em]`,
+  section: `${display} font-medium text-[clamp(32px,3.9vw,56px)] leading-[1.15] tracking-[-0.025em]`,
+  subsection: `${display} font-medium text-[clamp(24px,2.4vw,36px)] leading-tight tracking-[-0.02em]`,
+  panel: 'text-2xl font-medium tracking-[-0.02em]',
+  card: 'text-xl font-medium tracking-[-0.02em]',
 };
 export const headingDefaultTag: Record<HeadingLevel, 'h1' | 'h2' | 'h3'> = {
   display: 'h1',

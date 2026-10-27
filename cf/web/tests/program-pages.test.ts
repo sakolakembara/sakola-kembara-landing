@@ -59,7 +59,8 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     });
 
     it('hero, stage tabs (three links, the current one marked), intro with tag, description and bullets', () => {
-      expect(text).toContain('Program Kami Apa saja yang dilalui penerima manfaat Sakola Kembara?');
+      expect(text).toContain('Apa saja yang dilalui penerima manfaat Sakola Kembara?'); // no "Program Kami" eyebrow since SAKEM-112
+      expect(text).not.toContain('Program Kami Apa saja');
       const tabs = links(html).filter((a) => /href="\/program\/[a-z-]+"/.test(a) && a.includes('group flex'));
       expect(tabs.map((a) => attr(a, 'href'))).toEqual(programs.map((p) => `/program/${p.id}`));
       expect(tabs.filter((a) => a.includes('aria-current="page"'))).toHaveLength(1);
@@ -191,10 +192,10 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
       expect(data[1].url).toBe(`https://sakolakembara.org/program/${program.id}`);
     });
 
-    it('no external script and no framework: one inline module script (the navbar)', () => {
-      expect([...html.matchAll(/<script[^>]*\ssrc=/g)]).toHaveLength(0);
+    it('no framework: one inline module script (the navbar) and the shared motion loader (SAKEM-112)', () => {
+      expect([...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1])).toEqual([expect.stringMatching(/^\/_astro\/MotionLoader\./)]);
       const scripts = [...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json'));
-      expect(scripts).toHaveLength(1);
+      expect(scripts).toHaveLength(2);
     });
   });
 });

@@ -4,7 +4,7 @@ import logoLightUrl from '@root/public/images/logo-sakola-kembara-light.png?url'
 import logoUrl from '@root/public/images/logo-sakola-kembara.png?url';
 import { BUILD_PORTAL_ENABLED, portalEnabled } from '~/lib/portal-enabled';
 import { navLinks } from '~/lib/site';
-import { buttonClasses, containerClasses } from '~/lib/ui';
+import { buttonClasses } from '~/lib/ui';
 import Icon from './Icon.astro';
 import NavbarSession from './NavbarSession.astro';
 
@@ -60,12 +60,13 @@ const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_
 <nav
   id="site-nav"
   data-overlay={overlay || undefined}
-  class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100"
+  class="fixed top-0 left-0 right-0 bg-[#FBFBF5]/95 backdrop-blur-md z-50 border-b border-primary-blue-dark/10"
 >
   {/* The announcement strip is inserted here by the script, when there is one. */}
   <div id="announcement-slot"></div>
-  {/* Floating over the full-bleed hero, the bar spans the full width, its edges in line with the hero's, 24 px above and below (SAKEM-111). */}
-  <div class={overlay ? `w-full px-6 py-6 md:px-10 ${barClass}` : containerClasses('page', `py-4 ${barClass}`)}>
+  {/* The bar spans the full width, its edges in line with the homepage's sections, 24 px above and below (SAKEM-111; on
+      every page since SAKEM-112, on the cream of the page heroes). */}
+  <div class={`w-full px-6 py-6 md:px-10 ${barClass}`}>
     <a href="/" aria-label="Sakola Kembara" class="flex items-center justify-self-start">
       <img src={logoUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" data-logo-solid={overlay || undefined} />
       {overlay && <img src={logoLightUrl} alt="Sakola Kembara" width="300" height="103" class="h-10 w-auto" data-logo-overlay />}

@@ -2,10 +2,6 @@
 
 /* Self-hosted fonts (no Google Fonts request). Weights and subset match the
    root lib/fonts.ts: Lora 400-700 and Plus Jakarta Sans 400-700, latin only. */
-@import "@fontsource/lora/latin-400.css";
-@import "@fontsource/lora/latin-500.css";
-@import "@fontsource/lora/latin-600.css";
-@import "@fontsource/lora/latin-700.css";
 @import "@fontsource/plus-jakarta-sans/latin-400.css";
 @import "@fontsource/plus-jakarta-sans/latin-500.css";
 @import "@fontsource/plus-jakarta-sans/latin-600.css";
@@ -76,7 +72,8 @@
   --color-info-border: var(--color-blue-200);
 
   /* Typography */
-  --font-display: "Lora", serif;
+  /* Plus Jakarta Sans for headings too since SAKEM-112 (the homepage standard); Lora is no longer used. */
+  --font-display: "Plus Jakarta Sans", sans-serif;
   --font-body: "Plus Jakarta Sans", sans-serif;
 }
 

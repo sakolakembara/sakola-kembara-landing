@@ -16,7 +16,8 @@ const scriptDir = path.join(webRoot, 'dist/.dom-test');
 let runId = 0;
 
 async function runInlineScripts(html: string) {
-  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json'));
+  // inline ones only: the shared motion loader (src=, SAKEM-112) is a file of its own
+  const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter((m) => !m[1].includes('ld+json') && !/\ssrc=/.test(m[1]));
   mkdirSync(scriptDir, { recursive: true });
   for (const m of scripts) {
     const file = path.join(scriptDir, `gabung-siswa-${++runId}.mjs`);

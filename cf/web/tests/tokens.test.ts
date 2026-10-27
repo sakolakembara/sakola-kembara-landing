@@ -34,11 +34,11 @@ describe('design tokens: cf/web copy vs the root app/globals.css (DESIGN.md sect
     expect(declarations(web, ':root')).toEqual(rootVars);
   });
 
-  it('@theme inline tokens are identical (colors, status colors, fonts)', () => {
+  it('@theme inline tokens are identical (colors, status colors, fonts), except the display font (SAKEM-112)', () => {
     const rootTheme = declarations(root, '@theme inline');
     expect(Object.keys(rootTheme)).toContain('--color-primary-blue');
     expect(Object.keys(rootTheme)).toContain('--font-display');
-    expect(declarations(web, '@theme inline')).toEqual(rootTheme);
+    expect(declarations(web, '@theme inline')).toEqual({ ...rootTheme, '--font-display': '"Plus Jakarta Sans", sans-serif' });
   });
 
   it('brand values from DESIGN.md', () => {
@@ -50,11 +50,11 @@ describe('design tokens: cf/web copy vs the root app/globals.css (DESIGN.md sect
     expect(vars['--light-blue']).toBe('#B4D9DB');
   });
 
-  it('fonts: Lora display and Plus Jakarta Sans body, self-hosted (no Google Fonts)', () => {
+  it('fonts: Plus Jakarta Sans for headings and body (SAKEM-112: Lora is gone), self-hosted (no Google Fonts)', () => {
     const theme = declarations(web, '@theme inline');
-    expect(theme['--font-display']).toBe('"Lora", serif');
+    expect(theme['--font-display']).toBe('"Plus Jakarta Sans", sans-serif');
     expect(theme['--font-body']).toBe('"Plus Jakarta Sans", sans-serif');
-    expect(web).toContain('@fontsource/lora/latin-700.css');
+    expect(web).not.toContain('@fontsource/lora');
     expect(web).toContain('@fontsource/plus-jakarta-sans/latin-400.css');
     expect(web).not.toMatch(/fonts\.googleapis|fonts\.gstatic/);
   });
