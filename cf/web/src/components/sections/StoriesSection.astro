@@ -23,11 +23,11 @@ const photos: Record<number, string> = {
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
-<section id="cerita" class="scroll-mt-24 px-6 pb-20 md:px-10 md:pb-28" data-stories>
+<section id="cerita" class="scroll-mt-24 bg-[#EEF1F6] px-6 py-20 md:px-10 md:py-36" data-stories>
   <div class="grid w-full gap-12 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-end xl:gap-20">
     <div class="flex flex-col gap-8 anim-reveal">
       <div class="flex flex-col gap-3">
-        <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
+        <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
           Cerita Sukses Alumni
         </h2>
         <p class="text-[17px] leading-[1.65] text-gray-600">Perjalanan inspiratif dari siswa-siswa kami</p>
@@ -41,7 +41,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
                 data-story-tab={index}
                 aria-pressed={index === 0 ? 'true' : 'false'}
                 aria-controls={`story-${story.id}`}
-                class="group grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-gray-200 py-3.5 text-left transition-colors hover:bg-white sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] aria-pressed:bg-white"
+                class="group grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-gray-200 py-3.5 text-left transition-colors hover:bg-[#FBFBF5] sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] aria-pressed:bg-[#FBFBF5]"
               >
                 <span class="text-sm tabular-nums text-gray-500 group-aria-pressed:text-primary-blue-dark">{pad(index + 1)}</span>
                 <span class="font-semibold text-gray-800 group-aria-pressed:text-primary-blue-dark">{story.name}</span>
@@ -61,12 +61,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
               src={photos[story.id]}
               alt={story.name}
               sizes="(min-width: 1024px) 300px, (min-width: 640px) 40vw, 100vw"
-              class="aspect-[3/4] w-full rounded-[20px] object-cover"
+              class="aspect-square w-full max-w-[280px] rounded-full object-cover"
             />
             <div class="flex flex-col gap-5">
               <blockquote
                 class:list={[
-                  'font-display font-medium leading-[1.3] tracking-[-0.01em] text-primary-blue-dark',
+                  'font-body font-medium leading-[1.35] tracking-[-0.01em] text-primary-blue-dark',
                   story.quote.length > 280 ? 'text-[clamp(19px,1.6vw,23px)]' : 'text-[clamp(24px,2.3vw,32px)]',
                 ]}
               >

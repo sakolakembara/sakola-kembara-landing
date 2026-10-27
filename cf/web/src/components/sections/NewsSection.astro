@@ -21,7 +21,7 @@ const { articles } = Astro.props;
 <section class="bg-primary-blue-dark px-6 py-20 text-white md:px-10 md:py-28" id="blog">
   <div class="flex w-full flex-col gap-12">
     <div class="flex flex-col items-center gap-5 text-center anim-reveal">
-      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em]">Cerita &amp; Inspirasi</h2>
+      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em]">Cerita &amp; Inspirasi</h2>
       <Button href="/blog" variant="outline-on-navy">Lihat Semua</Button>
     </div>
 
@@ -29,7 +29,7 @@ const { articles } = Astro.props;
       {
         articles.map((article, index) => (
           <article class="anim-reveal" style={`--i:${index % 2}`}>
-            <a href={`/blog/${article.id}`} class="group flex h-full flex-col overflow-hidden rounded-[20px] bg-white/[0.06] transition-colors hover:bg-white/10">
+            <a href={`/blog/${article.id}`} class="group flex h-full flex-col overflow-hidden rounded-[32px] bg-white/[0.06] transition-colors hover:bg-white/10">
               <div class="relative aspect-[16/9] overflow-hidden bg-white/10">
                 {article.image && (
                   <img

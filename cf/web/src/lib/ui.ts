@@ -41,8 +41,8 @@ const buttonVariant: Record<ButtonVariant, string> = {
 };
 
 const buttonSize: Record<ButtonSize, string> = {
-  sm: 'min-h-10 rounded-lg px-4 py-2 text-[15px] leading-snug',
-  md: 'min-h-11 rounded-lg px-5 py-2 text-[15px] leading-snug',
+  sm: 'min-h-10 rounded-[10px] px-4 py-2 text-[15px] leading-snug',
+  md: 'min-h-11 rounded-[10px] px-5 py-2 text-[15px] leading-snug',
   lg: 'rounded-xl px-8 py-4 text-base',
 };
 

@@ -11,20 +11,20 @@ import { buttonClasses } from '~/lib/ui';
  * from xl only: below 1280 px the cards' labels would break into many lines.
  */
 const cards = [
-  { metric: impactMetrics[3], tone: 'bg-[#E9EDF4] text-primary-blue-dark', height: 'md:h-[300px]' },
-  { metric: impactMetrics[2], tone: 'bg-[#EFE7D6] text-primary-blue-dark', height: 'md:h-[360px]' },
-  { metric: impactMetrics[1], tone: 'bg-secondary-yellow text-primary-blue-dark', height: 'md:h-[420px]' },
+  { metric: impactMetrics[3], tone: 'bg-[#FDF3C4] text-primary-blue-dark', height: 'md:h-[300px]' },
+  { metric: impactMetrics[2], tone: 'bg-[#FCE89A] text-primary-blue-dark', height: 'md:h-[360px]' },
+  { metric: impactMetrics[1], tone: 'bg-[#FBFBF5] text-primary-blue-dark', height: 'md:h-[420px]' },
   { metric: impactMetrics[0], tone: 'bg-primary-blue-dark text-white', height: 'md:h-[480px]' },
 ];
 ---
 
-<section id="impact" class="px-6 py-20 md:px-10 md:py-28">
+<section id="impact" class="bg-secondary-yellow px-6 py-20 md:px-10 md:py-28">
   <div class="grid w-full items-end gap-12 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.6fr)] xl:gap-16">
     <div class="flex flex-col gap-6 anim-reveal">
-      <h2 class="font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.08] tracking-[-0.03em] text-primary-blue-dark">
+      <h2 class="font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.15] tracking-[-0.025em] text-primary-blue-dark">
         Pencapaian Sakola Kembara
       </h2>
-      <p class="max-w-[26em] text-[17px] leading-[1.65] text-gray-600">
+      <p class="max-w-[26em] text-[17px] leading-[1.65] text-primary-blue-dark/80">
         Setiap angka di sini mewakili mimpi yang terwujud dan kehidupan yang berubah melalui pendidikan.
       </p>
       <a href="#cerita" class={buttonClasses({ variant: 'outline-navy', className: 'self-start' })}>Cerita Sukses Alumni</a>
@@ -34,10 +34,10 @@ const cards = [
       {
         cards.map(({ metric, tone, height }, index) => (
           <li
-            class:list={['flex min-h-[200px] flex-col justify-between gap-6 rounded-[20px] p-5 md:p-6 anim-reveal', tone, height]}
+            class:list={['flex min-h-[200px] flex-col justify-between gap-6 rounded-xl p-5 md:p-6 anim-reveal', tone, height]}
             style={`--i:${index}`}
           >
-            <span class="font-display text-[clamp(40px,4.2vw,64px)] font-medium leading-none tracking-[-0.03em]">{metric.number}</span>
+            <span class="font-body text-[clamp(40px,4.4vw,74px)] font-medium leading-none tracking-[-0.025em]">{metric.number}</span>
             <span class="text-[15px] leading-snug opacity-85">{metric.label}</span>
           </li>
         ))

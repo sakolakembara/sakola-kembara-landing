@@ -16,10 +16,10 @@ const photos: Record<string, string> = {
 };
 ---
 
-<section id="activities" class="scroll-mt-24 px-6 md:px-10 py-20 md:py-28">
+<section id="activities" class="scroll-mt-24 px-6 md:px-10 py-20 md:py-36">
   <div class="flex w-full flex-col gap-12">
     <div class="grid items-end gap-6 md:grid-cols-2 anim-reveal">
-      <h2 class="text-balance font-display text-[clamp(34px,3.8vw,52px)] font-medium leading-[1.4] tracking-[-0.03em] text-primary-blue-dark">
+      <h2 class="text-balance font-body text-[clamp(36px,4.4vw,66px)] font-medium leading-[1.2] tracking-[-0.025em] text-primary-blue-dark">
         Apa saja yang dilalui penerima manfaat Sakola Kembara?
       </h2>
       <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600 md:justify-self-end md:text-right">
@@ -36,7 +36,7 @@ const photos: Record<string, string> = {
               src={photos[program.id]}
               alt={program.title}
               sizes="(min-width: 768px) 33vw, 100vw"
-              class="aspect-[4/5] w-full rounded-[20px] object-cover"
+              class="aspect-[4/5] w-full rounded-xl object-cover"
             />
             <div class="flex flex-col gap-1">
               <h3 class="text-xl font-bold text-gray-800">{program.tag}</h3>
