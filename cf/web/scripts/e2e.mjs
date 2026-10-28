@@ -1909,7 +1909,7 @@ await check('blog', 'the featured article is on page 1 only, never repeated in t
   const html2 = await text(await get('/blog?page=2'));
   assert.match(html1, /Artikel Terbaru/);
   assert.doesNotMatch(html2, /Artikel Terbaru/);
-  const cards = (html) => [...html.matchAll(/<article class="group bg-gray-50/g)].length;
+  const cards = (html) => [...html.matchAll(/<article\b/g)].length;
   assert.equal(cards(html1), 15);
   assert.equal(cards(html2), 15);
   const linksOf = (html) => [...html.matchAll(/href="\/blog\/([a-z0-9-]+)"/g)].map((m) => m[1]);

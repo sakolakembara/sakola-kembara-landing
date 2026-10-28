@@ -146,8 +146,8 @@ export const eyebrowClasses = (tone: 'light' | 'dark' = 'light', className?: str
   );
 
 /**
- * The homepage's polaroid frame (SAKEM-111): a thin frame with a deeper bottom strip, tilted by `--tilt` and
- * straightened and lifted when its `group` is hovered. Shared by "Cerita & Inspirasi" and "Cerita Sukses Alumni"; the
+ * The polaroid frame (SAKEM-111, every photo card since SAKEM-112): a thin frame with a deeper bottom strip, tilted by `--tilt` and
+ * straightened and lifted when its `group` is hovered. Shared by the homepage blog and alumni cards, /blog and /tim; the
  * caller adds the paper colour and a shadow for its background. `polaroidTilted` is the tilt and hover alone (for a card
  * with its own padding); `polaroidTilt(i)` gives the i-th card its tilt, in order.
  */

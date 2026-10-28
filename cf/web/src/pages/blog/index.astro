@@ -3,13 +3,12 @@ import { env } from 'cloudflare:workers';
 import BlogUnavailable from '~/components/BlogUnavailable.astro';
 import Container from '~/components/Container.astro';
 import Heading from '~/components/Heading.astro';
-import Icon from '~/components/Icon.astro';
 import PageHero from '~/components/PageHero.astro';
-import Tag from '~/components/Tag.astro';
 import Base from '~/layouts/Base.astro';
 import { coverAttrs, getBlogSource, headerSource, normalizePage, pageHref, pageNumbers } from '~/lib/blog';
 import { blogRuntime } from '~/lib/blog-runtime';
 import { contentPageHeaders } from '~/lib/content-api';
+import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 
 // SSR: the list comes from the content API at request time (a new article shows without a
 // rebuild) through the Cache API, 60 s fresh and stale-if-error (see lib/content-api.ts), and
@@ -70,13 +69,10 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
       featured && (
         <section class="py-12">
           <Container>
-            <h2 class="text-sm font-semibold text-primary-blue uppercase tracking-wider mb-6">Artikel Terbaru</h2>
-            <a
-              href={`/blog/${featured.slug}`}
-              class="group block bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
-            >
-              <div class="grid md:grid-cols-2 gap-0">
-                <div class="h-[300px] md:h-[400px] relative overflow-hidden">
+            <Heading level="subsection" class="mb-10 text-primary-blue-dark">Artikel Terbaru</Heading>
+            <a href={`/blog/${featured.slug}`} class="group grid items-center gap-10 md:grid-cols-2 md:gap-16">
+              <div class:list={[polaroidFrame, 'bg-white shadow-[0_18px_40px_-16px_rgba(13,31,82,0.5)] md:!pb-9']} style={polaroidTilt(0)}>
+                <div class="relative aspect-[4/3] overflow-hidden rounded-[3px] bg-primary-blue-dark/10">
                   {featuredCover && (
                     <img
                       src={featuredCover.src}
@@ -87,25 +83,21 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
                       height={featuredCover.height}
                       fetchpriority="high"
                       decoding="async"
-                      class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
                     />
                   )}
-                  <Tag class="absolute top-4 left-4">{featured.category}</Tag>
+                  <p class="absolute inset-x-4 top-4 flex items-start justify-between gap-1.5 text-xs font-semibold text-primary-blue-dark">
+                    <span class="rounded-full bg-secondary-yellow px-3 py-1">{featured.category}</span>
+                    <span class="rounded-full bg-white/90 px-3 py-1">{featured.date}</span>
+                  </p>
                 </div>
-                <div class="p-8 md:p-10 flex flex-col justify-center">
-                  <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                    <Icon name="calendar" size={14} />
-                    {featured.date}
-                  </div>
-                  <Heading
-                    level="panel"
-                    class="text-gray-900 mb-4 group-hover:text-primary-blue transition-colors"
-                  >
-                    {featured.title}
-                  </Heading>
-                  <p class="text-gray-600 leading-relaxed mb-6">{featured.excerpt}</p>
-                  <span class="text-primary-blue font-semibold group-hover:underline">Baca Selengkapnya</span>
-                </div>
+              </div>
+              <div class="flex flex-col gap-4">
+                <Heading level="subsection" class="text-primary-blue-dark transition-colors group-hover:text-primary-blue">
+                  {featured.title}
+                </Heading>
+                <p class="text-[17px] leading-[1.65] text-gray-600">{featured.excerpt}</p>
+                <span class="font-semibold text-primary-blue-dark underline decoration-primary-blue-dark/30 underline-offset-4 group-hover:decoration-primary-blue-dark">Baca Selengkapnya</span>
               </div>
             </a>
           </Container>
@@ -115,8 +107,8 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
 
     <section class="py-12 pb-24 bg-white">
       <Container>
-        <div class="flex items-baseline justify-between mb-6 gap-4 flex-wrap">
-          <h2 class="text-sm font-semibold text-primary-blue uppercase tracking-wider">Semua Artikel</h2>
+        <div class="flex items-baseline justify-between mb-10 gap-4 flex-wrap">
+          <Heading level="subsection" class="text-primary-blue-dark">Semua Artikel</Heading>
           {
             totalPages > 1 && (
               <span class="text-xs text-gray-500">
@@ -125,41 +117,39 @@ const stepOff = 'px-3 py-2 text-sm font-medium text-gray-300 rounded-lg border b
             )
           }
         </div>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-3">
           {
-            items.map((article) => (
-              <article class="group bg-gray-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
-                <div class="h-[200px] relative overflow-hidden">
-                  {article.cover && (
-                    <img
-                      src={article.cover.src}
-                      srcset={article.cover.srcset}
-                      sizes="(min-width: 1200px) 363px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                      alt={article.title}
-                      width={article.cover.width}
-                      height={article.cover.height}
-                      loading="lazy"
-                      decoding="async"
-                      class="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  )}
-                  <Tag size="sm" class="absolute top-3 left-3">
-                    {article.category}
-                  </Tag>
-                </div>
-                <div class="p-6">
-                  <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                    <Icon name="calendar" size={12} />
-                    {article.date}
+            items.map((article, index) => (
+              <article>
+                <a href={`/blog/${article.slug}`} class="group flex h-full flex-col gap-6">
+                  <div class:list={[polaroidFrame, 'bg-white shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)]']} style={polaroidTilt(index)}>
+                    <div class="relative aspect-[4/3] overflow-hidden rounded-[3px] bg-primary-blue-dark/10">
+                      {article.cover && (
+                        <img
+                          src={article.cover.src}
+                          srcset={article.cover.srcset}
+                          sizes="(min-width: 1200px) 363px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                          alt={article.title}
+                          width={article.cover.width}
+                          height={article.cover.height}
+                          loading="lazy"
+                          decoding="async"
+                          class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none"
+                        />
+                      )}
+                      <p class="absolute inset-x-3 top-3 flex items-start justify-between gap-1.5 text-xs font-semibold text-primary-blue-dark">
+                        <span class="rounded-full bg-secondary-yellow px-2.5 py-1">{article.category}</span>
+                        <span class="rounded-full bg-white/90 px-2.5 py-1">{article.date}</span>
+                      </p>
+                    </div>
                   </div>
-                  <h3 class="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-primary-blue transition-colors">
-                    {article.title}
-                  </h3>
-                  <p class="text-sm text-gray-600 line-clamp-2 mb-4">{article.excerpt}</p>
-                  <a href={`/blog/${article.slug}`} class="text-sm text-primary-blue font-semibold hover:underline">
-                    Baca Selengkapnya
-                  </a>
-                </div>
+                  <div class="flex flex-col gap-2">
+                    <h3 class="line-clamp-3 text-xl font-medium leading-snug tracking-[-0.01em] text-primary-blue-dark transition-colors group-hover:text-primary-blue">
+                      {article.title}
+                    </h3>
+                    <p class="line-clamp-2 text-[15px] leading-relaxed text-gray-600">{article.excerpt}</p>
+                  </div>
+                </a>
               </article>
             ))
           }
