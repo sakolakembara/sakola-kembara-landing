@@ -24,6 +24,17 @@ export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: S
   { path: '/kontak', priority: 0.7, changeFrequency: 'yearly' },
 ];
 
+/**
+ * The sitemap entries of the blog articles: each with its real date (`modifiedISO` when the API sends it on list entries,
+ * else the publication date). An article the editor hid from search (SAKEM-109, `noindex: true`) is left out: it is
+ * published, but not offered to crawlers.
+ */
+export function blogSitemapEntries(articles: readonly { slug: string; dateISO: string; modifiedISO?: string; noindex?: true }[]): SitemapEntry[] {
+  return articles
+    .filter((article) => article.noindex !== true)
+    .map((article) => ({ url: `${SITE_URL}/blog/${article.slug}`, lastModified: article.modifiedISO || article.dateISO, priority: 0.6, changeFrequency: 'monthly' }));
+}
+
 /** Program pages (/program/<id>), the ids the page is generated for. */
 export const PROGRAM_IDS = programs.map((p) => p.id);
 

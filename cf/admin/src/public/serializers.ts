@@ -94,6 +94,8 @@ export interface BlogSummaryRow {
   imageHeight: number | null;
   author: string;
   featured: boolean;
+  /** `blog_posts.noindex` (SAKEM-109). */
+  noindex: boolean;
   publishedAt: Date | null;
 }
 
@@ -112,6 +114,8 @@ export function serializeBlogSummary(row: BlogSummaryRow): PublicBlogSummary {
     imageHeight: row.imageHeight ?? null,
     author: row.author,
     featured: row.featured,
+    // Only when set: every other entry keeps its shape.
+    ...(row.noindex ? { noindex: true as const } : {}),
   };
 }
 
@@ -119,6 +123,8 @@ export interface BlogArticleRow extends BlogSummaryRow {
   updatedAt: Date;
   /** `blog_posts.meta_description`; null (or empty) when none is set. */
   metaDescription: string | null;
+  /** `blog_posts.seo_title`; null (or empty) when none is set. */
+  seoTitle: string | null;
   contentMarkdown: string;
   contentHtml: string;
 }
@@ -133,12 +139,14 @@ export function serializeBlogArticle(row: BlogArticleRow): PublicBlogArticle {
     dateISO: summary.dateISO,
     modifiedISO: isoDayJakarta(row.updatedAt.getTime()),
     description: optionalText(row.metaDescription),
+    seoTitle: optionalText(row.seoTitle),
     excerpt: summary.excerpt,
     image: summary.image,
     imageWidth: summary.imageWidth,
     imageHeight: summary.imageHeight,
     author: summary.author,
     featured: summary.featured,
+    ...(summary.noindex ? { noindex: true as const } : {}),
     contentMarkdown: row.contentMarkdown,
     contentHtml: row.contentHtml,
   };

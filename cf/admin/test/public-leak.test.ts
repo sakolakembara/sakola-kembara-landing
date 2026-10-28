@@ -94,9 +94,16 @@ describe("serializers are allow-lists", () => {
       "imageHeight",
       "imageWidth",
       "modifiedISO",
+      "seoTitle",
       "slug",
       "title",
     ]);
+    // SAKEM-109: `noindex` appears only when set, on both; every other key set is as above.
+    const hidden = { ...row, noindex: true, seoTitle: "Judul SEO" };
+    expect(Object.keys(serializeBlogSummary(hidden as never))).toContain("noindex");
+    expect(serializeBlogSummary(hidden as never).noindex).toBe(true);
+    expect(serializeBlogArticle(hidden as never).noindex).toBe(true);
+    expect(serializeBlogArticle(hidden as never).seoTitle).toBe("Judul SEO");
   });
 });
 
@@ -157,7 +164,7 @@ describe("no private column reaches any public response", () => {
 
     const article = await json<{ article: object; related: object[] }>(await internalFetch("/api/public/blog/satu"));
     expect(keys(article)).toEqual(["article", "related"]);
-    expect(keys(article.article)).toEqual(["author", "category", "contentHtml", "contentMarkdown", "date", "dateISO", "description", "excerpt", "featured", "image", "imageHeight", "imageWidth", "modifiedISO", "slug", "title"]);
+    expect(keys(article.article)).toEqual(["author", "category", "contentHtml", "contentMarkdown", "date", "dateISO", "description", "excerpt", "featured", "image", "imageHeight", "imageWidth", "modifiedISO", "seoTitle", "slug", "title"]);
     expect(keys(article.related[0]!)).toEqual(["author", "category", "date", "dateISO", "excerpt", "featured", "image", "imageHeight", "imageWidth", "slug", "title"]);
   });
 

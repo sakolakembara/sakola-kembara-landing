@@ -156,13 +156,21 @@ function loadBlog() {
       manifestFile: path.join(webRoot, 'src/generated/image-manifest.json'),
     });
     const articles = await reader.readAll(); // newest first
+    // SAKEM-109, only when FIXTURE_BLOG_HIDDEN=1 (the e2e sets it; the admin's import parity reads this fixture as it is):
+    // the oldest article is "hidden from Google" with an SEO title, as the real API serves such an article:
+    // `noindex: true` on its list entry and its article, `seoTitle` on the article (every other article: null, no noindex).
+    const hidden = process.env.FIXTURE_BLOG_HIDDEN === '1' ? articles.at(-1).meta.id : null;
     return {
-      summaries: articles.map((a) => toWireSummary(a.meta)),
+      hidden,
+      summaries: articles.map((a) => (a.meta.id === hidden ? { ...toWireSummary(a.meta), noindex: true } : toWireSummary(a.meta))),
       bySlug: new Map(articles.map((a) => [a.meta.id, a])),
     };
   })();
   return blogData;
 }
+
+/** The SEO title of the fixture's hidden article (SAKEM-109), used as written by the page. */
+export const HIDDEN_SEO_TITLE = 'Judul SEO uji e2e Sakola Kembara';
 
 /** Cache headers of the contract (content-api.md, "Caching"). */
 const READ_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
@@ -324,7 +332,7 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
           200,
           {
             // `description` as the real API serves it (SAKEM-090): the stored meta description, null when there is none
-            article: { ...summary, modifiedISO: entry.meta.modifiedISO, description: entry.meta.description || null, contentMarkdown: entry.markdown, contentHtml: entry.html },
+            article: { ...summary, modifiedISO: entry.meta.modifiedISO, description: entry.meta.description || null, seoTitle: slug === data.hidden ? HIDDEN_SEO_TITLE : null, contentMarkdown: entry.markdown, contentHtml: entry.html },
             related: pickRelated(summary, data.summaries),
           },
           { 'cache-control': READ_CACHE },

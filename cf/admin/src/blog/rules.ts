@@ -39,6 +39,22 @@ export const META_DESCRIPTION_MAX = 300;
 export const META_DESCRIPTION_IDEAL = { min: 50, max: 160 } as const;
 export const META_DESCRIPTION_RAW_MAX = 2_000;
 
+/**
+ * The SEO title (SAKEM-109, `blog_posts.seo_title`): the text of `<title>`, og:title and twitter:title when it is not the
+ * article title, used AS WRITTEN (the site adds no suffix, so the writer decides the whole line a result shows). Optional:
+ * empty is NULL and the page keeps "<title> - Yayasan Sakola Kembara Indonesia". Cleaned like the meta description
+ * (`cleanMetaDescription`, plain text, no markup). `SEO_TITLE_MAX` is the hard limit; `SEO_TITLE_IDEAL` only guides the form
+ * (about what a result shows before it cuts a title). No stored title is over the limit, so there is no "keep" exception.
+ */
+export const SEO_TITLE_MAX = 70;
+export const SEO_TITLE_IDEAL = { min: 30, max: 60 } as const;
+export const SEO_TITLE_RAW_MAX = 500;
+
+/** The SEO title as it is stored: the meta description's cleaning, under its own name so each field's use can be told apart. */
+export function cleanSeoTitle(raw: string): string {
+  return cleanMetaDescription(raw);
+}
+
 /** What a plain-text field refuses: the start of anything the HTML tokenizer reads as a tag, a comment, a doctype or an instruction. A lone `<` or `>` (`IPK < 3`) is text. */
 const MARKUP_START = /<[A-Za-z/!?]/;
 

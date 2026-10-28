@@ -55,10 +55,9 @@ async function aDraft(userId?: string, batchId?: string): Promise<{ id: string; 
 const file = (patch: Row = {}): Row => ({ id: uid(), application_id: uid(), slot: "family-card", content_type: "application/pdf", size: 1234, checksum: "0123456789abcdef0123456789abcdef", ...patch });
 
 describe("the migration", () => {
-  test("fourteen migrations, 0000 to 0013, the last one is this", () => {
-    expect(env.TEST_MIGRATIONS).toHaveLength(14);
-    expect(env.TEST_MIGRATIONS.at(-1)!.name).toBe("0013_portal_applications.sql");
-    expect(env.TEST_MIGRATIONS.map((migration) => migration.name.slice(0, 4))).toEqual(Array.from({ length: 14 }, (_, i) => String(i).padStart(4, "0")));
+  test("the migrations are numbered from 0000 without gaps, and 0013 is this one", () => {
+    expect(env.TEST_MIGRATIONS[13]!.name).toBe("0013_portal_applications.sql");
+    expect(env.TEST_MIGRATIONS.map((migration) => migration.name.slice(0, 4))).toEqual(Array.from({ length: env.TEST_MIGRATIONS.length }, (_, i) => String(i).padStart(4, "0")));
   });
 
   test("it makes the four tables and nothing else: student_applications is unchanged", async () => {
@@ -80,7 +79,7 @@ describe("the migration", () => {
   });
 
   test("the SQL of the migration seeds the counter row with zeros, and only that row", () => {
-    const sql = env.TEST_MIGRATIONS.at(-1)!.queries.join("\n");
+    const sql = env.TEST_MIGRATIONS.find((migration) => migration.name === "0013_portal_applications.sql")!.queries.join("\n");
     expect(sql).toMatch(/INSERT INTO `private_storage` \(`id`, `bytes`, `files`\) VALUES \('private-files', 0, 0\)/);
     expect(sql.match(/INSERT INTO/g)).toHaveLength(1);
   });

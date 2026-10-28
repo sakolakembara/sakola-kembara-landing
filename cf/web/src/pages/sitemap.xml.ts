@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getBlogSource } from '~/lib/blog';
 import { blogRuntime } from '~/lib/blog-runtime';
 import { SITE_URL } from '~/lib/seo';
-import { PROGRAM_IDS, STATIC_ROUTES, buildSitemap, type SitemapEntry } from '~/lib/sitemap';
+import { PROGRAM_IDS, STATIC_ROUTES, blogSitemapEntries, buildSitemap, type SitemapEntry } from '~/lib/sitemap';
 
 // SSR: the articles come from the content API, so a new one is in the sitemap without a
 // rebuild. The source pages through the API with pageSize=50 and adds the featured article
@@ -33,12 +33,8 @@ export const GET: APIRoute = async ({ locals }) => {
     changeFrequency: 'monthly',
   }));
 
-  const blogRoutes: SitemapEntry[] = articles.data.map((article) => ({
-    url: `${SITE_URL}/blog/${article.slug}`,
-    lastModified: article.modifiedISO || article.dateISO,
-    priority: 0.6,
-    changeFrequency: 'monthly',
-  }));
+  // An article the editor hid from search (SAKEM-109, `noindex`) is published but not offered to crawlers.
+  const blogRoutes = blogSitemapEntries(articles.data);
 
   return new Response(buildSitemap([...staticRoutes, ...programRoutes, ...blogRoutes]), {
     headers: {

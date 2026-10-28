@@ -227,9 +227,10 @@ describe("the package and the migrations", () => {
     expect(packageJson.scripts["db:migrate:local"]).toBe("wrangler d1 migrations apply sakem-admin --local");
   });
 
-  test("the journal lists fourteen migrations in order, the last is 0013_portal_applications", () => {
-    expect(journal.entries.map((entry) => entry.tag.slice(0, 4))).toEqual(Array.from({ length: 14 }, (_, i) => String(i).padStart(4, "0")));
-    expect(journal.entries.at(-1)!.tag).toBe("0013_portal_applications");
+  test("the journal lists the migrations in order, 0013_portal_applications among them", () => {
+    // Numbered without gaps from 0000; later tickets add migrations after this one (0014 is SAKEM-109's blog SEO columns).
+    expect(journal.entries.map((entry) => entry.tag.slice(0, 4))).toEqual(Array.from({ length: journal.entries.length }, (_, i) => String(i).padStart(4, "0")));
+    expect(journal.entries[13]!.tag).toBe("0013_portal_applications");
   });
 });
 

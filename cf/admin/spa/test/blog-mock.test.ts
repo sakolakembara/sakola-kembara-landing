@@ -34,6 +34,23 @@ function mock(access: Access = "write") {
 }
 
 describe("the blog mock", () => {
+  test("SAKEM-109: the SEO title and noindex as the Worker takes them: cleaned, refused over 70 or with markup, absent keeps on an update", async () => {
+    const { call, rows } = mock();
+    const created = await call("POST", PATH, { ...valid, seoTitle: "  Judul   untuk Google  ", noindex: true });
+    expect(created.status).toBe(201);
+    expect(created.body.item).toMatchObject({ seoTitle: "Judul untuk Google", noindex: true });
+    expect((await call("POST", PATH, valid)).body.item).toMatchObject({ seoTitle: null, noindex: false });
+    expect((await call("POST", PATH, { ...valid, seoTitle: "x".repeat(LIMITS.seoTitleMax + 1) })).body.fields).toEqual({ seoTitle: "Judul SEO maksimal 70 karakter" });
+    expect((await call("POST", PATH, { ...valid, seoTitle: "Judul <b>x</b>" })).body.fields).toEqual({ seoTitle: "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML" });
+    expect((await call("POST", PATH, { ...valid, noindex: "ya" })).body.fields).toEqual({ noindex: "Isian belum benar." });
+    const id = created.body.item.id as string;
+    const current = () => rows().find((row) => row.id === id)!;
+    const kept = await call("PUT", `${PATH}/${id}`, { ...valid, title: "Judul Lain Contoh" }, { "If-Match": ifMatch(current().updatedAt) });
+    expect(kept.body.item).toMatchObject({ seoTitle: "Judul untuk Google", noindex: true });
+    const cleared = await call("PUT", `${PATH}/${id}`, { ...valid, title: "Judul Lain Contoh", seoTitle: null, noindex: false }, { "If-Match": ifMatch(current().updatedAt) });
+    expect(cleared.body.item).toMatchObject({ seoTitle: null, noindex: false });
+  });
+
   test("lists newest edit first with the Worker's envelope, filters and search", async () => {
     const { call } = mock();
     const list = await call("GET", PATH);

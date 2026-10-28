@@ -140,6 +140,7 @@ const summaryColumns = {
   imageHeight: blogPosts.imageHeight,
   author: blogPosts.author,
   featured: blogPosts.featured,
+  noindex: blogPosts.noindex,
   publishedAt: blogPosts.publishedAt,
 } as const;
 
@@ -181,7 +182,7 @@ export const blogPageQuery = (db: Db, pageSize: number | Placeholder, offset: nu
 /** One published article with both bodies and the dates the page needs. */
 export const articleQuery = (db: Db, slug: string | Placeholder) =>
   db
-    .select({ ...summaryColumns, id: blogPosts.id, updatedAt: blogPosts.updatedAt, metaDescription: blogPosts.metaDescription, contentMarkdown: blogPosts.contentMarkdown, contentHtml: blogPosts.contentHtml })
+    .select({ ...summaryColumns, id: blogPosts.id, updatedAt: blogPosts.updatedAt, metaDescription: blogPosts.metaDescription, seoTitle: blogPosts.seoTitle, contentMarkdown: blogPosts.contentMarkdown, contentHtml: blogPosts.contentHtml })
     .from(blogPosts)
     .where(and(published, eq(blogPosts.slug, slug)))
     .limit(1);

@@ -214,6 +214,7 @@ Exactly one of `filePath` (with `fileSize`), `externalUrl`, `bodyText` is set, m
     "dateISO": "2026-05-21",
     "modifiedISO": "2026-05-21",
     "description": "Ahdan sebagai pengajar matematika membantu murid percaya diri masuk perguruan tinggi.",
+    "seoTitle": null,
     "excerpt": "...",
     "image": "/blog/images/2026/05/IMG-20260102-WA0069-scaled.jpg",
     "imageWidth": 2560,
@@ -231,6 +232,8 @@ Exactly one of `filePath` (with `fileSize`), `externalUrl`, `bodyText` is set, m
 
 - **[L]** `image` is the hero image; `modifiedISO` and `author` feed the page's Article JSON-LD (`dateModified`, `author`).
 - **[N] `description`** (SAKEM-090, article answer only, not in list entries): the text for `<meta name="description">`, `og:description`, `twitter:description` and the JSON-LD description, when it is not the excerpt; **`null` when none is set** and the consumer then uses `excerpt`. The 80 migrated articles and the 6 imported on 2026-10-13 carry the description their WordPress page had (it is the text search results show today); an article written in the admin has one only if the editor fills the optional "Deskripsi meta" field of the blog form (SAKEM-094, at most 300 characters, empty is `null`: [`admin-blog.md`](admin-blog.md#the-meta-description)). Column `blog_posts.meta_description` (migration `0012`), never rendered or cleaned on read, an empty string is `null`.
+- **[N] `seoTitle`** (SAKEM-109, article answer only): the text for `<title>`, `og:title` and `twitter:title`, **used as written** (the site adds no suffix to it); **`null` when none is set** and the consumer uses `title` with its usual suffix. Filled only by the optional "Judul SEO" field of the blog form (at most 70 characters, plain text: [`admin-blog.md`](admin-blog.md#the-seo-title-and-noindex)). Column `blog_posts.seo_title` (migration `0014`), an empty string is `null`.
+- **[N] `noindex`** (SAKEM-109, list entries, related entries and the article): present, and `true`, **only** when the editor ticked "Sembunyikan dari Google"; absent otherwise, so every other entry keeps its shape. The consumer then says `<meta name="robots" content="noindex, follow">` on the article page and leaves it out of the sitemap; the article stays published, listed and reachable. Column `blog_posts.noindex` (migration `0014`, default false). A consumer must treat a missing key as `false`.
 - **[N] `related` holds summaries, not bare slugs.** Up to 3, never the article itself, each with the same fields as a list entry (so it carries its `slug`), which saves the consumer a request per card. **[L]** The rule: a candidate is related when it has the same category **or** is dated within 180 days of the article; take the first three in newest-first order; if none qualify, the three newest others. This is also `getRelated` in `cf/web/src/lib/blog.ts`; keep one implementation.
 
 **`contentHtml`: rendered at save time, stored, never rendered on read.** [N] The new admin renders the markdown to HTML **when an article is saved** and stores the result in D1 next to the markdown. The read path only returns it. Reason: Workers Free allows 10 ms CPU per request, and rendering on every read would spend it. Consequences:

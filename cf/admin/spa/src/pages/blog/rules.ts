@@ -19,7 +19,12 @@ export const LIMITS = {
   slugMax: 160,
   /** The hard limit of the meta description (SAKEM-094), counted on the cleaned text. */
   metaDescriptionMax: 300,
+  /** The hard limit of the SEO title (SAKEM-109), counted on the cleaned text. */
+  seoTitleMax: 70,
 } as const;
+
+/** What the form tells the writer to aim for in an SEO title (SAKEM-109). Guidance only. */
+export const SEO_TITLE_IDEAL = { min: 30, max: 60 } as const;
 
 /** What the form tells the writer to aim for in a meta description: about what a search result shows before it cuts the text. Guidance only: nothing is refused for it. */
 export const META_DESCRIPTION_IDEAL = { min: 50, max: 160 } as const;
@@ -34,6 +39,11 @@ export function cleanMetaDescription(raw: string): string {
     .replace(/[\p{Cc}\p{Cf}\p{Cs}]/gu, (char) => (/^[\t\n\v\f\r\u0085]$/.test(char) ? " " : ""))
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** A copy of the Worker's `cleanSeoTitle` (SAKEM-109): the meta description's cleaning, under the SEO title's own name. */
+export function cleanSeoTitle(raw: string): string {
+  return cleanMetaDescription(raw);
 }
 
 /** A copy of the Worker's `hasMarkup`: true when a cleaned text holds what the HTML tokenizer reads as a tag, a comment or a doctype. Used by the mock; the form only counts. */

@@ -23,7 +23,7 @@ import http from 'node:http';
 import { Window } from 'happy-dom';
 import { PORT_OFFSET, TURNSTILE_TEST_SITE_KEY, startStack, webRoot } from './lib/harness.mjs';
 import { STUB_TOKEN, turnstileStubSource } from './lib/turnstile-stub.mjs';
-import { SAMPLE_REPORTS, SAMPLE_RESOURCES, SAMPLE_SHORTLINKS } from './fixture-api.mjs';
+import { HIDDEN_SEO_TITLE, SAMPLE_REPORTS, SAMPLE_RESOURCES, SAMPLE_SHORTLINKS } from './fixture-api.mjs';
 import { REDIRECTS, matchRedirect } from '../redirects.config.mjs';
 import { LIMITS, assetUrl, variantUrl } from '../assets.config.mjs';
 import { checkImgTag, localUrls, parseAttrs } from './lib/dist-audit.mjs';
@@ -34,6 +34,7 @@ if (!existsSync(path.join(webRoot, 'dist/server/wrangler.json'))) {
 }
 
 const articles = JSON.parse(readFileSync(path.join(webRoot, '../../lib/blog-posts.json'), 'utf8')).articles;
+process.env.FIXTURE_BLOG_HIDDEN = '1'; // SAKEM-109: the fixture hides its oldest article, with an SEO title (scripts/fixture-api.mjs)
 const stack = await startStack({ log: path.join(webRoot, 'dist/e2e-wrangler.log'), vars: { TEAM_CACHE_FRESH_SECONDS: '2', CONTENT_CACHE_FRESH_SECONDS: '2', ADMIN_URL: 'https://admin.example.test' } });
 const { base, stub } = stack;
 const fixtureBase = `http://127.0.0.1:${stack.fixture.port}`;
@@ -101,6 +102,13 @@ const onlySiteGraph = (html) => {
 
 // ---------------------------------------------------------------- pages
 const slugs = articles.map((a) => a.id);
+// SAKEM-109: the fixture API marks its oldest article as hidden from Google, with an SEO title (scripts/fixture-api.mjs)
+const hiddenArticle = async () => {
+  const lists = [await apiJson('/api/public/blog?page=1&pageSize=50'), await apiJson('/api/public/blog?page=2&pageSize=50')];
+  const hidden = lists.flatMap((l) => [...l.articles, l.featured]).filter((a) => a?.noindex === true);
+  assert.equal(new Set(hidden.map((a) => a.slug)).size, 1, 'the fixture hides exactly one article');
+  return hidden[0].slug;
+};
 
 await check('pages', 'GET / is 200 html, served without touching the origin', async () => {
   clearStub();
@@ -137,7 +145,8 @@ for (const slug of slugs) {
     const html = await text(res);
     const { article } = await apiJson(`/api/public/blog/${slug}`);
     assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-    assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), `${article.title} - Yayasan Sakola Kembara Indonesia`);
+    // SAKEM-109: an SEO title is the whole <title>, used as written; without one, the title and the site suffix
+    assert.equal(decodeEntities(tag(html, /<title>([^<]*)<\/title>/)), article.seoTitle ?? `${article.title} - Yayasan Sakola Kembara Indonesia`);
     assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), `https://sakolakembara.org/blog/${slug}`);
     // SAKEM-090: the page's own meta description first (the migrated articles carry the one their WordPress page had), then the excerpt
     const description = article.description ?? article.excerpt;
@@ -1652,9 +1661,10 @@ await check('seo', 'sitemap.xml: every article with real lastmod, static routes 
   assert.match(res.headers.get('content-type'), /xml/);
   const xml = await text(res);
   const urls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
-  assert.equal(urls.length, 6 + 3 + ARTICLE_COUNT); // six static routes since SAKEM-105 (/laporan left), three programs
+  // six static routes since SAKEM-105 (/laporan left), three programs; the fixture's one article hidden from Google is left out (SAKEM-109)
+  assert.equal(urls.length, 6 + 3 + ARTICLE_COUNT - 1);
   const blogUrls = urls.filter((u) => /<loc>https:\/\/sakolakembara\.org\/blog\/[^<]+<\/loc>/.test(u));
-  assert.equal(blogUrls.length, ARTICLE_COUNT);
+  assert.equal(blogUrls.length, ARTICLE_COUNT - 1);
   for (const u of blogUrls) assert.match(u, /<lastmod>\d{4}-\d{2}-\d{2}/);
   const staticUrls = urls.filter((u) => !/\/blog\/[^<]+<\/loc>/.test(u));
   assert.equal(staticUrls.length, 9);
@@ -1961,11 +1971,32 @@ await check('blog', 'the sitemap enumerates every article by paging the API with
   assert.equal(res.headers.get('cache-control'), 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
   const xml = await text(res);
   const entries = [...xml.matchAll(/<url><loc>https:\/\/sakolakembara\.org\/blog\/([^<]+)<\/loc>(?:<lastmod>([^<]+)<\/lastmod>)?/g)].map((m) => ({ slug: m[1], lastmod: m[2] }));
-  assert.deepEqual(entries.map((e) => e.slug).sort(), [...slugs].sort());
+  // the fixture's hidden article (SAKEM-109, the oldest) is left out of the sitemap
+  const hiddenSlug = await hiddenArticle();
+  assert.deepEqual(entries.map((e) => e.slug).sort(), slugs.filter((s) => s !== hiddenSlug).sort());
   const list = [...(await apiJson('/api/public/blog?page=1&pageSize=50')).articles, ...(await apiJson('/api/public/blog?page=2&pageSize=50')).articles, (await apiJson('/api/public/blog?page=1&pageSize=50')).featured];
   for (const e of entries) assert.equal(e.lastmod, list.find((a) => a.slug === e.slug).dateISO, e.slug);
   const requests = (await blogRequests()).slice(before.length).filter((r) => r.includes('pageSize=50'));
   assert.ok(requests.includes('/api/public/blog?page=1&pageSize=50') && requests.includes('/api/public/blog?page=2&pageSize=50'));
+});
+await check('blog', 'SAKEM-109: an article "hidden from Google" is still a 200 with robots noindex, follow and no googlebot line, uses its SEO title as written, and is still listed on /blog; another article keeps its title and index', async () => {
+  const hiddenSlug = await hiddenArticle();
+  const res = await get(`/blog/${hiddenSlug}`);
+  assert.equal(res.status, 200);
+  const html = await text(res);
+  assert.match(html, /<meta name="robots" content="noindex, follow">/);
+  assert.doesNotMatch(html, /<meta name="googlebot"/);
+  assert.match(html, new RegExp(`<title>${HIDDEN_SEO_TITLE}</title>`));
+  assert.match(html, new RegExp(`<meta property="og:title" content="${HIDDEN_SEO_TITLE}">`));
+  assert.match(html, new RegExp(`<meta name="twitter:title" content="${HIDDEN_SEO_TITLE}">`));
+  // still listed on /blog: the oldest article is on the last page of the list
+  const { totalPages } = await apiJson('/api/public/blog?page=1');
+  const lastPage = await text(await get(`/blog?page=${totalPages}`));
+  assert.ok(anchorTags(lastPage).some((t) => attrOf(t, 'href') === `/blog/${hiddenSlug}`), 'still listed on /blog');
+  const other = await text(await get(`/blog/${slugs[0]}`));
+  assert.match(other, /<meta name="robots" content="index, follow">/);
+  assert.match(other, /<meta name="googlebot"/);
+  assert.match(other, / - Yayasan Sakola Kembara Indonesia<\/title>/);
 });
 await check('blog', 'the blog pages and the sitemap never reach the legacy origin, and the Worker logged no error', async () => {
   clearStub();

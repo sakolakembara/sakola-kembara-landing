@@ -112,7 +112,7 @@ export async function warmUp(makeEnvironment: () => Bindings = standInEnvironmen
     await queries.shortlink.all({ slug: "warm-up" });
     JSON.stringify({
       featured: serializeBlogSummary(summary as never),
-      article: serializeBlogArticle({ ...summary, updatedAt: new Date(0), metaDescription: null, contentMarkdown: "x", contentHtml: "<p>x</p>" } as never),
+      article: serializeBlogArticle({ ...summary, updatedAt: new Date(0), metaDescription: null, seoTitle: null, contentMarkdown: "x", contentHtml: "<p>x</p>" } as never),
       team: serializeTeamMember({ id: "x", name: "x", role: "x", image: null, category: "pengurus", bio: null, educationHistory: [{ institution: "x" }], workHistory: [{ organization: "x", role: "x" }] }),
       report: serializeReport({ id: "x", title: "x", description: null, category: "yearly", year: "2025", filePath: "/x.pdf", fileSize: 1 }),
       resource: serializeResource({ id: "x", title: "x", description: null, category: "panduan", contentType: "file", filePath: "/x.pdf", fileSize: 1, externalUrl: null, bodyText: null }),

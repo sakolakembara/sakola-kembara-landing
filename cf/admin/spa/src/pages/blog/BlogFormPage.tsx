@@ -22,6 +22,7 @@ import { usePageTitle } from "~/lib/hooks";
 import { useMe } from "~/lib/session";
 import { BodyEditor, type BodyMode } from "./BodyEditor";
 import { MetaDescriptionField } from "./MetaDescriptionField";
+import { SeoTitleField } from "./SeoTitleField";
 import { API_PATH, type BlogItem, type BlogValues, CATEGORY_OPTIONS, type EditorTab, FIELD_LABELS, FIELD_TAB, ROUTE, STATUS, toBody, toValues } from "./model";
 import { LIMITS } from "./rules";
 
@@ -228,6 +229,7 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
           <Field label="Excerpt" id="excerpt" required error={fields.excerpt} hint={`${LIMITS.excerptMin}-${LIMITS.excerptMax} karakter. Muncul di list artikel dan SEO description.`}>
             <Textarea required rows={3} {...form.field("excerpt")} placeholder="Ringkasan singkat artikel..." />
           </Field>
+          <SeoTitleField field={form.field("seoTitle")} error={fields.seoTitle} />
           <MetaDescriptionField field={form.field("metaDescription")} error={fields.metaDescription} stored={item?.metaDescription ?? ""} />
         </FormSection>
 
@@ -257,6 +259,17 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
                 <span className="text-sm text-gray-700">Tampilkan sebagai artikel unggulan di blog index</span>
               </label>
             </div>
+          </div>
+          <div>
+            <span className="mb-2 block text-sm font-medium text-gray-700">Mesin pencari</span>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 transition-colors hover:border-gray-300">
+              <input type="checkbox" {...form.checkbox("noindex")} className="mt-0.5 h-4 w-4 accent-primary-blue" />
+              <span className="text-sm text-gray-700">
+                Sembunyikan dari Google
+                <span className="mt-0.5 block text-xs text-gray-500">Artikel tetap bisa dibuka lewat tautannya, tetapi tidak dimasukkan ke hasil pencarian dan sitemap.</span>
+              </span>
+            </label>
+            {fields.noindex && <p className="mt-1.5 text-xs text-danger-fg">{fields.noindex}</p>}
           </div>
         </FormSection>
 
