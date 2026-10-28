@@ -78,13 +78,13 @@ describe('/kontak copy', () => {
     expect(form).not.toMatch(/console\./);
   });
 
-  it('the three contact cards use the legacy icon order (Mail, MessageCircle, MapPin) and the sub-page hero', () => {
+  it('the contact details are ruled rows in the legacy order (Email, WhatsApp, Lokasi), the branches under the location, and no icon cards (SAKEM-113)', () => {
     expect(legacyPage).toContain('{ Icon: Mail');
-    expect(legacyPage).toContain('{ Icon: MessageCircle');
-    expect(legacyPage).toContain('{ Icon: MapPin');
-    expect(page).toContain('name="mail"');
-    expect(page).toContain('Lucide "message-circle"');
-    expect(page).toContain('name="map-pin"');
-    expect(page).toContain('<PageHero');
+    expect(page).toContain('contactInfo.map(');
+    expect(page).toContain('branches.map(');
+    expect(page).toContain('<SocialLinks theme="outline" />');
+    expect(page).not.toContain('name="mail"');
+    expect(page).not.toContain('<PageHero');
+    expect(page).toContain('<Heading level="display" as="h1"');
   });
 });

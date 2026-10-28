@@ -115,9 +115,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Tahapan program',
       'Tahap',
       'Kegiatan',
-      'Timeline Kegiatan',
-      'Jadwal dan timeline kegiatan akan segera diperbarui.',
-      'Konten timeline akan ditambahkan',
+      // The timeline placeholder ("Timeline Kegiatan") is not rendered while it has no content (Dzul, 2026-10-28, SAKEM-113).
       'Galeri Foto',
       'Dokumentasi kegiatan program',
       'Tahap berikutnya',
@@ -179,10 +177,8 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Tim kami sedang menyiapkan laporan publik. Periksa kembali halaman ini dalam waktu dekat.',
       'PDF ·',
       'Unduh Laporan',
-      'Punya pertanyaan tentang laporan kami?',
-      'Tim kami senang membantu menjelaskan angka-angka di balik laporan ini. Hubungi kami untuk diskusi lebih lanjut.',
-      'Hubungi Tim Kami',
-      '/kontak',
+      // The closing block ("Punya pertanyaan tentang laporan kami?") was removed by Dzul on 2026-10-28 (SAKEM-113): the "Kontak Kami"
+      // just above it on /donasi already asks the same.
     ],
   },
   {
@@ -287,7 +283,7 @@ describe('the deliberate differences of Phase A (SAKEM-103): the registration li
     const sentence = 'Formulir dibagi menjadi beberapa bagian dan progres kamu akan tersimpan otomatis di browser ini.';
     expect(norm(readRoot('app/(public)/gabung-siswa/page.tsx'))).toContain(`Isi formulir pendaftaran sekarang. ${sentence}`);
     const web = norm(readWeb('src/pages/gabung-siswa.astro'));
-    expect(web).toContain('lead="Isi formulir pendaftaran sekarang."');
+    expect(web).toContain('>Isi formulir pendaftaran sekarang.</p>');
     expect(web).not.toContain(sentence);
     expect(web).not.toMatch(/tersimpan otomatis|progres kamu/);
   });

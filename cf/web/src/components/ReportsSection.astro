@@ -8,8 +8,6 @@ import {
 } from '~/lib/reports';
 import { buttonClasses } from '~/lib/ui';
 import { uploadUrl } from '~/lib/uploads';
-import Button from './Button.astro';
-import Container from './Container.astro';
 import Heading from './Heading.astro';
 import Icon from './Icon.astro';
 import Tag from './Tag.astro';
@@ -18,8 +16,9 @@ import Tag from './Tag.astro';
  * The Laporan section of /donasi (SAKEM-105, variant A): the page /laporan moved here, with the id `laporan` so that
  * `/donasi#laporan` (where /laporan now redirects, and the footer link goes) lands on it. The markup, the cards and
  * every string are the ones /laporan had (ported from app/(public)/laporan/); the old hero's title and lead are the
- * section's heading and lead, and the closing block ("Punya pertanyaan tentang laporan kami?") ends the section.
- * The headings step down one level because the section sits under the page's h1 and the h2 "Cara Berdonasi".
+ * section's heading and lead. Since SAKEM-113 (round 4 of the inner-pages mock, Dzul 2026-10-28) the heading and lead
+ * sit on the left with the empty or error state on the right, and the closing block ("Punya pertanyaan tentang laporan
+ * kami?") is gone: the "Kontak Kami" just above on /donasi already asks it.
  *
  * The data is `loadReportsSection` (src/lib/reports.ts): `reports === null` is an API that cannot answer with
  * nothing cached, and the section says so while the page around it stays a 200; an empty list is the legacy empty
@@ -34,92 +33,70 @@ const { section, uploadsBase } = Astro.props;
 const { reports, years, total } = section;
 ---
 
-<section id="laporan" class="scroll-mt-24 py-16 md:py-20" aria-labelledby="laporan-heading">
-  <Container size="focused">
-    <div class="anim-fade-up text-center mb-10" style="animation-delay: 0.1s">
-      <Heading level="panel" as="h2" id="laporan-heading" class="text-gray-900 mb-3">Laporan</Heading>
-      <p class="text-gray-600 max-w-[600px] mx-auto">
+<section id="laporan" class="scroll-mt-24 px-6 pb-24 md:px-10 md:pb-28" aria-labelledby="laporan-heading">
+  <div class="grid items-start gap-10 md:grid-cols-2 md:gap-16">
+    <div class="anim-reveal flex flex-col gap-5">
+      <Heading level="section" as="h2" id="laporan-heading" class="text-primary-blue-dark">Laporan</Heading>
+      <p class="max-w-[30em] text-[17px] leading-[1.65] text-gray-600 md:text-lg">
         Komitmen kami untuk transparansi. Laporan tahunan, keuangan, dampak, dan donasi tersedia untuk diunduh dan
         dipelajari oleh donor, mitra, dan publik.
       </p>
     </div>
-
-    {/* Reports listing */}
     {
       reports === null ? (
-        <div
-          role="status"
-          class="anim-fade-up bg-white rounded-2xl border border-gray-200 p-12 text-center"
-          style="animation-delay: 0.2s"
-        >
-          <Icon name="file-text" size={32} class="mx-auto text-gray-300 mb-4" />
-          <Heading level="card" as="h3" class="text-gray-900 mb-2">
-            Laporan belum dapat ditampilkan
-          </Heading>
-          <p class="text-gray-600 max-w-md mx-auto">
+        <div role="status" class="anim-reveal flex flex-col gap-2 border-y border-primary-blue-dark/20 py-7">
+          <Heading level="card" as="h3" class="text-primary-blue-dark">Laporan belum dapat ditampilkan</Heading>
+          <p class="text-base leading-[1.6] text-gray-600">
             Kami sedang mengalami kendala saat memuat daftar laporan. Silakan muat ulang halaman ini beberapa saat
             lagi.
           </p>
         </div>
       ) : total === 0 ? (
-        <div
-          class="anim-fade-up bg-white rounded-2xl border border-gray-200 p-12 text-center"
-          style="animation-delay: 0.2s"
-        >
-          <Icon name="file-text" size={32} class="mx-auto text-gray-300 mb-4" />
-          <Heading level="card" as="h3" class="text-gray-900 mb-2">
-            Laporan akan segera tersedia
-          </Heading>
-          <p class="text-gray-600 max-w-md mx-auto">
+        <div class="anim-reveal flex flex-col gap-2 border-y border-primary-blue-dark/20 py-7">
+          <Heading level="card" as="h3" class="text-primary-blue-dark">Laporan akan segera tersedia</Heading>
+          <p class="text-base leading-[1.6] text-gray-600">
             Tim kami sedang menyiapkan laporan publik. Periksa kembali halaman ini dalam waktu dekat.
           </p>
         </div>
-      ) : (
-        <div class="space-y-12">
-          {years.map(({ year, reports: list }, yearIdx) => (
-            <section class="anim-fade-up" style={`animation-delay: ${(0.2 + yearIdx * 0.1).toFixed(1)}s`}>
-              <header class="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <Heading level="subsection" as="h3" class="text-gray-900">
-                  {formatAcademicYear(year)}
-                </Heading>
-                <span class="text-sm text-gray-500">{list.length} laporan</span>
-              </header>
-              <div class="grid md:grid-cols-2 gap-5">
-                {list.map((r) => (
-                  <article class="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                    <div class="flex items-start justify-between gap-3 mb-3">
-                      <Tag tone={REPORT_CATEGORY_TONE[r.category]} size="sm">
-                        {REPORT_CATEGORY_LABEL[r.category]}
-                      </Tag>
-                      <Icon name="file-text" size={20} class="text-gray-300 shrink-0" />
-                    </div>
-                    <h4 class="text-lg font-bold text-gray-900 mb-2 leading-snug">{r.title}</h4>
-                    {r.description && (
-                      <p class="text-sm text-gray-600 mb-3 leading-relaxed line-clamp-3">{r.description}</p>
-                    )}
-                    <div class="text-xs text-gray-500 mb-4">PDF · {formatBytes(r.fileSize)}</div>
-                    {/* The path is the API's, used as it is (uploads are never proxied by this Worker). */}
-                    <a href={uploadUrl(r.filePath, uploadsBase)} target="_blank" rel="noopener noreferrer" class={buttonClasses({})}>
-                      <Icon name="download" size={16} />
-                      Unduh Laporan
-                    </a>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )
+      ) : null
     }
+  </div>
 
-    {/* Trust footer: ends the section */}
-    <div class="anim-reveal mt-16 border-t border-gray-200 pt-12 text-center">
-      <Heading level="subsection" as="h3" class="text-gray-900 mb-3">Punya pertanyaan tentang laporan kami?</Heading>
-      <p class="text-gray-600 mb-6 max-w-[600px] mx-auto">
-        Tim kami senang membantu menjelaskan angka-angka di balik laporan ini. Hubungi kami untuk diskusi lebih
-        lanjut.
-      </p>
-      <Button href="/kontak">Hubungi Tim Kami</Button>
-    </div>
-  </Container>
+  {/* Reports listing, by academic year */}
+  {
+    reports !== null && total > 0 && (
+      <div class="mt-14 space-y-12">
+        {years.map(({ year, reports: list }) => (
+          <section class="anim-reveal">
+            <header class="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <Heading level="subsection" as="h3" class="text-primary-blue-dark">
+                {formatAcademicYear(year)}
+              </Heading>
+              <span class="text-sm text-gray-500">{list.length} laporan</span>
+            </header>
+            <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {list.map((r) => (
+                <article class="flex flex-col rounded-xl bg-white p-6 shadow-[0_14px_30px_-18px_rgba(13,31,82,0.35)]">
+                  <div class="mb-3 flex items-start justify-between gap-3">
+                    <Tag tone={REPORT_CATEGORY_TONE[r.category]} size="sm">
+                      {REPORT_CATEGORY_LABEL[r.category]}
+                    </Tag>
+                    <Icon name="file-text" size={20} class="shrink-0 text-primary-blue-dark/30" />
+                  </div>
+                  <h4 class="mb-2 text-lg font-semibold leading-snug text-primary-blue-dark">{r.title}</h4>
+                  {r.description && <p class="mb-3 line-clamp-3 text-sm leading-relaxed text-gray-600">{r.description}</p>}
+                  <div class="mb-4 text-xs text-gray-500">PDF · {formatBytes(r.fileSize)}</div>
+                  {/* The path is the API's, used as it is (uploads are never proxied by this Worker). */}
+                  <a href={uploadUrl(r.filePath, uploadsBase)} target="_blank" rel="noopener noreferrer" class={buttonClasses({ variant: 'outline-navy', className: 'mt-auto self-start' })}>
+                    <Icon name="download" size={16} />
+                    Unduh Laporan
+                  </a>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    )
+  }
 </section>

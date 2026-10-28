@@ -61,12 +61,13 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     it('hero, stage tabs (three links, the current one marked), intro with tag, description and bullets', () => {
       expect(text).toContain('Apa saja yang dilalui penerima manfaat Sakola Kembara?'); // no "Program Kami" eyebrow since SAKEM-112
       expect(text).not.toContain('Program Kami Apa saja');
-      const tabs = links(html).filter((a) => /href="\/program\/[a-z-]+"/.test(a) && a.includes('group flex'));
+      const tabs = links(html).filter((a) => /href="\/program\/[a-z-]+"/.test(a) && a.includes('rounded-full px-4'));
       expect(tabs.map((a) => attr(a, 'href'))).toEqual(programs.map((p) => `/program/${p.id}`));
       expect(tabs.filter((a) => a.includes('aria-current="page"'))).toHaveLength(1);
       expect(tabs[index]).toContain('aria-current="page"');
       expect(html).toContain('aria-label="Tahapan program"');
-      expect(text).toContain(`Tahap ${index + 1} · ${program.tag}`);
+      // the pill tabs name every stage (SAKEM-113); the "Tahap n · tag" chip of the intro is gone with it
+      programs.forEach((stage, i) => expect(text).toContain(`0${i + 1} · ${stage.title}`));
       expect(text).toContain(program.description);
       for (const point of program.points) expect(text).toContain(point);
     });
@@ -76,7 +77,8 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
       for (const sub of program.subPrograms) {
         expect(text, sub.title).toContain(sub.title);
         expect(text, sub.title).toContain(sub.description);
-        if (sub.hours) expect(text).toContain(sub.hours);
+        // the hours are the large figures above the polaroids (SAKEM-113): "Hingga 400 jam belajar" reads "hingga 400 jam belajar · Asrama Intensif"
+        if (sub.hours) expect(text.toLowerCase()).toContain(`${sub.hours.toLowerCase()} · ${sub.title.toLowerCase()}`);
         if (sub.attachment) {
           const link = links(html).find((a) => attr(a, 'href') === sub.attachment!.href)!;
           expect(link, sub.attachment.href).toBeDefined();
@@ -89,8 +91,9 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
       expect(thumbs.map((i) => attr(i, 'alt'))).toEqual(program.subPrograms.filter((s) => s.photo).map((s) => `Kegiatan ${s.title}`));
     });
 
-    it('keeps the "Timeline Kegiatan" placeholder exactly as the legacy page has it (SAKEM-057)', () => {
-      expect(text).toContain('Timeline Kegiatan Jadwal dan timeline kegiatan akan segera diperbarui. Konten timeline akan ditambahkan');
+    it('the empty "Timeline Kegiatan" placeholder is not rendered while it has no content (Dzul, 2026-10-28, SAKEM-113; SAKEM-057 decides what it becomes)', () => {
+      expect(text).not.toContain('Timeline Kegiatan');
+      expect(text).not.toContain('Konten timeline akan ditambahkan');
       const legacy = readRoot('app/(public)/program/[id]/_program-content.tsx');
       expect(legacy).toContain('Konten timeline akan ditambahkan');
     });
@@ -126,8 +129,8 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     it('next stage and the PitchDeck call to action', () => {
       const next = programs[index + 1];
       if (next) {
-        expect(text).toContain(`Tahap berikutnya ${next.tag} · ${next.title}`);
-        const link = links(html).find((a) => attr(a, 'href') === `/program/${next.id}` && a.includes('border-[1.5px]'))!;
+        expect(text).toContain(`Tahap berikutnya · ${next.tag} ${next.title}`);
+        const link = links(html).find((a) => attr(a, 'href') === `/program/${next.id}` && a.includes('bg-secondary-yellow'))!;
         expect(link).toBeDefined();
         expect(text).toContain(`Lanjut ke Tahap ${index + 2}`);
       } else {
@@ -144,7 +147,7 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
       const imgs = imgsOf(html);
       expect(imgs.length).toBeGreaterThanOrEqual(1 + program.subPrograms.filter((s) => s.photo).length + getProgramGallery(program.id).length);
       for (const img of imgs) {
-        expect(img, img).toMatch(/\salt="/);
+        expect(img, img).toMatch(/\salt(="|\s|>)/); // the next stage's photo is decorative: an empty alt renders as a bare `alt`
         expect(img, img).toMatch(/\swidth="\d+"/);
         expect(img, img).toMatch(/\sheight="\d+"/);
       }
