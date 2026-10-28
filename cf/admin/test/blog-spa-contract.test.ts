@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, test } from "vitest";
-import { BODY_MAX, EXCERPT_MAX, EXCERPT_MIN, AUTHOR_MAX, AUTHOR_MIN, BODY_MIN, cleanMetaDescription, hasMarkup, META_DESCRIPTION_IDEAL, META_DESCRIPTION_MAX, SLUG_MAX, startOfIsoDayJakarta, TITLE_MAX, TITLE_MIN } from "../src/blog/rules";
+import { BODY_MAX, EXCERPT_MAX, EXCERPT_MIN, AUTHOR_MAX, AUTHOR_MIN, BODY_MIN, cleanMetaDescription, hasMarkup, META_DESCRIPTION_IDEAL, META_DESCRIPTION_MAX, SEO_TITLE_MAX, SLUG_MAX, startOfIsoDayJakarta, TITLE_MAX, TITLE_MIN } from "../src/blog/rules";
 import { blogCategories } from "../src/db/schema";
 import { longDateJakarta } from "../src/public/dates";
 import { api, setTransport } from "../spa/src/lib/api";
@@ -23,7 +23,7 @@ function over(cookie: string) {
 
 describe("the numbers and lists the form shows are the Worker's", () => {
   test("limits", () => {
-    expect(LIMITS).toEqual({ titleMin: TITLE_MIN, titleMax: TITLE_MAX, excerptMin: EXCERPT_MIN, excerptMax: EXCERPT_MAX, bodyMin: BODY_MIN, bodyMax: BODY_MAX, authorMin: AUTHOR_MIN, authorMax: AUTHOR_MAX, slugMax: SLUG_MAX, metaDescriptionMax: META_DESCRIPTION_MAX });
+    expect(LIMITS).toEqual({ titleMin: TITLE_MIN, titleMax: TITLE_MAX, excerptMin: EXCERPT_MIN, excerptMax: EXCERPT_MAX, bodyMin: BODY_MIN, bodyMax: BODY_MAX, authorMin: AUTHOR_MIN, authorMax: AUTHOR_MAX, slugMax: SLUG_MAX, metaDescriptionMax: META_DESCRIPTION_MAX, seoTitleMax: SEO_TITLE_MAX });
   });
 
   test("the guidance the form gives for the meta description is the Worker's constant", () => {

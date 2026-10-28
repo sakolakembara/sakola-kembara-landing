@@ -41,6 +41,8 @@ interface Item {
   title: string;
   excerpt: string;
   metaDescription: string | null;
+  seoTitle: string | null;
+  noindex: boolean;
   contentMarkdown: string;
   category: string;
   author: string;
@@ -209,7 +211,7 @@ describe("blog: create", () => {
 
     expect(item).toMatchObject({ slug: "cara-belajar-yang-efektif", title: "Cara Belajar yang Efektif", status: "draft", date: null, image: null, imageWidth: null, imageHeight: null, featured: false, contentMarkdown: BODY });
     // An explicit field list: no HTML, no WordPress id or source, no user ids.
-    expect(Object.keys(item).sort()).toEqual(["author", "category", "contentMarkdown", "createdAt", "date", "excerpt", "featured", "id", "image", "imageHeight", "imageWidth", "metaDescription", "slug", "status", "title", "updatedAt"]);
+    expect(Object.keys(item).sort()).toEqual(["author", "category", "contentMarkdown", "createdAt", "date", "excerpt", "featured", "id", "image", "imageHeight", "imageWidth", "metaDescription", "noindex", "seoTitle", "slug", "status", "title", "updatedAt"]);
     expect(item.metaDescription).toBeNull(); // none typed: the site uses the excerpt
     expect(res.headers.get("etag")).toBe(`"${item.updatedAt}"`);
 
@@ -227,7 +229,7 @@ describe("blog: create", () => {
     const metadata = JSON.parse(audit[0]!.metadata) as { fields: string[]; label: string };
     expect(Object.keys(metadata).sort()).toEqual(["fields", "label"]);
     expect(metadata.label).toBe("Cara Belajar yang Efektif");
-    expect(metadata.fields).toEqual(["slug", "title", "excerpt", "metaDescription", "contentMarkdown", "contentHtml", "image", "imageWidth", "imageHeight", "category", "author", "featured", "status", "publishedAt"]);
+    expect(metadata.fields).toEqual(["slug", "title", "excerpt", "metaDescription", "seoTitle", "noindex", "contentMarkdown", "contentHtml", "image", "imageWidth", "imageHeight", "category", "author", "featured", "status", "publishedAt"]);
     // Names only: not a word of the article, in markdown or HTML.
     for (const secret of ["disiplin", "Istirahat", "<p>", "Ringkasan artikel", "Dzul"]) expect(audit[0]!.metadata).not.toContain(secret);
   });
@@ -882,6 +884,100 @@ describe("blog: the meta description (SAKEM-094)", () => {
 });
 
 // -------------------------------------------------------------------------------- publish and unpublish
+
+describe("blog: the SEO title and noindex (SAKEM-109)", () => {
+  const TITLE = "Cara Belajar Efektif untuk Siswa SMA | Sakola Kembara";
+  const stored = async (id: string) => {
+    const r = await row(id);
+    return { seoTitle: r.seo_title as string | null, noindex: r.noindex as number };
+  };
+  const publicArticle = async (slug: string) => ((await (await internalFetch(`/api/public/blog/${slug}`)).json()) as { article: Record<string, unknown> }).article;
+  const publicEntries = async () => {
+    const index = (await (await internalFetch("/api/public/blog?pageSize=50")).json()) as { featured: Record<string, unknown> | null; articles: Record<string, unknown>[] };
+    return [...index.articles, ...(index.featured ? [index.featured] : [])];
+  };
+  const auditFields = async (action: string) => (await auditRows()).filter((r) => r.action === action).map((r) => (JSON.parse(r.metadata) as { fields: string[] }).fields);
+
+  test("create: the title is cleaned and stored as written; none (absent, null, spaces) is NULL; noindex defaults to false", async () => {
+    const cookie = await editor();
+    const typed = await createDraft(cookie, { seoTitle: `  ${TITLE.replace(" ", "\t ")}  `, noindex: true });
+    expect(typed).toMatchObject({ seoTitle: TITLE, noindex: true });
+    expect(await stored(typed.id)).toEqual({ seoTitle: TITLE, noindex: 1 });
+    for (const overrides of [{}, { seoTitle: null }, { seoTitle: "   " }]) {
+      const item = await createDraft(cookie, overrides);
+      expect(item, JSON.stringify(overrides)).toMatchObject({ seoTitle: null, noindex: false });
+      expect(await stored(item.id)).toEqual({ seoTitle: null, noindex: 0 });
+    }
+  });
+
+  test("create refuses a title over 70 characters, one with markup, and a noindex that is not a boolean, with the field's message and nothing written", async () => {
+    const cookie = await editor();
+    const cases: [Record<string, unknown>, Record<string, string>][] = [
+      [{ seoTitle: "x".repeat(71) }, { seoTitle: "Judul SEO maksimal 70 karakter" }],
+      [{ seoTitle: "x".repeat(501) }, { seoTitle: "Judul SEO maksimal 70 karakter" }],
+      [{ seoTitle: "Judul <b>tebal</b>" }, { seoTitle: "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML" }],
+      [{ seoTitle: "Judul <\u200bscript>" }, { seoTitle: "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML" }],
+      [{ noindex: "true" }, { noindex: "Isian belum benar." }],
+      [{ noindex: 1 }, { noindex: "Isian belum benar." }],
+    ];
+    for (const [overrides, fields] of cases) {
+      const res = await call(LIST, { method: "POST", cookie, json: form(overrides) });
+      expect(res.status, JSON.stringify(overrides)).toBe(400);
+      expect(await fieldsOf(res), JSON.stringify(overrides)).toEqual(fields);
+    }
+    expect(await count("blog_posts")).toBe(0);
+    // exactly 70 characters (after cleaning) is accepted, `IPK < 3` is text and not markup
+    expect((await createDraft(cookie, { seoTitle: ` ${"y".repeat(70)} ` })).seoTitle).toBe("y".repeat(70));
+    expect((await createDraft(cookie, { seoTitle: "Syarat IPK < 3 dan > 2" })).seoTitle).toBe("Syarat IPK < 3 dan > 2");
+  });
+
+  test("update: absent keeps both, null or spaces clear the title, a boolean sets noindex; the audit names the fields and never the text", async () => {
+    const cookie = await editor();
+    const item = await createDraft(cookie, { seoTitle: TITLE, noindex: true });
+    const absent = await put(cookie, item.id, { title: "Judul lain" });
+    expect(((await absent.json()) as { item: Item }).item).toMatchObject({ title: "Judul lain", seoTitle: TITLE, noindex: true });
+    expect(await auditFields("blog.update")).toEqual([["title"]]);
+
+    expect((await put(cookie, item.id, { title: "Judul lain", seoTitle: "Judul baru", noindex: false })).status).toBe(200);
+    expect(await stored(item.id)).toEqual({ seoTitle: "Judul baru", noindex: 0 });
+    expect(await auditFields("blog.update")).toEqual([["title"], ["seoTitle", "noindex"]]);
+    const audit = JSON.stringify(await auditRows());
+    expect(audit).not.toContain("Judul baru");
+
+    for (const clear of [null, "", "   "]) {
+      await put(cookie, item.id, { title: "Judul lain", seoTitle: "Sementara" });
+      expect((await put(cookie, item.id, { title: "Judul lain", seoTitle: clear })).status).toBe(200);
+      expect((await stored(item.id)).seoTitle, JSON.stringify(clear)).toBeNull();
+    }
+    // the same values again are no change: no write, no audit row
+    const before = (await auditRows()).length;
+    expect((await put(cookie, item.id, { title: "Judul lain", seoTitle: null, noindex: false })).status).toBe(200);
+    expect((await auditRows()).length).toBe(before);
+    // an update over 70 characters is refused like a create
+    const res = await put(cookie, item.id, { title: "Judul lain", seoTitle: "z".repeat(71) });
+    expect(res.status).toBe(400);
+    expect(await fieldsOf(res)).toEqual({ seoTitle: "Judul SEO maksimal 70 karakter" });
+  });
+
+  test("public: the article answer carries seoTitle (null when none); noindex: true appears on the article and on its index entry only when set", async () => {
+    const cookie = await editor();
+    const hidden = await createDraft(cookie, { title: "Artikel Tersembunyi dari Google", seoTitle: TITLE, noindex: true });
+    const plain = await createDraft(cookie, { title: "Artikel Biasa yang Terindeks" });
+    for (const item of [hidden, plain]) expect((await verb(cookie, item.id, "publish")).status).toBe(200);
+
+    const a = await publicArticle(hidden.slug);
+    expect(a.seoTitle).toBe(TITLE);
+    expect(a.noindex).toBe(true);
+    const b = await publicArticle(plain.slug);
+    expect(b.seoTitle).toBeNull();
+    expect(b).not.toHaveProperty("noindex");
+
+    const entries = await publicEntries();
+    expect(entries.find((e) => e.slug === hidden.slug)!.noindex).toBe(true);
+    expect(entries.find((e) => e.slug === plain.slug)).not.toHaveProperty("noindex");
+    for (const entry of entries) expect(entry).not.toHaveProperty("seoTitle");
+  });
+});
 
 describe("blog: publish and unpublish", () => {
   test("publishing dates an undated draft now, makes it public, and writes blog.publish", async () => {

@@ -22,6 +22,7 @@ import { portalSpaChecks } from "./negative-checks-spa-portal.mjs";
 import { portalFilesSpaChecks } from "./negative-checks-portal-files.mjs";
 import { portalWizardSpaChecks } from "./negative-checks-spa-portal-wizard.mjs";
 import { blogMetaSpaChecks } from "./negative-checks-blog-meta.mjs";
+import { blogSeoSpaChecks } from "./negative-checks-blog-seo.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -57,6 +58,7 @@ const checks = [
 
   // The blog's meta description (SAKEM-094): scripts/negative-checks-blog-meta.mjs (the form, the counter, the mock).
   ...blogMetaSpaChecks,
+  ...blogSeoSpaChecks,
 
   // Who may see and do what
   {

@@ -79,6 +79,11 @@ export interface PublicBlogSummary {
   imageHeight: number | null;
   author: string;
   featured: boolean;
+  /**
+   * Present, and `true`, only when the editor ticked "Sembunyikan dari Google" (SAKEM-109): the site leaves the article out of
+   * the sitemap and its page says noindex. Absent otherwise, so the entries of every other article are as they were.
+   */
+  noindex?: true;
 }
 
 /** The summary fields plus the dates and bodies the article page needs. */
@@ -90,6 +95,11 @@ export interface PublicBlogArticle extends PublicBlogSummary {
    * (the migrated articles carry the description their WordPress page had); null when none is set: use the excerpt.
    */
   description: string | null;
+  /**
+   * The text for `<title>`, og:title and twitter:title, used as written (SAKEM-109, "Judul SEO"); null when none is set: the
+   * site uses the title with its suffix.
+   */
+  seoTitle: string | null;
   /** The source of truth. */
   contentMarkdown: string;
   /** Rendered when the article was saved; never rendered on read. */

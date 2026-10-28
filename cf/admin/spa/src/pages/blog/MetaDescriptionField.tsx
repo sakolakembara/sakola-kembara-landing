@@ -35,9 +35,12 @@ export function describeCount(length: number, kept: boolean): { text: string; to
   return { text: guide, tone: "ok" };
 }
 
+/** What `form.field(name)` hands a control: the id and name are the field's, so the error summary can link to it. */
+export type FieldBinding = { id: string; name: string; value: string; onChange: (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement | HTMLSelectElement>) => void };
+
 interface Props {
-  /** `form.field("metaDescription")`: the id and name are the field's, so the error summary can link to it. */
-  field: { id: string; name: string; value: string; onChange: (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement | HTMLSelectElement>) => void };
+  /** `form.field("metaDescription")`. */
+  field: FieldBinding;
   error?: string;
   /** The description the article had when it was loaded ("" for none): a text equal to it is never refused for its length. */
   stored: string;

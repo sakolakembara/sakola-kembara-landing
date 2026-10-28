@@ -17,7 +17,6 @@ import {
   buildLine,
   builtBeaconProblems,
   builtConfigProblems,
-  builtGtmProblems,
   builtPortalProblems,
   describeResources,
   missingRequired,
@@ -26,7 +25,6 @@ import {
 } from '../../scripts/production-deploy-command.mjs';
 import { TARGETS, checkProductionDryRun, productionDryRunEnv } from '../../scripts/production-dry-run.mjs';
 import { parseBeaconId } from '../web-analytics.config.mjs';
-import { parseGtmId } from '../google-tag-manager.config.mjs';
 import { parsePortalEnabled } from '../portal-enabled.config.mjs';
 import { readRoot, repoRoot, webRoot } from './helpers';
 

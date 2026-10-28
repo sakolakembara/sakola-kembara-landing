@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/upload-client";
 import { API_PATH, PREVIEW_PATH, toBody, toValues } from "~/pages/blog/form";
 import { describeCount } from "~/pages/blog/MetaDescriptionField";
+import { describeSeoTitleCount } from "~/pages/blog/SeoTitleField";
 import { cleanMetaDescription, defaultAuthor, formatIsoDay, imageMarkdown, insertAtCursor } from "~/pages/blog/rules";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
@@ -20,6 +21,8 @@ function article(overrides: Record<string, unknown> = {}) {
     title: "Cara Belajar Efektif",
     excerpt: "Ringkasan tentang cara belajar yang efektif untuk siswa.",
     metaDescription: null,
+    seoTitle: null,
+    noindex: false,
     contentMarkdown: "## Mulai dari jadwal\n\nBuat jadwal belajar harian dan patuhi dengan **disiplin**. Istirahat itu penting.",
     category: "Tips",
     author: "Dzul",
@@ -83,7 +86,7 @@ describe("the pure helpers", () => {
   });
 
   test("the form's values and the body of a save", () => {
-    expect(toValues(null, "dzul@contoh.test")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
+    expect(toValues(null, "dzul@contoh.test")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", seoTitle: "", noindex: false, contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
     const item = article({ status: "published", date: "2026-05-21", image: "/uploads/blog-image/2026/a.png" }) as never;
     expect(toBody(toValues(item))).toEqual({
       title: "Cara Belajar Efektif",
@@ -91,6 +94,8 @@ describe("the pure helpers", () => {
       category: "Tips",
       excerpt: "Ringkasan tentang cara belajar yang efektif untuk siswa.",
       metaDescription: null,
+      seoTitle: null,
+      noindex: false,
       contentMarkdown: expect.stringContaining("## Mulai"),
       author: "Dzul",
       featured: false,
@@ -101,6 +106,9 @@ describe("the pure helpers", () => {
     // A stored description goes back as it is, and an emptied field is `null`, never left out (the key is how a clear is told from "not sent").
     expect(toBody(toValues(article({ metaDescription: "Teks untuk mesin pencari." }) as never)).metaDescription).toBe("Teks untuk mesin pencari.");
     expect(toBody({ ...toValues(article({ metaDescription: "Teks." }) as never), metaDescription: "" })).toHaveProperty("metaDescription", null);
+    // SAKEM-109: the SEO title the same way, and noindex as the boolean it is
+    expect(toBody(toValues(article({ seoTitle: "Judul untuk Google", noindex: true }) as never))).toMatchObject({ seoTitle: "Judul untuk Google", noindex: true });
+    expect(toBody({ ...toValues(article({ seoTitle: "Judul." }) as never), seoTitle: "" })).toHaveProperty("seoTitle", null);
   });
 
   test("the meta description's counter: what is said, and in which tone, for each length", () => {
@@ -235,7 +243,7 @@ async function openForm(who: Who, path: string, routes: Parameters<typeof stubAp
 
 async function openEdit(who: Who, item = article(), routes: Parameters<typeof stubApi>[0] = {}) {
   const view = await openForm(who, `/blog/${String(item.id)}/edit`, { [`GET ${LIST}/${String(item.id)}`]: respond({ item }), ...routes });
-  await waitFor(() => expect((screen.getByLabelText(/^Judul/) as HTMLInputElement).value).toBe(String(item.title)));
+  await waitFor(() => expect((screen.getByLabelText(/^Judul(?! SEO)/) as HTMLInputElement).value).toBe(String(item.title)));
   return view;
 }
 
@@ -264,6 +272,38 @@ describe("the form: create", () => {
     await waitFor(() => expect(document.title).toBe("Tulis Artikel | Admin Sakola Kembara"));
   });
 
+  test("SAKEM-109: the SEO title is counted as the Worker stores it, and 'Sembunyikan dari Google' is sent as noindex: true", async () => {
+    const user = userEvent.setup();
+    const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
+    const seo = screen.getByLabelText(/^Judul SEO/);
+    // described by its hint and its counter, so a screen reader reads both on focus
+    const described = (seo.getAttribute("aria-describedby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent ?? "");
+    expect(described.join(" | ")).toMatch(/dipakai apa adanya.*\| 0 karakter \(disarankan 30-60, maksimal 70\)$/);
+    await user.type(seo, "  Cara   Belajar Efektif untuk Siswa SMA  ");
+    expect(screen.getByText("36 karakter (disarankan 30-60, maksimal 70)")).toBeTruthy();
+    const box = screen.getByRole("checkbox", { name: /Sembunyikan dari Google/ });
+    expect((box as HTMLInputElement).checked).toBe(false);
+    await user.click(box);
+    expect((box as HTMLInputElement).checked).toBe(true);
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
+    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
+    await user.click(screen.getByRole("tab", { name: /Konten/ }));
+    await user.click(bodyField());
+    await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await act(async () => screen.getByRole("button", { name: "Buat Artikel" }).click());
+    expect(api.last(`POST ${LIST}`)?.body).toMatchObject({ seoTitle: "  Cara   Belajar Efektif untuk Siswa SMA  ", noindex: true });
+  });
+
+  test("SAKEM-109: the SEO title counter says, in words, what a result shows and what the Worker refuses", () => {
+    const guide = (n: number) => `${n} karakter (disarankan 30-60, maksimal 70)`;
+    expect(describeSeoTitleCount(0)).toEqual({ text: guide(0), tone: "neutral" });
+    expect(describeSeoTitleCount(12)).toEqual({ text: guide(12), tone: "warn" });
+    expect(describeSeoTitleCount(45)).toEqual({ text: guide(45), tone: "ok" });
+    expect(describeSeoTitleCount(65)).toEqual({ text: `${guide(65)}. Bagian akhir bisa terpotong di hasil pencarian.`, tone: "warn" });
+    expect(describeSeoTitleCount(70).tone).toBe("warn");
+    expect(describeSeoTitleCount(71)).toEqual({ text: "71 karakter, melebihi maksimal 70", tone: "over" });
+  });
+
   test("submitting sends the body the Worker takes, once, then opens the edit page with 'berhasil dibuat'", async () => {
     const user = userEvent.setup();
     const gate = deferred<Response>();
@@ -271,7 +311,7 @@ describe("the form: create", () => {
       [`POST ${LIST}`]: () => gate.promise,
       [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }),
     });
-    await user.type(screen.getByLabelText(/^Judul/), "Cara Belajar Efektif");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.selectOptions(screen.getByLabelText(/^Kategori/), "Tips");
     await user.click(screen.getByRole("tab", { name: /Konten/ }));
@@ -289,6 +329,8 @@ describe("the form: create", () => {
       category: "Tips",
       excerpt: "Ringkasan tentang cara belajar yang efektif.",
       metaDescription: null,
+      seoTitle: null,
+      noindex: false,
       contentMarkdown: "Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.",
       author: "tester",
       featured: false,
@@ -307,7 +349,7 @@ describe("the form: create", () => {
     await openForm(WRITER, "/blog/new", {
       [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { contentMarkdown: "Isi minimal 50 karakter", title: "Judul minimal 3 karakter" } }, 400),
     });
-    await user.type(screen.getByLabelText(/^Judul/), "ab");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "ab");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
 
@@ -322,14 +364,14 @@ describe("the form: create", () => {
     // The title is on the other tab: its link shows the tab, then puts the cursor in the field.
     await user.click(within(summary).getByRole("link", { name: "Judul: Judul minimal 3 karakter" }));
     expect(panel("Detail").hasAttribute("hidden")).toBe(false);
-    expect(document.activeElement).toBe(screen.getByLabelText(/^Judul/));
-    expect(screen.getByLabelText(/^Judul/).getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText(/^Judul(?! SEO)/));
+    expect(screen.getByLabelText(/^Judul(?! SEO)/).getAttribute("aria-invalid")).toBe("true");
   });
 
   test("a slug that is taken is a message on the slug field, with the slug tab shown", async () => {
     const user = userEvent.setup();
     await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ error: "conflict", message: "Data bentrok dengan data lain yang sudah ada.", fields: { slug: "Slug sudah dipakai" } }, 409) });
-    await user.type(screen.getByLabelText(/^Judul/), "Judul yang sah");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul yang sah");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.type(screen.getByLabelText(/^Slug/), "halo");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
@@ -367,8 +409,8 @@ describe("the form: edit", () => {
     expect(screen.getByText("/blog/cara-belajar-efektif")).toBeTruthy();
     expect(screen.getByText("Draf")).toBeTruthy();
 
-    await user.clear(screen.getByLabelText(/^Judul/));
-    await user.type(screen.getByLabelText(/^Judul/), "Judul baru");
+    await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul baru");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     expect(await notice("Artikel berhasil disimpan.")).toBeTruthy();
     const put = api.last(`PUT ${LIST}/b1`)!;
@@ -384,14 +426,14 @@ describe("the form: edit", () => {
       [`GET ${LIST}/b1`]: () => Promise.resolve(respond({ item: served })),
       [`PUT ${LIST}/b1`]: respond({ error: "stale", message: "Data ini sudah diubah orang lain sejak kamu membukanya. Muat ulang untuk melihat versi terbaru." }, 409),
     });
-    await waitFor(() => expect((screen.getByLabelText(/^Judul/) as HTMLInputElement).value).toBe("Cara Belajar Efektif"));
-    await user.type(screen.getByLabelText(/^Judul/), " saya");
+    await waitFor(() => expect((screen.getByLabelText(/^Judul(?! SEO)/) as HTMLInputElement).value).toBe("Cara Belajar Efektif"));
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " saya");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     expect((await screen.findByText(/Data ini sudah diubah orang lain/)).textContent).toContain("Perubahan yang belum disimpan akan hilang");
 
     served = article({ title: "Dari orang lain", updatedAt: "2026-10-05T00:00:00.000Z" });
     await user.click(screen.getByRole("button", { name: "Muat ulang" }));
-    await waitFor(() => expect((screen.getByLabelText(/^Judul/) as HTMLInputElement).value).toBe("Dari orang lain"));
+    await waitFor(() => expect((screen.getByLabelText(/^Judul(?! SEO)/) as HTMLInputElement).value).toBe("Dari orang lain"));
     expect(api.count(`GET ${LIST}/b1`)).toBe(2);
   });
 
@@ -530,7 +572,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
   test("the text goes to the Worker as typed, and an emptied field as null; a new article sends it in the create", async () => {
     const user = userEvent.setup();
     const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
-    await user.type(screen.getByLabelText(/^Judul/), "Cara Belajar Efektif");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.click(screen.getByRole("tab", { name: /Konten/ }));
     await user.click(bodyField());
@@ -551,8 +593,8 @@ describe("the form: the meta description (SAKEM-094)", () => {
     expect(field().value).toBe("Cara belajar efektif untuk siswa.");
     expect(counter().textContent).toBe(`33 karakter ${ideal}`);
     // Nothing changed in it: the stored text goes back.
-    await user.clear(screen.getByLabelText(/^Judul/));
-    await user.type(screen.getByLabelText(/^Judul/), "Judul baru");
+    await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul baru");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     expect(await notice("Artikel berhasil disimpan.")).toBeTruthy();
     expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ title: "Judul baru", metaDescription: "Cara belajar efektif untuk siswa." });
@@ -681,8 +723,8 @@ describe("the form: publish and unpublish", () => {
         return Promise.resolve(respond({ item: published({ title: "Judul baru", updatedAt: "2026-10-04T00:00:00.000Z" }) }));
       },
     });
-    await user.clear(screen.getByLabelText(/^Judul/));
-    await user.type(screen.getByLabelText(/^Judul/), "Judul baru");
+    await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul baru");
     await user.click(screen.getByRole("button", { name: "Terbitkan" }));
     expect(await notice("Artikel berhasil diterbitkan.")).toBeTruthy();
     expect(order).toEqual(["PUT", "POST"]);
@@ -737,7 +779,7 @@ describe("the form: read-only", () => {
     expect(screen.queryByRole("tab")).toBeNull(); // no tabs: both parts are on the page
     expect(panel("Detail").hasAttribute("hidden")).toBe(false);
     expect(panel("Konten").hasAttribute("hidden")).toBe(false);
-    expect(screen.getByLabelText(/^Judul/).matches(":disabled")).toBe(true);
+    expect(screen.getByLabelText(/^Judul(?! SEO)/).matches(":disabled")).toBe(true);
     expect(bodyField().readOnly).toBe(true);
     expect(bodyField().value).toContain("## Mulai dari jadwal");
     expect(screen.queryByRole("button", { name: "Simpan Perubahan" })).toBeNull();
@@ -816,9 +858,9 @@ describe("the preview", () => {
     await user.click(screen.getByRole("tab", { name: /Preview/ }));
     await screen.findByText("Pratinjau");
     await user.click(screen.getByRole("tab", { name: /Detail/ }));
-    await user.type(screen.getByLabelText(/^Judul/), " ");
-    await user.clear(screen.getByLabelText(/^Judul/));
-    await user.type(screen.getByLabelText(/^Judul/), "ab");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " ");
+    await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "ab");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     const summary = await screen.findByRole("alert");
     await user.click(within(summary).getByRole("link", { name: "Isi Artikel: Isi minimal 50 karakter" }));
@@ -910,7 +952,7 @@ describe("the hero image", () => {
     const { api } = await openEdit(WRITER, article({ image: "/blog/images/2026/05/sampul.jpg", imageWidth: 1200, imageHeight: 800 }), {
       [`PUT ${LIST}/b1`]: respond({ item: article({ image: "/blog/images/2026/05/sampul.jpg", updatedAt: "2026-10-02T00:00:00.000Z" }) }),
     });
-    await user.type(screen.getByLabelText(/^Judul/), " baru");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " baru");
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
     await screen.findByText("Artikel berhasil disimpan.");
     expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ image: "/blog/images/2026/05/sampul.jpg" });

@@ -147,6 +147,17 @@ SAKEM-094. The text a search engine shows under the article's title, and what th
 
 The rest is the blog's, untouched. The text is part of the audit diff by name only (`metaDescription` among the fields of a `blog.create`, and in a `blog.update` only when it changed; a save that changes nothing writes nothing, and an empty string in the column counts as none, so saving none over it is not a change). `blog.publish` and `blog.unpublish` do not read or write it, and are not stopped by it (an imported description over 300 does not prevent publishing). `If-Match`, the slug lock and the date rule are as in [section 6](#6-states-and-rules); a save of the description alone on a **published** article asks for a purge of its page like any other edit, and on a draft asks for nothing. It costs no round trip ([D1 budget](#d1-budget)). The admin's stand-in preview shows only the body, no meta of any kind, so it shows nothing of this field either.
 
+### The SEO title and noindex
+
+SAKEM-109, asked by the editors (they were used to WordPress's AIOSEO plugin, which the new site cannot run). Two optional fields on the Detail tab of the blog form, next to the meta description:
+
+| Field | Column | What the site does with it | Rules |
+| --- | --- | --- | --- |
+| **"Judul SEO"** | `blog_posts.seo_title` (nullable text, migration `0014`) | The whole `<title>`, `og:title` and `twitter:title` of the article page, **used as written**: the site adds no " - Yayasan Sakola Kembara Indonesia" suffix, so the editor decides the whole line a result shows. Empty: the page keeps the title with its suffix, as before. The JSON-LD `headline` stays the article's own title (it is the heading of the page). | Cleaned like the meta description (`cleanSeoTitle`, the same function under its own name), plain text (a tag is refused: "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML"), **at most 70 characters** ("Judul SEO maksimal 70 karakter"; a raw text over 500 is refused before cleaning), guidance 30 to 60 in the counter. No stored title is longer, so the maximum holds on every save (no "keep the stored one" exception). Absent on an update keeps it; `null`, empty or spaces clear it. |
+| **"Sembunyikan dari Google"** (checkbox, under "Mesin pencari") | `blog_posts.noindex` (integer boolean, NOT NULL DEFAULT false, migration `0014`) | The article stays published, listed on `/blog` and reachable by its link, but its page says `<meta name="robots" content="noindex, follow">` (no googlebot line) and the sitemap leaves it out. | A boolean only (anything else is "Isian belum benar."). A create without it stores false; an update without it keeps what is stored. |
+
+Both reach the public answers ([`content-api.md`](content-api.md)): `seoTitle` on the article (`null` when none), `noindex: true` on the article and on its list and related entries **only when set**, so the entries of every other article keep their shape. Both are in the audit diff by name only; a change on a published article asks for a purge of its page like any other edit (the sitemap and the list follow with their own short cache). **Deploy order:** the migration, then `sakem-admin`, then the site; the site treats a missing `seoTitle` as none and a missing `noindex` as false, so it is safe in any order after the migration.
+
 ### D1 budget
 
 | Request | Round trips |
@@ -339,5 +350,17 @@ New with SAKEM-094 (the meta description), all for Dzul's review:
 | Counter, a text the Worker will refuse | "N karakter, melebihi maksimal 300" |
 | Worker message, too long | "Deskripsi meta maksimal 300 karakter" |
 | Worker message, HTML in it | "Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML" |
+
+New with SAKEM-109 (the SEO title and noindex), all for Dzul's review:
+
+| Where | Text |
+| --- | --- |
+| Field label, and its name in the error summary | "Judul SEO" |
+| Hint under the field | "Judul yang tampil di hasil pencarian dan saat dibagikan, dipakai apa adanya. Kosongkan untuk memakai Judul." |
+| Counter | "N karakter (disarankan 30-60, maksimal 70)", over 60 followed by "Bagian akhir bisa terpotong di hasil pencarian.", over 70 "N karakter, melebihi maksimal 70" |
+| Worker messages | "Judul SEO maksimal 70 karakter", "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML" |
+| Checkbox group label | "Mesin pencari" |
+| Checkbox | "Sembunyikan dari Google", with "Artikel tetap bisa dibuka lewat tautannya, tetapi tidak dimasukkan ke hasil pencarian dan sitemap." |
+| Its name in the error summary | "Sembunyikan dari Google" |
 
 (The one description in the mock's first article is development data and is not shipped: "Kisah Azkiya menemukan makna belajar bersama Sakola Kembara, dari ragu-ragu hingga yakin melangkah ke bangku kuliah.") The Excerpt's own hint still says it appears in the "SEO description": true when the Deskripsi meta is empty, and left as it is until Dzul says whether to reword it.

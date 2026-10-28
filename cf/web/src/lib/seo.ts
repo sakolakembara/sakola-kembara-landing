@@ -123,6 +123,8 @@ export interface SeoData {
 }
 
 export const ROBOTS_INDEX = 'index, follow';
+/** An article hidden from search (SAKEM-109): not indexed, but its links are still followed. */
+export const ROBOTS_NOINDEX = 'noindex, follow';
 export const GOOGLEBOT_INDEX =
   'index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1';
 
@@ -162,6 +164,13 @@ export type SeoInput =
       crumbs?: readonly Crumb[];
       /** schema.org type of the page node; default WebPage (the blog index is a CollectionPage, like the live archives). */
       pageType?: 'WebPage' | 'CollectionPage';
+      /**
+       * An article's "Judul SEO" (SAKEM-109): the whole `<title>`, og:title and twitter:title, used AS WRITTEN (no suffix).
+       * The JSON-LD keeps `title` (the article's own heading is its headline).
+       */
+      seoTitle?: string | null;
+      /** An article's "Sembunyikan dari Google" (SAKEM-109): robots `noindex, follow`, and no googlebot line. */
+      noindex?: boolean;
     }
   | {
       kind: 'notfound';
@@ -233,14 +242,15 @@ export function buildSeo(input: SeoInput): SeoData {
   const image = absoluteUrl(input.ogImage || DEFAULT_OG_IMAGE);
   const article = input.article;
   const sized = article && input.ogImage && article.imageWidth && article.imageHeight;
+  const shownTitle = input.seoTitle || input.title;
   return {
-    title: pageTitle(input.title),
+    title: input.seoTitle || pageTitle(input.title),
     description: input.description,
     canonical: absoluteUrl(input.path),
-    robots: ROBOTS_INDEX,
-    googlebot: GOOGLEBOT_INDEX,
+    robots: input.noindex ? ROBOTS_NOINDEX : ROBOTS_INDEX,
+    googlebot: input.noindex ? null : GOOGLEBOT_INDEX,
     og: {
-      title: input.title,
+      title: shownTitle,
       description: input.description,
       url: absoluteUrl(input.path),
       siteName: SITE_NAME,
@@ -253,7 +263,7 @@ export function buildSeo(input: SeoInput): SeoData {
     },
     twitter: {
       card: 'summary_large_image',
-      title: input.title,
+      title: shownTitle,
       description: input.description,
       image,
     },

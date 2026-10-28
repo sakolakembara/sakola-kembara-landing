@@ -39,6 +39,10 @@ export interface BlogListItem {
 export interface BlogItem extends BlogListItem {
   /** The text for search results (SAKEM-094), or null when the article has none and the site uses the excerpt. */
   metaDescription: string | null;
+  /** The title for search results and shares, used as written (SAKEM-109), or null: the site uses the title. */
+  seoTitle: string | null;
+  /** "Sembunyikan dari Google" (SAKEM-109). */
+  noindex: boolean;
   contentMarkdown: string;
   image: string | null;
   imageWidth: number | null;
@@ -52,6 +56,9 @@ export interface BlogValues extends Record<string, string | boolean> {
   excerpt: string;
   /** "" for none. */
   metaDescription: string;
+  /** "" for none. */
+  seoTitle: string;
+  noindex: boolean;
   contentMarkdown: string;
   author: string;
   featured: boolean;
@@ -70,6 +77,8 @@ export function toValues(item: BlogItem | null, email?: string | null): BlogValu
     category: item?.category ?? "Cerita",
     excerpt: item?.excerpt ?? "",
     metaDescription: item?.metaDescription ?? "",
+    seoTitle: item?.seoTitle ?? "",
+    noindex: item?.noindex ?? false,
     contentMarkdown: item?.contentMarkdown ?? "",
     author: item?.author ?? defaultAuthor(email),
     featured: item?.featured ?? false,
@@ -89,6 +98,8 @@ export function toBody(values: BlogValues) {
     category: values.category,
     excerpt: values.excerpt,
     metaDescription: values.metaDescription === "" ? null : values.metaDescription,
+    seoTitle: values.seoTitle === "" ? null : values.seoTitle,
+    noindex: values.noindex,
     contentMarkdown: values.contentMarkdown,
     author: values.author,
     featured: values.featured,
@@ -103,6 +114,8 @@ export const FIELD_LABELS: Record<string, string> = {
   slug: "Slug",
   excerpt: "Excerpt",
   metaDescription: "Deskripsi meta",
+  seoTitle: "Judul SEO",
+  noindex: "Sembunyikan dari Google",
   category: "Kategori",
   date: "Tanggal Publikasi",
   author: "Penulis",
@@ -119,6 +132,8 @@ export const FIELD_TAB: Record<string, EditorTab> = {
   slug: "detail",
   excerpt: "detail",
   metaDescription: "detail",
+  seoTitle: "detail",
+  noindex: "detail",
   category: "detail",
   date: "detail",
   author: "detail",

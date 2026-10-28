@@ -25,6 +25,11 @@ export interface BlogSummary {
   featured: boolean;
   /** Not in the contract's list entries (only in the article); used for the sitemap `lastmod` when an API sends it. */
   modifiedISO?: string;
+  /**
+   * "Sembunyikan dari Google" (SAKEM-109): set, and `true`, only when the API sends `noindex: true`. The sitemap leaves the
+   * article out and its page says noindex; the article stays listed and reachable.
+   */
+  noindex?: true;
 }
 
 export interface BlogArticle extends BlogSummary {
@@ -34,6 +39,11 @@ export interface BlogArticle extends BlogSummary {
    * (SAKEM-090); null when the API has none or does not send the field (an API from before it): use `excerpt`.
    */
   description: string | null;
+  /**
+   * The text for `<title>`, og:title and twitter:title, used as written (SAKEM-109, "Judul SEO"); null when the API has none or
+   * does not send the field (an API from before it): the page uses the title with the site suffix.
+   */
+  seoTitle: string | null;
   /**
    * HTML rendered by the API when the article was saved. It is injected UNESCAPED
    * (`set:html`), so it is trusted only because the API sanitizes at save (the
@@ -96,6 +106,8 @@ export function parseSummary(raw: unknown): BlogSummary | null {
   };
   const modified = str(raw.modifiedISO);
   if (modified && ISO_DATE.test(modified)) summary.modifiedISO = modified;
+  // Only the boolean `true` hides an article: anything else (absent, "true", 1) is the default, indexed.
+  if (raw.noindex === true) summary.noindex = true;
   return summary;
 }
 
@@ -129,6 +141,7 @@ export function parseBlogArticle(payload: unknown): BlogArticlePayload | null {
       ...summary,
       modifiedISO: modifiedISO && ISO_DATE.test(modifiedISO) ? modifiedISO : summary.dateISO,
       description: str(payload.article.description),
+      seoTitle: str(payload.article.seoTitle),
       contentHtml: html,
     },
     related: summaries(payload.related),

@@ -99,6 +99,13 @@
       "when": 1791964917437,
       "tag": "0013_portal_applications",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1793082747744,
+      "tag": "0014_blog_seo_title_noindex",
+      "breakpoints": true
     }
   ]
 }

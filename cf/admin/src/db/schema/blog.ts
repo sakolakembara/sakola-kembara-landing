@@ -44,6 +44,17 @@ export const blogPosts = sqliteTable(
      * that is the text search results show today. Public as `description` on the article answer only.
      */
     metaDescription: text("meta_description"),
+    /**
+     * The text of `<title>`, og:title and twitter:title when it is not the article's title (SAKEM-109, the blog form's "Judul
+     * SEO" field, at most 70 characters, used as written: the site adds no suffix to it). Optional: none means the page title
+     * is the article title with the site suffix, as before. Public as `seoTitle` on the article answer only.
+     */
+    seoTitle: text("seo_title"),
+    /**
+     * "Sembunyikan dari Google" (SAKEM-109): the article stays published and reachable, but its page says
+     * `<meta name="robots" content="noindex, follow">` and the sitemap leaves it out. Public as `noindex: true` (only when set).
+     */
+    noindex: integer("noindex", { mode: "boolean" }).notNull().default(false),
     contentMarkdown: text("content_markdown").notNull(),
     /** Rendered from contentMarkdown at save time, same pipeline as the Astro site's build-time renderer. */
     contentHtml: text("content_html").notNull(),

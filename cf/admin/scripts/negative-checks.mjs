@@ -24,6 +24,7 @@ import { portalFilesChecks } from "./negative-checks-portal-files.mjs";
 import { portalDraftsChecks } from "./negative-checks-portal-drafts.mjs";
 import { portalStagingChecks } from "./negative-checks-portal-staging.mjs";
 import { blogMetaChecks } from "./negative-checks-blog-meta.mjs";
+import { blogSeoChecks } from "./negative-checks-blog-seo.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -76,6 +77,7 @@ const checks = [
 
   // The blog's meta description (SAKEM-094): scripts/negative-checks-blog-meta.mjs.
   ...blogMetaChecks,
+  ...blogSeoChecks,
 
   // ---------------------------------------------------------------- auth
   {
@@ -842,8 +844,8 @@ const checks = [
   {
     name: "public blog card exposes an extra column (the author's user id)",
     file: "src/public/serializers.ts",
-    from: "    author: row.author,\n    featured: row.featured,\n  };\n}\n\nexport interface BlogArticleRow",
-    to: "    author: row.author,\n    featured: row.featured,\n    createdBy: (row as unknown as { createdBy?: string }).createdBy,\n  } as PublicBlogSummary;\n}\n\nexport interface BlogArticleRow",
+    from: "    ...(row.noindex ? { noindex: true as const } : {}),\n  };\n}\n\nexport interface BlogArticleRow",
+    to: "    ...(row.noindex ? { noindex: true as const } : {}),\n    createdBy: (row as unknown as { createdBy?: string }).createdBy,\n  } as PublicBlogSummary;\n}\n\nexport interface BlogArticleRow",
     tests: PUBLIC_LEAK,
   },
 

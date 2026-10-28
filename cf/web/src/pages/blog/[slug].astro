@@ -57,6 +57,9 @@ const related = (page?.related ?? []).map((item) => ({ ...item, cover: coverAttr
     // the page's own meta description when the article has one (the migrated ones carry their WordPress description), else the excerpt
     description: article.description ?? article.excerpt,
     path: `/blog/${article.slug}`,
+    // SAKEM-109: the editor's "Judul SEO" (used as written) and "Sembunyikan dari Google"
+    seoTitle: article.seoTitle,
+    noindex: article.noindex === true,
     ogImage: cover?.src,
     article: {
       dateISO: article.dateISO,

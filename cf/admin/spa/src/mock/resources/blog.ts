@@ -1,6 +1,6 @@
 import { ifMatch } from "~/lib/crud/etag";
 import type { BlogItem, BlogStatus } from "~/pages/blog/model";
-import { BLOG_CATEGORIES, BODY_LIMIT_LABEL, cleanMetaDescription, hasMarkup, LIMITS } from "~/pages/blog/rules";
+import { BLOG_CATEGORIES, BODY_LIMIT_LABEL, cleanMetaDescription, cleanSeoTitle, hasMarkup, LIMITS } from "~/pages/blog/rules";
 import { type MockParse, type MockRequest, type MockResource, mockError, mockJson } from "../resources";
 
 // MOCK, local development only. The blog of `/api/admin/blog` with the rules of the Worker's schema
@@ -27,6 +27,8 @@ function seed(): MockBlog[] {
     title,
     excerpt: `Ringkasan artikel "${title}" untuk melihat daftar dan formulir bekerja.`,
     metaDescription: null,
+    seoTitle: null,
+    noindex: false,
     contentMarkdown: BODY(title),
     category,
     author: "Tim Sakola Kembara",
@@ -110,6 +112,29 @@ function parseMetaDescription(body: Record<string, unknown>, fields: Record<stri
   return cleaned || null;
 }
 
+const SEO_TITLE_RAW_MAX = 500;
+const SEO_TITLE_MARKUP = "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML";
+const SEO_TITLE_TOO_LONG = `Judul SEO maksimal ${LIMITS.seoTitleMax} karakter`;
+
+/** The Worker's `seoTitleField` in miniature (SAKEM-109): like the meta description, but its maximum holds on every save. */
+function parseSeoTitle(body: Record<string, unknown>, fields: Record<string, string>): string | null | undefined {
+  const raw = body.seoTitle;
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (typeof raw !== "string") {
+    fields.seoTitle = "Isian belum benar.";
+    return undefined;
+  }
+  if (raw.length > SEO_TITLE_RAW_MAX) {
+    fields.seoTitle = SEO_TITLE_TOO_LONG;
+    return undefined;
+  }
+  const cleaned = cleanSeoTitle(raw);
+  if (hasMarkup(cleaned)) fields.seoTitle = SEO_TITLE_MARKUP;
+  else if (cleaned.length > LIMITS.seoTitleMax) fields.seoTitle = SEO_TITLE_TOO_LONG;
+  return cleaned || null;
+}
+
 const isDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 
 /**
@@ -131,6 +156,8 @@ function parse(body: Record<string, unknown>, excerptMin: number = LIMITS.excerp
   // The maximum applies to a create and to a text the writer changes; the one an article already has stays valid (the Worker's update does the same).
   const metaDescription = parseMetaDescription(body, fields);
   if (!fields.metaDescription && metaDescription && metaDescription.length > LIMITS.metaDescriptionMax && metaDescription !== stored?.metaDescription) fields.metaDescription = META_DESCRIPTION_TOO_LONG;
+  const seoTitle = parseSeoTitle(body, fields);
+  if (body.noindex !== undefined && typeof body.noindex !== "boolean") fields.noindex = "Isian belum benar.";
   const markdown = text(body.contentMarkdown);
   if (markdown.length < LIMITS.bodyMin) fields.contentMarkdown = "Isi minimal 50 karakter";
   else if (markdown.length > LIMITS.bodyMax) fields.contentMarkdown = `Isi maksimal ${BODY_LIMIT_LABEL} karakter`;
@@ -151,6 +178,8 @@ function parse(body: Record<string, unknown>, excerptMin: number = LIMITS.excerp
       excerpt,
       // Absent stays absent (an update keeps what is stored, a create stores none), `null` clears.
       ...(metaDescription === undefined ? {} : { metaDescription }),
+      ...(seoTitle === undefined ? {} : { seoTitle }),
+      ...(typeof body.noindex === "boolean" ? { noindex: body.noindex } : {}),
       contentMarkdown: markdown,
       category: body.category as string,
       author,
@@ -208,6 +237,8 @@ function custom({ method, rest, init, rows }: MockRequest<MockBlog>): Response |
     const row: MockBlog = {
       ...(parsed.values as MockBlog),
       metaDescription: parsed.values.metaDescription ?? null,
+      seoTitle: parsed.values.seoTitle ?? null,
+      noindex: parsed.values.noindex ?? false,
       id: `mock-blog-${created}`,
       slug,
       status: "draft",
@@ -238,7 +269,7 @@ function custom({ method, rest, init, rows }: MockRequest<MockBlog>): Response |
     if (row.status === "published" && !parsed.values.date) problems.date = "Format harus YYYY-MM-DD";
     if (Object.keys(problems).length > 0) return mockError(400, "invalid", "Periksa kembali isian formulir.", { fields: problems });
     if (rows.some((other) => other.id !== row.id && other.slug === slug)) return mockError(409, "conflict", "Data bentrok dengan data lain yang sudah ada.", { fields: { slug: "Slug sudah dipakai" } });
-    const next = { ...parsed.values, metaDescription: parsed.values.metaDescription === undefined ? row.metaDescription || null : parsed.values.metaDescription, slug, publishedAt: parsed.values.date === row.date ? row.publishedAt : parsed.values.date ? `${parsed.values.date}T00:00:00.000Z` : null };
+    const next = { ...parsed.values, metaDescription: parsed.values.metaDescription === undefined ? row.metaDescription || null : parsed.values.metaDescription, seoTitle: parsed.values.seoTitle === undefined ? row.seoTitle || null : parsed.values.seoTitle, noindex: parsed.values.noindex ?? row.noindex, slug, publishedAt: parsed.values.date === row.date ? row.publishedAt : parsed.values.date ? `${parsed.values.date}T00:00:00.000Z` : null };
     const same = (Object.keys(next) as (keyof typeof next)[]).every((key) => next[key] === (row as unknown as Record<string, unknown>)[key]);
     if (same) return mockJson({ item: row }, 200, { ETag: ifMatch(row.updatedAt) });
     Object.assign(row, next, { updatedAt: nextVersion(row.updatedAt) });

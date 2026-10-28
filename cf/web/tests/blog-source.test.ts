@@ -335,7 +335,7 @@ describe('the API client and the markdown adapter agree on every article', () =>
     expect(res.headers.get('cache-control')).toBe('public, s-maxage=60, stale-while-revalidate=300');
     const json = (await res.json()) as { article: Record<string, unknown> };
     expect(Object.keys(json.article).sort()).toEqual(
-      ['author', 'category', 'contentHtml', 'contentMarkdown', 'date', 'dateISO', 'description', 'excerpt', 'featured', 'image', 'imageHeight', 'imageWidth', 'modifiedISO', 'slug', 'title'].sort(),
+      ['author', 'category', 'contentHtml', 'contentMarkdown', 'date', 'dateISO', 'description', 'excerpt', 'featured', 'image', 'imageHeight', 'imageWidth', 'modifiedISO', 'seoTitle', 'slug', 'title'].sort(),
     );
     const list = (await (await fetch(`${base}/api/public/blog?page=1&pageSize=3`)).json()) as { featured: Record<string, unknown>; articles: Record<string, unknown>[] };
     for (const entry of [list.featured, ...list.articles]) {

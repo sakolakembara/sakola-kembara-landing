@@ -28,7 +28,7 @@ async function seed(count: number, featuredAt: number[]) {
   // The wire summaries of every article, newest first (by the instant, as the database orders them): the input of the shared rules.
   return [...rows]
     .sort((a, b) => b.publishedAt!.getTime() - a.publishedAt!.getTime())
-    .map((row) => serializeBlogSummary({ ...row, image: row.image ?? null, imageWidth: row.imageWidth ?? null, imageHeight: row.imageHeight ?? null, featured: row.featured ?? false }));
+    .map((row) => serializeBlogSummary({ ...row, image: row.image ?? null, imageWidth: row.imageWidth ?? null, imageHeight: row.imageHeight ?? null, featured: row.featured ?? false, noindex: row.noindex ?? false }));
 }
 
 describe("the SQL agrees with the shared rules of cf/web (blog-contract.mjs)", () => {

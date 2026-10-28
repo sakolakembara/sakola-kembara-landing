@@ -32,7 +32,7 @@ export const markdownBlogSource: BlogSource = {
     return {
       source: 'build',
       data: {
-        article: { ...summary, modifiedISO: meta.modifiedISO, description: meta.description || null, contentHtml: bodies[slug] ?? '' },
+        article: { ...summary, modifiedISO: meta.modifiedISO, description: meta.description || null, seoTitle: null, contentHtml: bodies[slug] ?? '' },
         related: pickRelated(summary, summaries),
       },
     };

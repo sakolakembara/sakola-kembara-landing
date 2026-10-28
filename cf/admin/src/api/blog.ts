@@ -16,6 +16,7 @@ import {
   BODY_MIN,
   cleanExcerpt,
   cleanMetaDescription,
+  cleanSeoTitle,
   EXCERPT_MAX,
   EXCERPT_MIN,
   hasMarkup,
@@ -24,6 +25,8 @@ import {
   META_DESCRIPTION_MAX,
   META_DESCRIPTION_RAW_MAX,
   pickFreeSlug,
+  SEO_TITLE_MAX,
+  SEO_TITLE_RAW_MAX,
   SLUG_MAX,
   SLUG_PATTERN,
   slugify,
@@ -105,6 +108,21 @@ const metaDescriptionField = z
   .transform((value) => (value === undefined || value === null ? value : cleanMetaDescription(value) || null))
   .refine((value) => !value || !hasMarkup(value), { message: META_DESCRIPTION_MARKUP });
 
+const SEO_TITLE_TOO_LONG = `Judul SEO maksimal ${SEO_TITLE_MAX} karakter`;
+const SEO_TITLE_MARKUP = "Judul SEO hanya boleh berupa teks biasa, tanpa tag HTML";
+
+/**
+ * The SEO title (SAKEM-109): plain text, cleaned like the meta description, the same `undefined` / `null` / text rule (absent
+ * keeps what is stored on an update). Unlike the meta description its maximum holds on every save: no stored title is longer.
+ */
+const seoTitleField = z
+  .string()
+  .max(SEO_TITLE_RAW_MAX, SEO_TITLE_TOO_LONG)
+  .nullish()
+  .transform((value) => (value === undefined || value === null ? value : cleanSeoTitle(value) || null))
+  .refine((value) => !value || !hasMarkup(value), { message: SEO_TITLE_MARKUP })
+  .refine((value) => !value || value.length <= SEO_TITLE_MAX, { message: SEO_TITLE_TOO_LONG });
+
 const blogFields = {
   title: z.string().trim().min(TITLE_MIN, "Judul minimal 3 karakter").max(TITLE_MAX, "Judul maksimal 200 karakter"),
   // Optional: a new article gets one from its title, like the legacy admin did. Lower case is done for the writer.
@@ -139,6 +157,9 @@ const blogFields = {
     .transform((value) => value || null)
     .refine((value) => value === null || isIsoDay(value), { message: "Format harus YYYY-MM-DD" }),
   metaDescription: metaDescriptionField,
+  seoTitle: seoTitleField,
+  // "Sembunyikan dari Google" (SAKEM-109). Absent: a create stores false, an update keeps what is stored.
+  noindex: z.boolean({ error: "Isian belum benar." }).optional(),
 };
 
 const EXCERPT_TOO_SHORT = `Excerpt minimal ${EXCERPT_MIN} karakter`;
@@ -179,6 +200,8 @@ function present(row: Row) {
     excerpt: row.excerpt,
     // As the public answer reads it: an empty string is none.
     metaDescription: row.metaDescription || null,
+    seoTitle: row.seoTitle || null,
+    noindex: row.noindex,
     contentMarkdown: row.contentMarkdown,
     category: row.category,
     author: row.author,
@@ -446,6 +469,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
       title: form.title,
       excerpt: form.excerpt,
       metaDescription: form.metaDescription ?? null,
+      seoTitle: form.seoTitle ?? null,
+      noindex: form.noindex ?? false,
       contentMarkdown: prepared.markdown,
       contentHtml: prepared.html,
       image: prepared.image,
@@ -515,6 +540,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
       excerpt: form.excerpt,
       // Absent keeps what is stored, `null` (or an empty text) clears it.
       metaDescription: form.metaDescription === undefined ? before.metaDescription || null : form.metaDescription,
+      seoTitle: form.seoTitle === undefined ? before.seoTitle || null : form.seoTitle,
+      noindex: form.noindex ?? before.noindex,
       contentMarkdown: prepared.markdown,
       contentHtml: prepared.html,
       image: prepared.image,
@@ -526,7 +553,7 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
       publishedAt: publishedAtFor(form.date, before),
     };
     // An empty string in the column (never written by this API) is none, so saving it as none is not a change.
-    const fields = changedFields({ ...before, metaDescription: before.metaDescription || null }, values);
+    const fields = changedFields({ ...before, metaDescription: before.metaDescription || null, seoTitle: before.seoTitle || null }, values);
     if (fields.length === 0) {
       // Nothing to save: no write, no audit row, the version stays.
       withEtag(c, before);

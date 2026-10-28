@@ -138,8 +138,8 @@ export const blogMetaChecks = [
   {
     name: "blog meta: saving none over an empty string in the column counts as a change",
     file: ROUTES,
-    from: "changedFields({ ...before, metaDescription: before.metaDescription || null }, values)",
-    to: "changedFields(before, values)",
+    from: "metaDescription: before.metaDescription || null, seoTitle",
+    to: "seoTitle",
     tests: API,
   },
 
