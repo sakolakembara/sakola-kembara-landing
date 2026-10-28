@@ -100,8 +100,8 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     const hrefOf = (re: RegExp) => a.filter((tag) => re.test(tag)).map((tag) => attr(tag, 'href'));
     expect(a.filter((tag) => attr(tag, 'href') === '/daftar')).toHaveLength(2);
     expect(html.match(/Daftar Sekarang/g)).toHaveLength(2);
-    // navy in the cream hero, yellow on the navy closing band (SAKEM-112)
-    expect(a.filter((tag) => attr(tag, 'href') === '/daftar').map((tag) => /bg-primary-blue-dark/.test(tag) ? 'navy' : /bg-secondary-yellow/.test(tag) ? 'yellow' : '?')).toEqual(['navy', 'yellow']);
+    // navy in the cream hero and navy on the sunglow closing band (SAKEM-113)
+    expect(a.filter((tag) => attr(tag, 'href') === '/daftar').map((tag) => /bg-primary-blue-dark/.test(tag) ? 'navy' : /bg-secondary-yellow/.test(tag) ? 'yellow' : '?')).toEqual(['navy', 'navy']);
     // SAKEM-103: the portal is off in a build with no PORTAL_ENABLED, so the page names it nowhere (no Masuk, no session address)
     expect(html).not.toContain('/portal');
     expect(html).not.toContain('get-session');
@@ -133,9 +133,16 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     expect([...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1])).toEqual([expect.stringMatching(/^\/_astro\/MotionLoader\./)]);
   });
 
-  it('has no <img> besides the navbar and footer logos (so nothing to optimise, no image request)', () => {
-    const imgs = [...html.matchAll(/<img [^>]*>/g)].map((m) => m[0]);
-    for (const img of imgs) expect(img).toMatch(/alt="Sakola Kembara"/);
+  it('photos (SAKEM-113): the two hero polaroids are eager, the four benefit photos and the closing polaroid lazy; each from the WebP ladder, decorative (empty alt) and sized', () => {
+    const imgs = [...html.matchAll(/<img [^>]*>/g)].map((m) => m[0]).filter((img) => !/alt="Sakola Kembara"/.test(img));
+    expect(imgs).toHaveLength(7);
+    expect(imgs.map((img) => attr(img, 'loading'))).toEqual(['eager', 'eager', 'lazy', 'lazy', 'lazy', 'lazy', 'lazy']);
+    for (const img of imgs) {
+      expect(img).toMatch(/\salt(\s|=""|>)/); // an empty alt renders as a bare `alt`
+      expect(img).toMatch(/srcset="[^"]*\.webp \d+w/);
+      expect(img).toMatch(/ width="\d+"/);
+      expect(img).toMatch(/ height="\d+"/);
+    }
   });
 
   it('the sitemap still lists /gabung-siswa (and, like the Next sitemap, not the documents page) and no longer /laporan (a redirect since SAKEM-105); it is rendered by the Worker now, so its output is checked in scripts/e2e.mjs', () => {

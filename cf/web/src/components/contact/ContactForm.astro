@@ -35,8 +35,10 @@ interface Props {
 }
 const { sent = false, successMessage = '', message, fieldErrors = {}, values = {}, turnstileSiteKey } = Astro.props;
 
-const control = 'w-full border-2 border-gray-200 focus:border-primary-blue focus:outline-none rounded-xl px-4 py-2.5 leading-6';
-const labelClass = 'block text-sm font-medium text-gray-700 mb-2';
+// White fields with 10 px corners on the navy-mist band of /kontak (SAKEM-113).
+const control =
+  'w-full rounded-[10px] border border-primary-blue-dark/20 bg-white px-4 py-3 leading-6 text-primary-blue-dark focus:border-primary-blue-dark focus:outline-none';
+const labelClass = 'block text-sm font-semibold text-primary-blue-dark mb-2';
 const errorClass = 'mt-1.5 text-xs text-danger-fg';
 const error = (field: keyof ContactFieldErrors) => fieldErrors[field]?.[0];
 // aria wiring of a control inside its Field: describedby and invalid only when there is an error.
@@ -175,7 +177,7 @@ const aria = (field: keyof ContactFieldErrors) =>
       }
 
       <div class="pt-1">
-        <Button type="submit" size="lg">
+        <Button type="submit" size="lg" class="bg-primary-blue-dark hover:bg-primary-blue">
           {/* Lucide "send" (18 px), as in the React form. */}
           <svg
             xmlns="http://www.w3.org/2000/svg"

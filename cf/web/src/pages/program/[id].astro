@@ -8,14 +8,13 @@ import asramaAkhirTahunPhoto from '@root/public/images/program/asrama-akhir-tahu
 import asramaIntensifPhoto from '@root/public/images/program/asrama-intensif.jpg';
 import mentoringPhoto from '@root/public/images/program/mentoring.jpg';
 import Button from '~/components/Button.astro';
-import Container from '~/components/Container.astro';
 import Heading from '~/components/Heading.astro';
 import Icon from '~/components/Icon.astro';
 import SectionHeader from '~/components/SectionHeader.astro';
-import Tag from '~/components/Tag.astro';
 import Base from '~/layouts/Base.astro';
 import { galleryAlt, getProgramGallery, gallerySrcset } from '~/lib/gallery';
 import { programSeo, programs, type Program, type ProgramPhoto } from '~/lib/programs';
+import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 
 // One static HTML file per program stage (program/<id>.html), served by the assets
 // layer. An id that is not in getStaticPaths() matches no file and no route: the
@@ -51,66 +50,43 @@ const { seo, jsonLd } = programSeo(program, shareImage.src);
 
 // Read from the image manifest (src/lib/gallery.ts, built by scripts/build-assets.mjs); [] hides the section.
 const gallery = getProgramGallery(program.id);
+
+// Layout (SAKEM-113, round 4 of the inner-pages mock approved by Dzul on 2026-10-28). The activities split three ways:
+// those with a photo are polaroids on the navy band, those with a PDF are the boxes after it, the rest are rows on the band.
+// An activity's hours ("290+ jam belajar setahun", "Hingga 400 jam belajar") are also shown large above the polaroids.
+const withPhoto = program.subPrograms.filter((s) => s.photo);
+const withPdf = program.subPrograms.filter((s) => !s.photo && s.attachment);
+const plain = program.subPrograms.filter((s) => !s.photo && !s.attachment);
+const stats = program.subPrograms.flatMap((s) => {
+  const m = s.hours?.match(/^(hingga\s+)?(\d+\+?)\s+(.+)$/i);
+  return m ? [{ before: m[1]?.trim().toLowerCase() ?? '', value: m[2], label: `${m[3]} · ${s.title}` }] : [];
+});
 ---
 
 <Base seo={seo} jsonLd={jsonLd}>
-  <main class="min-h-screen bg-white">
-    {/* Shared hero: the three stages read as one journey. The page's h1 is the stage
-        title below, so each URL keeps its own heading. */}
-    <section class="bg-[#FBFBF5] text-primary-blue-dark pt-[calc(var(--hero-top,8rem)_+_2rem)] pb-28 md:pt-[calc(var(--hero-top,8rem)_+_4rem)] md:pb-32">
-      <Container>
-        {/* The cream hero of every sub-page (SAKEM-112), title on the left; no eyebrow since then. */}
-        <SectionHeader
-          align="left"
-          as="p"
-          title="Apa saja yang dilalui penerima manfaat Sakola Kembara?"
-        />
-      </Container>
-    </section>
-
-    {/* Stage tabs. Each tab is a link to that stage's own URL, so stages stay shareable,
-        server-rendered, and work with Back. */}
-    <Container class="-mt-20 md:-mt-24 relative z-10">
-      <nav
-        aria-label="Tahapan program"
-        class="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-primary-blue/10 px-3 py-5 sm:px-8 sm:py-7"
-      >
-        <ol class="relative grid grid-cols-3 gap-2 sm:gap-4">
-          {/* Connector from the first circle's centre to the last one's */}
-          <span aria-hidden="true" class="absolute top-5 sm:top-[22px] left-[16.67%] right-[16.67%] h-0.5 bg-gray-200"></span>
+  <main class="min-h-screen bg-[#FBFBF5] text-primary-blue-dark">
+    {/* Hero: the journey question, the three stages as links (each stage keeps its own URL, server-rendered, works with
+        Back), then the stage title as the page's h1 and its photo, the LCP image. */}
+    <section class="flex flex-col gap-8 px-6 pt-[calc(var(--hero-top,8rem)_+_2rem)] md:gap-9 md:px-10 md:pt-[calc(var(--hero-top,8rem)_+_4rem)]">
+      <p class="anim-fade-up max-w-[40em] text-[17px] text-gray-600 md:text-lg">Apa saja yang dilalui penerima manfaat Sakola Kembara?</p>
+      <nav aria-label="Tahapan program" class="anim-fade-up">
+        <ol class="flex flex-wrap gap-2">
           {
             programs.map((stage, index) => {
               const active = stage.id === program.id;
               return (
-                <li class="relative">
+                <li>
                   <a
                     href={`/program/${stage.id}`}
                     aria-current={active ? 'page' : undefined}
-                    class="group flex flex-col items-center gap-2 text-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-blue"
+                    class:list={[
+                      'inline-flex items-center rounded-full px-4 py-2.5 text-[15px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-blue',
+                      active
+                        ? 'bg-primary-blue-dark text-white'
+                        : 'border-[1.5px] border-primary-blue-dark/25 hover:border-primary-blue-dark',
+                    ]}
                   >
-                    <span
-                      class={`flex w-10 h-10 sm:w-11 sm:h-11 items-center justify-center rounded-full border-2 font-bold transition-colors ${
-                        active
-                          ? 'bg-primary-blue border-primary-blue text-white'
-                          : 'bg-white border-gray-200 text-gray-500 group-hover:border-primary-blue/50 group-hover:text-primary-blue'
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-                    <span
-                      class={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${
-                        active ? 'text-primary-blue' : 'text-gray-500'
-                      }`}
-                    >
-                      {stage.tag}
-                    </span>
-                    <span
-                      class={`hidden sm:block text-base font-bold ${
-                        active ? 'text-primary-blue' : 'text-gray-700 group-hover:text-primary-blue'
-                      }`}
-                    >
-                      {stage.title}
-                    </span>
+                    {String(index + 1).padStart(2, '0')} · {stage.title}
                   </a>
                 </li>
               );
@@ -118,202 +94,199 @@ const gallery = getProgramGallery(program.id);
           }
         </ol>
       </nav>
-    </Container>
-
-    {/* Stage intro. The photo is the page's LCP image. */}
-    <Container as="section" class="pt-12 md:pt-16 pb-6">
-      <div class="anim-fade-up grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-        <div class="relative h-[240px] sm:h-[320px] md:h-[360px] rounded-2xl overflow-hidden">
-          <Image
-            src={photos[program.photo]}
-            alt={program.title}
-            width={1200}
-            widths={[640, 960, 1200]}
-            sizes="(max-width: 768px) 100vw, 50vw"
-            format="webp"
-            quality={75}
-            loading="eager"
-            fetchpriority="high"
-            decoding="async"
-            class="absolute inset-0 h-full w-full object-cover"
-          />
-        </div>
-        <div class="flex flex-col items-start gap-4">
-          <Tag>
-            Tahap {currentIndex + 1} · {program.tag}
-          </Tag>
-          <Heading level="article" class="text-gray-900">
-            {program.title}
-          </Heading>
-          <p class="text-base md:text-lg text-gray-700 leading-relaxed">
-            {program.description}
-          </p>
-          <ul class="space-y-2.5">
-            {
-              program.points.map((point) => (
-                <li class="flex gap-2.5 text-[15px] text-gray-700 leading-relaxed">
-                  <span class="mt-2 w-1.5 h-1.5 rounded-full bg-secondary-green flex-shrink-0" />
-                  <span>{point}</span>
-                </li>
-              ))
-            }
-          </ul>
-        </div>
-      </div>
-    </Container>
-
-    {/* Sub Programs Section */}
-    <section class="py-12 md:py-16">
-      <Container>
-        <SectionHeader align="left" title="Kegiatan" class="mb-8 md:mb-10" />
-
-        <div class="grid md:grid-cols-2 gap-6">
-          {
-            program.subPrograms.map((subProgram, index) => (
-              <div
-                class="anim-fade-up bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden hover:border-primary-blue/20 hover:shadow-lg transition-all duration-300 flex flex-col"
-                style={`animation-delay: ${(0.1 + index * 0.08).toFixed(2)}s`}
-              >
-                {subProgram.photo && (
-                  <div class="relative h-[180px] sm:h-[220px] w-full">
-                    <Image
-                      src={photos[subProgram.photo]}
-                      alt={`Kegiatan ${subProgram.title}`}
-                      width={960}
-                      widths={[480, 768, 960]}
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      format="webp"
-                      quality={75}
-                      loading="lazy"
-                      decoding="async"
-                      class="absolute inset-0 h-full w-full object-cover"
-                    />
-                  </div>
-                )}
-
-                <div class="p-6 md:p-8 flex-1 flex flex-col">
-                  <div class="flex items-start gap-4">
-                    <div class="flex-shrink-0">
-                      <div class="w-10 h-10 bg-primary-blue/10 rounded-full flex items-center justify-center">
-                        <Icon name="circle-check" size={20} class="text-primary-blue" />
-                      </div>
-                    </div>
-                    <div class="min-w-0">
-                      <Heading level="card" class="text-gray-900 mb-2">
-                        {subProgram.title}
-                      </Heading>
-                      {subProgram.hours && (
-                        <Tag tone="soft" class="mb-3">
-                          <Icon name="clock" size={14} />
-                          {subProgram.hours}
-                        </Tag>
-                      )}
-                      <p class="text-gray-600 leading-relaxed">{subProgram.description}</p>
-                    </div>
-                  </div>
-
-                  {subProgram.attachment && (
-                    <Button
-                      href={subProgram.attachment.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      variant="outline"
-                      class="mt-5 sm:ml-14 sm:self-start"
-                    >
-                      <Icon name="file-text" size={16} />
-                      {subProgram.attachment.label} (PDF)
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))
-          }
-        </div>
-      </Container>
-    </section>
-
-    {/* Timeline Placeholder.
-        SAKEM-057: kept exactly as the legacy page has it. Whether this section is
-        replaced or removed is decided on that ticket, not in the Astro port. */}
-    <section class="py-16 bg-gray-50">
-      <Container class="text-center">
-        <SectionHeader
-          title="Timeline Kegiatan"
-          lead="Jadwal dan timeline kegiatan akan segera diperbarui."
-          class="mb-8"
+      <Heading level="page" class="anim-fade-up text-balance text-[clamp(44px,7.5vw,96px)] leading-none tracking-[-0.04em]">
+        {program.title}
+      </Heading>
+      <div class="relative mt-4 aspect-[4/3] overflow-hidden rounded-xl sm:aspect-[16/9] lg:aspect-[21/9]">
+        <Image
+          src={photos[program.photo]}
+          alt={program.title}
+          width={1200}
+          widths={[640, 960, 1200]}
+          sizes="100vw"
+          format="webp"
+          quality={75}
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          class="absolute inset-0 h-full w-full object-cover"
         />
-        <div class="bg-white rounded-2xl p-12 border border-gray-200">
-          <p class="text-gray-400">Konten timeline akan ditambahkan</p>
-        </div>
-      </Container>
+      </div>
     </section>
 
-    {/* Gallery. No photos in the program's folder: the whole section is left out. */}
-    {
-      gallery.length > 0 && (
-        <section class="py-16">
-          <Container>
-            <SectionHeader
-              align="left"
-              title="Galeri Foto"
-              lead={`Dokumentasi kegiatan program ${program.title}.`}
-              class="mb-8"
-            />
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-              {gallery.map((photo, index) => (
-                <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100">
-                  <img
-                    src={photo.variants[photo.variants.length - 1].src}
-                    srcset={gallerySrcset(photo)}
-                    sizes="(min-width: 768px) 33vw, 50vw"
-                    width={photo.width}
-                    height={photo.height}
-                    alt={galleryAlt(program.title, index)}
+    {/* Stage intro: the description large on the left, the points on the right. */}
+    <section class="grid gap-10 px-6 py-16 md:grid-cols-2 md:gap-16 md:px-10 md:pb-32 md:pt-[4.5rem]">
+      <p class="anim-reveal text-xl font-medium leading-[1.5] tracking-[-0.01em] md:text-2xl">{program.description}</p>
+      <ul class="anim-reveal flex flex-col">
+        {
+          program.points.map((point) => (
+            <li class="flex items-baseline gap-4 border-t border-primary-blue-dark/15 py-4 text-[17px] last:border-b md:text-lg">
+              <span class="size-2.5 shrink-0 rounded-full bg-secondary-yellow" aria-hidden="true" />
+              <span>{point}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    {/* Activities on navy: the hours, the photo activities as polaroids, the others as rows. */}
+    <section class="flex flex-col gap-14 bg-primary-blue-dark px-6 py-24 text-white md:gap-16 md:px-10 md:py-28">
+      <SectionHeader align="left" tone="dark" title="Kegiatan" class="anim-reveal" />
+      {
+        stats.length > 0 && (
+          <div class="grid gap-8 sm:grid-cols-3 sm:gap-10">
+            {stats.map((stat, index) => (
+              <div class="anim-reveal flex flex-col gap-2.5 border-t border-white/25 pt-6" style={`--i:${index}`}>
+                <span class="text-[clamp(56px,6.5vw,80px)] font-medium leading-[0.9] tracking-[-0.04em] text-secondary-yellow">
+                  {stat.before && <span class="text-2xl tracking-normal">{stat.before} </span>}
+                  {stat.value}
+                </span>
+                <span class="text-[15px] text-white/75">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        )
+      }
+      {
+        withPhoto.length > 0 && (
+          <div class="grid gap-x-7 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+            {withPhoto.map((subProgram, index) => (
+              <article class="anim-reveal group flex flex-col gap-4" style={`--i:${index % 4}`}>
+                <div class:list={[polaroidFrame, 'bg-[#FBFBF5] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]']} style={polaroidTilt(index)}>
+                  <Image
+                    src={photos[subProgram.photo!]}
+                    alt={`Kegiatan ${subProgram.title}`}
+                    width={800}
+                    widths={[400, 600, 800]}
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                    format="webp"
+                    quality={75}
                     loading="lazy"
                     decoding="async"
-                    class="absolute inset-0 h-full w-full object-cover hover:scale-105 transition-transform duration-300"
+                    class="aspect-[4/3] w-full rounded-[3px] object-cover"
                   />
                 </div>
-              ))}
-            </div>
-          </Container>
+                <Heading level="card" as="h3" class="mt-1 text-[22px] text-white">{subProgram.title}</Heading>
+                <p class="text-[15px] leading-[1.6] text-white/75">{subProgram.description}</p>
+              </article>
+            ))}
+          </div>
+        )
+      }
+      {
+        plain.length > 0 && (
+          <ul class="flex flex-col">
+            {plain.map((subProgram) => (
+              <li class="anim-reveal grid gap-3 border-t border-white/25 py-7 last:border-b md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-10">
+                <Heading level="card" as="h3" class="text-2xl text-white">{subProgram.title}</Heading>
+                <p class="text-base leading-[1.65] text-white/75">{subProgram.description}</p>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    {/* Activities with a sample PDF: one box each, the whole box is the download link. */}
+    {
+      withPdf.length > 0 && (
+        <section class="grid gap-4 px-6 pt-16 md:grid-cols-2 md:px-10 md:pt-28">
+          {withPdf.map((subProgram) => (
+            <a
+              href={subProgram.attachment!.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="anim-reveal flex min-h-[260px] flex-col justify-between gap-6 rounded-xl bg-[#EEF1F6] p-8 transition-colors hover:bg-[#E3E8F1] md:min-h-[280px] md:p-9"
+            >
+              <span class="flex flex-col gap-3">
+                <span class="text-[28px] font-medium tracking-[-0.02em] md:text-[32px]">{subProgram.title}</span>
+                <span class="max-w-[30em] text-base leading-[1.65] text-gray-600">{subProgram.description}</span>
+              </span>
+              <span class="inline-flex items-center gap-2 font-semibold">
+                <Icon name="file-text" size={18} />
+                {subProgram.attachment!.label} (PDF)
+              </span>
+            </a>
+          ))}
         </section>
       )
     }
 
-    <section class="pb-16 md:pb-24">
-      <Container class="flex flex-col gap-8">
-        {/* Next stage */}
-        {
-          nextProgram && (
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 md:p-8 border border-gray-200 rounded-2xl">
-              <div>
-                <span class="block text-sm text-gray-500 mb-1">Tahap berikutnya</span>
-                <span class="text-lg md:text-xl font-bold text-gray-900">
-                  {nextProgram.tag} · {nextProgram.title}
-                </span>
-              </div>
-              <Button href={`/program/${nextProgram.id}`} variant="outline" class="self-start sm:self-auto">
-                Lanjut ke Tahap {currentIndex + 2}
-              </Button>
-            </div>
-          )
-        }
+    {/* The timeline placeholder ("Jadwal dan timeline kegiatan akan segera diperbarui.") is not rendered while it has no
+        content (Dzul, 2026-10-28, SAKEM-113); SAKEM-057 decides what it becomes. */}
 
-        {/* Download PitchDeck CTA */}
-        <div class="bg-primary-blue-dark rounded-2xl p-8 md:p-10 text-center">
-          <div>
-            <Heading level="panel" as="h2" class="text-white mb-3">Ingin Tahu Lebih Lanjut?</Heading>
-            <p class="text-white/80 mb-6 max-w-[600px] mx-auto">
-              Download PitchDeck kami untuk informasi lengkap tentang program, dampak, dan cara berkontribusi.
-            </p>
-            <Button href="/files/pitchdeck-sakola-kembara.pdf" download variant="yellow-on-navy" size="lg">
-              <Icon name="download" size={20} />
-              Download PitchDeck
-            </Button>
+    {/* Gallery. No photos in the program's folder: the whole section is left out. */}
+    {
+      gallery.length > 0 && (
+        <section class="flex flex-col gap-10 px-6 pt-16 md:px-10 md:pt-28">
+          <SectionHeader
+            align="left"
+            title="Galeri Foto"
+            lead={`Dokumentasi kegiatan program ${program.title}.`}
+            class="anim-reveal"
+          />
+          {/* Masonry columns: any number of photos, each at its own proportions, no holes. */}
+          <div class="columns-2 gap-3 sm:gap-4 md:columns-3">
+            {gallery.map((photo, index) => (
+              <img
+                src={photo.variants[photo.variants.length - 1].src}
+                srcset={gallerySrcset(photo)}
+                sizes="(min-width: 768px) 33vw, 50vw"
+                width={photo.width}
+                height={photo.height}
+                alt={galleryAlt(program.title, index)}
+                loading="lazy"
+                decoding="async"
+                class="mb-3 h-auto w-full break-inside-avoid rounded-xl bg-primary-blue-dark/10 sm:mb-4"
+              />
+            ))}
           </div>
-        </div>
-      </Container>
+        </section>
+      )
+    }
+
+    {/* Next stage: a sunglow band, the whole band is the link. */}
+    {
+      nextProgram && (
+        <a
+          href={`/program/${nextProgram.id}`}
+          class="group mt-16 grid bg-secondary-yellow md:mt-28 md:grid-cols-[minmax(0,1fr)_360px]"
+        >
+          <span class="flex flex-col justify-center gap-4 px-6 py-14 md:px-10 md:py-[4.5rem]">
+            <span class="font-semibold">Tahap berikutnya · {nextProgram.tag}</span>
+            <span class="text-[clamp(36px,5vw,64px)] font-medium leading-[1.05] tracking-[-0.035em]">
+              {nextProgram.title} <span aria-hidden="true" class="inline-block transition-transform group-hover:translate-x-2 motion-reduce:transition-none">→</span>
+            </span>
+            <span class="sr-only">Lanjut ke Tahap {currentIndex + 2}</span>
+          </span>
+          <Image
+            src={photos[nextProgram.photo]}
+            alt=""
+            width={720}
+            widths={[360, 720]}
+            sizes="(min-width: 768px) 360px, 100vw"
+            format="webp"
+            quality={75}
+            loading="lazy"
+            decoding="async"
+            class="hidden h-full w-full object-cover md:block"
+          />
+        </a>
+      )
+    }
+
+    {/* Download PitchDeck CTA */}
+    <section class:list={['grid items-end gap-8 px-6 py-20 md:grid-cols-2 md:gap-16 md:px-10 md:py-24', !nextProgram && 'mt-8']}>
+      <Heading level="panel" as="h2" class="anim-reveal text-[clamp(32px,3.5vw,44px)] leading-[1.1] tracking-[-0.025em]">Ingin Tahu Lebih Lanjut?</Heading>
+      <div class="anim-reveal flex max-w-[30em] flex-col items-start gap-5 md:justify-self-end">
+        <p class="text-[17px] leading-[1.65] text-gray-600">
+          Download PitchDeck kami untuk informasi lengkap tentang program, dampak, dan cara berkontribusi.
+        </p>
+        <Button href="/files/pitchdeck-sakola-kembara.pdf" download variant="primary" size="lg" class="bg-primary-blue-dark hover:bg-primary-blue">
+          <Icon name="download" size={20} />
+          Download PitchDeck
+        </Button>
+      </div>
     </section>
   </main>
 </Base>

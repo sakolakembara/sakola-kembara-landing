@@ -139,7 +139,7 @@ describe('/gabung-siswa', () => {
 
   it('four benefits and four steps, like the legacy arrays', () => {
     expect([...legacy.matchAll(/^\s+icon: \w+,$/gm)]).toHaveLength(4);
-    expect([...web.matchAll(/^\s+icon: '[\w-]+',$/gm)]).toHaveLength(4);
+    expect([...web.matchAll(/^\s+photo: '\/images\/[\w/.-]+',$/gm)]).toHaveLength(4); // a photo per benefit instead of an icon (SAKEM-113)
     expect([...legacy.matchAll(/step: "0\d"/g)].map((m) => m[0])).toEqual([...web.matchAll(/step: '0\d'/g)].map((m) => m[0].replace(/'/g, '"')));
   });
 });

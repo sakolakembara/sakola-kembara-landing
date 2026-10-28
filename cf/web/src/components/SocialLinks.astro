@@ -1,9 +1,9 @@
 ---
 import { cx } from '~/lib/ui';
 
-/** The four social profiles as round icon links. `theme="dark"` is for navy. */
+/** The four social profiles as round icon links. `theme="dark"` is for navy; `outline` is the larger navy-ringed set of /kontak (SAKEM-113). */
 interface Props {
-  theme?: 'dark' | 'light';
+  theme?: 'dark' | 'light' | 'outline';
 }
 const { theme = 'dark' } = Astro.props;
 
@@ -30,10 +30,11 @@ const socials = [
   },
 ];
 
-const linkClass =
-  theme === 'dark'
-    ? 'bg-white/10 text-white hover:bg-primary-blue'
-    : 'bg-gray-100 text-gray-600 hover:bg-primary-blue hover:text-white';
+const linkClass = {
+  dark: 'w-9 h-9 bg-white/10 text-white hover:bg-primary-blue',
+  light: 'w-9 h-9 bg-gray-100 text-gray-600 hover:bg-primary-blue hover:text-white',
+  outline: 'size-12 border-[1.5px] border-primary-blue-dark text-primary-blue-dark hover:bg-primary-blue-dark hover:text-white',
+}[theme];
 ---
 
 <div class="flex gap-3">
@@ -44,7 +45,7 @@ const linkClass =
         target="_blank"
         rel="noopener noreferrer"
         aria-label={social.label}
-        class={cx('w-9 h-9 rounded-full flex items-center justify-center transition-colors', linkClass)}
+        class={cx('rounded-full flex items-center justify-center transition-colors', linkClass)}
       >
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path d={social.path} />

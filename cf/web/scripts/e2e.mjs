@@ -955,7 +955,7 @@ for (const id of PROGRAM_IDS) {
     assert.equal(ld['@type'], 'EducationalOccupationalProgram');
     assert.equal(ld.url, `https://sakolakembara.org/program/${id}`);
     assert.match(html, /aria-current="page"/);
-    assert.match(html, /Timeline Kegiatan/);
+    assert.doesNotMatch(html, /Timeline Kegiatan/); // not rendered while it has no content (SAKEM-113)
   });
 
   await check('program', `/program/${id}: gallery images and the share image are served by the assets layer (webp, immutable), never by the origin`, async () => {
@@ -1054,8 +1054,8 @@ await check('donasi', '/donasi: the QRIS image is a plain <img> with dimensions,
   const html = await text(await get('/donasi'));
   const qr = imgTags(html).find((i) => /alt="QRIS Sakola Kembara"/.test(i));
   assert.ok(qr);
-  assert.equal(attrOf(qr, 'width'), '280');
-  assert.equal(attrOf(qr, 'height'), '373');
+  assert.equal(attrOf(qr, 'width'), '260');
+  assert.equal(attrOf(qr, 'height'), '347');
   assert.equal(attrOf(qr, 'loading'), 'lazy');
   assert.ok(!/srcset=/.test(qr));
   clearStub();
@@ -1193,11 +1193,11 @@ await check('reports', '/donasi, its Laporan section: SSR 200 from the API, ONE 
   const years = [...html.matchAll(/<h3 class="[^"]*">(Tahun[^<]*)<\/h3>/g)].map((m) => m[1]);
   assert.deepEqual(years, ['Tahun Ajaran 2025/2026', 'Tahun 2025', 'Tahun Ajaran 2024/2025', 'Tahun 2024']);
   assert.deepEqual([...html.matchAll(/<span class="text-sm text-gray-500">(\d+) laporan<\/span>/g)].map((m) => Number(m[1])), [2, 2, 1, 1]);
-  const titles = [...html.matchAll(/<h4 class="text-lg font-bold text-gray-900 mb-2 leading-snug">([^<]*)<\/h4>/g)].map((m) => decode(m[1]));
+  const titles = [...html.matchAll(/<h4 class="mb-2 text-lg font-semibold leading-snug text-primary-blue-dark">([^<]*)<\/h4>/g)].map((m) => decode(m[1]));
   assert.deepEqual(titles, SAMPLE_REPORTS.map((r) => r.title)); // the fixture lists them in display order
   const tags = [...html.matchAll(/rounded-full text-xs font-semibold border border-(\w+)-200 [^"]*">([^<]*)<\/span>/g)].map((m) => `${m[1]}:${m[2]}`);
   assert.deepEqual(tags, ['purple:Laporan Dampak', 'emerald:Laporan Keuangan', 'blue:Laporan Tahunan', 'amber:Laporan Donasi', 'purple:Laporan Dampak', 'blue:Laporan Tahunan']);
-  assert.deepEqual([...html.matchAll(/<div class="text-xs text-gray-500 mb-4">([^<]*)<\/div>/g)].map((m) => m[1]), ['PDF · 1.8 MB', 'PDF · 500 KB', 'PDF · 3.0 MB', 'PDF · 85 KB', 'PDF · 1.5 MB', 'PDF · 2.3 MB']);
+  assert.deepEqual([...html.matchAll(/<div class="mb-4 text-xs text-gray-500">([^<]*)<\/div>/g)].map((m) => m[1]), ['PDF · 1.8 MB', 'PDF · 500 KB', 'PDF · 3.0 MB', 'PDF · 85 KB', 'PDF · 1.5 MB', 'PDF · 2.3 MB']);
   const links = anchorTags(html).filter((a) => a.includes('href="/reports/'));
   assert.deepEqual(links.map((a) => attrOf(a, 'href')), SAMPLE_REPORTS.map((r) => r.filePath));
   for (const a of links) {
@@ -1206,9 +1206,8 @@ await check('reports', '/donasi, its Laporan section: SSR 200 from the API, ONE 
   }
   const t = mainText(html);
   assert.ok(t.includes('Komitmen kami untuk transparansi. Laporan tahunan, keuangan, dampak, dan donasi tersedia untuk diunduh dan dipelajari oleh donor, mitra, dan publik.'));
-  assert.ok(t.includes('Punya pertanyaan tentang laporan kami?'));
-  assert.ok(t.includes('Tim kami senang membantu menjelaskan angka-angka di balik laporan ini.'));
-  assert.ok(t.indexOf('Punya pertanyaan tentang laporan kami?') > t.indexOf('Unduh Laporan'), 'the closing block ends the section');
+  // the closing block ("Punya pertanyaan tentang laporan kami?") was removed by Dzul on 2026-10-28 (SAKEM-113): "Kontak Kami" above asks it
+  assert.ok(!t.includes('Punya pertanyaan tentang laporan kami?'));
   assert.ok(html.includes('href="/kontak"'));
   onlySiteGraph(html);
 });
@@ -1218,11 +1217,12 @@ await check('donasi', '/donasi with the section: the payment cards, the QRIS car
   assert.ok(t.includes('Dukung Perjalanan Mereka Setiap donasi Anda membantu siswa dari keluarga kurang mampu untuk mewujudkan impian mereka masuk perguruan tinggi.'));
   assert.ok(t.includes('Cara Berdonasi Pilih salah satu metode di bawah ini. Donasi dengan nominal berapa pun sangat berarti bagi mereka.'));
   assert.ok(t.includes('Scan QRIS'));
-  assert.ok(html.includes('Scan via <span class="font-semibold text-gray-700">GoPay, OVO, DANA, ShopeePay</span>, atau m-banking.'));
-  assert.ok(t.includes('Transfer Bank Bank Bank Muamalat Kode Bank 147 Nomor Rekening 1010 141 940 Atas Nama Sakola Kembara Indonesia'));
+  assert.ok(html.includes('Scan via <span class="font-semibold text-primary-blue-dark">GoPay, OVO, DANA, ShopeePay</span>, atau m-banking.'));
+  // SAKEM-113: the account number is the large line of the transfer card, the other three details under it
+  assert.ok(t.includes('Transfer Bank Nomor Rekening 1010 141 940 Bank Bank Muamalat Kode Bank 147 Atas Nama Sakola Kembara Indonesia'));
   for (const value of ['Bank Muamalat', '147', '1010 141 940', 'Sakola Kembara Indonesia']) assert.ok(LEGACY_DONASI.includes(`"${value}"`), value);
   assert.equal(attrOf(imgTags(html).find((i) => /alt="QRIS Sakola Kembara"/.test(i)), 'decoding'), 'async');
-  for (const img of imgTags(html)) assert.ok(/\swidth="\d+"/.test(img) && /\sheight="\d+"/.test(img) && /\salt="/.test(img), img);
+  for (const img of imgTags(html)) assert.ok(/\swidth="\d+"/.test(img) && /\sheight="\d+"/.test(img) && /\salt(="|\s|>)/.test(img), img); // the hero polaroid is decorative: a bare `alt`
   const number = LEGACY_DONASI.match(/const ACCOUNT_NUMBER = "(\d+)"/)[1];
   assert.ok(html.includes(`data-copy-account="${number}"`));
   assert.match(html, /<span data-copy-idle[^>]*>[\s\S]*?Salin No Rekening/);
@@ -1232,7 +1232,7 @@ await check('donasi', '/donasi with the section: the payment cards, the QRIS car
   assert.ok(link && link.includes('target="_blank"') && link.includes('rel="noopener noreferrer"'), 'the confirmation form opens in a new tab');
   assert.ok(t.includes('Terima Kasih atas Donasi Anda Setelah berdonasi, mohon konfirmasikan melalui formulir berikut agar donasi Anda dapat kami catat dengan baik. Konfirmasi Donasi'));
   assert.ok(t.includes('Kontak Kami Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu. Hubungi Kami'));
-  assert.ok(anchorTags(html).some((a) => attrOf(a, 'href') === '/kontak' && a.includes('bg-white')));
+  assert.ok(anchorTags(html).some((a) => attrOf(a, 'href') === '/kontak' && a.includes('border-primary-blue-dark')));
   // no script file, no framework: the navbar script and the copy-button script, both inline (the Worker renders the page, Astro still inlines them)
   assert.equal([...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc=/g)].length, 0);
   const scripts = inlineScripts(html);
@@ -1384,7 +1384,7 @@ await check('gabung-siswa', '/gabung-siswa: 200 html from the assets layer, one 
     assert.ok(t.includes(phrase), phrase);
   }
   for (const step of ['01', '02', '03', '04']) assert.ok(t.includes(` ${step} `), step);
-  assert.equal((html.match(/<h3 class="font-bold text-gray-900 mb-2">/g) ?? []).length, 4, 'four steps');
+  assert.equal((html.match(/<h3 class="text-\[19px\] font-medium sm:text-2xl">/g) ?? []).length, 4, 'four steps'); // on navy since SAKEM-113
   const links = anchorTags(html);
   assert.equal(links.filter((a) => attrOf(a, 'href') === '/daftar').length, 2, 'the two Daftar Sekarang buttons of the page (the navbar has none: its slot is empty)');
   assert.equal(links.filter((a) => attrOf(a, 'href') === '/gabung-siswa/docs').length, 1);
@@ -1447,7 +1447,6 @@ await check('gabung-siswa', 'the Worker logged no error while serving /donasi, /
       assert.ok(t.includes('Dukung Perjalanan Mereka') && t.includes('Cara Berdonasi') && t.includes('Bank Muamalat') && t.includes('Konfirmasi Donasi'), 'the rest of the page is all there');
       assert.ok(imgTags(html).some((i) => /alt="QRIS Sakola Kembara"/.test(i)));
       assert.ok(html.includes('data-copy-account="1010141940"'));
-      assert.ok(t.includes('Punya pertanyaan tentang laporan kami?'), 'the closing block of the section is there too');
       assert.ok(html.includes('id="site-nav"') && html.includes('<footer'), 'shell is there');
       assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
       assert.match(html, /<link rel="canonical" href="https:\/\/sakolakembara\.org\/donasi"/);
