@@ -1,6 +1,6 @@
 /**
- * The homepage's GSAP motion (SAKEM-111; Dzul chose GSAP + ScrollTrigger over CSS-only on 2026-10-27). Loaded lazily by
- * a small inline script in index.astro once the page has painted, so it never delays the first view, and never with
+ * The site's GSAP motion (SAKEM-111 on the homepage; Dzul chose GSAP + ScrollTrigger over CSS-only on 2026-10-27; on
+ * every page since SAKEM-112, the homepage standard). Loaded lazily by a small script in Base.astro once the page has painted, so it never delays the first view, and never with
  * reduced motion. Nothing is hidden before this runs: without JS, before it loads, or if it fails, every element simply
  * shows. Only elements still below the fold when it starts are animated, so nothing visible flickers.
  *
@@ -8,7 +8,7 @@
  *   mask is as tall as the line box, which cuts the descenders (j, g, p) at line-height 1.15: the mask gets room below
  *   (padding, taken back by a negative margin so nothing moves), and the split is undone once the words are in place.
  * - `.anim-reveal` blocks: fade and rise, in batches as they enter, staggered within a batch.
- * - The impact band's photo drifts a little against the scroll (parallax).
+ * - The homepage impact band's photo drifts a little against the scroll (parallax).
  * The triggers are measured again when a lazy image loads, since that moves everything under it.
  */
 import { gsap } from 'gsap';

@@ -100,11 +100,12 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     const hrefOf = (re: RegExp) => a.filter((tag) => re.test(tag)).map((tag) => attr(tag, 'href'));
     expect(a.filter((tag) => attr(tag, 'href') === '/daftar')).toHaveLength(2);
     expect(html.match(/Daftar Sekarang/g)).toHaveLength(2);
-    expect(hrefOf(/bg-white text-primary-blue/)).toEqual(['/daftar', '/daftar']);
+    // navy in the cream hero, yellow on the navy closing band (SAKEM-112)
+    expect(a.filter((tag) => attr(tag, 'href') === '/daftar').map((tag) => /bg-primary-blue-dark/.test(tag) ? 'navy' : /bg-secondary-yellow/.test(tag) ? 'yellow' : '?')).toEqual(['navy', 'yellow']);
     // SAKEM-103: the portal is off in a build with no PORTAL_ENABLED, so the page names it nowhere (no Masuk, no session address)
     expect(html).not.toContain('/portal');
     expect(html).not.toContain('get-session');
-    expect(hrefOf(/border-\[1\.5px\] border-white\/60/)).toEqual(['#manfaat']);
+    expect(hrefOf(/border-\[1\.5px\] border-primary-blue-dark /)).toEqual(['#manfaat']);
     expect(html).toContain('<section id="manfaat"');
     expect(a.filter((tag) => attr(tag, 'href') === '/gabung-siswa/docs')).toHaveLength(1);
     // plain links: none of them opens a new tab or carries script
@@ -126,10 +127,10 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('ships no script of its own: the navbar script is the only one, and no JS file', () => {
+  it('ships no script of its own: the navbar script and the shared motion loader (SAKEM-112) are the only ones', () => {
     const scripts = [...html.matchAll(/<script([^>]*)>/g)].filter((m) => !m[1].includes('ld+json'));
-    expect(scripts).toHaveLength(1);
-    expect([...html.matchAll(/<script[^>]*\ssrc=/g)]).toHaveLength(0);
+    expect(scripts).toHaveLength(2);
+    expect([...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1])).toEqual([expect.stringMatching(/^\/_astro\/MotionLoader\./)]);
   });
 
   it('has no <img> besides the navbar and footer logos (so nothing to optimise, no image request)', () => {

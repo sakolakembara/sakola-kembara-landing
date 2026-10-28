@@ -275,7 +275,7 @@ describe.skipIf(!built)('home page build output', () => {
       // the preloader's head gate and its count/iris script, navbar, problem charts, program steps, alumni stories, hero
       // video, and the GSAP motion loader (a module file: it holds a dynamic import, so Astro emits it as a file)
       expect(scripts).toHaveLength(8);
-      expect(scripts.filter((m) => /\ssrc=/.test(m[1])).map((m) => m[1].match(/src="\/_astro\/([\w.]+?)\./)![1])).toEqual(['index']);
+      expect(scripts.filter((m) => /\ssrc=/.test(m[1])).map((m) => m[1].match(/src="\/_astro\/([\w.]+?)\./)![1])).toEqual(['MotionLoader']); // MotionLoader.astro, on every page since SAKEM-112
       expect(eagerRaw).toBeLessThanOrEqual(BUDGET.eagerJs.raw);
       expect(eagerGzip).toBeLessThanOrEqual(BUDGET.eagerJs.gzip);
     });
@@ -301,8 +301,8 @@ describe.skipIf(!built)('home page build output', () => {
       const loader = readFileSync(path.join(client, scripts.find((m) => /\ssrc=/.test(m[1]))![1].match(/src="([^"]+)"/)![1]), 'utf8');
       expect(loader).toContain('prefers-reduced-motion: reduce');
       expect(loader).toContain('requestIdleCallback');
-      expect(loader).toMatch(/home-motion\.[\w-]+\.js/);
-      expect(html).not.toMatch(/home-motion/); // not preloaded by the page itself
+      expect(loader).toMatch(/motion\.[\w-]+\.js/);
+      expect(html).not.toMatch(/\/motion\.[\w-]+\.js/); // not preloaded by the page itself
     });
   });
 });

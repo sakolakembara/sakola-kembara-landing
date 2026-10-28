@@ -57,13 +57,12 @@ const gallery = getProgramGallery(program.id);
   <main class="min-h-screen bg-white">
     {/* Shared hero: the three stages read as one journey. The page's h1 is the stage
         title below, so each URL keeps its own heading. */}
-    <section class="bg-gradient-to-br from-primary-blue to-accent-navy text-white pt-[var(--hero-top,8rem)] pb-28 md:pb-32">
+    <section class="bg-[#FBFBF5] text-primary-blue-dark pt-[calc(var(--hero-top,8rem)_+_2rem)] pb-28 md:pt-[calc(var(--hero-top,8rem)_+_4rem)] md:pb-32">
       <Container>
-        {/* The same header as the homepage's Activities section. */}
+        {/* The cream hero of every sub-page (SAKEM-112), title on the left; no eyebrow since then. */}
         <SectionHeader
-          tone="dark"
+          align="left"
           as="p"
-          eyebrow="Program Kami"
           title="Apa saja yang dilalui penerima manfaat Sakola Kembara?"
         />
       </Container>
@@ -302,12 +301,8 @@ const gallery = getProgramGallery(program.id);
         }
 
         {/* Download PitchDeck CTA */}
-        <div class="bg-gradient-to-br from-primary-blue to-accent-navy rounded-2xl p-8 md:p-10 text-center relative overflow-hidden">
-          <div class="absolute inset-0">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div class="absolute bottom-0 left-0 w-64 h-64 bg-secondary-yellow/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-          </div>
-          <div class="relative z-10">
+        <div class="bg-primary-blue-dark rounded-2xl p-8 md:p-10 text-center">
+          <div>
             <Heading level="panel" as="h2" class="text-white mb-3">Ingin Tahu Lebih Lanjut?</Heading>
             <p class="text-white/80 mb-6 max-w-[600px] mx-auto">
               Download PitchDeck kami untuk informasi lengkap tentang program, dampak, dan cara berkontribusi.

@@ -76,12 +76,12 @@ describe('the navbar button follows the portal switch (SAKEM-103, Phase A)', () 
 });
 
 describe('the "Daftar Sekarang" buttons all go to the registration shortlink', () => {
-  it('/gabung-siswa (the two white buttons), its documents page (the "formulir pendaftaran" link) and the home page\'s student card use REGISTRATION_PATH, and none names /portal/daftar (the navbar has no registration button: its slot is empty)', () => {
+  it('/gabung-siswa (the navy hero button and the yellow closing one), its documents page (the "formulir pendaftaran" link) and the home page\'s student card use REGISTRATION_PATH, and none names /portal/daftar (the navbar has no registration button: its slot is empty)', () => {
     const page = readWeb('src/pages/gabung-siswa.astro');
-    expect(page.match(/<Button href=\{REGISTRATION_PATH\} variant="white-on-navy" size="lg">/g)).toHaveLength(2);
+    expect(page.match(/<Button href=\{REGISTRATION_PATH\} variant="(primary|yellow-on-navy)" size="lg"/g)).toHaveLength(2);
     expect(page).not.toContain('href="/portal/daftar"');
     const docs = readWeb('src/pages/gabung-siswa/docs.astro');
-    expect(docs).toContain('<a href={REGISTRATION_PATH} class="underline font-semibold hover:text-white">formulir pendaftaran</a>');
+    expect(docs).toContain('<a href={REGISTRATION_PATH} class="underline font-semibold text-primary-blue-dark">formulir pendaftaran</a>');
     expect(docs).not.toContain('/portal/daftar');
     expect(readWeb('src/components/sections/CTASection.astro')).toContain('href: REGISTRATION_PATH,');
     expect(readWeb('src/components/sections/CTASection.astro')).not.toContain("href: '/gabung-siswa'");

@@ -13,11 +13,25 @@ The design system for the public site (`sakolakembara.org`): how it should look,
 
 ---
 
+## 0. The homepage standard (SAKEM-112, 2026-10-28)
+
+Dzul made the `cf/web` homepage, redesigned in SAKEM-111 (design "Opsi C"), the standard for every public page on 2026-10-28. Where a later section of this file disagrees, **this section wins** for `cf/web`; the rest still describes the legacy Next app until it is rewritten.
+
+- **Type: one family.** Headings are Plus Jakarta Sans 500 with tight tracking (`-0.025em`); Lora is gone (`--font-display` now points at Plus Jakarta Sans, and the Lora files are no longer shipped). Sizes come from `headingClasses()` in `cf/web/src/lib/ui.ts`: section H2 `text-[clamp(32px,3.9vw,56px)] leading-[1.15]`, page H1 `text-[clamp(36px,4.6vw,64px)] leading-[1.1]`, cards `font-medium`, never bold.
+- **No eyebrows.** The yellow-dot uppercase label is retired (`Eyebrow.astro` removed). A section opens with its title.
+- **Sub-page hero: cream, title left, lead right** (Dzul: "hero krem, judul kiri, lead kanan kayak section homepage"). `PageHero.astro`: `bg-[#FBFBF5]`, navy text, the H1 on the left and the lead on the right from `md`, both on the band's bottom edge. Pages with actions (`/gabung-siswa`) put the buttons under the lead.
+- **Section header:** `<SectionHeader align="left">` with a lead splits the same way (title left, lead right); centred headers keep the lead under the title.
+- **Colour:** cream `#FBFBF5` and mist bands, navy `primary-blue-dark` text, sunglow for the one main action on navy. Dark bands are **solid** `bg-primary-blue-dark`: no navy gradients, no blurred orbs.
+- **Buttons:** on cream, filled navy (`primary` with `bg-primary-blue-dark`) plus `outline-navy`; on navy, `yellow-on-navy` plus `outline-on-navy`.
+- **Navbar:** one full-width bar on every page (`px-6 md:px-10`, 24 px above and below), cream `bg-[#FBFBF5]/95`; on the homepage it floats transparent over the hero video until the page scrolls. Hides on scroll down, returns on scroll up.
+- **Photo cards:** the polaroid frame (`polaroidFrame` / `polaroidTilt` in `ui.ts`).
+- **Motion:** GSAP + ScrollTrigger + SplitText on every page (`src/scripts/motion.ts`, loaded lazily by `MotionLoader.astro` after load and idle, never with reduced motion): H2 words rise line by line, `.anim-reveal` blocks fade up in batches. Only elements below the fold animate. The loading screen (`Preloader.astro`) is the homepage's alone, once per visit.
+
 ## 1. Brand
 
 **Warm-but-credible.** Deep catalina blue for trust, sunglow yellow for energy and emphasis, may green for hope and growth, soft greys for friendliness, and real student photography to keep it human.
 
-Four moves define the look:
+Four moves defined the legacy look (superseded for `cf/web` by section 0: one sans family, no eyebrows, cream heroes, solid navy bands):
 
 1. **Lora serif headlines over Plus Jakarta Sans body.** The serif is what makes the site read *foundation*, not *startup*.
 2. **Navy gradients** (`from-primary-blue to-accent-navy`) for break sections and every sub-page hero, with sunglow for emphasis on top.

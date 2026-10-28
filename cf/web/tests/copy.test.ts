@@ -110,7 +110,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     web: 'src/pages/program/[id].astro',
     root: ['app/(public)/program/[id]/_program-content.tsx'],
     phrases: [
-      'Program Kami',
+      // 'Program Kami' was the hero's eyebrow, gone with every eyebrow in SAKEM-112.
       'Apa saja yang dilalui penerima manfaat Sakola Kembara?',
       'Tahapan program',
       'Tahap',

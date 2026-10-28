@@ -1,11 +1,12 @@
 ---
 import '~/styles/global.css';
-import lora700 from '@fontsource/lora/files/lora-latin-700-normal.woff2?url';
+import '~/styles/reveal.css';
 import jakarta400 from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-400-normal.woff2?url';
 import jakarta500 from '@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-500-normal.woff2?url';
 import Footer from '~/components/Footer.astro';
 import GoogleTagManager from '~/components/GoogleTagManager.astro';
 import GoogleTagManagerNoscript from '~/components/GoogleTagManagerNoscript.astro';
+import MotionLoader from '~/components/MotionLoader.astro';
 import Navbar from '~/components/Navbar.astro';
 import Preloader from '~/components/Preloader.astro';
 import WebAnalytics from '~/components/WebAnalytics.astro';
@@ -30,15 +31,10 @@ interface Props {
   jsonLd?: unknown[];
   /** The navbar floats, transparent, over a full-bleed hero until the page scrolls (the homepage, SAKEM-111). */
   navOverlay?: boolean;
-  /**
-   * The font of the page's first heading, preloaded with the body font: Lora 700 (the default) or, on a page that uses
-   * no Lora (the homepage since SAKEM-111, design "Sustainability Hub"), Plus Jakarta Sans 500.
-   */
-  headingFont?: 'lora' | 'jakarta';
   /** The loading screen (Preloader.astro): the homepage only, once per visit (SAKEM-111). */
   preloader?: boolean;
 }
-const { seo, jsonLd = [], navOverlay = false, headingFont = 'lora', preloader = false } = Astro.props;
+const { seo, jsonLd = [], navOverlay = false, preloader = false } = Astro.props;
 // The loader's gate, run in <head> before the first paint (Preloader.astro).
 const PRELOAD_GATE = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&!sessionStorage.getItem('sk-preloaded'))document.documentElement.classList.add('preload')}catch(e){}`;
 const s = buildSeo(seo);
@@ -85,8 +81,8 @@ const graph = buildGraph(seo);
     <link rel="icon" href="/icon.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
 
-    {/* Self-hosted fonts: preload the two that paint first (hero heading, body text). */}
-    <link rel="preload" href={headingFont === 'lora' ? lora700 : jakarta500} as="font" type="font/woff2" crossorigin />
+    {/* Self-hosted fonts: preload the two that paint first (headings are Plus Jakarta Sans 500 since SAKEM-112, body 400). */}
+    <link rel="preload" href={jakarta500} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={jakarta400} as="font" type="font/woff2" crossorigin />
 
     {/* Before the first paint: show the homepage loader (Preloader.astro) only on the first visit and without reduced motion. */}
@@ -100,6 +96,7 @@ const graph = buildGraph(seo);
     }
     {graph && <script type="application/ld+json" set:html={jsonLdScript(graph)} />}
     {jsonLd.map((data) => <script type="application/ld+json" set:html={jsonLdScript(data)} />)}
+    <MotionLoader />
   </head>
   <body class="antialiased"><GoogleTagManagerNoscript />
     {preloader && <Preloader />}

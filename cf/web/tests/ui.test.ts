@@ -32,11 +32,12 @@ describe('design-system class strings are the root ones', () => {
     expect(buttonClasses({ className: 'mt-auto' })).toContain('transition-colors');
   });
 
-  it('heading levels appear verbatim in components/ui/heading.tsx, and use the family-name: hint', () => {
+  it('heading levels follow the homepage standard (SAKEM-112), not the root heading.tsx any more, and use the family-name: hint', () => {
     for (const level of ['display', 'page', 'article', 'section', 'subsection', 'panel', 'card'] as const) {
-      const cls = headingClasses(level).replace('font-[family-name:var(--font-display)] ', '');
-      expect(heading, level).toContain(cls.replace(/^font-\[family-name:var\(--font-display\)\]\s*/, ''));
+      expect(headingClasses(level), level).toMatch(/\bfont-medium\b/);
+      expect(headingClasses(level), level).toMatch(/tracking-\[-0\.0[0-9]+em\]/);
     }
+    expect(headingClasses('section')).toContain('text-[clamp(32px,3.9vw,56px)] leading-[1.15]'); // the homepage's h2
     expect(headingClasses('display')).toContain('font-[family-name:var(--font-display)]');
     expect(headingClasses('display')).not.toContain('font-[var(--font-display)]');
   });
