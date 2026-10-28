@@ -24,7 +24,7 @@ Dzul made the `cf/web` homepage, redesigned in SAKEM-111 (design "Opsi C"), the 
 - **Colour:** cream `#FBFBF5` and mist bands, navy `primary-blue-dark` text, sunglow for the one main action on navy. Dark bands are **solid** `bg-primary-blue-dark`: no navy gradients, no blurred orbs.
 - **Buttons:** on cream, filled navy (`primary` with `bg-primary-blue-dark`) plus `outline-navy`; on navy, `yellow-on-navy` plus `outline-on-navy`.
 - **Navbar:** one full-width bar on every page (`px-6 md:px-10`, 24 px above and below), cream `bg-[#FBFBF5]/95`; on the homepage it floats transparent over the hero video until the page scrolls. Hides on scroll down, returns on scroll up.
-- **Photo cards:** the polaroid frame (`polaroidFrame` / `polaroidTilt` in `ui.ts`).
+- **Photo cards:** the polaroid frame (`polaroidFrame` / `polaroidTilt` in `ui.ts`): cream on navy, white with a soft navy shadow on light sections. Used by the homepage blog and alumni cards, the `/blog` list (featured article included) and the `/tim` member cards (portrait 4:5, name and role on the strip).
 - **Motion:** GSAP + ScrollTrigger + SplitText on every page (`src/scripts/motion.ts`, loaded lazily by `MotionLoader.astro` after load and idle, never with reduced motion): H2 words rise line by line, `.anim-reveal` blocks fade up in batches. Only elements below the fold animate. The loading screen (`Preloader.astro`) is the homepage's alone, once per visit.
 
 ## 1. Brand

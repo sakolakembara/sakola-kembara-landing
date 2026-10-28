@@ -11,6 +11,7 @@ import { contentRuntime } from '~/lib/content-api';
 import { VOLUNTEER_PATH } from '~/lib/site';
 import { loadTeam } from '~/lib/team';
 import { CATEGORY_DESCRIPTION, TEAM_CATEGORY_LABEL, groupTeam } from '~/lib/team-types';
+import { polaroidFrame, polaroidTilt } from '~/lib/ui';
 import { uploadUrl } from '~/lib/uploads';
 
 // SSR: the team comes from the content API at request time (see lib/team.ts for
@@ -54,37 +55,41 @@ Astro.response.headers.set('x-team-source', source);
         {
           groups.map(({ category, members: list }) => (
             <section>
-              <header class="mb-6">
-                <Heading level="subsection" class="text-gray-900 mb-2">
+              <header class="mb-10">
+                <Heading level="subsection" class="text-primary-blue-dark mb-2">
                   {TEAM_CATEGORY_LABEL[category]}
                 </Heading>
                 <p class="text-gray-600 max-w-[760px]">{CATEGORY_DESCRIPTION[category]}</p>
               </header>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {list.map((member) => (
+              <div class="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 md:gap-x-8 lg:grid-cols-4">
+                {list.map((member, index) => (
                   <button
                     type="button"
                     data-member-dialog={`member-${member.id}`}
-                    class="group text-center bg-white rounded-2xl p-6 border border-gray-100 hover:-translate-y-1 hover:shadow-lg focus-visible:-translate-y-1 focus-visible:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue transition-all duration-300 cursor-pointer"
+                    class="group cursor-pointer rounded-[4px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:ring-offset-4"
                     aria-label={`Lihat profil ${member.name}`}
                   >
-                    <div class="w-28 h-28 mx-auto mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                      {member.image ? (
-                        <img
-                          src={uploadUrl(member.image, uploadsBase)}
-                          alt={member.name}
-                          width="112"
-                          height="112"
-                          loading="lazy"
-                          decoding="async"
-                          class="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Icon name="user" size={36} class="text-gray-300" />
-                      )}
-                    </div>
-                    <h3 class="text-base font-bold text-gray-900 mb-1">{member.name}</h3>
-                    <p class="text-sm font-medium text-primary-blue">{member.role}</p>
+                    <span class:list={[polaroidFrame, 'flex flex-col bg-white !pb-3 shadow-[0_14px_30px_-14px_rgba(13,31,82,0.45)] md:!pb-4']} style={polaroidTilt(index)}>
+                      <span class="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[3px] bg-primary-blue-dark/[0.06]">
+                        {member.image ? (
+                          <img
+                            src={uploadUrl(member.image, uploadsBase)}
+                            alt={member.name}
+                            width="320"
+                            height="400"
+                            loading="lazy"
+                            decoding="async"
+                            class="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Icon name="user" size={40} class="text-primary-blue-dark/25" />
+                        )}
+                      </span>
+                      <span class="flex flex-col gap-0.5 px-1 pt-3">
+                        <span class="text-base font-semibold leading-snug text-primary-blue-dark">{member.name}</span>
+                        <span class="text-sm text-gray-600">{member.role}</span>
+                      </span>
+                    </span>
                   </button>
                 ))}
               </div>
