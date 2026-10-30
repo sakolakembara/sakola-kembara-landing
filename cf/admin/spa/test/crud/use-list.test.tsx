@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 import { api as request, setTransport } from "~/lib/api";
-import { cachedList } from "~/lib/crud/listCache";
+import { cachedRead } from "~/lib/crud/readCache";
 import type { ListSpec } from "~/lib/crud/query";
 import { useList } from "~/lib/crud/useList";
 import { deferred, renderAt, respond, stubApi } from "../helpers";
@@ -201,7 +201,7 @@ describe("useList", () => {
   });
 });
 
-describe("useList: what the screen showed last (lib/crud/listCache.ts)", () => {
+describe("useList: what the screen showed last (lib/crud/readCache.ts)", () => {
   test("a list opened before shows its last answer at once and is asked for again in the background", async () => {
     stubApi({ "GET /api/things": respond(payload(["Satu"])) });
     const first = renderAt(<Probe />, "/things");
@@ -297,13 +297,13 @@ describe("useList: what the screen showed last (lib/crud/listCache.ts)", () => {
     await request("/api/things", { method: "POST", json: {} });
     gate.resolve(respond(payload(["Vieux"])));
     await screen.findByText("Vieux");
-    expect(cachedList("/api/things?page=1&pageSize=20&sort=name")).toBeUndefined();
+    expect(cachedRead("/api/things?page=1&pageSize=20&sort=name")).toBeUndefined();
   });
 
   test("a failure is not kept", async () => {
     stubApi({ "GET /api/things": respond({ error: "boom" }, 500) });
     renderAt(<Probe />, "/things");
     await waitFor(() => expect(state()).toContain("error"));
-    expect(cachedList("/api/things?page=1&pageSize=20&sort=name")).toBeUndefined();
+    expect(cachedRead("/api/things?page=1&pageSize=20&sort=name")).toBeUndefined();
   });
 });

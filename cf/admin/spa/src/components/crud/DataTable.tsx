@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableCard, TBody, Td, Th, THead } from "@/components/ui/table";
+import { Skeleton } from "~/components/Skeleton";
 import type { LoadState } from "~/lib/crud/types";
 
 /**
  * The kit's table for a list, with the three states a list has besides "rows" (docs/cloudflare/admin-crud.md#15-the-spa-kit):
  *
- *   loading  one row, `role="status"`: "Memuat data..." (the table itself is `aria-busy`)
+ *   loading  a status row for screen readers, `role="status"`: "Memuat data...", and five grey pulsing rows for everyone
+ *            else (hidden from the accessibility tree); the table itself is `aria-busy`
  *   error    one row, `role="alert"`, with "Coba lagi"
  *   empty    one row with the empty text (the caller says "Belum ada ..." or "Tidak ada ... yang cocok")
  *
@@ -42,6 +44,10 @@ export interface DataTableProps<T> {
   refreshing?: boolean;
 }
 
+/** How many grey rows stand in for the rows to come, and how wide each cell's bar is (cycled, so the rows are not a grid of equal bars). */
+const SKELETON_ROWS = 5;
+const SKELETON_WIDTHS = ["w-3/4", "w-1/2", "w-2/3", "w-1/3", "w-5/6"] as const;
+
 export function DataTable<T>({ caption, columns, rows, rowKey, state, errorMessage, onRetry, emptyText, actions, refreshing = false }: DataTableProps<T>) {
   const span = columns.length + (actions ? 1 : 0);
   const showRows = (state === "ready" || state === "loading") && rows.length > 0;
@@ -67,7 +73,8 @@ export function DataTable<T>({ caption, columns, rows, rowKey, state, errorMessa
               )}
             </tr>
           </THead>
-          <TBody className={refreshing ? "opacity-60 transition-opacity" : undefined}>
+          {/* Dims only when the new answer is slow (the delay is on the way in, not on the way out): a list that comes back from memory and is confirmed at once does not flash. */}
+          <TBody className={refreshing ? "opacity-60 transition-opacity delay-300" : "transition-opacity"}>
             {showRows &&
               rows.map((row) => (
                 <tr key={rowKey(row)} className="hover:bg-gray-50">
@@ -80,11 +87,25 @@ export function DataTable<T>({ caption, columns, rows, rowKey, state, errorMessa
                 </tr>
               ))}
             {state === "loading" && rows.length === 0 && (
-              <tr>
-                <Td colSpan={span} className="p-12 text-center text-gray-500">
-                  <p role="status">Memuat data...</p>
-                </Td>
-              </tr>
+              <>
+                {/* The words are for people who cannot see the grey rows below, which only say that something is coming. */}
+                <tr>
+                  <Td colSpan={span} className="p-0">
+                    <p role="status" className="sr-only">
+                      Memuat data...
+                    </p>
+                  </Td>
+                </tr>
+                {Array.from({ length: SKELETON_ROWS }, (_, line) => (
+                  <tr key={line} aria-hidden="true">
+                    {Array.from({ length: span }, (_, column) => (
+                      <Td key={column} className="py-4">
+                        <Skeleton className={`h-4 ${SKELETON_WIDTHS[(line + column) % SKELETON_WIDTHS.length]}`} />
+                      </Td>
+                    ))}
+                  </tr>
+                ))}
+              </>
             )}
             {state === "error" && (
               <tr>

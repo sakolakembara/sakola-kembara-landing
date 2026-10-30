@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { Alert } from "@/components/ui/alert";
@@ -31,7 +32,8 @@ function AuthGate() {
     case "loading":
       return (
         <div className="flex min-h-dvh items-center justify-center bg-gray-50">
-          <p role="status" className="text-sm text-gray-500">
+          <p role="status" className="flex items-center gap-2 text-sm text-gray-500">
+            <LoaderCircle size={18} aria-hidden="true" className="animate-spin text-primary-blue motion-reduce:animate-none" />
             Memuat…
           </p>
         </div>
