@@ -102,6 +102,29 @@ export const listSpaChecks = [
     tests: t("crud/form-shell.test.tsx"),
   },
 
+  // ---------------------------------------------- dashboard (stage 5)
+  {
+    name: "dashboard: an answer shown from memory is stamped with the time of the visit",
+    file: "spa/src/lib/dashboard-provider.tsx",
+    from: "if (state.at !== undefined) setUpdatedAt(state.at);",
+    to: "setUpdatedAt(state.at ?? Date.now());",
+    tests: t("dashboard.test.tsx"),
+  },
+  {
+    name: "dashboard: the refresh button does nothing",
+    file: "spa/src/pages/dashboard/DashboardPage.tsx",
+    from: "title=\"Muat ulang\" onClick={reload}>",
+    to: "title=\"Muat ulang\" onClick={() => undefined}>",
+    tests: t("dashboard.test.tsx"),
+  },
+  {
+    name: "dashboard: a tile that waits for someone has no mark a screen reader can find",
+    file: "spa/src/pages/dashboard/Attention.tsx",
+    from: 'role="img" aria-label="Perlu tindakan"',
+    to: 'aria-hidden="true"',
+    tests: t("dashboard.test.tsx"),
+  },
+
   // ---------------------------------------------- cards on a phone
   {
     name: "lists: the cells of a phone card lose their column's name",

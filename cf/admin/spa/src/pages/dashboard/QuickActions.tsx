@@ -21,19 +21,19 @@ export function QuickActions({ me }: { me: Pick<Me, "role" | "areas"> }) {
   if (actions.length === 0) return null;
   return (
     <section aria-labelledby="dash-quick" className="mb-8">
-      <h2 id="dash-quick" className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <h2 id="dash-quick" className="mb-3.5 text-base font-semibold tracking-tight text-gray-900">
         Tindakan Cepat
       </h2>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4">
         {actions.map((action) => {
           const Icon = ICONS[action.icon];
           return (
             <Link
               key={action.href}
               to={action.href}
-              className="group flex flex-col items-start gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 transition-all hover:border-primary-blue hover:shadow-sm sm:flex-row sm:items-center sm:gap-3"
+              className="group flex items-center gap-3.5 rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-light-blue hover:bg-white"
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-blue/10 text-primary-blue transition-colors group-hover:bg-primary-blue group-hover:text-white">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-accent text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                 <Icon size={18} aria-hidden="true" />
               </span>
               <span className="text-sm font-medium text-gray-900">{action.label}</span>

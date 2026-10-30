@@ -14,6 +14,8 @@ interface SharedDashboard {
   reload: () => void;
   /** For the sidebar, by menu path. Keeps the last answer while a new one is on its way, so a badge does not blink. */
   counts: Record<string, NavCount>;
+  /** When the Worker last answered (ms since 1970); null until it has, because an answer shown from memory is not news. */
+  updatedAt: number | null;
 }
 
 const SharedDashboardContext = createContext<SharedDashboard | null>(null);
@@ -23,8 +25,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
 
   const [seen, setSeen] = useState<Dashboard | null>(() => (state.status === "ready" ? state.data : null));
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   useEffect(() => {
-    if (state.status === "ready") setSeen(state.data);
+    if (state.status !== "ready") return;
+    setSeen(state.data);
+    if (state.at !== undefined) setUpdatedAt(state.at);
   }, [state]);
 
   useEffect(() => onWrite(reload), [reload]);
@@ -37,7 +42,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, [pathname, reload]);
 
   const counts = useMemo(() => navCounts(seen), [seen]);
-  const value = useMemo(() => ({ state, reload, counts }), [state, reload, counts]);
+  const value = useMemo(() => ({ state, reload, counts, updatedAt }), [state, reload, counts, updatedAt]);
   return <SharedDashboardContext.Provider value={value}>{children}</SharedDashboardContext.Provider>;
 }
 

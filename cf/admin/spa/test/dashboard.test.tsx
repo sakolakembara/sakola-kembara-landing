@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
@@ -215,6 +215,41 @@ describe("dashboard: empty, loading, error", () => {
     expect(screen.queryByText("Memuat dashboard…")).toBeNull();
     expect(api.count("GET /api/dashboard")).toBe(1);
     gate.resolve(respond(full));
+  });
+
+  test("says when the Worker answered, and a button asks again", async () => {
+    const user = userEvent.setup();
+    const api = await open("super_admin", [], respond(full));
+    await screen.findByRole("region", { name: "Perlu perhatian" });
+    expect(await screen.findByText(/^Diperbarui \d{2}\.\d{2}$/)).toBeTruthy();
+    expect(api.count("GET /api/dashboard")).toBe(1);
+
+    await user.click(screen.getByRole("button", { name: "Muat ulang data dashboard" }));
+    await waitFor(() => expect(api.count("GET /api/dashboard")).toBe(2));
+  });
+
+  test("an answer shown from memory is not stamped as news: the time comes with the Worker's answer", async () => {
+    stubApi({ "GET /api/me": respond(meBody("super_admin")), "GET /api/dashboard": respond(full) });
+    const first = renderApp("/");
+    await screen.findByText(/^Diperbarui /);
+    first.unmount();
+
+    const gate = deferred<Response>();
+    stubApi({ "GET /api/me": respond(meBody("super_admin")), "GET /api/dashboard": () => gate.promise });
+    renderApp("/");
+    await screen.findByRole("region", { name: "Perlu perhatian" });
+    // Let the effects of the first paint run: a stamp put on at mount would be there by now.
+    await act(async () => {});
+    expect(screen.queryByText(/^Diperbarui /)).toBeNull();
+    gate.resolve(respond(full));
+    expect(await screen.findByText(/^Diperbarui \d{2}\.\d{2}$/)).toBeTruthy();
+  });
+
+  test("no clock and no button while there is no answer to date", async () => {
+    await open("viewer", [], () => respond({ error: "internal" }, 500));
+    await screen.findByRole("alert");
+    expect(screen.queryByText(/^Diperbarui /)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Muat ulang data dashboard" })).toBeNull();
   });
 
   test("error: says so, and Coba lagi asks again", async () => {
