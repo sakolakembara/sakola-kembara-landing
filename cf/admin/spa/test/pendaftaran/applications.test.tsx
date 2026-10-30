@@ -185,8 +185,7 @@ describe("the list: the filter bar writes the address, and the search says what 
     const { api } = await openList(["viewer", []], "/applications?batch=b26&page=2");
     await user.selectOptions(screen.getByLabelText("Batch"), "b25");
     await user.selectOptions(screen.getByLabelText("Status"), "under_review");
-    await user.type(screen.getByLabelText("Cari"), "siti");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
+    await user.type(screen.getByLabelText("Cari"), "siti{Enter}");
     await waitFor(() => expect(location()).toBe("/applications?q=siti&batch=b25&status=under_review"));
     await waitFor(() => expect(lastList(api)).toBe(`${LIST}?page=1&pageSize=20&q=siti&batch=b25&status=under_review&sort=-submittedAt`));
   });
@@ -195,7 +194,6 @@ describe("the list: the filter bar writes the address, and the search says what 
     const user = userEvent.setup();
     const { api } = await openList(["viewer", []], "/applications?batch=b26");
     await user.selectOptions(screen.getByLabelText("Batch"), "");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(location()).toBe("/applications?batch=all"));
     await waitFor(() => expect(lastList(api)).toBe(`${LIST}?page=1&pageSize=20&batch=all&sort=-submittedAt`));
     expect(screen.getByLabelText("Batch")).toHaveProperty("value", "");

@@ -127,7 +127,6 @@ describe("the list", () => {
     await user.type(screen.getByLabelText("Cari"), "rom");
     await user.selectOptions(screen.getByLabelText("Peran"), "editor");
     await user.selectOptions(screen.getByLabelText("Status"), "invited");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(location()).toBe("/settings?q=rom&role=editor&status=invited"));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=50&q=rom&role=editor&status=invited&sort=email`));
     expect([...(screen.getByLabelText("Peran") as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(["Semua peran", "Super Admin", "Editor", "Viewer"]);

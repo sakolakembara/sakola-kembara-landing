@@ -129,7 +129,6 @@ describe("the list: what a row shows", () => {
     expect(within(screen.getByLabelText("Kategori")).getAllByRole("option").map((option) => option.textContent)).toEqual(["Semua kategori", "Dewan Pembina", "Dewan Pengawas", "Pengurus"]);
     await user.type(screen.getByLabelText("Cari"), "ahmad");
     await user.selectOptions(screen.getByLabelText("Kategori"), "dewan_pengawas");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&q=ahmad&category=dewan_pengawas&sort=order`));
   });
 });

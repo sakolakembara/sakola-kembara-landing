@@ -203,15 +203,16 @@ describe("filters", () => {
     expect(screen.getByLabelText("Aktor (email lengkap)")).toBeTruthy();
   });
 
-  test("Terapkan asks the Worker with the names it expects, and the address bar says what is applied", async () => {
+  test("the filters ask the Worker with the names it expects, and the address bar says what is applied", async () => {
     const user = userEvent.setup();
     const { api, router } = await openAudit();
     await user.selectOptions(screen.getByLabelText("Aksi"), "blog.create");
     await user.selectOptions(screen.getByLabelText("Tipe resource"), "blog");
-    await user.type(screen.getByLabelText("Aktor (email lengkap)"), "dewi@contoh.test");
+    await user.type(screen.getByLabelText("Aktor (email lengkap)"), "dewi@contoh.test{Enter}");
     await user.type(screen.getByLabelText("Dari"), "2026-10-01");
+    await user.tab();
     await user.type(screen.getByLabelText("Sampai"), "2026-10-12");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
+    await user.tab();
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?pageSize=50&action=blog.create&resource=blog&actor=dewi%40contoh.test&from=2026-10-01&to=2026-10-12`));
     expect(router.state.location.search).toBe("?action=blog.create&resource=blog&actor=dewi%40contoh.test&from=2026-10-01&to=2026-10-12");
     expect(screen.getByRole("button", { name: "Hapus filter" })).toBeTruthy();
@@ -276,7 +277,6 @@ describe("the cursor", () => {
     const { api } = await openAudit({}, "/audit?cursor=CURSOR_9");
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?pageSize=50&cursor=CURSOR_9`));
     await user.selectOptions(screen.getByLabelText("Tipe resource"), "batch");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?pageSize=50&resource=batch`));
   });
 

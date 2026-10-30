@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { api, setTransport } from "~/lib/api";
+import { api, onWrite, setTransport } from "~/lib/api";
 import { respond } from "./helpers";
 
 describe("api()", () => {
@@ -101,5 +101,25 @@ describe("api()", () => {
     setTransport(null);
     expect(await api("/api/x")).toEqual({ ok: true, data: { via: "fetch" } });
     expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
+  test("onWrite is told after every write, whatever its answer, and never after a read", async () => {
+    const told = vi.fn();
+    const stop = onWrite(told);
+    setTransport(async () => respond({}));
+    await api("/api/x");
+    await api("/api/x", { method: "HEAD" });
+    expect(told).not.toHaveBeenCalled();
+    await api("/api/x", { method: "POST", json: {} });
+    setTransport(async () => respond({ error: "boom" }, 500));
+    await api("/api/x", { method: "delete" });
+    setTransport(async () => {
+      throw new Error("offline");
+    });
+    await api("/api/x", { method: "PUT", json: {} });
+    expect(told).toHaveBeenCalledTimes(3);
+    stop();
+    await api("/api/x", { method: "POST", json: {} });
+    expect(told).toHaveBeenCalledTimes(3);
   });
 });

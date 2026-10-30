@@ -7,7 +7,9 @@
 //     student portal's SPA (shared/spa) uses;
 //   - fails when zod is in the build: the admin sends no form to a schema, and
 //     zod (the portal wizard's, shared/application-form/schemas.ts) must stay
-//     out of it (docs/cloudflare/portal-architecture.md#52-the-shared-module-what-moves-and-what-is-imported).
+//     out of it (docs/cloudflare/portal-architecture.md#52-the-shared-module-what-moves-and-what-is-imported);
+//   - fails when the files with a hash in their name are not kept for a year (`_headers`, from spa/public): Workers
+//     sends `max-age=0, must-revalidate` for every static file unless told otherwise.
 //
 //   pnpm build:spa && pnpm check:spa
 //
@@ -87,6 +89,24 @@ for (const name of SPA_ONLY_CLASSES) {
   }
 }
 
+// The hashed files are exactly the ones under /assets (Vite's default), and `_headers` says they never change.
+for (const file of walk(root)) {
+  if (/\.(js|css)$/.test(file) && !path.relative(root, file).startsWith(`assets${path.sep}`)) {
+    console.error(`FAIL: ${path.relative(root, file)} is outside /assets: the long cache of spa/public/_headers would not reach it`);
+    failed = true;
+  }
+}
+let headersText = "";
+try {
+  headersText = readFileSync(path.join(root, "_headers"), "utf8");
+} catch {
+  // reported below
+}
+if (!/^\/assets\/\*\s*\n\s+Cache-Control:\s*public, max-age=31536000, immutable\s*$/m.test(headersText)) {
+  console.error("FAIL: dist/spa/_headers does not keep /assets/* for a year (spa/public/_headers)");
+  failed = true;
+}
+
 console.log(`${"JS + CSS total".padEnd(40)} ${kb(total.raw).padStart(11)}  gzip ${kb(total.gzip).padStart(10)}`);
 if (failed) process.exit(1);
-console.log("OK: the mock and zod are not in the build, and the SPA's own classes are in the CSS.");
+console.log("OK: the mock and zod are not in the build, the SPA's own classes are in the CSS, and the hashed files are cached for a year.");

@@ -202,7 +202,6 @@ describe("the list", () => {
     await user.type(screen.getByLabelText("Cari"), "kisah");
     await user.selectOptions(category, "Career");
     await user.selectOptions(screen.getByLabelText("Status"), "published");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=20&q=kisah&status=published&category=Career&sort=-updatedAt`));
     await waitFor(() => expect(location()).toBe("/blog?q=kisah&status=published&category=Career"));
     expect(await screen.findByText(/artikel ditampilkan/)).toBeTruthy();

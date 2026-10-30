@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { type Column, DataTable } from "~/components/crud/DataTable";
@@ -171,30 +171,65 @@ describe("FilterBar", () => {
     return { apply, reset, view, rerender: (next: ListQuery) => view.rerender(ui(next)) };
   }
 
-  test("every control has a label, and the form is a search landmark", () => {
+  test("every control has a label, and the form is a search landmark; there is no button to press to apply", () => {
     bar(query());
     expect(screen.getByRole("search", { name: "Saring daftar" })).toBeTruthy();
     expect(screen.getByLabelText("Cari")).toBeTruthy();
     expect(screen.getByLabelText("Severity")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Terapkan" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Terapkan" })).toBeNull();
     expect(screen.getByRole("option", { name: "Semua severity" })).toBeTruthy();
   });
 
-  test("it applies on submit, not while typing: the search and the filters together, empty ones left out", async () => {
+  test("a filter applies the moment it is chosen, together with the search as it stands", async () => {
     const user = userEvent.setup();
     const { apply } = bar(query());
     await user.type(screen.getByLabelText("Cari"), "halo dunia");
-    expect(apply).not.toHaveBeenCalled();
     await user.selectOptions(screen.getByLabelText("Severity"), "urgent");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     expect(apply).toHaveBeenCalledWith({ q: "halo dunia", filters: { severity: "urgent" } });
   });
 
-  test("Enter in the search box applies", async () => {
+  test("choosing the 'all' option drops that filter and keeps the others out of the call when empty", async () => {
+    const user = userEvent.setup();
+    const { apply } = bar(query({ filters: { severity: "info" } }));
+    await user.selectOptions(screen.getByLabelText("Severity"), "");
+    expect(apply).toHaveBeenCalledWith({ q: "", filters: {} });
+  });
+
+  test("the search applies after a pause in typing, not at every key", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { apply } = bar(query({ filters: { severity: "info" } }));
+      fireEvent.change(screen.getByLabelText("Cari"), { target: { value: "halo" } });
+      act(() => void vi.advanceTimersByTime(349));
+      expect(apply).not.toHaveBeenCalled();
+      act(() => void vi.advanceTimersByTime(1));
+      expect(apply).toHaveBeenCalledOnce();
+      expect(apply).toHaveBeenCalledWith({ q: "halo", filters: { severity: "info" } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("Enter in the search box applies at once", async () => {
     const user = userEvent.setup();
     const { apply } = bar(query());
     await user.type(screen.getByLabelText("Cari"), "halo{Enter}");
     expect(apply).toHaveBeenCalledWith({ q: "halo", filters: {} });
+  });
+
+  test("the address bar echoing the search does not overwrite what was typed since", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { apply, rerender } = bar(query());
+      fireEvent.change(screen.getByLabelText("Cari"), { target: { value: "ab" } });
+      act(() => void vi.advanceTimersByTime(350));
+      expect(apply).toHaveBeenCalledWith({ q: "ab", filters: {} });
+      fireEvent.change(screen.getByLabelText("Cari"), { target: { value: "abc" } });
+      rerender(query({ q: "ab" }));
+      expect((screen.getByLabelText("Cari") as HTMLInputElement).value).toBe("abc");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("it shows what the address bar says, and follows it when it changes (the back button)", () => {

@@ -80,8 +80,8 @@ export const sistemSpaChecks = [
   {
     name: "sistem: applying a filter keeps the old cursor (the list would start in the middle of another list)",
     file: "spa/src/pages/audit/AuditPage.tsx",
-    from: 'to: text("to") })',
-    to: 'to: text("to"), cursor: query.cursor })',
+    from: "to: query.to, ...next }",
+    to: "to: query.to, cursor: query.cursor, ...next }",
     tests: t(AUDIT),
   },
   {

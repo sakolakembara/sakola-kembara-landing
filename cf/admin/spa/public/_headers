@@ -1,0 +1,5 @@
+# Files under /assets have the hash of their content in the name (Vite), so a name never changes meaning:
+# the browser keeps them for a year and does not ask again. index.html is not here: it names the current files,
+# so it keeps the default and is checked on every load.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

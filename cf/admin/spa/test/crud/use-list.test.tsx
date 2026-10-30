@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
-import { setTransport } from "~/lib/api";
+import { api as request, setTransport } from "~/lib/api";
+import { cachedList } from "~/lib/crud/listCache";
 import type { ListSpec } from "~/lib/crud/query";
 import { useList } from "~/lib/crud/useList";
 import { deferred, renderAt, respond, stubApi } from "../helpers";
@@ -197,5 +198,112 @@ describe("useList", () => {
     // total 0: there is no last page to move to, so no loop of requests.
     expect(api.count("GET /api/things")).toBe(1);
     expect(location()).toBe("/things?page=3");
+  });
+});
+
+describe("useList: what the screen showed last (lib/crud/listCache.ts)", () => {
+  test("a list opened before shows its last answer at once and is asked for again in the background", async () => {
+    stubApi({ "GET /api/things": respond(payload(["Satu"])) });
+    const first = renderAt(<Probe />, "/things");
+    await screen.findByText("Satu");
+    first.unmount();
+
+    const gate = deferred<Response>();
+    const api = stubApi({ "GET /api/things": () => gate.promise });
+    renderAt(<Probe />, "/things");
+    expect(screen.getByText("Satu")).toBeTruthy();
+    expect(state()).toBe("ready|refreshing|page 1/1|total 1");
+    expect(api.count("GET /api/things")).toBe(1);
+
+    gate.resolve(respond(payload(["Dua"])));
+    await screen.findByText("Dua");
+    expect(screen.queryByText("Satu")).toBeNull();
+    expect(state()).toBe("ready|idle|page 1/1|total 1");
+  });
+
+  test("the first render of a list opened before already has its rows: no flash of the loading row", async () => {
+    stubApi({ "GET /api/things": respond(payload(["Satu"])) });
+    const first = renderAt(<Probe />, "/things");
+    await screen.findByText("Satu");
+    first.unmount();
+
+    const seen: string[] = [];
+    function Spy() {
+      seen.push(useList<Row>("/api/things", spec).status);
+      return null;
+    }
+    stubApi({ "GET /api/things": () => deferred<Response>().promise });
+    renderAt(<Spy />, "/things");
+    expect(seen[0]).toBe("ready");
+  });
+
+  test("going back to a query asked before shows its answer at once, not the rows of the query just left", async () => {
+    let held: ReturnType<typeof deferred<Response>> | null = null;
+    stubApi({
+      "GET /api/things": (call) => {
+        if (call.url.includes("q=cari")) return Promise.resolve(respond(payload(["Dua"])));
+        return held ? held.promise : Promise.resolve(respond(payload(["Satu"])));
+      },
+    });
+    renderAt(<Probe />, "/things");
+    await screen.findByText("Satu");
+    fireEvent.click(screen.getByText("apply"));
+    await screen.findByText("Dua");
+
+    held = deferred<Response>();
+    fireEvent.click(screen.getByText("reset"));
+    expect(screen.getByText("Satu")).toBeTruthy();
+    expect(screen.queryByText("Dua")).toBeNull();
+    expect(state()).toBe("ready|refreshing|page 1/1|total 1");
+    held.resolve(respond(payload(["Satu", "Tiga"])));
+    await screen.findByText("Tiga");
+  });
+
+  test("another query of the same list has its own answer", async () => {
+    stubApi({ "GET /api/things": respond(payload(["Satu"])) });
+    const first = renderAt(<Probe />, "/things");
+    await screen.findByText("Satu");
+    first.unmount();
+
+    const gate = deferred<Response>();
+    stubApi({ "GET /api/things": () => gate.promise });
+    renderAt(<Probe />, "/things?q=lain");
+    expect(screen.queryByText("Satu")).toBeNull();
+    expect(state()).toBe("loading|idle|page 1/1|total 0");
+    gate.resolve(respond(payload([])));
+    await waitFor(() => expect(state()).toContain("ready"));
+  });
+
+  test("a write empties it: a list is not shown with what has just been changed", async () => {
+    stubApi({ "GET /api/things": respond(payload(["Satu"])), "DELETE /api/things/1": respond(null, 204) });
+    const first = renderAt(<Probe />, "/things");
+    await screen.findByText("Satu");
+    first.unmount();
+    await request("/api/things/1", { method: "DELETE" });
+
+    const gate = deferred<Response>();
+    stubApi({ "GET /api/things": () => gate.promise });
+    renderAt(<Probe />, "/things");
+    expect(screen.queryByText("Satu")).toBeNull();
+    expect(state()).toBe("loading|idle|page 1/1|total 0");
+    gate.resolve(respond(payload(["Dua"])));
+    await screen.findByText("Dua");
+  });
+
+  test("an answer that was on its way when a write happened is not kept", async () => {
+    const gate = deferred<Response>();
+    stubApi({ "GET /api/things": () => gate.promise, "POST /api/things": respond({}, 201) });
+    renderAt(<Probe />, "/things");
+    await request("/api/things", { method: "POST", json: {} });
+    gate.resolve(respond(payload(["Vieux"])));
+    await screen.findByText("Vieux");
+    expect(cachedList("/api/things?page=1&pageSize=20&sort=name")).toBeUndefined();
+  });
+
+  test("a failure is not kept", async () => {
+    stubApi({ "GET /api/things": respond({ error: "boom" }, 500) });
+    renderAt(<Probe />, "/things");
+    await waitFor(() => expect(state()).toContain("error"));
+    expect(cachedList("/api/things?page=1&pageSize=20&sort=name")).toBeUndefined();
   });
 });
