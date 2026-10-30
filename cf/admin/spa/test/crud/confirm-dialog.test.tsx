@@ -134,9 +134,9 @@ describe("ConfirmDialog", () => {
 
   test("destructive is the kit's red button; a plain question is the primary one", () => {
     const { rerender } = render(<ConfirmDialog open title="Hapus?" description="x" confirmLabel="Hapus" onConfirm={() => undefined} onCancel={() => undefined} />);
-    expect(screen.getByRole("button", { name: "Hapus" }).className).toContain("bg-red-600");
+    expect(screen.getByRole("button", { name: "Hapus" }).className).toContain("bg-destructive");
     rerender(<ConfirmDialog open title="Pindah?" description="x" confirmLabel="Pindah" destructive={false} onConfirm={() => undefined} onCancel={() => undefined} />);
-    expect(screen.getByRole("button", { name: "Pindah" }).className).toContain("bg-primary-blue");
+    expect(screen.getByRole("button", { name: "Pindah" }).className).toContain("bg-primary");
   });
 
   test("when the button that opened it is gone (a deleted row), the focus goes to the main area instead of nowhere", async () => {

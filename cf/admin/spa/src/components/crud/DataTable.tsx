@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Table, TableCard, TBody, Td, Th, THead } from "@/components/ui/table";
-import { Skeleton } from "~/components/Skeleton";
+import { Button } from "~/components/ui/button";
+import { Table, TableCard, TBody, Td, Th, THead } from "~/components/ui/table";
+import { Skeleton } from "~/components/ui/skeleton";
 import type { LoadState } from "~/lib/crud/types";
 
 /**

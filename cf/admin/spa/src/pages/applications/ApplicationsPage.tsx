@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
 import { type Column, DataTable } from "~/components/crud/DataTable";
 import { FilterBar, type FilterSpec } from "~/components/crud/FilterBar";

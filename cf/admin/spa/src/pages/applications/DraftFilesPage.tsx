@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
 import { type Column, DataTable } from "~/components/crud/DataTable";

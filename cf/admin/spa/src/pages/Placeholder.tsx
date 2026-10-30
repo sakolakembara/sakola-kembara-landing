@@ -1,5 +1,5 @@
 import { useLocation } from "react-router";
-import { Tag } from "@/components/ui/tag";
+import { Tag } from "~/components/ui/tag";
 import { PageHeader } from "~/components/PageHeader";
 import { accessTo } from "~/lib/access";
 import { type NavItem } from "~/lib/nav";

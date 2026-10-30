@@ -1,8 +1,8 @@
 import { Save } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
 import { Link, useBlocker } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import type { FlashControl } from "~/lib/crud/flash";
 import type { MutationState } from "~/lib/crud/useMutation";
 import { usePageTitle } from "~/lib/hooks";

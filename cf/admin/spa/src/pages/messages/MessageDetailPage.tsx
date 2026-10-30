@@ -1,8 +1,8 @@
 import { Mail, Reply, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
 import { Flash } from "~/components/crud/Flash";
 import { makeStatusMap, StatusTag } from "~/components/crud/StatusTag";

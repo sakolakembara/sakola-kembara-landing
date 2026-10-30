@@ -1,4 +1,4 @@
-import type { TagTone } from "@/components/ui/tag";
+import type { TagTone } from "~/components/ui/tag";
 import { makeStatusMap } from "~/components/crud/StatusTag";
 import type { Announcement, Severity } from "~/lib/api";
 import type { AnnouncementStatus } from "./spec";

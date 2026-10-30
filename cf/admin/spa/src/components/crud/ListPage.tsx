@@ -1,7 +1,7 @@
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
 import { type Access, accessTo, type Section } from "~/lib/access";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";

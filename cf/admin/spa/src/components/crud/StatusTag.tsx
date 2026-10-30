@@ -1,4 +1,4 @@
-import { Tag, type TagTone } from "@/components/ui/tag";
+import { Tag, type TagTone } from "~/components/ui/tag";
 
 /**
  * A status as a pill (docs/cloudflare/admin-crud.md#15-the-spa-kit): one map per resource from the value the API

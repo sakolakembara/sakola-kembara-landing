@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Input, Select } from "@/components/ui/field";
+import { Input, Select } from "~/components/ui/field";
 import { type Column, DataTable } from "~/components/crud/DataTable";
 import { PageHeader } from "~/components/PageHeader";
 import { ACTION_OPTIONS, activityHref, activityLabel, RESOURCE_OPTIONS, resourceLabel } from "~/lib/audit";

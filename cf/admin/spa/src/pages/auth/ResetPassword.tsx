@@ -1,8 +1,8 @@
 import { type FormEvent, type ReactNode, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Field, Input } from "~/components/ui/field";
 import { api } from "~/lib/api";
 import { RESET_LINK_INVALID_MESSAGE, RESET_LINK_MISSING_MESSAGE, resetFailure } from "~/lib/auth-errors";
 import { focusFirstInvalid, useAutoFocus, usePageTitle, useSubmitLock } from "~/lib/hooks";

@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router";
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input } from "~/components/ui/field";
 import { FormSection, FormShell } from "~/components/crud/FormShell";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";

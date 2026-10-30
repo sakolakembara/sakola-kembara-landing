@@ -1,7 +1,7 @@
 import { Edit3, Eye, ImagePlus } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import { uploadFile, useUploadsBase } from "~/lib/crud/upload-client";
 import { acceptFor, checkUploadFile, uploadUrl } from "~/lib/crud/upload-kinds";
 import { BODY_LIMIT_LABEL, imageMarkdown, insertAtCursor, LIMITS } from "./rules";

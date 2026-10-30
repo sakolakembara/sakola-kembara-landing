@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Field, Input } from "~/components/ui/field";
 import { FormSection, FormShell } from "~/components/crud/FormShell";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { accessTo } from "~/lib/access";

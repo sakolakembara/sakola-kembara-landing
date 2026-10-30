@@ -1,8 +1,8 @@
 import { type FormEvent, useRef, useState } from "react";
 import { Link } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Field, Input } from "~/components/ui/field";
 import { TurnstileWidget } from "~/components/TurnstileWidget";
 import { api } from "~/lib/api";
 import { RESET_REQUESTED_MESSAGE, resetRequestFailureMessage } from "~/lib/auth-errors";

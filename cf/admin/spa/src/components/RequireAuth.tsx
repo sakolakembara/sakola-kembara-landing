@@ -1,8 +1,8 @@
 import { LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { accessTo, type Section } from "~/lib/access";
 import { decideGuard } from "~/lib/guard";

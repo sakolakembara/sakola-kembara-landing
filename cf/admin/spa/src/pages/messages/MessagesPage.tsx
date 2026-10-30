@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
-import { TableCard } from "@/components/ui/table";
+import { Button } from "~/components/ui/button";
+import { TableCard } from "~/components/ui/table";
 import { makeStatusMap, StatusTag } from "~/components/crud/StatusTag";
 import { Flash } from "~/components/crud/Flash";
 import { Pagination } from "~/components/crud/Pagination";

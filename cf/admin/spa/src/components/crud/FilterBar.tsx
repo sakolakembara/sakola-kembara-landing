@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
-import { Input, Select } from "@/components/ui/field";
+import { Input, Select } from "~/components/ui/field";
 import type { ListState } from "~/lib/crud/useList";
 import { cleanSearch, isFiltered } from "~/lib/crud/query";
 import { useDraftText } from "~/lib/crud/useDraftText";

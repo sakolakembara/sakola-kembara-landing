@@ -1,8 +1,8 @@
 import { type FormEvent, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Field, Input } from "~/components/ui/field";
 import { GoogleButton, OrDivider } from "@shared/spa/GoogleButton";
 import { AuthShell } from "@shared/spa/AuthShell";
 import { TurnstileWidget } from "~/components/TurnstileWidget";
