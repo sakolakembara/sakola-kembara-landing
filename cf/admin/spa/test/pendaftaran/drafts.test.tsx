@@ -142,7 +142,7 @@ describe("the list", () => {
   test("it asks the Worker for a page of twenty and nothing else: no search, no filter, no sort, and never for a file", async () => {
     const { api } = await openDrafts(editorWho);
     expect(api.last(`GET ${DRAFT_FILES_PATH}`)!.url).toBe(`${DRAFT_FILES_PATH}?page=1&pageSize=20`);
-    expect(api.calls.map((call) => `${call.method} ${call.path}`).sort()).toEqual(["GET /api/me", `GET ${DRAFT_FILES_PATH}`].sort());
+    expect(api.calls.map((call) => `${call.method} ${call.path}`).sort()).toEqual(["GET /api/me", "GET /api/dashboard", `GET ${DRAFT_FILES_PATH}`].sort());
   });
 
   test("with no draft it says so; a failure to load says so and can be tried again", async () => {

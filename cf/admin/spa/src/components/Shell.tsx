@@ -1,24 +1,40 @@
-import { Menu } from "lucide-react";
+import { ExternalLink, Menu, PanelLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
+import { cn } from "@/lib/cn";
+import { DashboardProvider, useSharedDashboard } from "~/lib/dashboard-provider";
 import { useSubmitLock } from "~/lib/hooks";
 import { visibleNav } from "~/lib/nav";
 import { useMe, useSession } from "~/lib/session";
+import { useSidebarCollapsed } from "~/lib/sidebar-state";
+import { SITE_URL } from "~/lib/site";
+import { Breadcrumb } from "./Breadcrumb";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { MobileDrawer } from "./MobileDrawer";
 import { SidebarBody } from "./Sidebar";
 
 /**
- * The frame of every signed-in page (the legacy admin layout): a fixed sidebar
- * from `md` up; on phones a top bar with a menu button that opens a drawer. The
- * page itself is `<main>`, the only part that scrolls, and each page supplies
- * its own padding so an editor can pin a sticky header.
+ * The frame of every signed-in page (cf/admin/DESIGN.md, "Shell"): a navy sidebar from `md` up, 248 px wide or
+ * collapsed to a 72 px icon rail (the button in the top bar, Ctrl+B), beside a white top bar with the breadcrumb and a
+ * link to the public site; on phones a navy top bar with a menu button that opens a drawer. The page itself is
+ * `<main>`, the only part that scrolls, and each page supplies its own padding so an editor can pin a sticky header.
+ * The dashboard's answer is read once here: the sidebar shows its counts and the dashboard page its tiles.
  */
 export function Shell() {
+  return (
+    <DashboardProvider>
+      <ShellFrame />
+    </DashboardProvider>
+  );
+}
+
+function ShellFrame() {
   const me = useMe();
   const { signOut } = useSession();
+  const { counts } = useSharedDashboard();
   const groups = useMemo(() => visibleNav(me), [me]);
   const { pathname } = useLocation();
+  const { collapsed, toggle } = useSidebarCollapsed();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
@@ -54,10 +70,11 @@ export function Shell() {
       if (!(await signOut())) setSignOutError(true);
     });
 
-  const body = (extra: { onNavigate?: () => void; onClose?: () => void }) => (
+  const body = (extra: { collapsed?: boolean; onNavigate?: () => void; onClose?: () => void }) => (
     <SidebarBody
       me={me}
       groups={groups}
+      counts={counts}
       onSignOut={handleSignOut}
       signingOut={signingOut}
       signOutError={signOutError}
@@ -65,9 +82,15 @@ export function Shell() {
     />
   );
 
+  const toggleLabel = collapsed ? "Bentangkan menu samping" : "Ciutkan menu samping";
+
   return (
     // Column on phones (top bar above main), row on desktop (sidebar left of main).
-    <div className="flex h-dvh flex-col overflow-hidden bg-gray-50 md:flex-row">
+    // `relative`, here and on <main>: an absolutely positioned element (every `sr-only` one: a hidden file input, a
+    // live region) is only clipped by a box that is its containing block. Without it, one deep in a long page sticks
+    // out of the shell and makes the document itself taller than the window, so the whole shell scrolls away and
+    // leaves white under it.
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-background md:flex-row">
       <button
         type="button"
         onClick={() => main.current?.focus()}
@@ -78,9 +101,17 @@ export function Shell() {
 
       <div
         inert={drawerOpen}
-        className="flex shrink-0 items-center justify-between bg-gray-900 px-4 py-1 text-white md:hidden"
+        className="flex shrink-0 items-center justify-between bg-sidebar px-4 py-1 text-sidebar-accent-foreground md:hidden"
       >
-        <span className="font-[family-name:var(--font-display)] text-lg">SK Admin</span>
+        <span className="flex items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground"
+          >
+            SK
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight">Admin</span>
+        </span>
         <button
           ref={menuButton}
           type="button"
@@ -95,8 +126,14 @@ export function Shell() {
         </button>
       </div>
 
-      <aside inert={drawerOpen} className="hidden w-60 shrink-0 bg-gray-900 p-6 text-white md:block">
-        {body({})}
+      <aside
+        inert={drawerOpen}
+        className={cn(
+          "hidden shrink-0 bg-sidebar text-sidebar-foreground transition-[width] duration-200 motion-reduce:transition-none md:block",
+          collapsed ? "md:w-[72px]" : "md:w-[248px]",
+        )}
+      >
+        {body({ collapsed })}
       </aside>
 
       {drawerOpen && (
@@ -105,12 +142,39 @@ export function Shell() {
         </MobileDrawer>
       )}
 
-      {/* main is the scroll container. Padding belongs to each page. */}
-      <main id="main" ref={main} tabIndex={-1} inert={drawerOpen} className="flex-1 overflow-auto outline-none">
-        <ErrorBoundary resetKey={pathname}>
-          <Outlet />
-        </ErrorBoundary>
-      </main>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header inert={drawerOpen} className="hidden h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-6 md:flex">
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={toggleLabel}
+            aria-keyshortcuts="Control+B Meta+B"
+            title={`${collapsed ? "Bentangkan" : "Ciutkan"} menu (Ctrl+B)`}
+            className="inline-flex size-[34px] items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            <PanelLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+          <span aria-hidden="true" className="h-5 w-px bg-border" />
+          <Breadcrumb />
+          <a
+            href={SITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Lihat situs (tab baru)"
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+          >
+            Lihat situs
+            <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </header>
+
+        {/* main is the scroll container. Padding belongs to each page. */}
+        <main id="main" ref={main} tabIndex={-1} inert={drawerOpen} className="relative min-h-0 flex-1 overflow-auto outline-none">
+          <ErrorBoundary resetKey={pathname}>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
   );
 }

@@ -41,7 +41,7 @@ export function MobileDrawer({
         aria-modal="true"
         aria-label="Menu navigasi"
         tabIndex={-1}
-        className="fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col bg-gray-900 p-6 text-white transition-transform duration-200 ease-out starting:-translate-x-full motion-reduce:transition-none md:hidden"
+        className="fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-out starting:-translate-x-full motion-reduce:transition-none md:hidden"
       >
         {children}
       </div>

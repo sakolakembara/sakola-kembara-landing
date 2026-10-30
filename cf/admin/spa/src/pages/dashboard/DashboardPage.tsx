@@ -5,7 +5,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { expectedDashboardTiles } from "~/lib/dashboard";
 import { displayName } from "~/lib/me";
 import { useMe } from "~/lib/session";
-import { useDashboard } from "~/lib/use-dashboard";
+import { useSharedDashboard } from "~/lib/dashboard-provider";
 import { Attention } from "./Attention";
 import { QuickActions } from "./QuickActions";
 
@@ -18,7 +18,7 @@ import { QuickActions } from "./QuickActions";
  */
 export function DashboardPage() {
   const me = useMe();
-  const { state, reload } = useDashboard();
+  const { state, reload } = useSharedDashboard();
   // So the loading state is not taller than what replaces it.
   const expectedTiles = expectedDashboardTiles(me);
 

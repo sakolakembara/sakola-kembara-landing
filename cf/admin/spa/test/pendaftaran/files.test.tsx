@@ -108,7 +108,7 @@ describe("the list of files on the page", () => {
 
   test("nothing is loaded by itself: the page asks for the application and the session, never for a file", async () => {
     const { api } = await open(editorWho, detail());
-    expect(api.calls.map((call) => `${call.method} ${call.path}`).sort()).toEqual(["GET /api/me", `GET ${LIST}/a1`].sort());
+    expect(api.calls.map((call) => `${call.method} ${call.path}`).sort()).toEqual(["GET /api/me", "GET /api/dashboard", `GET ${LIST}/a1`].sort());
     expect(document.querySelector("img")).toBeNull();
     expect(document.querySelector("iframe, embed, object")).toBeNull();
   });

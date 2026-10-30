@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { adminAreas, grantableAreas } from "../../src/auth/permissions";
 import { userRoles } from "../../src/auth/roles";
-import { ADMIN_AREAS, AREAS, displayName, parseMe, ROLES } from "~/lib/me";
+import { ADMIN_AREAS, AREAS, displayName, initials, parseMe, ROLES } from "~/lib/me";
 
 const user = { id: "u1", email: "a@contoh.test", name: "Ani", role: "editor", emailVerified: true };
 const areas = { granted: ["konten"], visible: ["pendaftaran", "komunikasi", "konten"], writable: ["konten"] };
@@ -69,4 +69,12 @@ describe("displayName", () => {
   test("prefers the name", () => expect(displayName({ name: " Ani ", email: "x@y.z" })).toBe("Ani"));
   test("falls back to the email before the @", () => expect(displayName({ name: "", email: "budi@y.z" })).toBe("budi"));
   test("falls back to Admin", () => expect(displayName({ name: "", email: "@y.z" })).toBe("Admin"));
+});
+
+describe("initials", () => {
+  test("the first letters of the first two words", () => expect(initials({ name: "Umaimah 'Iffat Fauzi", email: "x@y.z" })).toBe("U'"));
+  test("two letters of a single word", () => expect(initials({ name: "Dzul", email: "x@y.z" })).toBe("DZ"));
+  test("one letter of a one-letter name", () => expect(initials({ name: "d", email: "x@y.z" })).toBe("D"));
+  test("from the email when there is no name", () => expect(initials({ name: " ", email: "budi@y.z" })).toBe("BU"));
+  test("capitals", () => expect(initials({ name: "ani wijaya", email: "x@y.z" })).toBe("AW"));
 });

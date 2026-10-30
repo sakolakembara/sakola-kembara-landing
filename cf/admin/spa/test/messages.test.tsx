@@ -71,7 +71,7 @@ describe("the list", () => {
 
   test("reading it changes nothing: the page asks the list and the counts, and never makes a POST or a DELETE", async () => {
     const { api } = await openList(["editor", ["komunikasi"]]);
-    expect(api.calls.map((call) => `${call.method} ${call.path}`).filter((route) => !route.endsWith("/api/me"))).toEqual([`GET ${LIST}`, `GET ${COUNTS}`]);
+    expect(api.calls.map((call) => `${call.method} ${call.path}`).filter((route) => !route.endsWith("/api/me") && !route.endsWith("/api/dashboard"))).toEqual([`GET ${LIST}`, `GET ${COUNTS}`]);
   });
 
   test("a viewer and an editor of Komunikasi see the same inbox: there is nothing to change in the list", async () => {

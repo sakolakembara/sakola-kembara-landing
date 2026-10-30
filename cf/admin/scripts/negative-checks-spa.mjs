@@ -13,6 +13,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
+import { shellSpaChecks } from "./negative-checks-spa-shell.mjs";
 import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
@@ -29,6 +30,9 @@ const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 const checks = [
   // The admin CRUD kit (SAKEM-082): scripts/negative-checks-spa-crud.mjs.
   ...crudSpaChecks,
+
+  // The shell, stage 2 of the admin polish (SAKEM-115): scripts/negative-checks-spa-shell.mjs.
+  ...shellSpaChecks,
 
   // Aktivitas and Pengaturan (SAKEM-082): scripts/negative-checks-spa-sistem.mjs.
   ...sistemSpaChecks,
@@ -418,9 +422,16 @@ for (const check of checks) {
     // A check says which SPA's tests it runs with `config` (the portal's); the default is the admin's.
     const run = spawnSync("pnpm", ["exec", "vitest", "run", "--config", check.config ?? "spa/vitest.config.ts", ...check.tests.split(" ")], {
       encoding: "utf8",
+      // A patch that makes the page loop for ever (an effect that writes on every render) must not stop the whole run.
+      timeout: 180_000,
+      killSignal: "SIGKILL",
     });
     const failed = (run.stdout + run.stderr).match(/Tests\s+(\d+) failed/);
-    if (run.status !== 0 && failed) console.log(`OK    ${check.name}: ${failed[1]} test(s) failed as they should`);
+    if (run.error?.code === "ETIMEDOUT") {
+      // Killing pnpm leaves vitest and its worker behind, spinning: stop them too.
+      spawnSync("pkill", ["-f", "vitest run --config"]);
+      console.log(`OK    ${check.name}: the tests never finished (the broken page loops), which no passing run does`);
+    } else if (run.status !== 0 && failed) console.log(`OK    ${check.name}: ${failed[1]} test(s) failed as they should`);
     else {
       console.log(`FAIL  ${check.name}: tests still pass (exit ${run.status})`);
       bad++;
