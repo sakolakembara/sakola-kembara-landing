@@ -43,8 +43,8 @@ export const shellSpaChecks = [
   {
     name: "shell: the old counts are dropped while a new answer is on its way (the badge blinks)",
     file: PROVIDER,
-    from: 'if (state.status === "ready") setSeen(state.data);',
-    to: 'setSeen(state.status === "ready" ? state.data : null);',
+    from: 'if (state.status !== "ready") return;\n    setSeen(state.data);',
+    to: 'setSeen(state.status === "ready" ? state.data : null);\n    if (state.status !== "ready") return;',
     tests: t(SHELL),
   },
   {
