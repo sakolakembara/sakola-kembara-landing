@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
 
 /** 403, inside the shell: the account is signed in but may not open this area. */

@@ -1,9 +1,9 @@
 import { Briefcase, Calendar, ExternalLink, FileText, GraduationCap, Home, Instagram, MessageCircle, Settings2, User, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Tag } from "@/components/ui/tag";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Tag } from "~/components/ui/tag";
 import { Flash } from "~/components/crud/Flash";
 import { PageHeader } from "~/components/PageHeader";
 import { accessTo } from "~/lib/access";

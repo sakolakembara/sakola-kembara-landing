@@ -1,8 +1,8 @@
 import { Edit, Plus, ShieldCheck, User } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
-import { Tag } from "@/components/ui/tag";
+import { Button } from "~/components/ui/button";
+import { Tag } from "~/components/ui/tag";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
 import { type Column, DataTable } from "~/components/crud/DataTable";
 import { FilterBar } from "~/components/crud/FilterBar";

@@ -1,7 +1,7 @@
 import { FileText, ImageIcon } from "lucide-react";
 import { type ChangeEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Button } from "~/components/ui/button";
+import { Field } from "~/components/ui/field";
 import { discardUpload, uploadFile, useUploadsBase, type UploadResult } from "~/lib/crud/upload-client";
 import { acceptFor, checkUploadFile, fileNameOf, FILE_TYPES, UPLOAD_KINDS, type UploadKindName, uploadUrl } from "~/lib/crud/upload-kinds";
 

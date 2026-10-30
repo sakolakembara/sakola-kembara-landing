@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
 
 /** 404, inside the shell. The server answers 200 for every path (SPA fallback), so this is the only 404 there is. */

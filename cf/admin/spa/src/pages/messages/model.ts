@@ -1,4 +1,4 @@
-import type { TagTone } from "@/components/ui/tag";
+import type { TagTone } from "~/components/ui/tag";
 import { type Subject } from "./spec";
 
 export { API_PATH, COUNTS_PATH, LIST_SPEC, READ_FILTERS, type ReadFilter, ROUTE, type Subject, SUBJECTS } from "./spec";

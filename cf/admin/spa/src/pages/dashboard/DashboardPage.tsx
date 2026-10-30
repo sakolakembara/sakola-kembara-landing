@@ -1,7 +1,7 @@
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
-import { Skeleton } from "~/components/Skeleton";
+import { Skeleton } from "~/components/ui/skeleton";
 import { expectedDashboardTiles } from "~/lib/dashboard";
 import { displayName } from "~/lib/me";
 import { useMe } from "~/lib/session";

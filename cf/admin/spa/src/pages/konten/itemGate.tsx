@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import { describeFailure } from "~/lib/crud/errors";
 import type { ItemState } from "~/lib/crud/useItem";
 

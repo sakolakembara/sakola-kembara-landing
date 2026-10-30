@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { Field, Textarea } from "@/components/ui/field";
+import { Field, Textarea } from "~/components/ui/field";
 import { cn } from "@/lib/cn";
 import { cleanMetaDescription, LIMITS, META_DESCRIPTION_IDEAL } from "./rules";
 

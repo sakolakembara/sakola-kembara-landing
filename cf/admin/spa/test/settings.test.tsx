@@ -183,9 +183,9 @@ describe("deactivate", () => {
     const user = userEvent.setup();
     const { dialog } = await ask(user);
     const confirm = within(dialog).getByRole("button", { name: "Nonaktifkan" });
-    expect(confirm.className).toContain("bg-red-600");
+    expect(confirm.className).toContain("bg-destructive");
     expect(confirm.className).not.toContain("bg-primary-blue");
-    expect(within(dialog).getByRole("button", { name: "Batal" }).className).not.toContain("bg-red-600");
+    expect(within(dialog).getByRole("button", { name: "Batal" }).className).not.toContain("bg-destructive");
   });
 
   test("confirming sends the POST once, however often it is pressed, then a notice and a fresh list", async () => {
@@ -258,7 +258,7 @@ describe("reactivate", () => {
     // A way back, not a loss: the kit's primary button, not the red one.
     const confirm = within(dialog).getByRole("button", { name: "Aktifkan kembali" });
     expect(confirm.className).toContain("bg-primary-blue");
-    expect(confirm.className).not.toContain("bg-red-600");
+    expect(confirm.className).not.toContain("bg-destructive");
     await user.click(confirm);
     expect((await screen.findByRole("status")).textContent).toContain("Admin dewi@contoh.test diaktifkan kembali.");
     expect(api.count(`POST ${LIST}/u1/reactivate`)).toBe(1);

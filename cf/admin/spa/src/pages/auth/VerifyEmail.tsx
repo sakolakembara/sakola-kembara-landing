@@ -1,6 +1,6 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useSearchParams } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { verifyOutcome } from "~/lib/auth-errors";
 import { usePageTitle } from "~/lib/hooks";

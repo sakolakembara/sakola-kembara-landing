@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
+import { Alert } from "~/components/ui/alert";
 import type { FlashControl } from "~/lib/crud/flash";
 
 /**

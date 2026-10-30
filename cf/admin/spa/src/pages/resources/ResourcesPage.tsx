@@ -1,8 +1,8 @@
 import { Edit, ExternalLink, FileText, Link as LinkIcon, Plus, Trash2, Type } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
-import { Tag } from "@/components/ui/tag";
+import { Button } from "~/components/ui/button";
+import { Tag } from "~/components/ui/tag";
 import { PageHeader } from "~/components/PageHeader";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
 import { type Column, DataTable } from "~/components/crud/DataTable";

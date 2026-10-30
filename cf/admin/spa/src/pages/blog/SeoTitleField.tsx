@@ -1,4 +1,4 @@
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input } from "~/components/ui/field";
 import { cn } from "@/lib/cn";
 import type { FieldBinding } from "./MetaDescriptionField";
 import { cleanSeoTitle, LIMITS, SEO_TITLE_IDEAL } from "./rules";

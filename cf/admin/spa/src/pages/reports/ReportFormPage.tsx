@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
-import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "~/components/ui/field";
 import { FormSection, FormShell } from "~/components/crud/FormShell";
 import { UploadField } from "~/components/crud/UploadField";
 import { accessTo } from "~/lib/access";

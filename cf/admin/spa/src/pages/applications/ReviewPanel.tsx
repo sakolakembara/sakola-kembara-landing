@@ -1,8 +1,8 @@
 import { AlertTriangle } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, Select, Textarea } from "@/components/ui/field";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Field, Select, Textarea } from "~/components/ui/field";
 import { api } from "~/lib/api";
 import { ifMatch } from "~/lib/crud/etag";
 import type { ItemPayload } from "~/lib/crud/types";

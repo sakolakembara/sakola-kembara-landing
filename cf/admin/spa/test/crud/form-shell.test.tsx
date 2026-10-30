@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { Link } from "react-router";
 import { describe, expect, test, vi } from "vitest";
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input } from "~/components/ui/field";
 import { FormSection, FormShell } from "~/components/crud/FormShell";
 import type { ApiResult } from "~/lib/api";
 import { useFlash } from "~/lib/crud/flash";

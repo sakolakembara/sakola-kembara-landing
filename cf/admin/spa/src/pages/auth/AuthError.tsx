@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import { queryErrorMessage } from "~/lib/auth-errors";
 import { usePageTitle } from "~/lib/hooks";
 import { AuthShell } from "@shared/spa/AuthShell";

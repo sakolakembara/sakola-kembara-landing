@@ -1,9 +1,9 @@
 import { CalendarDays, CheckCircle, Undo2, Users } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
-import { Tag } from "@/components/ui/tag";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Table, TBody, Td, Th, THead } from "~/components/ui/table";
+import { Tag } from "~/components/ui/tag";
 import { Flash } from "~/components/crud/Flash";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { PageHeader } from "~/components/PageHeader";

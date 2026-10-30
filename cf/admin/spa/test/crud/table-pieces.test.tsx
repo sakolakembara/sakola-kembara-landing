@@ -280,12 +280,12 @@ describe("StatusTag", () => {
 
   test("a known value is its label in its tone", () => {
     render(<StatusTag map={MAP} value="urgent" />);
-    expect(screen.getByText("Mendesak").className).toContain("bg-red-50");
+    expect(screen.getByText("Mendesak").className).toContain("bg-danger-bg");
   });
 
   test("an unknown value is a gray pill with the raw value, never a crash or an empty cell", () => {
     const { rerender } = render(<StatusTag map={MAP} value="baru" />);
-    expect(screen.getByText("baru").className).toContain("bg-gray-50");
+    expect(screen.getByText("baru").className).toContain("bg-gray-100");
     rerender(<StatusTag map={MAP} value="" />);
     expect(screen.getByText("-")).toBeTruthy();
     rerender(<StatusTag map={MAP} value={null} />);
@@ -295,7 +295,7 @@ describe("StatusTag", () => {
   test("a value that is a property of every object is not a status", () => {
     for (const value of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
       const view = render(<StatusTag map={MAP} value={value} />);
-      expect(view.getByText(value).className).toContain("bg-gray-50");
+      expect(view.getByText(value).className).toContain("bg-gray-100");
       view.unmount();
     }
   });

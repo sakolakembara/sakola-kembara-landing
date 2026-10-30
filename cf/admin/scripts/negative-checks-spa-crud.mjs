@@ -21,6 +21,7 @@ const MOCK = "crud/mock-resources.test.ts";
 const API = "api.test.ts";
 const DASHBOARD = "dashboard.test.tsx";
 const PROGRESS = "progress-bar.test.tsx";
+const UIKIT = "ui-kit.test.tsx";
 
 export const crudSpaChecks = [
   // ---------------------------------------------- write affordances follow the role
@@ -336,6 +337,50 @@ export const crudSpaChecks = [
     from: 'return data ? { status: "ready", data } : { status: "loading" };',
     to: 'return { status: "loading" };',
     tests: t(DASHBOARD),
+  },
+
+  // ------------------------------------------- the admin's UI kit (spa/src/components/ui, cf/admin/DESIGN.md)
+  {
+    name: "kit: an alert has no icon, so only its color says what it is",
+    file: "spa/src/components/ui/alert.tsx",
+    from: '<Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />',
+    to: "",
+    tests: t(UIKIT),
+  },
+  {
+    name: "kit: an error banner is not announced at once",
+    file: "spa/src/components/ui/alert.tsx",
+    from: 'role={kind === "danger" ? "alert" : "status"}',
+    to: 'role="status"',
+    tests: t(UIKIT, ANNOUNCEMENTS),
+  },
+  {
+    name: "kit: a small button is as short on a phone as on a desktop (a touch target under 44 px)",
+    file: "spa/src/components/ui/button.tsx",
+    from: 'sm: "min-h-10 px-3 text-sm md:min-h-[34px]",',
+    to: 'sm: "min-h-[34px] px-3 text-sm",',
+    tests: t(UIKIT),
+  },
+  {
+    name: "kit: an outside link opens in the same tab and without noopener",
+    file: "spa/src/components/ui/button.tsx",
+    from: 'target="_blank" rel="noopener noreferrer" ',
+    to: "",
+    tests: t(UIKIT),
+  },
+  {
+    name: "kit: text is 14 px on a phone (iOS zooms in on focus under 16 px)",
+    file: "spa/src/components/ui/field.tsx",
+    from: "bg-card text-base text-foreground leading-6",
+    to: "bg-card text-foreground leading-6",
+    tests: t(UIKIT),
+  },
+  {
+    name: "kit: a select loses its own arrow",
+    file: "spa/src/components/ui/field.tsx",
+    from: "style={{ backgroundImage: CHEVRON, ...style }}",
+    to: "style={style}",
+    tests: t(UIKIT),
   },
 
   // ---------------------------------------------------------------------- uploads

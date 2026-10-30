@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
 import { api } from "~/lib/api";
 import { useMutation } from "~/lib/crud/useMutation";

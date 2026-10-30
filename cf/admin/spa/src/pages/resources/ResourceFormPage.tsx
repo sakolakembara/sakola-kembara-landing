@@ -1,9 +1,9 @@
 import { FileText, Link as LinkIcon, Type } from "lucide-react";
 import type { ComponentType } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { Alert } from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
+import { Field, Input, Select, Textarea } from "~/components/ui/field";
 import { FormSection, FormShell } from "~/components/crud/FormShell";
 import { UploadField } from "~/components/crud/UploadField";
 import { accessTo } from "~/lib/access";

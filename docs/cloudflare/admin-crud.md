@@ -300,6 +300,8 @@ export const announcementRoutes = crudRoutes({
 
 **Components**
 
+The admin has its **own UI kit** in `spa/src/components/ui/` (`button`, `field`, `alert`, `tag`, `table`, `skeleton`), in the shadcn style on our tokens: same props as the public kit's `components/ui/*`, so a screen only changes its import (`~/components/ui/button`). The root kit is shared with the student portal and the legacy app and is not edited for the admin; `heading`, `eyebrow` and `container` still come from it until the shell and the page header move (SAKEM-115 stage 2). `cf/admin/DESIGN.md` is the design, `cf/admin/components.json` the shadcn configuration (`pnpm dlx shadcn add <component>` puts a component under `spa/src/components/ui/`), and the shadcn CSS variables are in `spa/src/styles.css`. The admin ships one font family (Plus Jakarta Sans); Lora is only the portal's.
+
 | Piece | What it is |
 | --- | --- |
 | `PageHeader` (existing) | has the `actions` slot (the "Pengumuman Baru" button); show it only to someone who can write |

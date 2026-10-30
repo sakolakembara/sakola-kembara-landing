@@ -238,7 +238,7 @@ describe("dashboard: empty, loading, error", () => {
   test.each([404, 501])("not served (%s): an honest note, no retry button", async (status) => {
     await open("viewer", [], respond({ error: "not_implemented" }, status));
     const note = await screen.findByText("Data dashboard belum tersedia di admin baru.");
-    expect(note.getAttribute("role")).toBe("status"); // not an alert: nothing is broken
+    expect(note.closest("[role=status]")).not.toBeNull(); // a status, not an alert: nothing is broken
     expect(screen.queryByRole("button", { name: "Coba lagi" })).toBeNull();
   });
 
