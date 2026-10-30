@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type ApiFailure } from "~/lib/api";
-import { cachedList, keepList, listCacheVersion } from "~/lib/crud/listCache";
+import { cachedRead, keepRead, readCacheVersion } from "~/lib/crud/readCache";
 import type { LoadState } from "~/lib/crud/types";
 import { API_PATH, type AuditItem, type AuditPayload, type AuditQuery, toApiQuery } from "./model";
 
@@ -28,9 +28,9 @@ interface Loaded {
 export function useAuditList(query: AuditQuery): AuditList {
   const apiQuery = toApiQuery(query);
   const [attempt, setAttempt] = useState(0);
-  // A query opened before shows its last answer from the first paint (lib/crud/listCache.ts) while it is asked for again.
+  // A query opened before shows its last answer from the first paint (lib/crud/readCache.ts) while it is asked for again.
   const [loaded, setLoaded] = useState<Loaded>(() => {
-    const kept = cachedList<AuditPayload>(`${API_PATH}${apiQuery}`);
+    const kept = cachedRead<AuditPayload>(`${API_PATH}${apiQuery}`);
     return kept ? { status: "ready", data: kept, failure: null } : { status: "loading", data: null, failure: null };
   });
   const [pending, setPending] = useState(true);
@@ -38,8 +38,8 @@ export function useAuditList(query: AuditQuery): AuditList {
   useEffect(() => {
     const controller = new AbortController();
     const path = `${API_PATH}${apiQuery}`;
-    const kept = cachedList<AuditPayload>(path);
-    const version = listCacheVersion();
+    const kept = cachedRead<AuditPayload>(path);
+    const version = readCacheVersion();
     setPending(true);
     setLoaded((previous) =>
       kept ? { status: "ready", data: kept, failure: null } : { ...previous, status: previous.data ? "ready" : "loading", failure: null },
@@ -47,7 +47,7 @@ export function useAuditList(query: AuditQuery): AuditList {
     void api<AuditPayload>(path, { signal: controller.signal }).then((result) => {
       if (controller.signal.aborted) return;
       setPending(false);
-      if (result.ok) keepList(path, result.data, version);
+      if (result.ok) keepRead(path, result.data, version);
       setLoaded(result.ok ? { status: "ready", data: result.data, failure: null } : { status: "error", data: null, failure: result });
     });
     return () => controller.abort();

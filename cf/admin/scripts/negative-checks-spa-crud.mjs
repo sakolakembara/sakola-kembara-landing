@@ -19,6 +19,8 @@ const LIST = "crud/use-list.test.tsx";
 const KINDS = "crud/upload-kinds.test.ts";
 const MOCK = "crud/mock-resources.test.ts";
 const API = "api.test.ts";
+const DASHBOARD = "dashboard.test.tsx";
+const PROGRESS = "progress-bar.test.tsx";
 
 export const crudSpaChecks = [
   // ---------------------------------------------- write affordances follow the role
@@ -230,14 +232,14 @@ export const crudSpaChecks = [
   // ------------------------------------------- the lists' memory and the filters that apply by themselves
   {
     name: "crud: a write no longer empties the lists' memory (a list shows the row that was just deleted)",
-    file: "spa/src/lib/crud/listCache.ts",
-    from: "onWrite(clearListCache);",
+    file: "spa/src/lib/crud/readCache.ts",
+    from: "onWrite(clearReadCache);",
     to: "",
     tests: t(LIST),
   },
   {
     name: "crud: an answer that was on its way when a write happened is kept anyway",
-    file: "spa/src/lib/crud/listCache.ts",
+    file: "spa/src/lib/crud/readCache.ts",
     from: "if (since === version) answers.set(key, payload);",
     to: "answers.set(key, payload);",
     tests: t(LIST),
@@ -283,6 +285,57 @@ export const crudSpaChecks = [
     from: "if (committed === sent.current) return;",
     to: "",
     tests: t(TABLE),
+  },
+
+  // ------------------------------------------- loading feedback: the top bar, the grey rows, the dashboard
+  {
+    name: "loading: a finished call is never taken off the count (the top bar slides for ever)",
+    file: "shared/spa/api.ts",
+    from: "moveInFlight(-1);",
+    to: "",
+    tests: t(API, PROGRESS),
+  },
+  {
+    name: "loading: the top bar shows at once instead of after a moment (an answer that comes at once flashes it)",
+    file: "spa/src/components/ProgressBar.tsx",
+    from: 'busy ? "opacity-100 delay-200" : "opacity-0"',
+    to: 'busy ? "opacity-100" : "opacity-0"',
+    tests: t(PROGRESS),
+  },
+  {
+    name: "loading: the table has no grey rows while it loads",
+    file: "spa/src/components/crud/DataTable.tsx",
+    from: "const SKELETON_ROWS = 5;",
+    to: "const SKELETON_ROWS = 0;",
+    tests: t(TABLE),
+  },
+  {
+    name: "loading: the table's loading words are not a status any more (screen readers hear nothing)",
+    file: "spa/src/components/crud/DataTable.tsx",
+    from: '<p role="status" className="sr-only">',
+    to: '<p className="sr-only">',
+    tests: t(TABLE),
+  },
+  {
+    name: "loading: rows shown again dim at once, so a list confirmed in a moment flashes",
+    file: "spa/src/components/crud/DataTable.tsx",
+    from: '"opacity-60 transition-opacity delay-300"',
+    to: '"opacity-60 transition-opacity"',
+    tests: t(TABLE),
+  },
+  {
+    name: "loading: a role with no tile to come gets no grey block (the dashboard looks stuck)",
+    file: "spa/src/pages/dashboard/DashboardPage.tsx",
+    from: "Math.max(tiles, 1)",
+    to: "tiles",
+    tests: t(DASHBOARD),
+  },
+  {
+    name: "loading: the dashboard forgets its last answer (grey blocks at every visit)",
+    file: "spa/src/lib/use-dashboard.ts",
+    from: 'return data ? { status: "ready", data } : { status: "loading" };',
+    to: 'return { status: "loading" };',
+    tests: t(DASHBOARD),
   },
 
   // ---------------------------------------------------------------------- uploads

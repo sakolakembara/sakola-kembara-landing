@@ -56,6 +56,25 @@ describe("DataTable", () => {
     expect(screen.getAllByRole("columnheader")).toHaveLength(2);
   });
 
+  test("loading: grey pulsing rows, one cell per column, hidden from screen readers (the status row speaks for them)", () => {
+    const { container } = render(table({ rows: [], state: "loading", actions: () => null }));
+    const grey = container.querySelectorAll("tbody tr[aria-hidden=true]");
+    expect(grey).toHaveLength(5);
+    for (const row of grey) {
+      expect(row.querySelectorAll("td")).toHaveLength(3);
+      expect(row.querySelectorAll(".animate-pulse")).toHaveLength(3);
+    }
+    // Only the status row is in the accessibility tree besides the header.
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+  });
+
+  test("rows that are shown again while the new answer comes dim only after a delay, so a quick confirmation does not flash", () => {
+    const { container, rerender } = render(table({ rows: ROWS, state: "ready", refreshing: true }));
+    expect(container.querySelector("tbody")?.className).toContain("delay-300");
+    rerender(table({ rows: ROWS, state: "ready", refreshing: false }));
+    expect(container.querySelector("tbody")?.className).not.toContain("delay-300");
+  });
+
   test("error: an alert with the sentence and 'Coba lagi', which calls retry", async () => {
     const retry = vi.fn();
     render(table({ rows: [], state: "error", errorMessage: "Tidak dapat terhubung ke server.", onRetry: retry }));

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { api, onWrite, setTransport } from "~/lib/api";
-import { respond } from "./helpers";
+import { api, onActivity, onWrite, requestsInFlight, setTransport } from "~/lib/api";
+import { deferred, respond } from "./helpers";
 
 describe("api()", () => {
   test("returns the parsed body on success", async () => {
@@ -121,5 +121,29 @@ describe("api()", () => {
     stop();
     await api("/api/x", { method: "POST", json: {} });
     expect(told).toHaveBeenCalledTimes(3);
+  });
+
+  test("requestsInFlight counts the calls still waiting, and onActivity is told at every change, whatever the end", async () => {
+    const seen: number[] = [];
+    const stop = onActivity(() => seen.push(requestsInFlight()));
+    const gate = deferred<Response>();
+    setTransport(() => gate.promise.then((response) => response.clone()));
+    const first = api("/api/x");
+    const second = api("/api/y", { method: "POST", json: {} });
+    expect(requestsInFlight()).toBe(2);
+    gate.resolve(respond({}));
+    await Promise.all([first, second]);
+    expect(requestsInFlight()).toBe(0);
+    setTransport(async () => {
+      throw new Error("offline");
+    });
+    await api("/api/x");
+    setTransport(async () => respond({ error: "boom" }, 500));
+    await api("/api/x");
+    expect(requestsInFlight()).toBe(0);
+    expect(seen).toEqual([1, 2, 1, 0, 1, 0, 1, 0]);
+    stop();
+    await api("/api/x");
+    expect(seen).toHaveLength(8);
   });
 });

@@ -1,7 +1,7 @@
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/cn";
 import { PageHeader } from "~/components/PageHeader";
+import { Skeleton } from "~/components/Skeleton";
 import { expectedDashboardTiles } from "~/lib/dashboard";
 import { displayName } from "~/lib/me";
 import { useMe } from "~/lib/session";
@@ -52,21 +52,16 @@ export function DashboardPage() {
   );
 }
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-xl bg-gray-100 motion-reduce:animate-none", className)} />;
-}
-
+/** At least one grey tile, even for a role that may end up with none: a page with nothing moving looks stuck. */
 function LoadingBlocks({ tiles }: { tiles: number }) {
   return (
     <div role="status" aria-busy="true" className="mb-8 space-y-8">
       <span className="sr-only">Memuat dashboard…</span>
-      {tiles > 0 && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-hidden="true">
-          {Array.from({ length: tiles }, (_, n) => (
-            <Skeleton key={n} className="h-24" />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-hidden="true">
+        {Array.from({ length: Math.max(tiles, 1) }, (_, n) => (
+          <Skeleton key={n} className="h-24 rounded-xl" />
+        ))}
+      </div>
     </div>
   );
 }

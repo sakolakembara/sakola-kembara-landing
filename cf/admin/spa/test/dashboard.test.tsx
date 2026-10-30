@@ -191,13 +191,30 @@ describe("dashboard: empty, loading, error", () => {
     ["viewer", [] as never[], 4],
     ["editor", ["pendaftaran"] as "pendaftaran"[], 3],
     ["editor", ["komunikasi"] as "komunikasi"[], 1],
-    ["editor", ["konten"] as "konten"[], 0],
-  ] as const)("loading: %s %j has as many placeholders as tiles to come (%i)", async (role, areas, tiles) => {
+    // No tile may come, and still one grey block moves: a page with nothing moving looks stuck.
+    ["editor", ["konten"] as "konten"[], 1],
+  ] as const)("loading: %s %j has as many placeholders as tiles to come, and at least one (%i)", async (role, areas, tiles) => {
     const gate = deferred<Response>();
     stubApi({ "GET /api/me": respond(meBody(role, [...areas])), "GET /api/dashboard": () => gate.promise });
     renderApp("/");
     const status = (await screen.findByText("Memuat dashboard…")).closest("[role=status]")!;
     expect(status.querySelectorAll(".animate-pulse")).toHaveLength(tiles);
+  });
+
+  test("coming back shows the last answer at once and asks again", async () => {
+    stubApi({ "GET /api/me": respond(meBody("super_admin")), "GET /api/dashboard": respond(full) });
+    const first = renderApp("/");
+    await screen.findByRole("region", { name: "Perlu perhatian" });
+    first.unmount();
+
+    const gate = deferred<Response>();
+    const api = stubApi({ "GET /api/me": respond(meBody("super_admin")), "GET /api/dashboard": () => gate.promise });
+    renderApp("/");
+    // The tiles are there while the new answer is still on its way: no grey blocks first.
+    await screen.findByRole("region", { name: "Perlu perhatian" });
+    expect(screen.queryByText("Memuat dashboard…")).toBeNull();
+    expect(api.count("GET /api/dashboard")).toBe(1);
+    gate.resolve(respond(full));
   });
 
   test("error: says so, and Coba lagi asks again", async () => {

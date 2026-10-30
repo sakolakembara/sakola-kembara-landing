@@ -20,3 +20,17 @@
   --font-body: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", sans-serif;
   --font-display: "Lora Variable", "Lora", serif;
 }
+
+/* The top progress bar (components/ProgressBar.tsx): a segment, 40% of the bar wide, that slides across and starts
+   again. -100% of the segment is just outside on the left; 250% of 40% is just outside on the right. */
+@theme {
+  --animate-progress-slide: progress-slide 1.2s ease-in-out infinite;
+  @keyframes progress-slide {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(250%);
+    }
+  }
+}

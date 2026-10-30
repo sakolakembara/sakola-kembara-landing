@@ -51,7 +51,7 @@ const ZOD_MARKERS = ["$ZodType", "$ZodObject", "$ZodError"];
 // frame, the auth card, the drawer). If they are missing, Tailwind did not scan the SPA.
 // The last two are used only by files in shared/spa (the auth layout, the crash screen): if they are missing,
 // the shared module is no longer scanned (`@source "../../shared/spa"` in spa/src/styles.css).
-const SPA_ONLY_CLASSES = ["h-dvh", "min-h-screen", "max-w-md", "starting\\:-translate-x-full", "sm\\:max-w-sm", "max-w-lg"];
+const SPA_ONLY_CLASSES = ["h-dvh", "min-h-screen", "max-w-md", "starting\\:-translate-x-full", "sm\\:max-w-sm", "max-w-lg", "animate-progress-slide"];
 
 const kb = (bytes) => `${(bytes / 1000).toFixed(2)} kB`;
 let failed = false;
@@ -104,6 +104,12 @@ try {
 }
 if (!/^\/assets\/\*\s*\n\s+Cache-Control:\s*public, max-age=31536000, immutable\s*$/m.test(headersText)) {
   console.error("FAIL: dist/spa/_headers does not keep /assets/* for a year (spa/public/_headers)");
+  failed = true;
+}
+
+// The top progress bar's animation is defined in spa/src/styles.css (`@theme`): without its keyframes the bar would stand still.
+if (!css.includes("@keyframes progress-slide")) {
+  console.error("FAIL: the CSS has no @keyframes progress-slide: the top progress bar (components/ProgressBar.tsx) would not move");
   failed = true;
 }
 

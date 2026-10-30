@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router";
+import { ProgressBar } from "./components/ProgressBar";
 import { RequireAuth, RequireSection } from "./components/RequireAuth";
 import { Shell } from "./components/Shell";
 import { NAV_ITEMS, type NavItem } from "./lib/nav";
@@ -26,7 +27,7 @@ function itemsBySection(): [NavItem["section"], NavItem[]][] {
   return [...groups];
 }
 
-export function App() {
+function AppRoutes() {
   return (
     <Routes>
       {/* Open to anyone. */}
@@ -61,5 +62,14 @@ export function App() {
         </Route>
       </Route>
     </Routes>
+  );
+}
+
+export function App() {
+  return (
+    <>
+      <ProgressBar />
+      <AppRoutes />
+    </>
   );
 }

@@ -72,8 +72,28 @@ export function onWrite(listener: () => void): () => void {
   return () => void writeListeners.delete(listener);
 }
 
+let inFlight = 0;
+const activityListeners = new Set<() => void>();
+
+function moveInFlight(by: 1 | -1): void {
+  inFlight += by;
+  for (const listener of activityListeners) listener();
+}
+
+/** How many calls to the API are waiting for their answer right now (the top progress bar shows it). */
+export function requestsInFlight(): number {
+  return inFlight;
+}
+
+/** Calls `listener` whenever `requestsInFlight()` changes. The shape `useSyncExternalStore` wants: returns the way to stop. */
+export function onActivity(listener: () => void): () => void {
+  activityListeners.add(listener);
+  return () => void activityListeners.delete(listener);
+}
+
 /** JSON call to this app's own API. Cookies go along (same origin). Never throws. */
 export async function api<T>(path: string, init: ApiInit = {}): Promise<ApiResult<T>> {
+  moveInFlight(1);
   const headers: Record<string, string> = {};
   if (init.json !== undefined) headers["Content-Type"] = "application/json";
   if (init.turnstileToken) headers[TURNSTILE_HEADER] = init.turnstileToken;
@@ -104,5 +124,6 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<ApiResul
   } finally {
     const method = (init.method ?? "GET").toUpperCase();
     if (method !== "GET" && method !== "HEAD") for (const listener of writeListeners) listener();
+    moveInFlight(-1);
   }
 }
