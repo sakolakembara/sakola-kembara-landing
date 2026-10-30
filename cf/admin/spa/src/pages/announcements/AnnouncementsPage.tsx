@@ -36,7 +36,7 @@ const COLUMNS: readonly Column<AnnouncementListItem>[] = [
     ),
   },
   { key: "severity", header: "Severity", cell: (row) => <StatusTag map={SEVERITY_STATUS} value={row.severity} /> },
-  { key: "window", header: "Jadwal", className: "align-top text-xs text-gray-500", cell: (row) => formatWindow(row.startsAt, row.endsAt) },
+  { key: "window", sort: "startsAt", sortFirst: "desc", header: "Jadwal", className: "align-top text-xs text-gray-500", cell: (row) => formatWindow(row.startsAt, row.endsAt) },
   {
     key: "status",
     header: "Status",

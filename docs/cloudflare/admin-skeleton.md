@@ -108,7 +108,7 @@ spa/src/
     validation.ts          form validation (pure)
     dashboard.ts           GET /api/dashboard contract, parser, hook
     hooks.ts               submit lock, focus trap, autofocus, page title
-  components/              Shell, Sidebar, MobileDrawer, PageHeader, RequireAuth, ErrorBoundary, TurnstileWidget
+  components/              Shell, Sidebar, UserMenu, Breadcrumb, NavIcon, MobileDrawer, PageHeader, RequireAuth, ErrorBoundary, TurnstileWidget
   pages/                   dashboard/, auth/, Announcements, Placeholder, Forbidden, NotFound
   mock/                    development mock (never in the build)
 spa/test/                  vitest + jsdom
@@ -140,7 +140,7 @@ An editor sees and changes only what was granted to them: until 2026-10-12 they 
 
 ### Shell behaviour
 
-Desktop: fixed 240 px sidebar. Below `md`: a top bar with a menu button that opens a modal drawer (`role="dialog"`, `aria-modal`): focus moves in, Tab wraps, Escape and the backdrop close it, focus returns to the button, the page behind is `inert` and does not scroll; following a link closes it. The current link carries `aria-current="page"` (a page below an entry keeps its entry marked). After a route change focus goes to `<main>`; a "Lewati ke konten utama" button is the first tab stop. The sidebar footer shows the email, the role ("Hanya baca" for a viewer) and Keluar.
+Desktop (cf/admin/DESIGN.md, "Shell"): a navy sidebar, 248 px wide or collapsed to a 72 px icon rail (the button in the white top bar, or Ctrl+B / ⌘B outside text fields; the choice is kept in `localStorage` under `sakem-admin:sidebar`, and a browser that refuses storage just starts open). Every entry has an icon (`icon` in `lib/nav.ts`, drawn by `components/NavIcon.tsx`), and *Pendaftar* and *Pesan* carry a count of what waits, taken from `GET /api/dashboard`. The dashboard is read once for the whole shell (`DashboardProvider` in `lib/dashboard-provider.tsx`, shared with the dashboard page): it asks when the shell opens, after every write (a decision or a message read changes the counts) and when the user comes back to the dashboard, and keeps showing the old counts while the new answer is on its way. The dashboard page shows "Diperbarui 14.32" (when the Worker last answered; an answer shown from memory carries no time of its own, so it is not stamped as new) with a button that asks again. The top bar holds the breadcrumb (`components/Breadcrumb.tsx`) and a link to the public site. The user block at the foot opens a panel with the email and Keluar (`components/UserMenu.tsx`). Below `md`: a top bar with a menu button that opens a modal drawer (`role="dialog"`, `aria-modal`): focus moves in, Tab wraps, Escape and the backdrop close it, focus returns to the button, the page behind is `inert` and does not scroll; following a link closes it. The current link carries `aria-current="page"` (a page below an entry keeps its entry marked). After a route change focus goes to `<main>`; a "Lewati ke konten utama" button is the first tab stop. The sidebar footer shows the user's name and role ("Hanya baca" for a viewer); the email and Keluar are in the panel it opens.
 
 ### Auth pages (admin side only; there is no admin registration)
 
@@ -194,7 +194,7 @@ The mock is loaded only when `VITE_ADMIN_MOCK=true`, which a normal build never 
 
 ### Adding a menu page
 
-1. Add one entry to `NAV` in `lib/nav.ts`: `path`, `label`, optional `title`, and `section` (`pendaftaran`, `komunikasi`, `konten` or `sistem`). The sidebar, the 403 check, the placeholder and the routes (`path` and `path/*`) follow from it. The Worker lists the same menu (`menuItems` in `src/auth/permissions.ts`); add the entry there too, a test compares the two.
+1. Add one entry to `NAV` in `lib/nav.ts`: `path`, `label`, `icon` (one of `NavIconName`; add its picture to `components/NavIcon.tsx`), optional `title`, and `section` (`pendaftaran`, `komunikasi`, `konten` or `sistem`). The sidebar, the 403 check, the placeholder and the routes (`path` and `path/*`) follow from it. The Worker lists the same menu (`menuItems` in `src/auth/permissions.ts`); add the entry there too, a test compares the two.
 2. Build the page as `pages/<Name>.tsx` and register it in `PAGES` in `App.tsx` by path. Start with `<PageHeader title=...>` (it sets the tab title and supports `back`, `overline` and `actions`), pad the page itself (`p-6 md:p-10`), and take the user from `useMe()`.
 3. Gate every create, edit and delete control with `accessTo(me, "<section>") === "write"`. Do not compare roles anywhere else. The API route must use the matching `requireArea` (`src/auth/guard.ts`).
 4. Talk to the server only through `api()` (so the mock and the tests can stand in), keep Indonesian text next to the page or in `lib/`, use `useSubmitLock` for anything that sends, and add the page's tests.

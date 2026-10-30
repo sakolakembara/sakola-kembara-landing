@@ -46,7 +46,8 @@ describe("DataTable", () => {
     for (const header of within(grid).getAllByRole("columnheader")) expect(header.getAttribute("scope")).toBe("col");
     expect(within(grid).getAllByRole("row")).toHaveLength(3); // header + 2
     expect(within(grid).getByText("Dua")).toBeTruthy();
-    expect(grid.querySelector("caption")?.textContent).toContain("Geser tabel ke samping");
+    // The caption names the table for screen readers; a phone draws the rows as cards, so it no longer says to scroll.
+    expect(grid.querySelector("caption")?.textContent).toBe("Daftar contoh.");
   });
 
   test("loading: one status row, the table is busy, the header stays", () => {
@@ -360,5 +361,115 @@ describe("useFlash: a notice that survives a route change", () => {
     expect(screen.getByRole("status").textContent).toContain("Dari halaman ini.");
     await user.click(screen.getByRole("button", { name: "Tutup pesan" }));
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("DataTable: sort buttons", () => {
+  const SORTABLE: Column<Row>[] = [
+    { key: "name", header: "Nama", sort: "name", cell: (row) => row.name },
+    { key: "id", header: "Kode", sort: "code", sortFirst: "desc", cell: (row) => row.id },
+    { key: "plain", header: "Biasa", cell: () => "-" },
+  ];
+  const header = (name: string) => screen.getByRole("columnheader", { name });
+
+  test("a sortable column has a button in its header, and aria-sort says what is in force", () => {
+    render(table({ columns: SORTABLE, sort: { value: "-code", onChange: vi.fn() } }));
+    expect(header("Nama").getAttribute("aria-sort")).toBe("none");
+    expect(header("Kode").getAttribute("aria-sort")).toBe("descending");
+    expect(within(header("Nama")).getByRole("button", { name: "Nama" })).toBeTruthy();
+    // A column with no sort is plain text and says nothing about order.
+    expect(header("Biasa").hasAttribute("aria-sort")).toBe(false);
+    expect(within(header("Biasa")).queryByRole("button")).toBeNull();
+  });
+
+  test("pressing it sorts ascending, then flips each press", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const view = render(table({ columns: SORTABLE, sort: { value: "code", onChange } }));
+    await user.click(screen.getByRole("button", { name: "Nama" }));
+    expect(onChange).toHaveBeenLastCalledWith("name");
+    view.rerender(table({ columns: SORTABLE, sort: { value: "name", onChange } }));
+    await user.click(screen.getByRole("button", { name: "Nama" }));
+    expect(onChange).toHaveBeenLastCalledWith("-name");
+    view.rerender(table({ columns: SORTABLE, sort: { value: "-name", onChange } }));
+    await user.click(screen.getByRole("button", { name: "Nama" }));
+    expect(onChange).toHaveBeenLastCalledWith("name");
+  });
+
+  test("a date or an amount starts with the biggest first, then flips", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const view = render(table({ columns: SORTABLE, sort: { value: "name", onChange } }));
+    await user.click(screen.getByRole("button", { name: "Kode" }));
+    expect(onChange).toHaveBeenLastCalledWith("-code");
+    view.rerender(table({ columns: SORTABLE, sort: { value: "-code", onChange } }));
+    await user.click(screen.getByRole("button", { name: "Kode" }));
+    expect(onChange).toHaveBeenLastCalledWith("code");
+  });
+
+  test("without a sort the headers are plain text, whatever the columns say", () => {
+    render(table({ columns: SORTABLE }));
+    expect(screen.queryByRole("button", { name: "Nama" })).toBeNull();
+    expect(header("Nama").hasAttribute("aria-sort")).toBe(false);
+  });
+});
+
+describe("DataTable: empty states", () => {
+  test("an icon over the sentence, and the action when there is one", () => {
+    const { container } = render(table({ rows: [], emptyAction: <button type="button">Tampilkan semua</button> }));
+    expect(screen.getByText("Belum ada contoh.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Tampilkan semua" })).toBeTruthy();
+    expect(container.querySelector(".lucide-inbox")).toBeTruthy();
+    // The icon is decoration.
+    expect(container.querySelector(".lucide-inbox")?.closest("[aria-hidden=true]")).toBeTruthy();
+  });
+
+  test("a search that found nothing has its own icon, and no action unless given", () => {
+    const { container } = render(table({ rows: [], emptyFiltered: true }));
+    expect(container.querySelector(".lucide-search-x")).toBeTruthy();
+    expect(container.querySelector(".lucide-inbox")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("DataTable: cards on a phone", () => {
+  // jsdom draws no CSS, so this checks what the CSS works from: the labels, the roles and the classes that switch at `md`.
+  test("every cell after the first carries its column's name; the first is the card's title", () => {
+    render(table());
+    const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(cells.map((cell) => cell.getAttribute("data-label"))).toEqual(["Nama", "Kode"]);
+    expect(cells[0]!.className).toContain("max-md:before:hidden");
+    expect(cells[1]!.className).toContain("max-md:before:content-[attr(data-label)]");
+  });
+
+  test("a column whose header is not text has no label (an empty one would leave a gap)", () => {
+    render(table({ columns: [COLUMNS[0]!, { key: "x", header: <span>Ikon</span>, cell: () => "x" }] }));
+    const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(cells[1]!.hasAttribute("data-label")).toBe(false);
+    expect(cells[1]!.className).toContain("max-md:before:hidden");
+  });
+
+  test("the table's semantics are written out, because a table drawn as blocks loses them in some browsers", () => {
+    render(table());
+    const grid = screen.getByRole("table");
+    expect(grid.getAttribute("role")).toBe("table");
+    expect(grid.className).toContain("max-md:block");
+    expect(within(grid).getAllByRole("rowgroup")).toHaveLength(2);
+    expect(within(grid).getAllByRole("row")).toHaveLength(3);
+    expect(within(grid).getAllByRole("cell")).toHaveLength(4);
+    expect(within(grid).getAllByRole("columnheader")).toHaveLength(2);
+  });
+
+  test("the header row stays for screen readers on a phone, not on screen", () => {
+    render(table());
+    expect(screen.getAllByRole("columnheader")[0]!.closest("thead")!.className).toContain("max-md:sr-only");
+  });
+
+  test("the actions go last in the card, under the cells", () => {
+    render(table({ actions: () => <button type="button">Ubah</button> }));
+    const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(cells).toHaveLength(3);
+    expect(within(cells[2]!).getByRole("button", { name: "Ubah" })).toBeTruthy();
+    expect(cells[2]!.className).toContain("max-md:flex");
   });
 });

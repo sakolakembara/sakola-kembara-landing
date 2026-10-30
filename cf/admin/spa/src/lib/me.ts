@@ -101,3 +101,10 @@ export function displayName(me: Pick<Me, "name" | "email">): string {
   if (name) return name;
   return me.email.split("@")[0] || "Admin";
 }
+
+/** Two capitals for the avatar: the first letters of the first two words of the name, or the first two letters of a single word. */
+export function initials(me: Pick<Me, "name" | "email">): string {
+  const words = displayName(me).split(/\s+/).filter(Boolean);
+  const letters = words.length > 1 ? words.slice(0, 2).map((word) => [...word][0]) : [...(words[0] ?? "A")].slice(0, 2);
+  return letters.join("").toUpperCase();
+}

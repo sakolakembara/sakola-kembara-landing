@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
@@ -5,7 +6,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { expectedDashboardTiles } from "~/lib/dashboard";
 import { displayName } from "~/lib/me";
 import { useMe } from "~/lib/session";
-import { useDashboard } from "~/lib/use-dashboard";
+import { useSharedDashboard } from "~/lib/dashboard-provider";
 import { Attention } from "./Attention";
 import { QuickActions } from "./QuickActions";
 
@@ -18,13 +19,27 @@ import { QuickActions } from "./QuickActions";
  */
 export function DashboardPage() {
   const me = useMe();
-  const { state, reload } = useDashboard();
+  const { state, reload, updatedAt } = useSharedDashboard();
   // So the loading state is not taller than what replaces it.
   const expectedTiles = expectedDashboardTiles(me);
 
   return (
     <div className="p-6 md:p-10">
-      <PageHeader title={<>Halo, {displayName(me)}</>} documentTitle="Dashboard" className="mb-8">
+      <PageHeader
+        title={<>Halo, {displayName(me)}</>}
+        documentTitle="Dashboard"
+        className="mb-8"
+        actions={
+          updatedAt !== null && (
+            <div className="flex items-center gap-2 text-[13px] text-gray-500">
+              <span>Diperbarui {formatClock(updatedAt)}</span>
+              <Button variant="neutral" size="sm" aria-label="Muat ulang data dashboard" title="Muat ulang" onClick={reload}>
+                <RefreshCw aria-hidden="true" />
+              </Button>
+            </div>
+          )
+        }
+      >
         <p className="text-gray-600">Ringkasan aktivitas Sakola Kembara hari ini.</p>
       </PageHeader>
 
@@ -50,6 +65,11 @@ export function DashboardPage() {
       <QuickActions me={me} />
     </div>
   );
+}
+
+/** "14.32": the clock time the way Indonesians write it, in the browser's time zone. */
+function formatClock(at: number): string {
+  return new Date(at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
 /** At least one grey tile, even for a role that may end up with none: a page with nothing moving looks stuck. */

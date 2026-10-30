@@ -130,6 +130,25 @@ export function parseDashboard(body: unknown): Dashboard | null {
   return { attention: parsed };
 }
 
+/** A number beside a menu entry, and what it counts ("menunggu"), which a screen reader hears after the entry's name. */
+export interface NavCount {
+  count: number;
+  what: string;
+}
+
+/**
+ * The counts the sidebar shows, by menu path: what waits for someone, read from the dashboard's answer. Only the two
+ * that ask for action (waiting applicants, unread messages), and only above zero: "0" is not news.
+ */
+export function navCounts(dashboard: Dashboard | null): Record<string, NavCount> {
+  const counts: Record<string, NavCount> = {};
+  const pending = dashboard?.attention.pendingApplications;
+  if (pending && pending.count > 0) counts["/applications"] = { count: pending.count, what: "menunggu" };
+  const unread = dashboard?.attention.unreadMessages;
+  if (unread && unread.count > 0) counts["/messages"] = { count: unread.count, what: "belum dibaca" };
+  return counts;
+}
+
 /**
  * How many tiles the server will send this user: three for Pendaftaran
  * (pending, in review, the batch), one for Komunikasi (unread messages), none

@@ -30,7 +30,7 @@ function FileLink({ row }: { row: ReportItem }) {
 
 const COLUMNS: readonly Column<ReportItem>[] = [
   {
-    key: "title",
+    key: "title", sort: "title",
     header: "Judul",
     className: "max-w-[400px] align-top",
     cell: (row) => (
@@ -43,9 +43,9 @@ const COLUMNS: readonly Column<ReportItem>[] = [
       </>
     ),
   },
-  { key: "category", header: "Kategori", cell: (row) => <StatusTag map={CATEGORY_STATUS} value={row.category} /> },
+  { key: "category", sort: "category", header: "Kategori", cell: (row) => <StatusTag map={CATEGORY_STATUS} value={row.category} /> },
   {
-    key: "year",
+    key: "year", sort: "year", sortFirst: "desc",
     header: "Tahun",
     className: "whitespace-nowrap align-top font-medium text-gray-700",
     cell: (row) => (
@@ -55,8 +55,8 @@ const COLUMNS: readonly Column<ReportItem>[] = [
       </>
     ),
   },
-  { key: "size", header: "Ukuran", className: "align-top text-xs text-gray-500", cell: (row) => formatBytes(row.fileSize) },
-  { key: "uploadedAt", header: "Diupload", className: "whitespace-nowrap align-top text-xs text-gray-500", cell: (row) => formatDate(row.uploadedAt) },
+  { key: "size", sort: "fileSize", sortFirst: "desc", header: "Ukuran", className: "align-top text-xs text-gray-500", cell: (row) => formatBytes(row.fileSize) },
+  { key: "uploadedAt", sort: "uploadedAt", sortFirst: "desc", header: "Diupload", className: "whitespace-nowrap align-top text-xs text-gray-500", cell: (row) => formatDate(row.uploadedAt) },
 ];
 
 export function ReportsPage() {

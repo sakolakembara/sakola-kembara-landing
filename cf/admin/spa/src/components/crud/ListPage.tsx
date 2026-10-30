@@ -1,6 +1,6 @@
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
-import { Link } from "react-router";
+import { cn } from "@/lib/cn";
 import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
 import { type Access, accessTo, type Section } from "~/lib/access";
@@ -67,6 +67,7 @@ export function ListPage<T extends Versioned>(props: ListPageProps<T>) {
   const canWrite = access === "write";
 
   const list = useList<T>(apiPath, spec);
+  const filtered = isFiltered(list.query);
   const notice = useFlash();
 
   const refocus = useRef(false);
@@ -94,23 +95,31 @@ export function ListPage<T extends Versioned>(props: ListPageProps<T>) {
   const actions = (row: T) => (
     <>
       {rowActions?.(row, access)}
-      <Link
-        to={`${routePath}/${encodeURIComponent(row.id)}/edit`}
+      <Button
+        href={`${routePath}/${encodeURIComponent(row.id)}/edit`}
+        variant="ghost"
+        size="sm"
         aria-label={`${canWrite ? "Edit" : "Lihat"} ${nameOf(row)}`}
-        className="mr-3 inline-flex items-center gap-1 text-sm font-medium text-primary-blue hover:underline"
+        title={canWrite ? "Edit" : undefined}
+        className={cn("text-primary-blue hover:text-primary-blue", canWrite && "md:max-xl:px-2.5")}
       >
-        {canWrite && <Edit size={14} aria-hidden="true" />} {canWrite ? "Edit" : "Lihat"}
-      </Link>
+        {canWrite && <Edit aria-hidden="true" />}
+        {/* Between a phone and a wide desktop the table is tight: the icon stands for the word (still its name, and its tooltip). */}
+        <span className={canWrite ? "md:max-xl:sr-only" : undefined}>{canWrite ? "Edit" : "Lihat"}</span>
+      </Button>
       {canWrite && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => remove.ask(row)}
           aria-label={`Hapus ${nameOf(row)}`}
           aria-haspopup="dialog"
-          className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline"
+          title="Hapus"
+          className="text-red-700 hover:bg-danger-bg hover:text-red-800 md:max-xl:px-2.5"
         >
-          <Trash2 size={14} aria-hidden="true" /> Hapus
-        </button>
+          <Trash2 aria-hidden="true" />
+          <span className="md:max-xl:sr-only">Hapus</span>
+        </Button>
       )}
     </>
   );
@@ -142,9 +151,18 @@ export function ListPage<T extends Versioned>(props: ListPageProps<T>) {
         state={list.status}
         errorMessage={list.failure ? describeFailure(list.failure).message : MESSAGES.loadFailed}
         onRetry={list.refetch}
-        emptyText={isFiltered(list.query) ? (emptyFilteredText ?? "Tidak ada data yang cocok dengan filter.") : typeof emptyText === "function" ? emptyText(canWrite) : emptyText}
+        emptyText={filtered ? (emptyFilteredText ?? "Tidak ada data yang cocok dengan filter.") : typeof emptyText === "function" ? emptyText(canWrite) : emptyText}
+        emptyFiltered={filtered}
+        emptyAction={
+          filtered && (
+            <Button variant="neutral" size="sm" onClick={list.reset}>
+              Tampilkan semua
+            </Button>
+          )
+        }
         actions={actions}
         refreshing={list.refreshing}
+        sort={{ value: list.query.sort, onChange: list.setSort }}
       />
 
       <Pagination page={list.page} pageSize={list.pageSize} total={list.total} searchFor={list.searchFor} />

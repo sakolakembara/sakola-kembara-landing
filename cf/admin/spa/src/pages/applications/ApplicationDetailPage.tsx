@@ -120,7 +120,7 @@ function Section({ section, last }: { section: ProfileSection; last: boolean }):
         <span className="text-gray-500">
           <IconComponent size={14} aria-hidden="true" />
         </span>
-        <h2 id={`section-${section.id}`} className="text-xs font-semibold uppercase tracking-wide text-gray-900">
+        <h2 id={`section-${section.id}`} className="text-base font-semibold tracking-tight text-gray-900">
           {section.title}
         </h2>
       </header>
@@ -213,7 +213,7 @@ export function ApplicationDetailPage() {
           <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
             <header className="flex items-center gap-2 border-b border-gray-100 px-6 py-4">
               <Settings2 size={14} aria-hidden="true" className="text-gray-500" />
-              <h2 id="review-heading" className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+              <h2 id="review-heading" className="text-base font-semibold tracking-tight text-gray-900">
                 Ubah Status
               </h2>
             </header>

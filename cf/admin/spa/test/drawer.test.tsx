@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
-import { meBody, renderApp, respond, stubApi } from "./helpers";
+import { meBody, openUserMenu, renderApp, respond, stubApi } from "./helpers";
 
 async function ready(path = "/") {
   stubApi({
@@ -44,7 +44,8 @@ describe("mobile drawer", () => {
     const first = focusable[0]!;
     const last = focusable[focusable.length - 1]!;
     expect(first).toBe(within(panel).getByRole("button", { name: "Tutup menu" }));
-    expect(last).toBe(within(panel).getByRole("button", { name: "Keluar" }));
+    // The user menu is closed: its button is the last control, Keluar is not in the page yet.
+    expect(last).toBe(within(panel).getByRole("button", { name: /^Tester/ }));
 
     last.focus();
     await user.tab();
@@ -147,9 +148,15 @@ describe("mobile drawer", () => {
     expect(current.map((link) => link.textContent)).toEqual(["Laporan"]);
   });
 
-  test("Keluar is in the drawer", async () => {
+  test("the user menu is in the drawer too: it opens there, and Tab still cannot leave", async () => {
     const user = userEvent.setup();
     await user.click(await ready());
-    expect(within(dialog()).getByText("tester@contoh.test")).toBeTruthy();
+    const panel = dialog();
+    const keluar = await openUserMenu(panel);
+    expect(within(panel).getByText("tester@contoh.test")).toBeTruthy();
+    // Keluar is now the last control: Tab from it wraps to the close button.
+    keluar.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(within(panel).getByRole("button", { name: "Tutup menu" }));
   });
 });

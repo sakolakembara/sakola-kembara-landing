@@ -76,7 +76,7 @@ export function PurgeFiles({ applicationId, fullName, files, onPurged }: PurgePr
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
       <header className="border-b border-gray-100 px-6 py-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Berkas Pendaftar</h2>
+        <h2 className="text-base font-semibold tracking-tight text-gray-900">Berkas Pendaftar</h2>
       </header>
       <div className="space-y-3 p-6">
         <p className="text-sm text-gray-700">

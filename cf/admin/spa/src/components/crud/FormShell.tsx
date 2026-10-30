@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
 import { Link, useBlocker } from "react-router";
 import { Alert } from "~/components/ui/alert";
@@ -86,25 +86,27 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
   return (
     <>
       <form onSubmit={submit} aria-label={title}>
-        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 px-6 py-3 backdrop-blur md:px-10">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-wrap items-center gap-3">
-              <Link to={back.href} className="text-sm text-gray-600 transition-colors hover:text-gray-900">
+        {/* From `md` the bar stays at the top while the form scrolls: the title and what is known about the item (status,
+            address, links) on the left, wrapping among themselves, the two buttons together on the right. On a phone the
+            title scrolls away (it would take a third of the screen) and the buttons stay in a bar at the bottom: no
+            backdrop blur on the header there, because that would make it the box a fixed child is placed in. */}
+        <header className="border-b border-gray-200 bg-white px-6 py-3 md:sticky md:top-0 md:z-20 md:bg-white/95 md:px-10 md:backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+            <div className="min-w-0 flex-1 basis-72">
+              <Link to={back.href} className="inline-flex items-center gap-1 text-[13px] text-gray-600 transition-colors hover:text-gray-900">
+                <ArrowLeft size={14} aria-hidden="true" />
                 {back.label ?? "Kembali"}
               </Link>
-              <span aria-hidden="true" className="select-none text-gray-300">
-                ·
-              </span>
-              <h1 className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</h1>
-              {meta}
+              <h1 className="text-lg font-semibold leading-snug tracking-tight text-primary-blue-dark">{title}</h1>
+              {meta && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">{meta}</div>}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 *:flex-1 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:border-t max-md:border-gray-200 max-md:bg-white max-md:px-4 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:pt-3 md:w-auto md:*:flex-none">
               <Button variant="neutral" href={back.href}>
                 {readOnly ? "Tutup" : "Batal"}
               </Button>
               {!readOnly && (
                 <Button type="submit" disabled={save.pending}>
-                  <Save size={16} aria-hidden="true" />
+                  <Save aria-hidden="true" />
                   {save.pending ? "Menyimpan..." : saveLabel}
                 </Button>
               )}
@@ -112,7 +114,7 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
           </div>
         </header>
 
-        <div className="max-w-4xl px-6 pb-12 pt-6 md:px-10">
+        <div className="max-w-4xl px-6 pb-28 pt-6 md:px-10 md:pb-12">
           {flash && <Flash flash={flash.flash} dismiss={flash.dismiss} />}
           <div className="mb-5 space-y-3 empty:hidden">
             {readOnly && <Alert tone="info">Kamu hanya bisa melihat data ini. Perubahan tidak bisa disimpan dengan peranmu.</Alert>}
@@ -156,7 +158,7 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
           )}
 
           {/* A disabled fieldset disables every control inside it. */}
-          <fieldset disabled={readOnly} className="min-w-0 space-y-6 rounded-2xl border border-gray-100 bg-white p-6 md:p-8">
+          <fieldset disabled={readOnly} className="min-w-0 space-y-6 rounded-xl border border-gray-200 bg-white p-5 md:p-8">
             <legend className="sr-only">{title}</legend>
             {children}
           </fieldset>
@@ -181,8 +183,8 @@ export function FormSection({ title, description, children }: { title: string; d
   return (
     <section className="border-b border-gray-100 pb-6 last:border-b-0 last:pb-0">
       <header className="mb-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">{title}</h2>
-        {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
+        <h2 className="text-base font-semibold tracking-tight text-gray-900">{title}</h2>
+        {description && <p className="mt-0.5 text-[13px] text-gray-600">{description}</p>}
       </header>
       <div className="space-y-5">{children}</div>
     </section>

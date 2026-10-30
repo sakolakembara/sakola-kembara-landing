@@ -120,7 +120,8 @@ describe("403 inside the shell", () => {
       const view = renderApp(path);
       expect(await screen.findByRole("heading", { level: 1, name: "Akses ditolak" }), path).toBeTruthy();
       expect(screen.queryByText("Belum tersedia di admin baru"), path).toBeNull();
-      expect(api.calls.map((call) => call.path), path).toEqual(["/api/me"]);
+      // The shell asks for the sidebar's counts (lib/dashboard-provider.tsx); the refused area itself is never asked for.
+      await waitFor(() => expect(api.calls.map((call) => call.path), path).toEqual(["/api/me", "/api/dashboard"]));
       view.unmount();
     }
   });

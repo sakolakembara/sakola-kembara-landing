@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
-import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
+import { deferred, meBody, openUserMenu, renderApp, respond, stubApi } from "./helpers";
 
 async function openAs(role: Parameters<typeof meBody>[0], areas: Parameters<typeof meBody>[1] = [], path = "/") {
   const api = stubApi({
@@ -89,10 +89,12 @@ describe("sidebar", () => {
     expect(within(nav).getByRole("link", { name: "Blog" }).getAttribute("aria-current")).toBeNull();
   });
 
-  test("shows who is signed in", async () => {
+  test("shows who is signed in: the name and role at the foot, the email in the user menu", async () => {
     await openAs("editor", ["konten"]);
-    expect(screen.getAllByText("tester@contoh.test").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Editor").length).toBeGreaterThan(0);
+    expect(screen.queryByText("tester@contoh.test")).toBeNull();
+    await openUserMenu();
+    expect(screen.getAllByText("tester@contoh.test").length).toBeGreaterThan(0);
   });
 
   test("following a link changes the page and moves focus to the content", async () => {
@@ -125,7 +127,7 @@ describe("Keluar", () => {
       "GET /api/me": respond(meBody("super_admin")),
       "POST /api/auth/sign-out": respond({ success: true }),
     });
-    await user.click(screen.getAllByRole("button", { name: "Keluar" })[0]!);
+    await user.click(await openUserMenu());
     await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(out.count("POST /api/auth/sign-out")).toBe(1);
     expect(out.last("POST /api/auth/sign-out")?.body).toEqual({});
@@ -141,8 +143,8 @@ describe("Keluar", () => {
       "POST /api/auth/sign-out": () => gate.promise,
     });
     renderApp("/");
-    const button = (await screen.findAllByRole("button", { name: "Keluar" }))[0]!;
-    await user.dblClick(button);
+    await screen.findByRole("navigation", { name: "Menu utama" });
+    await user.dblClick(await openUserMenu());
     gate.resolve(respond({ success: true }));
     await screen.findByRole("heading", { name: "Masuk ke Admin Sakola Kembara" });
     expect(api.count("POST /api/auth/sign-out")).toBe(1);
@@ -156,7 +158,8 @@ describe("Keluar", () => {
       "POST /api/auth/sign-out": respond({ error: "internal" }, 500),
     });
     renderApp("/");
-    await user.click((await screen.findAllByRole("button", { name: "Keluar" }))[0]!);
+    await screen.findByRole("navigation", { name: "Menu utama" });
+    await user.click(await openUserMenu());
     expect((await screen.findByRole("alert")).textContent).toBe("Gagal keluar. Silakan coba lagi.");
     await waitFor(() => expect((screen.getAllByRole("button", { name: "Keluar" })[0] as HTMLButtonElement).disabled).toBe(false));
     expect(screen.getByTestId("location").textContent).toBe("/");

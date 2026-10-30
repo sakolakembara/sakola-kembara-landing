@@ -11,7 +11,7 @@ import { formatIsoDay } from "./rules";
 
 const COLUMNS: readonly Column<BlogListItem>[] = [
   {
-    key: "title",
+    key: "title", sort: "title",
     header: "Judul",
     className: "max-w-[400px] align-top",
     cell: (row) => (

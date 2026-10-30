@@ -92,7 +92,7 @@ export function BodyEditor({ id, value, onChange, mode, onModeChange, error, rea
                 aria-selected={mode === "edit"}
                 aria-controls={`${id}-panel`}
                 onClick={() => onModeChange("edit")}
-                className={`${MODE_BUTTON} ${mode === "edit" ? "bg-gray-900 text-white" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"}`}
+                className={`${MODE_BUTTON} ${mode === "edit" ? "bg-primary text-primary-foreground" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"}`}
               >
                 <Edit3 size={12} aria-hidden="true" /> Tulis
               </button>
@@ -103,7 +103,7 @@ export function BodyEditor({ id, value, onChange, mode, onModeChange, error, rea
                 aria-selected={mode === "preview"}
                 aria-controls={`${id}-panel`}
                 onClick={() => onModeChange("preview")}
-                className={`${MODE_BUTTON} ${mode === "preview" ? "bg-gray-900 text-white" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"}`}
+                className={`${MODE_BUTTON} ${mode === "preview" ? "bg-primary text-primary-foreground" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"}`}
               >
                 <Eye size={12} aria-hidden="true" /> Preview
               </button>

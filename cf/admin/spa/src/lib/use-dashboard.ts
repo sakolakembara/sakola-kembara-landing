@@ -13,7 +13,8 @@ const PATH = "/api/dashboard";
 
 export type DashboardState =
   | { status: "loading" }
-  | { status: "ready"; data: Dashboard }
+  /** `at` is when the Worker answered (ms since 1970): missing while the data is the last answer shown from memory. */
+  | { status: "ready"; data: Dashboard; at?: number }
   /** The server has no dashboard endpoint (404 or 501): not an error to retry. */
   | { status: "unavailable" }
   | { status: "error" };
@@ -36,7 +37,7 @@ export function useDashboard(): { state: DashboardState; reload: () => void } {
       if (result.ok) {
         const data = parseDashboard(result.data);
         if (data) keepRead(PATH, data, version);
-        setState(data ? { status: "ready", data } : { status: "error" });
+        setState(data ? { status: "ready", data, at: Date.now() } : { status: "error" });
       } else if (result.status === 404 || result.status === 501) {
         setState({ status: "unavailable" });
       } else {

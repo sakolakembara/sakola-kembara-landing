@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { vi } from "vitest";
 import { App } from "~/App";
@@ -116,4 +117,14 @@ export function renderAt(ui: React.ReactNode, path = "/") {
     { initialEntries: [path] },
   );
   return { ...render(<RouterProvider router={router} />), router };
+}
+
+/**
+ * Opens the user menu at the foot of the sidebar (or of `scope`, e.g. the drawer) and returns its Keluar button.
+ * The menu's button is named after the user: the fixtures sign in as "Tester".
+ */
+export async function openUserMenu(scope: HTMLElement = document.body): Promise<HTMLElement> {
+  const trigger = within(scope).getAllByRole("button", { name: /^Tester/ })[0]!;
+  await userEvent.setup().click(trigger);
+  return within(scope).getAllByRole("button", { name: "Keluar" })[0]!;
 }

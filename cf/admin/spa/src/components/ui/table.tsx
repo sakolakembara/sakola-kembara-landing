@@ -12,10 +12,10 @@ export function TableCard({ className, children }: { className?: string; childre
  * Data table (molecule) for admin lists. It keeps every column and scrolls sideways on narrow screens; children are
  * `THead` and `TBody` (and an optional caption).
  */
-export function Table({ className, children }: { className?: string; children: React.ReactNode }) {
+export function Table({ className, children, ...props }: React.ComponentProps<"table">) {
   return (
     <div className="overflow-x-auto">
-      <table data-slot="table" className={cn("w-full text-sm", className)}>
+      <table data-slot="table" className={cn("w-full text-sm", className)} {...props}>
         {children}
       </table>
     </div>

@@ -123,7 +123,7 @@ export function BatchDetailPage() {
         {/* min-w-0 lets the applicants table scroll inside its card on phones instead of widening the whole column. */}
         <div className="min-w-0 space-y-6 lg:col-span-3">
           <section aria-labelledby="batch-summary" className="rounded-2xl border border-gray-100 bg-white p-6">
-            <h2 id="batch-summary" className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-900">
+            <h2 id="batch-summary" className="mb-4 flex items-center gap-2 text-base font-semibold tracking-tight text-gray-900">
               <Users size={14} aria-hidden="true" /> Ringkasan Pendaftar
             </h2>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -143,7 +143,7 @@ export function BatchDetailPage() {
 
           <section aria-labelledby="batch-applicants" className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
             <header className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 id="batch-applicants" className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+              <h2 id="batch-applicants" className="text-base font-semibold tracking-tight text-gray-900">
                 Pendaftar di batch ini
               </h2>
               <Link to={applicantsLink(batch.id)} className="text-xs font-medium text-primary-blue hover:underline">
@@ -186,7 +186,7 @@ export function BatchDetailPage() {
 
           <section aria-labelledby="batch-data" className="rounded-2xl border border-gray-100 bg-white">
             <header className="border-b border-gray-100 px-6 py-4">
-              <h2 id="batch-data" className="text-sm font-semibold uppercase tracking-wide text-gray-900">
+              <h2 id="batch-data" className="text-base font-semibold tracking-tight text-gray-900">
                 {canWrite ? "Ubah Data Batch" : "Data Batch"}
               </h2>
             </header>
@@ -201,7 +201,7 @@ export function BatchDetailPage() {
 
         <aside aria-labelledby="batch-publish" className="min-w-0 space-y-4 lg:sticky lg:top-10 lg:col-span-2">
           <div className="rounded-2xl border border-gray-100 bg-white p-6">
-            <h2 id="batch-publish" className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-900">
+            <h2 id="batch-publish" className="mb-2 text-base font-semibold tracking-tight text-gray-900">
               Publikasi Hasil
             </h2>
             <p className="mb-4 text-sm text-gray-600">

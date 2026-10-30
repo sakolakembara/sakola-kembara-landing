@@ -50,15 +50,15 @@ export const sistemSpaChecks = [
   {
     name: "sistem: Aktivitas is in the menu of every role",
     file: "spa/src/lib/nav.ts",
-    from: '{ path: "/audit", label: "Aktivitas", section: "sistem" },',
-    to: '{ path: "/audit", label: "Aktivitas", section: "umum" },',
+    from: '{ path: "/audit", label: "Aktivitas", icon: "activity", section: "sistem" },',
+    to: '{ path: "/audit", label: "Aktivitas", icon: "activity", section: "umum" },',
     tests: t(AUDIT, "sidebar.test.tsx", "nav.test.ts"),
   },
   {
     name: "sistem: Pengaturan is in the menu of every role",
     file: "spa/src/lib/nav.ts",
-    from: '{ path: "/settings", label: "Pengaturan", section: "sistem" },',
-    to: '{ path: "/settings", label: "Pengaturan", section: "umum" },',
+    from: '{ path: "/settings", label: "Pengaturan", icon: "settings", section: "sistem" },',
+    to: '{ path: "/settings", label: "Pengaturan", icon: "settings", section: "umum" },',
     tests: t(AUDIT, "sidebar.test.tsx", "nav.test.ts"),
   },
   {

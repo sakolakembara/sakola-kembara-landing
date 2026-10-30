@@ -87,7 +87,7 @@ const COLUMNS: readonly Column<AuditItem>[] = [
 function Filter({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-600">{label}</span>
+      <span className="mb-1.5 block text-[13px] font-medium text-gray-700">{label}</span>
       {children}
     </label>
   );

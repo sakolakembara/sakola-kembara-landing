@@ -89,9 +89,9 @@ export function SettingsPage() {
 
   const columns: readonly Column<AdminItem>[] = [
     {
-      key: "email",
+      key: "email", sort: "email",
       header: "Email",
-      className: "align-middle",
+      className: "min-w-56 align-middle",
       cell: (row) => (
         <div className="flex items-center gap-2">
           {row.role === "super_admin" ? <ShieldCheck size={16} aria-hidden="true" className="shrink-0 text-primary-blue" /> : <User size={16} aria-hidden="true" className="shrink-0 text-gray-400" />}
@@ -100,9 +100,9 @@ export function SettingsPage() {
         </div>
       ),
     },
-    { key: "name", header: "Nama", className: "align-middle text-gray-700", cell: (row) => row.name || "—" },
+    { key: "name", sort: "name", header: "Nama", className: "align-middle text-gray-700", cell: (row) => row.name || "—" },
     {
-      key: "role",
+      key: "role", sort: "role",
       header: "Peran",
       className: "align-middle",
       cell: (row) => (
@@ -128,39 +128,40 @@ export function SettingsPage() {
   const actions = (row: AdminItem) =>
     canWrite ? (
       <>
-        <Link to={`${ROUTE}/${encodeURIComponent(row.id)}/edit`} aria-label={`Edit ${row.email}`} className="mr-3 inline-flex items-center gap-1 text-sm font-medium text-primary-blue hover:underline">
-          <Edit size={14} aria-hidden="true" /> Edit
-        </Link>
+        <Button href={`${ROUTE}/${encodeURIComponent(row.id)}/edit`} variant="ghost" size="sm" aria-label={`Edit ${row.email}`} className="text-primary-blue hover:text-primary-blue">
+          <Edit aria-hidden="true" /> Edit
+        </Button>
         {row.status === "invited" && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => void resend(row)}
             disabled={resending === row.id}
             aria-label={`Kirim ulang undangan ${row.email}`}
-            className="mr-3 inline-flex items-center gap-1 text-sm font-medium text-primary-blue hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            className="text-primary-blue hover:text-primary-blue"
           >
             {resending === row.id ? "Mengirim..." : "Kirim ulang undangan"}
-          </button>
+          </Button>
         )}
         {row.status === "deactivated" ? (
-          <button type="button" onClick={() => reactivate.ask(row)} aria-label={`Aktifkan kembali ${row.email}`} aria-haspopup="dialog" className="inline-flex items-center gap-1 text-sm font-medium text-primary-blue hover:underline">
+          <Button variant="ghost" size="sm" onClick={() => reactivate.ask(row)} aria-label={`Aktifkan kembali ${row.email}`} aria-haspopup="dialog" className="text-primary-blue hover:text-primary-blue">
             Aktifkan lagi
-          </button>
+          </Button>
         ) : row.id === me.id ? (
           // Nobody deactivates themselves: the same answer the Worker gives, said before the question.
-          <span title="Tidak dapat menonaktifkan akun sendiri" className="inline-flex cursor-not-allowed items-center gap-1 text-sm font-medium text-gray-300">
+          <span title="Tidak dapat menonaktifkan akun sendiri" className="inline-flex min-h-10 cursor-not-allowed items-center px-3 text-sm font-medium text-gray-300 md:min-h-[34px]">
             Nonaktifkan
           </span>
         ) : (
-          <button type="button" onClick={() => deactivate.ask(row)} aria-label={`Nonaktifkan ${row.email}`} aria-haspopup="dialog" className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline">
+          <Button variant="ghost" size="sm" onClick={() => deactivate.ask(row)} aria-label={`Nonaktifkan ${row.email}`} aria-haspopup="dialog" className="text-red-700 hover:bg-danger-bg hover:text-red-800">
             Nonaktifkan
-          </button>
+          </Button>
         )}
       </>
     ) : (
-      <Link to={`${ROUTE}/${encodeURIComponent(row.id)}/edit`} aria-label={`Lihat ${row.email}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary-blue hover:underline">
+      <Button href={`${ROUTE}/${encodeURIComponent(row.id)}/edit`} variant="ghost" size="sm" aria-label={`Lihat ${row.email}`} className="text-primary-blue hover:text-primary-blue">
         Lihat
-      </Link>
+      </Button>
     );
 
   return (
@@ -207,8 +208,10 @@ export function SettingsPage() {
         errorMessage={list.failure ? describeFailure(list.failure).message : MESSAGES.loadFailed}
         onRetry={list.refetch}
         emptyText={isFiltered(list.query) ? "Tidak ada admin yang cocok dengan filter." : "Belum ada admin terdaftar."}
+        emptyFiltered={isFiltered(list.query)}
         actions={actions}
         refreshing={list.refreshing}
+        sort={{ value: list.query.sort, onChange: list.setSort }}
       />
 
       <Pagination page={list.page} pageSize={list.pageSize} total={list.total} searchFor={list.searchFor} />

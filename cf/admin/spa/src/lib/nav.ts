@@ -5,11 +5,28 @@ import type { Me } from "./me";
 // add one item here: the sidebar, the routes, the 403 check and the
 // placeholder all read this list (see "SPA shell" in docs/cloudflare/admin-skeleton.md).
 
+/** The picture beside a menu entry; components/NavIcon.tsx draws it. Names say what the entry is, not how it looks. */
+export type NavIconName =
+  | "dashboard"
+  | "batch"
+  | "applicants"
+  | "documents"
+  | "messages"
+  | "announcements"
+  | "blog"
+  | "reports"
+  | "team"
+  | "shortlinks"
+  | "activity"
+  | "settings";
+
 export interface NavItem {
   /** Route in the SPA. "/" is the dashboard. */
   path: string;
   /** Text in the sidebar. */
   label: string;
+  /** Beside the text, and alone when the sidebar is collapsed to its rail. */
+  icon: NavIconName;
   /** Title of the page when it differs from the label. */
   title?: string;
   /** What a user needs to open it: any access except "none" shows it. */
@@ -24,41 +41,41 @@ export interface NavGroup {
 }
 
 export const NAV: readonly NavGroup[] = [
-  { id: "utama", label: null, items: [{ path: "/", label: "Dashboard", section: "umum" }] },
+  { id: "utama", label: null, items: [{ path: "/", label: "Dashboard", icon: "dashboard", section: "umum" }] },
   {
     id: "pendaftaran",
     label: "Pendaftaran",
     items: [
-      { path: "/batches", label: "Batch", title: "Batch Pendaftaran", section: "pendaftaran" },
-      { path: "/applications", label: "Pendaftar", section: "pendaftaran" },
+      { path: "/batches", label: "Batch", icon: "batch", title: "Batch Pendaftaran", section: "pendaftaran" },
+      { path: "/applications", label: "Pendaftar", icon: "applicants", section: "pendaftaran" },
       // Was "Berkas Pendaftaran"; the name the public page and the wizard use.
-      { path: "/resources", label: "Pusat Dokumen", section: "pendaftaran" },
+      { path: "/resources", label: "Pusat Dokumen", icon: "documents", section: "pendaftaran" },
     ],
   },
   {
     id: "komunikasi",
     label: "Komunikasi",
     items: [
-      { path: "/messages", label: "Pesan", section: "komunikasi" },
-      { path: "/announcements", label: "Pengumuman", section: "komunikasi" },
+      { path: "/messages", label: "Pesan", icon: "messages", section: "komunikasi" },
+      { path: "/announcements", label: "Pengumuman", icon: "announcements", section: "komunikasi" },
     ],
   },
   {
     id: "konten",
     label: "Konten Situs",
     items: [
-      { path: "/blog", label: "Blog", section: "konten" },
-      { path: "/reports", label: "Laporan", section: "konten" },
-      { path: "/team", label: "Tim", section: "konten" },
-      { path: "/shortlinks", label: "Shortlink", section: "konten" },
+      { path: "/blog", label: "Blog", icon: "blog", section: "konten" },
+      { path: "/reports", label: "Laporan", icon: "reports", section: "konten" },
+      { path: "/team", label: "Tim", icon: "team", section: "konten" },
+      { path: "/shortlinks", label: "Shortlink", icon: "shortlinks", section: "konten" },
     ],
   },
   {
     id: "sistem",
     label: "Sistem",
     items: [
-      { path: "/audit", label: "Aktivitas", section: "sistem" },
-      { path: "/settings", label: "Pengaturan", section: "sistem" },
+      { path: "/audit", label: "Aktivitas", icon: "activity", section: "sistem" },
+      { path: "/settings", label: "Pengaturan", icon: "settings", section: "sistem" },
     ],
   },
 ];
