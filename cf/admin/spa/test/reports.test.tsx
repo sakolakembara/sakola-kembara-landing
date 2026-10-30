@@ -44,6 +44,49 @@ async function openList(who: Who, routes: Parameters<typeof stubApi>[0] = {}, pa
 
 const createButton = () => screen.queryByRole("link", { name: /Upload Laporan/ });
 
+describe("the list: sorting by a header", () => {
+  test("a header button sorts through the address bar and asks the Worker for it; the next press flips it", async () => {
+    const user = userEvent.setup();
+    const { api } = await openList(["viewer", []]);
+    expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&sort=-year`);
+    expect(screen.getByRole("columnheader", { name: "Tahun" }).getAttribute("aria-sort")).toBe("descending");
+
+    await user.click(screen.getByRole("button", { name: "Judul" }));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/reports?sort=title"));
+    await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&sort=title`));
+    expect(screen.getByRole("columnheader", { name: "Judul" }).getAttribute("aria-sort")).toBe("ascending");
+
+    await user.click(screen.getByRole("button", { name: "Judul" }));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/reports?sort=-title"));
+
+    // Tahun starts biggest first, which is the default of this list: the address bar is clean again, then it flips.
+    await user.click(screen.getByRole("button", { name: "Tahun" }));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/reports"));
+    await user.click(screen.getByRole("button", { name: "Tahun" }));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/reports?sort=year"));
+  });
+
+  test("a new sort goes back to the first page", async () => {
+    const user = userEvent.setup();
+    const { api } = await openList(["viewer", []], {}, "/reports?page=3");
+    await user.click(screen.getByRole("button", { name: "Ukuran" }));
+    await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&sort=-fileSize`));
+  });
+});
+
+describe("the list: nothing found", () => {
+  test("says so with an action that shows everything again", async () => {
+    const user = userEvent.setup();
+    const { api } = await openList(["viewer", []], { [`GET ${LIST}`]: (call) => respond(envelope(call.url.includes("q=") ? [] : [item()])) });
+    await user.type(screen.getByLabelText("Cari"), "zzz");
+    expect(await screen.findByText("Tidak ada laporan yang cocok dengan filter.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Tampilkan semua" }));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/reports"));
+    expect(await screen.findByText("Laporan Dampak 2025/2026")).toBeTruthy();
+    expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&sort=-year`);
+  });
+});
+
 describe("the list: who sees what", () => {
   test("a viewer reads the list and is offered nothing to change: no create button, no Edit, no Hapus, 'Lihat' for the form", async () => {
     await openList(["viewer", []]);

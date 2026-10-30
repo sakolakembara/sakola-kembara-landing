@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
+import { Button } from "~/components/ui/button";
 import { Input, Select } from "~/components/ui/field";
 import type { ListState } from "~/lib/crud/useList";
 import { cleanSearch, isFiltered } from "~/lib/crud/query";
@@ -41,7 +42,7 @@ const SEARCH_DELAY_MS = 350;
 function Labelled({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-600">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-medium text-gray-700">
         {label}
       </label>
       {children}
@@ -80,7 +81,7 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter" }: F
       onSubmit={submit}
       role="search"
       aria-label="Saring daftar"
-      className="mb-5 grid grid-cols-1 items-end gap-3 rounded-xl border border-gray-100 bg-white p-4 md:grid-cols-2 md:p-5 lg:grid-cols-4"
+      className="mb-5 grid grid-cols-1 items-end gap-3 rounded-xl border border-gray-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-4"
     >
       {search && (
         <Labelled label={search.label ?? "Cari"} htmlFor={`${idPrefix}-q`}>
@@ -118,18 +119,17 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter" }: F
       <div className="flex gap-2">
         {isFiltered(query) && (
           // A button, not a link: the address bar is rewritten by `reset`, the page does not change.
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={() => {
               // What was typed and not yet sent goes too, or it would come back after the pause.
               searchText.onChange("");
               list.reset();
             }}
-            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border-2 border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900"
           >
-            <X size={14} aria-hidden="true" />
+            <X aria-hidden="true" />
             Hapus filter
-          </button>
+          </Button>
         )}
       </div>
     </form>

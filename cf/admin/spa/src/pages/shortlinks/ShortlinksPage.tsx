@@ -13,7 +13,7 @@ import { API_PATH, LIST_SPEC, ROUTE, type ShortlinkItem, shortUrl } from "./mode
 
 const COLUMNS: readonly Column<ShortlinkItem>[] = [
   {
-    key: "slug",
+    key: "slug", sort: "slug",
     header: "Alamat pendek",
     cell: (row) => (
       <>
@@ -39,7 +39,7 @@ const COLUMNS: readonly Column<ShortlinkItem>[] = [
     ),
   },
   {
-    key: "clicks",
+    key: "clicks", sort: "clickCount", sortFirst: "desc",
     header: "Klik",
     className: "whitespace-nowrap align-top",
     cell: (row) => (

@@ -11,8 +11,8 @@ import { pageNumbers, totalPages } from "~/lib/crud/query";
  * `searchFor(page)` gives the address-bar query of a page (`useList(...).searchFor`).
  */
 const LINK =
-  "inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-primary-blue hover:text-primary-blue";
-const OFF = "inline-flex items-center gap-1 rounded-lg border border-gray-100 px-3 py-2 text-sm font-medium text-gray-300";
+  "inline-flex min-h-10 items-center gap-1 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 md:min-h-[34px] md:py-1.5";
+const OFF = "inline-flex min-h-10 items-center gap-1 rounded-lg border border-gray-100 px-3 py-2 text-sm font-medium text-gray-300 md:min-h-[34px] md:py-1.5";
 
 export function Pagination({ page, pageSize, total, searchFor }: { page: number; pageSize: number; total: number; searchFor: (page: number) => string }) {
   if (total === 0) return null;
@@ -22,12 +22,12 @@ export function Pagination({ page, pageSize, total, searchFor }: { page: number;
   const format = (value: number) => value.toLocaleString("id-ID");
 
   return (
-    <div className="mt-5 flex flex-col items-center gap-3">
-      <p className="text-xs text-gray-500">
+    <div className="mt-4 flex flex-col items-center gap-3 md:flex-row md:justify-between">
+      <p className="text-[13px] text-gray-600">
         {total <= pageSize || first > total ? `${format(total)} data` : `Menampilkan ${format(first)} sampai ${format(last)} dari ${format(total)}`}
       </p>
       {pages > 1 && (
-        <nav aria-label="Halaman" className="flex flex-wrap items-center justify-center gap-2">
+        <nav aria-label="Halaman" className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
           {page > 1 ? (
             <Link to={searchFor(page - 1)} rel="prev" className={LINK}>
               Sebelumnya
@@ -45,14 +45,14 @@ export function Pagination({ page, pageSize, total, searchFor }: { page: number;
                     …
                   </span>
                 ) : item === page ? (
-                  <span aria-current="page" aria-label={`Halaman ${item}, halaman ini`} className="block min-w-9 rounded-lg bg-primary-blue px-2 py-2 text-center text-sm font-semibold text-white">
+                  <span aria-current="page" aria-label={`Halaman ${item}, halaman ini`} className="block min-w-9 rounded-lg bg-primary px-2 py-2 text-center text-sm font-semibold text-primary-foreground md:py-1.5">
                     {item}
                   </span>
                 ) : (
                   <Link
                     to={searchFor(item)}
                     aria-label={`Halaman ${item}`}
-                    className={cn("block min-w-9 rounded-lg border border-gray-200 px-2 py-2 text-center text-sm font-medium text-gray-700 transition-colors hover:border-primary-blue hover:text-primary-blue")}
+                    className={cn("block min-w-9 rounded-lg border border-input bg-card px-2 py-2 text-center text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 md:py-1.5")}
                   >
                     {item}
                   </Link>

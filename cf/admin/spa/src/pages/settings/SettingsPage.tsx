@@ -89,7 +89,7 @@ export function SettingsPage() {
 
   const columns: readonly Column<AdminItem>[] = [
     {
-      key: "email",
+      key: "email", sort: "email",
       header: "Email",
       className: "align-middle",
       cell: (row) => (
@@ -100,9 +100,9 @@ export function SettingsPage() {
         </div>
       ),
     },
-    { key: "name", header: "Nama", className: "align-middle text-gray-700", cell: (row) => row.name || "—" },
+    { key: "name", sort: "name", header: "Nama", className: "align-middle text-gray-700", cell: (row) => row.name || "—" },
     {
-      key: "role",
+      key: "role", sort: "role",
       header: "Peran",
       className: "align-middle",
       cell: (row) => (
@@ -207,8 +207,10 @@ export function SettingsPage() {
         errorMessage={list.failure ? describeFailure(list.failure).message : MESSAGES.loadFailed}
         onRetry={list.refetch}
         emptyText={isFiltered(list.query) ? "Tidak ada admin yang cocok dengan filter." : "Belum ada admin terdaftar."}
+        emptyFiltered={isFiltered(list.query)}
         actions={actions}
         refreshing={list.refreshing}
+        sort={{ value: list.query.sort, onChange: list.setSort }}
       />
 
       <Pagination page={list.page} pageSize={list.pageSize} total={list.total} searchFor={list.searchFor} />

@@ -10,9 +10,9 @@ import { API_PATH, applicantsLink, type BatchListed, formatPeriod, LIST_SPEC, PH
 // filtered to that batch and status (docs/cloudflare/admin-ia.md, 3.4), and "Hapus" for a batch nobody applied to.
 
 const COLUMNS: readonly Column<BatchListed>[] = [
-  { key: "year", header: "Tahun", className: "align-top font-mono font-medium text-gray-900", cell: (row) => row.year },
+  { key: "year", sort: "year", sortFirst: "desc", header: "Tahun", className: "align-top font-mono font-medium text-gray-900", cell: (row) => row.year },
   {
-    key: "name",
+    key: "name", sort: "name",
     header: "Nama",
     className: "align-top text-gray-900",
     cell: (row) => (
@@ -21,7 +21,7 @@ const COLUMNS: readonly Column<BatchListed>[] = [
       </Link>
     ),
   },
-  { key: "period", header: "Periode", className: "align-top text-xs text-gray-600", cell: (row) => formatPeriod(row.opensAt, row.closesAt) },
+  { key: "period", sort: "opensAt", sortFirst: "desc", header: "Periode", className: "align-top text-xs text-gray-600", cell: (row) => formatPeriod(row.opensAt, row.closesAt) },
   { key: "phase", header: "Status", cell: (row) => <StatusTag map={PHASE_STATUS} value={row.phase} /> },
   {
     key: "undecided",

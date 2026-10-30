@@ -70,7 +70,7 @@ export function ResourcesPage() {
 
   const columns: readonly Column<ResourceItem>[] = [
     {
-      key: "title",
+      key: "title", sort: "title",
       header: "Judul",
       className: "max-w-[420px] align-top",
       cell: (row) => (
@@ -83,8 +83,8 @@ export function ResourcesPage() {
       ),
     },
     { key: "type", header: "Tipe", cell: (row) => <TypeCell row={row} /> },
-    { key: "order", header: "Urutan", className: "align-top font-mono text-xs text-gray-500", cell: (row) => row.displayOrder },
-    { key: "updated", header: "Diubah", className: "whitespace-nowrap align-top text-xs text-gray-500", cell: (row) => formatDate(row.updatedAt) },
+    { key: "order", sort: "displayOrder", header: "Urutan", className: "align-top font-mono text-xs text-gray-500", cell: (row) => row.displayOrder },
+    { key: "updated", sort: "updatedAt", sortFirst: "desc", header: "Diubah", className: "whitespace-nowrap align-top text-xs text-gray-500", cell: (row) => formatDate(row.updatedAt) },
   ];
 
   const actions = (row: ResourceItem) => {

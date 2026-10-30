@@ -24,7 +24,7 @@ function Photo({ member }: { member: TeamListItem }) {
 const COLUMNS: readonly Column<TeamListItem>[] = [
   { key: "photo", header: "Foto", className: "align-middle", cell: (row) => <Photo member={row} /> },
   {
-    key: "name",
+    key: "name", sort: "name",
     header: "Nama",
     className: "align-middle",
     cell: (row) => (
@@ -33,9 +33,9 @@ const COLUMNS: readonly Column<TeamListItem>[] = [
       </Link>
     ),
   },
-  { key: "role", header: "Peran", className: "align-middle text-gray-700", cell: (row) => row.role },
-  { key: "category", header: "Kategori", className: "align-middle", cell: (row) => <StatusTag map={CATEGORY_STATUS} value={row.category} /> },
-  { key: "order", header: "Urutan", className: "align-middle font-mono text-xs text-gray-500", cell: (row) => row.displayOrder },
+  { key: "role", sort: "role", header: "Peran", className: "align-middle text-gray-700", cell: (row) => row.role },
+  { key: "category", sort: "category", header: "Kategori", className: "align-middle", cell: (row) => <StatusTag map={CATEGORY_STATUS} value={row.category} /> },
+  { key: "order", sort: "order", header: "Urutan", className: "align-middle font-mono text-xs text-gray-500", cell: (row) => row.displayOrder },
 ];
 
 export function TeamPage() {

@@ -90,7 +90,7 @@ export function ApplicationsPage() {
 
 const COLUMNS = (back: string): readonly Column<ApplicationListed>[] => [
   {
-    key: "name",
+    key: "name", sort: "fullName",
     header: "Nama",
     cell: (row) => (
       <>
@@ -106,7 +106,7 @@ const COLUMNS = (back: string): readonly Column<ApplicationListed>[] => [
   { key: "branch", header: "Cabang", className: "align-top text-gray-600", cell: (row) => row.branchPreference || "—" },
   { key: "status", header: "Status", cell: (row) => <StatusTag map={APPLICATION_STATUS} value={row.status} /> },
   {
-    key: "submitted",
+    key: "submitted", sort: "submittedAt", sortFirst: "desc",
     header: "Dikirim",
     className: "align-top text-xs text-gray-500",
     cell: (row) => new Date(row.submittedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
@@ -168,6 +168,15 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
         errorMessage={list.failure ? describeFailure(list.failure).message : MESSAGES.loadFailed}
         onRetry={list.refetch}
         emptyText={isFiltered(list.query) ? "Belum ada pendaftar untuk filter ini." : "Belum ada pendaftar."}
+        emptyFiltered={isFiltered(list.query)}
+        emptyAction={
+          isFiltered(list.query) && (
+            <Button variant="neutral" size="sm" onClick={list.reset}>
+              Tampilkan semua
+            </Button>
+          )
+        }
+        sort={{ value: list.query.sort, onChange: list.setSort }}
         actions={(row) => (
           <Link to={`${ROUTE}/${encodeURIComponent(row.id)}`} state={{ back }} aria-label={`Lihat ${row.fullName}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary-blue hover:underline">
             Lihat
