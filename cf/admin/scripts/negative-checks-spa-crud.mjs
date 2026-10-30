@@ -18,6 +18,7 @@ const HOOKS = "crud/hooks.test.tsx";
 const LIST = "crud/use-list.test.tsx";
 const KINDS = "crud/upload-kinds.test.ts";
 const MOCK = "crud/mock-resources.test.ts";
+const API = "api.test.ts";
 
 export const crudSpaChecks = [
   // ---------------------------------------------- write affordances follow the role
@@ -224,6 +225,64 @@ export const crudSpaChecks = [
     from: "loaded.data.total > 0 && query.page > 1",
     to: "false",
     tests: t(LIST),
+  },
+
+  // ------------------------------------------- the lists' memory and the filters that apply by themselves
+  {
+    name: "crud: a write no longer empties the lists' memory (a list shows the row that was just deleted)",
+    file: "spa/src/lib/crud/listCache.ts",
+    from: "onWrite(clearListCache);",
+    to: "",
+    tests: t(LIST),
+  },
+  {
+    name: "crud: an answer that was on its way when a write happened is kept anyway",
+    file: "spa/src/lib/crud/listCache.ts",
+    from: "if (since === version) answers.set(key, payload);",
+    to: "answers.set(key, payload);",
+    tests: t(LIST),
+  },
+  {
+    name: "crud: api() tells nobody about a write",
+    file: "shared/spa/api.ts",
+    from: "for (const listener of writeListeners) listener();",
+    to: "void writeListeners;",
+    tests: t(API, LIST),
+  },
+  {
+    name: "crud: going back to a query asked before shows the rows of the query just left until the Worker answers",
+    file: "spa/src/lib/crud/useList.ts",
+    from: 'kept ? { status: "ready", data: kept, failure: null } : { ...previous, status: previous.data ? "ready" : "loading", failure: null },',
+    to: '({ ...previous, status: previous.data ? "ready" : "loading", failure: null }),',
+    tests: t(LIST),
+  },
+  {
+    name: "crud: a list opened before paints the loading row first, then its last answer",
+    file: "spa/src/lib/crud/useList.ts",
+    from: "return kept ? { status: \"ready\", data: kept, failure: null } : { status: \"loading\", data: null, failure: null };",
+    to: "return { status: \"loading\", data: null, failure: null };",
+    tests: t(LIST),
+  },
+  {
+    name: "crud: choosing a filter does not apply it (it waits for a button that no longer exists)",
+    file: "spa/src/components/crud/FilterBar.tsx",
+    from: 'list.apply({ q: search ? searchText.take() : "", filters: next });',
+    to: "",
+    tests: t(TABLE, ANNOUNCEMENTS),
+  },
+  {
+    name: "crud: the search is asked for at every key instead of after a pause",
+    file: "spa/src/components/crud/FilterBar.tsx",
+    from: "delay: SEARCH_DELAY_MS,",
+    to: "delay: 0,",
+    tests: t(TABLE),
+  },
+  {
+    name: "crud: the address bar echoing the search overwrites what was typed since",
+    file: "spa/src/lib/crud/useDraftText.ts",
+    from: "if (committed === sent.current) return;",
+    to: "",
+    tests: t(TABLE),
   },
 
   // ---------------------------------------------------------------------- uploads

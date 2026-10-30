@@ -156,7 +156,6 @@ describe("the list: filter, search, sort and pages live in the address bar", () 
     await user.type(screen.getByLabelText("Cari"), "dibuka");
     await user.selectOptions(screen.getByLabelText("Severity"), "urgent");
     await user.selectOptions(screen.getByLabelText("Status"), "true");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
 
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/announcements?q=dibuka&severity=urgent&active=true"));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=20&q=dibuka&severity=urgent&active=true&sort=-createdAt`));

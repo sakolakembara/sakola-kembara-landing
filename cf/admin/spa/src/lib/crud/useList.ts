@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { api, type ApiFailure } from "../api";
 import { DEFAULT_PAGE_SIZE, type ListQuery, type ListSpec, parseListQuery, toApiQuery, toSearchParams, totalPages } from "./query";
+import { cachedList, keepList, listCacheVersion } from "./listCache";
 import type { ListPayload, LoadState } from "./types";
 
 // A list screen's data (docs/cloudflare/admin-crud.md#15-the-spa-kit). The page, the search, the filters and
 // the sort live in the URL query, so a reload, the back button and a shared link keep them. Each change of
 // the query aborts the request in flight; leaving the page aborts it too. While a newer page loads, the rows
-// of the previous one stay on screen (`refreshing`) instead of flashing an empty table.
+// of the previous one stay on screen (`refreshing`) instead of flashing an empty table. A query asked before
+// shows its last answer at once and is asked again in the background (`listCache.ts`).
 
 export interface ListState<T> {
   status: LoadState;
@@ -48,17 +50,27 @@ export function useList<T>(basePath: string, spec: ListSpec = {}): ListState<T> 
   const apiQuery = toApiQuery(query, spec);
 
   const [attempt, setAttempt] = useState(0);
-  const [loaded, setLoaded] = useState<Loaded<T>>({ status: "loading", data: null, failure: null });
+  // A list opened before shows its last answer from the first paint (`listCache.ts`) while the new one is asked for.
+  const [loaded, setLoaded] = useState<Loaded<T>>(() => {
+    const kept = cachedList<ListPayload<T>>(`${basePath}${apiQuery}`);
+    return kept ? { status: "ready", data: kept, failure: null } : { status: "loading", data: null, failure: null };
+  });
   // A request is in flight (the first, a new query, or a refetch).
   const [pending, setPending] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
+    const path = `${basePath}${apiQuery}`;
+    const kept = cachedList<ListPayload<T>>(path);
+    const version = listCacheVersion();
     setPending(true);
-    setLoaded((previous) => ({ ...previous, status: previous.data ? "ready" : "loading", failure: null }));
-    void api<ListPayload<T>>(`${basePath}${apiQuery}`, { signal: controller.signal }).then((result) => {
+    setLoaded((previous) =>
+      kept ? { status: "ready", data: kept, failure: null } : { ...previous, status: previous.data ? "ready" : "loading", failure: null },
+    );
+    void api<ListPayload<T>>(path, { signal: controller.signal }).then((result) => {
       if (controller.signal.aborted) return;
       setPending(false);
+      if (result.ok) keepList(path, result.data, version);
       setLoaded(result.ok ? { status: "ready", data: result.data, failure: null } : { status: "error", data: null, failure: result });
     });
     return () => controller.abort();

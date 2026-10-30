@@ -125,8 +125,7 @@ describe("the list", () => {
     const user = userEvent.setup();
     const { api } = await openList(["viewer", []]);
     expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=20&sort=-year`);
-    await user.type(screen.getByLabelText("Cari"), "gen 7");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
+    await user.type(screen.getByLabelText("Cari"), "gen 7{Enter}");
     await waitFor(() => expect(location()).toBe("/batches?q=gen+7"));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=20&q=gen+7&sort=-year`));
   });

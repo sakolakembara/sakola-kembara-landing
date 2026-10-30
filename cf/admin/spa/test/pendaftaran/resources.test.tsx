@@ -164,7 +164,6 @@ describe("the list: filters live in the address", () => {
     await user.type(screen.getByLabelText("Cari"), "panduan");
     await user.selectOptions(screen.getByLabelText("Kategori"), "panduan");
     await user.selectOptions(screen.getByLabelText("Tipe"), "file");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(location()).toBe("/resources?q=panduan&category=panduan&contentType=file"));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&q=panduan&category=panduan&contentType=file&sort=category`));
   });

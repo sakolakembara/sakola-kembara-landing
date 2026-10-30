@@ -60,6 +60,18 @@ function stringFields(value: unknown): Record<string, string> | undefined {
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
+const writeListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` after every write (any method but GET and HEAD) has finished, whatever its answer: a write that
+ * failed on the way may still have reached the server, so whoever keeps copies of the server's answers drops them.
+ * A sign-in and a sign-out are writes too. Returns the way to stop listening.
+ */
+export function onWrite(listener: () => void): () => void {
+  writeListeners.add(listener);
+  return () => void writeListeners.delete(listener);
+}
+
 /** JSON call to this app's own API. Cookies go along (same origin). Never throws. */
 export async function api<T>(path: string, init: ApiInit = {}): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {};
@@ -89,5 +101,8 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<ApiResul
     };
   } catch {
     return { ok: false, status: 0 };
+  } finally {
+    const method = (init.method ?? "GET").toUpperCase();
+    if (method !== "GET" && method !== "HEAD") for (const listener of writeListeners) listener();
   }
 }

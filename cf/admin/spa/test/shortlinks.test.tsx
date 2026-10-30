@@ -129,7 +129,6 @@ describe("the list: what a row shows", () => {
     expect(within(screen.getByLabelText("Status")).getAllByRole("option").map((option) => option.textContent)).toEqual(["Semua status", "Aktif", "Nonaktif"]);
     await user.type(screen.getByLabelText("Cari"), "rapat");
     await user.selectOptions(screen.getByLabelText("Status"), "true");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&q=rapat&active=true&sort=-createdAt`));
   });
 });

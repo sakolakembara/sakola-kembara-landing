@@ -1,6 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { setTransport } from "~/lib/api";
+import { clearListCache } from "~/lib/crud/listCache";
 import { installDialogShim } from "./dialog-shim";
 
 // jsdom has no <dialog> modal methods (test/dialog-shim.ts).
@@ -20,6 +21,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   setTransport(null);
+  // The lists the last test opened must not be shown, stale, to the next one (spa/src/lib/crud/listCache.ts).
+  clearListCache();
   // Cloudflare's script and what it defines (test/fake-turnstile.ts), and any env a test stubbed.
   document.head.querySelectorAll("script[data-sakem-turnstile]").forEach((script) => script.remove());
   delete window.turnstile;

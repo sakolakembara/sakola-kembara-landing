@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type ApiFailure } from "~/lib/api";
+import { cachedList, keepList, listCacheVersion } from "~/lib/crud/listCache";
 import type { LoadState } from "~/lib/crud/types";
 import { API_PATH, type AuditItem, type AuditPayload, type AuditQuery, toApiQuery } from "./model";
 
@@ -27,16 +28,26 @@ interface Loaded {
 export function useAuditList(query: AuditQuery): AuditList {
   const apiQuery = toApiQuery(query);
   const [attempt, setAttempt] = useState(0);
-  const [loaded, setLoaded] = useState<Loaded>({ status: "loading", data: null, failure: null });
+  // A query opened before shows its last answer from the first paint (lib/crud/listCache.ts) while it is asked for again.
+  const [loaded, setLoaded] = useState<Loaded>(() => {
+    const kept = cachedList<AuditPayload>(`${API_PATH}${apiQuery}`);
+    return kept ? { status: "ready", data: kept, failure: null } : { status: "loading", data: null, failure: null };
+  });
   const [pending, setPending] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
+    const path = `${API_PATH}${apiQuery}`;
+    const kept = cachedList<AuditPayload>(path);
+    const version = listCacheVersion();
     setPending(true);
-    setLoaded((previous) => ({ ...previous, status: previous.data ? "ready" : "loading", failure: null }));
-    void api<AuditPayload>(`${API_PATH}${apiQuery}`, { signal: controller.signal }).then((result) => {
+    setLoaded((previous) =>
+      kept ? { status: "ready", data: kept, failure: null } : { ...previous, status: previous.data ? "ready" : "loading", failure: null },
+    );
+    void api<AuditPayload>(path, { signal: controller.signal }).then((result) => {
       if (controller.signal.aborted) return;
       setPending(false);
+      if (result.ok) keepList(path, result.data, version);
       setLoaded(result.ok ? { status: "ready", data: result.data, failure: null } : { status: "error", data: null, failure: result });
     });
     return () => controller.abort();

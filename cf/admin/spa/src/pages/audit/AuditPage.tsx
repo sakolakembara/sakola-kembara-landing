@@ -1,12 +1,12 @@
 import { X } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
 import { type Column, DataTable } from "~/components/crud/DataTable";
 import { PageHeader } from "~/components/PageHeader";
 import { ACTION_OPTIONS, activityHref, activityLabel, RESOURCE_OPTIONS, resourceLabel } from "~/lib/audit";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
+import { useDraftText } from "~/lib/crud/useDraftText";
 import { formatDateTime } from "~/lib/format";
 import { type AuditItem, type AuditQuery, isFiltered, parseAuditQuery, toSearchParams } from "./model";
 import { useAuditList } from "./useAuditList";
@@ -14,6 +14,9 @@ import { useAuditList } from "./useAuditList";
 // Aktivitas (Sistem, super_admin only): the audit log, read-only. A port of app/(admin)/admin/audit/page.tsx:
 // the same filters, columns and words (docs/cloudflare/admin-sistem.md). What changes is the pager: a cursor, so
 // "Berikutnya" and the browser's Back button instead of page numbers, and no "Total N entri".
+
+/** Quiet time after the last change of a date before the log is asked for. */
+const DATE_DELAY_MS = 600;
 
 const COLUMNS: readonly Column<AuditItem>[] = [
   {
@@ -116,16 +119,35 @@ export function AuditPage() {
     return search ? `?${search}` : "?";
   };
 
-  function apply(event: FormEvent<HTMLFormElement>) {
+  // One filter changes and the rest stay. Filters change what the list is, so the position in it (the cursor) goes.
+  type Filters = Pick<AuditQuery, "action" | "resource" | "actor" | "from" | "to">;
+  const change = (next: Partial<Filters>) =>
+    setParams(
+      toSearchParams(
+        parseAuditQuery(new URLSearchParams({ action: query.action, resource: query.resource, actor: query.actor, from: query.from, to: query.to, ...next })),
+      ),
+      { replace: true },
+    );
+  // A pause in typing fires later than the render that scheduled it: it changes the filters as they are by then.
+  const latestChange = useRef(change);
+  useEffect(() => {
+    latestChange.current = change;
+  });
+  // The actor is a whole email: it is asked for on Enter or when the box is left, not while the address is half typed.
+  // The dates are asked for after a pause, because typing a year passes through years nobody means.
+  const cleanActor = (raw: string) => parseAuditQuery(new URLSearchParams({ actor: raw })).actor;
+  const actor = useDraftText(query.actor, (value) => latestChange.current({ actor: value }), { clean: cleanActor });
+  const from = useDraftText(query.from, (value) => latestChange.current({ from: value }), { delay: DATE_DELAY_MS });
+  const to = useDraftText(query.to, (value) => latestChange.current({ to: value }), { delay: DATE_DELAY_MS });
+
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const text = (name: string) => String(data.get(name) ?? "");
-    // Filters change what the list is, so the position in it (the cursor) goes.
-    setParams(toSearchParams(parseAuditQuery(new URLSearchParams({ action: text("action"), resource: text("resource"), actor: text("actor"), from: text("from"), to: text("to") }))), { replace: true });
+    actor.flush();
+    from.flush();
+    to.flush();
   }
 
   const emptyText = query.cursor ? "Tidak ada aktivitas yang lebih lama." : filtered ? "Tidak ada aktivitas yang cocok dengan filter." : "Belum ada aktivitas.";
-  const formKey = JSON.stringify([query.action, query.resource, query.actor, query.from, query.to]);
   const showPager = list.status === "ready" && (query.cursor !== "" || list.nextCursor !== null || list.items.length > 0);
 
   return (
@@ -135,14 +157,13 @@ export function AuditPage() {
       </PageHeader>
 
       <form
-        key={formKey}
-        onSubmit={apply}
+        onSubmit={submit}
         role="search"
         aria-label="Saring aktivitas"
         className="mb-5 grid grid-cols-1 items-end gap-3 rounded-xl border border-gray-100 bg-white p-4 md:grid-cols-2 md:p-5 lg:grid-cols-6"
       >
         <Filter label="Aksi">
-          <Select size="sm" name="action" defaultValue={query.action}>
+          <Select size="sm" name="action" value={query.action} onChange={(event) => change({ action: event.target.value })}>
             <option value="">Semua aksi</option>
             {ACTION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -152,7 +173,7 @@ export function AuditPage() {
           </Select>
         </Filter>
         <Filter label="Tipe resource">
-          <Select size="sm" name="resource" defaultValue={query.resource}>
+          <Select size="sm" name="resource" value={query.resource} onChange={(event) => change({ resource: event.target.value })}>
             <option value="">Semua tipe</option>
             {RESOURCE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -162,28 +183,41 @@ export function AuditPage() {
           </Select>
         </Filter>
         <Filter label="Aktor (email lengkap)">
-          <Input size="sm" type="text" name="actor" defaultValue={query.actor} placeholder="nama@contoh.com" maxLength={254} autoComplete="off" spellCheck={false} />
+          <Input
+            size="sm"
+            type="text"
+            name="actor"
+            value={actor.value}
+            onChange={(event) => actor.onChange(event.target.value)}
+            onBlur={actor.flush}
+            placeholder="nama@contoh.com"
+            maxLength={254}
+            autoComplete="off"
+            spellCheck={false}
+          />
         </Filter>
         <Filter label="Dari">
-          <Input size="sm" type="date" name="from" defaultValue={query.from} />
+          <Input size="sm" type="date" name="from" value={from.value} onChange={(event) => from.onChange(event.target.value)} onBlur={from.flush} />
         </Filter>
         <Filter label="Sampai">
-          <Input size="sm" type="date" name="to" defaultValue={query.to} />
+          <Input size="sm" type="date" name="to" value={to.value} onChange={(event) => to.onChange(event.target.value)} onBlur={to.flush} />
         </Filter>
         <div className="flex gap-2">
-          <Button type="submit" size="sm" className="flex-1">
-            Terapkan
-          </Button>
           {filtered && (
             // A button, not a link: the address bar is rewritten, the page does not change.
             <button
               type="button"
-              onClick={() => setParams(new URLSearchParams(), { replace: true })}
-              title="Hapus filter"
-              className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border-2 border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900"
+              onClick={() => {
+                // What was typed and not yet sent goes too, or it would come back after the pause.
+                actor.onChange("");
+                from.onChange("");
+                to.onChange("");
+                setParams(new URLSearchParams(), { replace: true });
+              }}
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border-2 border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900"
             >
               <X size={14} aria-hidden="true" />
-              <span className="sr-only">Hapus filter</span>
+              Hapus filter
             </button>
           )}
         </div>

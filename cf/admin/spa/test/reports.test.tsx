@@ -129,7 +129,6 @@ describe("the list: what a row shows", () => {
     const { api } = await openList(["viewer", []]);
     await user.type(screen.getByLabelText("Cari"), "dampak");
     await user.selectOptions(screen.getByLabelText("Kategori"), "impact");
-    await user.click(screen.getByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/reports?q=dampak&category=impact"));
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&q=dampak&category=impact&sort=-year`));
     expect(within(screen.getByLabelText("Kategori")).getAllByRole("option").map((option) => option.textContent)).toEqual(["Semua kategori", "Laporan Tahunan", "Laporan Keuangan", "Laporan Dampak", "Laporan Donasi"]);
