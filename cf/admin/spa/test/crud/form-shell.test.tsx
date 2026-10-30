@@ -58,6 +58,25 @@ describe("FormShell", () => {
     expect(document.title).toBe("Pengumuman Baru | Admin Sakola Kembara");
   });
 
+  // jsdom draws no CSS; these check what the CSS works from.
+  test("the bar sticks to the top from md only, and on a phone the buttons are a bar at the bottom of the screen", () => {
+    renderAt(<Form onSave={ok} />, "/baru");
+    const bar = screen.getByRole("heading", { level: 1 }).closest("header")!;
+    expect(bar.className).toContain("md:sticky");
+    // A bar that sticks on a phone would take a third of the screen; a blur on it would trap the fixed buttons inside it.
+    expect(bar.className.split(" ")).not.toContain("sticky");
+    expect(bar.className.split(" ")).not.toContain("backdrop-blur");
+    const buttons = screen.getByRole("button", { name: "Simpan" }).parentElement!;
+    expect(buttons.className).toContain("max-md:fixed");
+    expect(buttons.className).toContain("max-md:bottom-0");
+    expect(within(buttons).getByRole("link", { name: "Batal" })).toBeTruthy();
+  });
+
+  test("the form leaves room under it for the bottom bar on a phone", () => {
+    renderAt(<Form onSave={ok} />, "/baru");
+    expect(screen.getByRole("form").querySelector("fieldset")!.parentElement!.className).toContain("pb-28");
+  });
+
   test("Simpan submits, once, however many times it is pressed; the label says it is working", async () => {
     const gate = deferred<ApiResult<{ item: { id: string } }>>();
     const onSave = vi.fn<Save>(() => gate.promise);

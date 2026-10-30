@@ -72,6 +72,36 @@ export const listSpaChecks = [
     tests: t(TABLE),
   },
 
+  // ---------------------------------------------- forms (stage 4)
+  {
+    name: "forms: the bar sticks on a phone too (a third of the screen, for ever)",
+    file: "spa/src/components/crud/FormShell.tsx",
+    from: "md:sticky md:top-0 md:z-20",
+    to: "sticky top-0 z-20",
+    tests: t("crud/form-shell.test.tsx"),
+  },
+  {
+    name: "forms: the header blurs its backdrop on a phone (the fixed buttons end up inside it)",
+    file: "spa/src/components/crud/FormShell.tsx",
+    from: "md:bg-white/95 md:px-10 md:backdrop-blur",
+    to: "bg-white/95 md:px-10 backdrop-blur",
+    tests: t("crud/form-shell.test.tsx"),
+  },
+  {
+    name: "forms: on a phone Simpan and Batal stay in the bar under the title, out of reach of the thumb",
+    file: "spa/src/components/crud/FormShell.tsx",
+    from: "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30",
+    to: "max-md:static",
+    tests: t("crud/form-shell.test.tsx"),
+  },
+  {
+    name: "forms: the last field hides under the phone's bottom bar",
+    file: "spa/src/components/crud/FormShell.tsx",
+    from: "px-6 pb-28 pt-6 md:px-10 md:pb-12",
+    to: "px-6 pb-12 pt-6 md:px-10",
+    tests: t("crud/form-shell.test.tsx"),
+  },
+
   // ---------------------------------------------- cards on a phone
   {
     name: "lists: the cells of a phone card lose their column's name",
