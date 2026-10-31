@@ -90,6 +90,26 @@ describe("the list: grouped by the five categories of the public page", () => {
     expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=100&sort=category`);
   });
 
+  // The config is read once per page load, so each address needs its own test.
+  const LEGACY = [item(), item({ id: "r9", title: "Panduan Lama", filePath: "/resources/panduan-lama.pdf" })];
+
+  test("a legacy file is a file of the public site", async () => {
+    await openList(["viewer", []], {
+      "GET /api/config": respond({ google: false, turnstileSiteKey: null, uploadsBaseUrl: "https://files.contoh.test", siteUrl: "https://sakolakembara.org" }),
+      [`GET ${LIST}`]: respond(envelope(LEGACY)),
+    });
+    await waitFor(() => expect(screen.getByRole("link", { name: "Buka Panduan Lama" }).getAttribute("href")).toBe("https://sakolakembara.org/resources/panduan-lama.pdf"));
+  });
+
+  test("a legacy file stays as it is when the public site's address is not known", async () => {
+    await openList(["viewer", []], {
+      "GET /api/config": respond({ google: false, turnstileSiteKey: null, uploadsBaseUrl: "https://files.contoh.test", siteUrl: "" }),
+      [`GET ${LIST}`]: respond(envelope(LEGACY)),
+    });
+    await waitFor(() => expect(screen.getByRole("link", { name: "Buka Panduan Pendaftaran" }).getAttribute("href")).toBe("https://files.contoh.test/uploads/resource/2026/0b8d1f5e-2b6f-4d2a-9d53-9a6f2d3c8f10-panduan.pdf")); // the config has arrived
+    expect(screen.getByRole("link", { name: "Buka Panduan Lama" }).getAttribute("href")).toBe("/resources/panduan-lama.pdf");
+  });
+
   test("a document is opened from its own link: an upload from the files domain, a link as it is, a text has none", async () => {
     await openList(["viewer", []], { "GET /api/config": respond({ google: false, turnstileSiteKey: null, uploadsBaseUrl: "https://files.contoh.test" }) });
     await waitFor(() =>

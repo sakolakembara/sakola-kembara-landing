@@ -3,20 +3,25 @@ import { Link } from "react-router";
 import type { Column } from "~/components/crud/DataTable";
 import { ListPage } from "~/components/crud/ListPage";
 import { StatusTag } from "~/components/crud/StatusTag";
+import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
-import { uploadUrl } from "~/lib/crud/upload-kinds";
+import { storedFileUrl } from "~/lib/crud/upload-kinds";
 import { SITE_URL } from "~/lib/site";
 import { API_PATH, CATEGORY_LABEL, CATEGORY_ORDER, CATEGORY_STATUS, LIST_SPEC, ROUTE, type TeamListItem } from "./model";
 
 // The list of the team, built with `ListPage` (docs/cloudflare/admin-crud.md). The columns, the wording and the
 // order are the legacy page's (app/(admin)/admin/team/page.tsx): grouped by category, then by display order.
 
-/** The round photo of a row, or the placeholder person. The file lives on the public files domain (base from /api/config). */
+/**
+ * The round photo of a row, or the placeholder person. An upload lives on the public files domain; a member that predates
+ * the admin has a path of the public site ("/images/team/..."), which this host does not have (both from /api/config).
+ */
 function Photo({ member }: { member: TeamListItem }) {
   const base = useUploadsBase();
+  const { siteUrl } = useConfig();
   return (
     <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-100">
-      {member.image ? <img src={uploadUrl(member.image, base)} alt="" className="h-full w-full object-cover" /> : <User size={16} aria-hidden="true" className="text-gray-300" />}
+      {member.image ? <img src={storedFileUrl(member.image, base, siteUrl)} alt="" className="h-full w-full object-cover" /> : <User size={16} aria-hidden="true" className="text-gray-300" />}
     </div>
   );
 }

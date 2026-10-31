@@ -153,12 +153,23 @@ describe("the list: what a row shows", () => {
     expect(screen.getByRole("link", { name: "/laporan" }).getAttribute("href")).toBe("https://sakolakembara.org/laporan");
   });
 
-  test("'Lihat' opens the PDF in a new tab, from the public files domain; a legacy static path stays where it is", async () => {
-    await openList(["viewer", []], { [`GET ${LIST}`]: respond(envelope([item(), item({ id: "r2", title: "Lama", filePath: "/reports/2025/yearly/lama.pdf" })])) });
+  test("'Lihat' opens the PDF in a new tab, from the public files domain; a legacy static path is a file of the public site", async () => {
+    await openList(["viewer", []], {
+      "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.test", siteUrl: "https://sakolakembara.org" }),
+      [`GET ${LIST}`]: respond(envelope([item(), item({ id: "r2", title: "Lama", filePath: "/reports/2025/yearly/lama.pdf" })])),
+    });
     const upload = screen.getByRole("link", { name: "Buka PDF Laporan Dampak 2025/2026" });
     await waitFor(() => expect(upload.getAttribute("href")).toBe("https://files.example.test/uploads/report/2026/00000000-0000-4000-8000-000000000001-laporan-dampak.pdf"));
     expect(upload.getAttribute("target")).toBe("_blank");
     expect(upload.getAttribute("rel")).toBe("noopener noreferrer");
+    await waitFor(() => expect(screen.getByRole("link", { name: "Buka PDF Lama" }).getAttribute("href")).toBe("https://sakolakembara.org/reports/2025/yearly/lama.pdf"));
+  });
+
+  test("a legacy file stays as it is when the public site's address is not known", async () => {
+    await openList(["viewer", []], {
+      "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.test", siteUrl: "" }),
+      [`GET ${LIST}`]: respond(envelope([item(), item({ id: "r2", title: "Lama", filePath: "/reports/2025/yearly/lama.pdf" })])),
+    });
     expect(screen.getByRole("link", { name: "Buka PDF Lama" }).getAttribute("href")).toBe("/reports/2025/yearly/lama.pdf");
   });
 
@@ -338,6 +349,17 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
 
 describe("the form: edit", () => {
   const loaded = item();
+
+  test("the file's link is the files domain's for an upload and the public site's for a legacy file", async () => {
+    const legacy = { ...loaded, filePath: "/reports/2025/yearly/lama.pdf" };
+    const config = respond({ uploadsBaseUrl: "https://files.example.test", siteUrl: "https://sakolakembara.org" });
+    const view = await openForm(["editor", ["konten"]], "/reports/r1/edit", { "GET /api/config": config, [`GET ${LIST}/r1`]: respond({ item: loaded }) });
+    await waitFor(() => expect(screen.getByRole("link", { name: loaded.filePath }).getAttribute("href")).toBe(`https://files.example.test${loaded.filePath}`));
+    view.unmount();
+
+    await openForm(["editor", ["konten"]], "/reports/r1/edit", { "GET /api/config": config, [`GET ${LIST}/r1`]: respond({ item: legacy }) });
+    await waitFor(() => expect(screen.getByRole("link", { name: legacy.filePath }).getAttribute("href")).toBe("https://sakolakembara.org/reports/2025/yearly/lama.pdf"));
+  });
 
   test("the metadata is loaded; the file is shown, not replaceable, with the legacy sentence; saving sends the metadata only, with If-Match", async () => {
     const user = userEvent.setup();
