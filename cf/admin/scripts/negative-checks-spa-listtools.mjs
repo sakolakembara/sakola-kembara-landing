@@ -324,4 +324,41 @@ export const listToolsSpaChecks = [
     to: "const CHIPS_FROM = 1;",
     tests: t(TABLE),
   },
+
+  // ---------------------------------------------- the filter row without titles, and Kolom at its right end (Dzul, 2026-10-31)
+  {
+    name: "tools: the search box loses its name when its title is not drawn",
+    file: "spa/src/components/crud/FilterBar.tsx",
+    from: 'aria-label={search.label ?? "Cari"}',
+    to: "aria-label={undefined}",
+    tests: t(TABLE),
+  },
+  {
+    name: "tools: a filter loses its name when its title is not drawn",
+    file: "spa/src/components/crud/FilterBar.tsx",
+    from: "aria-label={filter.label}",
+    to: "aria-label={undefined}",
+    tests: t(TABLE),
+  },
+  {
+    name: "tools: a title is drawn above the search box again",
+    file: "spa/src/components/crud/FilterBar.tsx",
+    from: '<div className="min-w-0 max-sm:basis-full sm:min-w-56 sm:flex-1">\n          <Input',
+    to: '<div className="min-w-0 max-sm:basis-full sm:min-w-56 sm:flex-1">\n          <label htmlFor={`${idPrefix}-q`}>{search.label ?? "Cari"}</label>\n          <Input',
+    tests: t(TABLE),
+  },
+  {
+    name: "tools: 'Hapus filter' and Kolom stay beside the controls instead of at the right end of the row",
+    file: "spa/src/components/crud/FilterBar.tsx",
+    from: '<div className="ml-auto flex items-center gap-2 max-sm:w-full max-sm:justify-end">',
+    to: '<div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">',
+    tests: t(TABLE),
+  },
+  {
+    name: "tools: the Kolom panel is not named for a screen reader",
+    file: "spa/src/components/crud/ColumnsMenu.tsx",
+    from: 'role="group" aria-label="Kolom yang ditampilkan"',
+    to: 'role="group"',
+    tests: t(TOOLS),
+  },
 ];

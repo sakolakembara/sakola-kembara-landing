@@ -8,13 +8,16 @@ import { useDraftText } from "~/lib/crud/useDraftText";
 import { type FilterChip, FilterChips } from "./FilterChips";
 
 /**
- * The filter row above a list (a port of the legacy Aktivitas filters): a labelled control per filter, the
- * search box, and "Hapus filter" when anything narrows the list. A filter applies the moment it is chosen, with
+ * The filter row above a list (a port of the legacy Aktivitas filters): the search box, a control per filter and
+ * "Hapus filter" when anything narrows the list, in one row with no titles above the controls (Dzul: the
+ * placeholder and the "Semua ..." option say what each one is; the name is still there for a screen reader, as its
+ * `aria-label`). A filter applies the moment it is chosen, with
  * the search as it stands; the search applies after a short pause in typing, and at once on Enter. The result is in
  * the address bar (`list.apply`), which is why a filtered list can be linked to: the dashboard's
  * "Pendaftar pending" tile goes to `/applications?status=pending`. A bar with three controls or more also lists what
  * is set as chips under them (`FilterChips`), each one a button that drops just that filter. `trailing` is for a
- * control that belongs with these but is not a filter ("Kolom"); it sits beside "Hapus filter".
+ * control that belongs with these but is not a filter ("Kolom"); it sits beside "Hapus filter", and the two are always
+ * at the right end of the row, whatever the number of controls before them.
  */
 export interface FilterOption {
   value: string;
@@ -42,17 +45,6 @@ export interface FilterBarProps {
 
 /** Quiet time after the last keystroke before the search is asked for. */
 const SEARCH_DELAY_MS = 350;
-
-function Labelled({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-medium text-gray-700">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 /** The number of controls from which the chips are worth their line. */
 const CHIPS_FROM = 3;
@@ -102,33 +94,30 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter", tra
   const showChips = (search ? 1 : 0) + filters.length >= CHIPS_FROM;
 
   return (
-    <form
-      onSubmit={submit}
-      role="search"
-      aria-label="Saring daftar"
-      className="mb-5 grid grid-cols-1 items-end gap-3 rounded-xl border border-gray-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-4"
-    >
+    <form onSubmit={submit} role="search" aria-label="Saring daftar" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
       {search && (
-        <Labelled label={search.label ?? "Cari"} htmlFor={`${idPrefix}-q`}>
+        <div className="min-w-0 max-sm:basis-full sm:min-w-56 sm:flex-1">
           <Input
             id={`${idPrefix}-q`}
             name="q"
             type="search"
             size="sm"
+            aria-label={search.label ?? "Cari"}
             value={searchText.value}
             onChange={(event) => searchText.onChange(event.target.value)}
             placeholder={search.placeholder ?? "Cari..."}
             maxLength={48}
             autoComplete="off"
           />
-        </Labelled>
+        </div>
       )}
       {filters.map((filter) => (
-        <Labelled key={filter.name} label={filter.label} htmlFor={`${idPrefix}-${filter.name}`}>
+        <div key={filter.name} className="min-w-0 max-sm:basis-full sm:w-52">
           <Select
             id={`${idPrefix}-${filter.name}`}
             name={filter.name}
             size="sm"
+            aria-label={filter.label}
             value={query.filters[filter.name] ?? ""}
             onChange={(event) => choose(filter.name, event.target.value)}
           >
@@ -139,9 +128,9 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter", tra
               </option>
             ))}
           </Select>
-        </Labelled>
+        </div>
       ))}
-      <div className="flex flex-wrap items-center gap-2 md:col-span-2 lg:col-span-1 lg:justify-end">
+      <div className="ml-auto flex items-center gap-2 max-sm:w-full max-sm:justify-end">
         {isFiltered(query) && (
           // A button, not a link: the address bar is rewritten by `reset`, the page does not change.
           <Button
@@ -158,7 +147,7 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter", tra
         )}
         {trailing}
       </div>
-      <FilterChips chips={showChips ? chips : []} className="flex flex-wrap gap-2 md:col-span-2 lg:col-span-4" />
+      <FilterChips chips={showChips ? chips : []} className="flex basis-full flex-wrap gap-2" />
     </form>
   );
 }

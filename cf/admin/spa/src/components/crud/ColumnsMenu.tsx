@@ -28,8 +28,7 @@ export function ColumnsMenu({ choice }: { choice: Pick<ColumnChoice<never>, "opt
         <ChevronDown aria-hidden="true" className="opacity-60" />
       </button>
       {menu.open && (
-        <fieldset id={menu.panelId} className="absolute right-0 top-full z-30 mt-2 w-60 min-w-0 rounded-xl border border-border bg-card p-2 shadow-lg">
-          <legend className="sr-only">Kolom yang ditampilkan</legend>
+        <div id={menu.panelId} role="group" aria-label="Kolom yang ditampilkan" className="absolute right-0 top-full z-30 mt-2 w-60 min-w-0 rounded-xl border border-border bg-card p-2 shadow-lg">
           <ul>
             {choice.options.map((option) => (
               <li key={option.key}>
@@ -45,7 +44,7 @@ export function ColumnsMenu({ choice }: { choice: Pick<ColumnChoice<never>, "opt
               Tampilkan semua
             </Button>
           )}
-        </fieldset>
+        </div>
       )}
     </div>
   );
