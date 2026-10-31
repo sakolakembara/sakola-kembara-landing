@@ -11,6 +11,7 @@ import { SITE_URL } from "~/lib/site";
 import { Breadcrumb } from "./Breadcrumb";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { MobileDrawer } from "./MobileDrawer";
+import { asideClass, FRAME_CLASS, HEADER_CLASS, MOBILE_BAR_CLASS, MobileBrand } from "./shell-parts";
 import { SidebarBody } from "./Sidebar";
 
 /**
@@ -90,7 +91,7 @@ function ShellFrame() {
     // live region) is only clipped by a box that is its containing block. Without it, one deep in a long page sticks
     // out of the shell and makes the document itself taller than the window, so the whole shell scrolls away and
     // leaves white under it.
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-background md:flex-row">
+    <div className={FRAME_CLASS}>
       <button
         type="button"
         onClick={() => main.current?.focus()}
@@ -99,19 +100,8 @@ function ShellFrame() {
         Lewati ke konten utama
       </button>
 
-      <div
-        inert={drawerOpen}
-        className="flex shrink-0 items-center justify-between bg-sidebar px-4 py-1 text-sidebar-accent-foreground md:hidden"
-      >
-        <span className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground"
-          >
-            SK
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight">Admin</span>
-        </span>
+      <div inert={drawerOpen} className={MOBILE_BAR_CLASS}>
+        <MobileBrand />
         <button
           ref={menuButton}
           type="button"
@@ -126,13 +116,7 @@ function ShellFrame() {
         </button>
       </div>
 
-      <aside
-        inert={drawerOpen}
-        className={cn(
-          "hidden shrink-0 bg-sidebar text-sidebar-foreground transition-[width] duration-200 motion-reduce:transition-none md:block",
-          collapsed ? "md:w-[72px]" : "md:w-[248px]",
-        )}
-      >
+      <aside inert={drawerOpen} className={asideClass(collapsed)}>
         {body({ collapsed })}
       </aside>
 
@@ -143,7 +127,7 @@ function ShellFrame() {
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header inert={drawerOpen} className="hidden h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-6 md:flex">
+        <header inert={drawerOpen} className={HEADER_CLASS}>
           <button
             type="button"
             onClick={toggle}

@@ -5,9 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Sakola Kembara Admin</title>
+    <style>
+      /* The signed-in frame before any script has run: the navy sidebar and the white top bar are on screen from the first
+         byte, and React draws the same frame (components/ShellSkeleton.tsx, parts in components/shell-parts.tsx) when it
+         starts, so nothing jumps. 248 px (72 px for the rail, set below), 56 px, 52 px on a phone: the sizes of those parts.
+         The fallbacks are the tokens' values, and the margin and box model are set here too, for development, where the stylesheet
+         arrives with the script (in a build it is in the head and holds the page back until it is there). */
+      body { margin: 0; }
+      #boot, #boot * { box-sizing: border-box; }
+      #boot { display: flex; height: 100vh; height: 100dvh; background: var(--background, #f9fafb); }
+      #boot .boot-aside { flex: none; width: 248px; background: var(--sidebar, #0d1f52); }
+      #boot .boot-main { flex: 1; min-width: 0; }
+      #boot .boot-header { height: 56px; background: var(--card, #fff); border-bottom: 1px solid var(--border, #e5e7eb); }
+      @media (max-width: 767px) {
+        #boot { flex-direction: column; }
+        #boot .boot-aside { width: auto; height: 52px; }
+        #boot .boot-main { display: none; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot" aria-hidden="true"><div class="boot-aside"></div><div class="boot-main"><div class="boot-header"></div></div></div>
+    </div>
+    <script>
+      // The sign-in pages have no sidebar to draw: take the frame away on them (the routes of App.tsx that are open to
+      // anyone). And an icon rail kept by a person (lib/sidebar-state.ts) is a 72 px aside from the start.
+      (function () {
+        var boot = document.getElementById("boot");
+        if (!boot) return;
+        if (/^\/(login|forgot-password|reset-password|verify-email|auth\/error)\/?$/.test(location.pathname)) {
+          boot.remove();
+          return;
+        }
+        try {
+          if (localStorage.getItem("sakem-admin:sidebar") === "collapsed") boot.querySelector(".boot-aside").style.width = "72px";
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

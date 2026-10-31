@@ -8,6 +8,8 @@
 //   - fails when zod is in the build: the admin sends no form to a schema, and
 //     zod (the portal wizard's, shared/application-form/schemas.ts) must stay
 //     out of it (docs/cloudflare/portal-architecture.md#52-the-shared-module-what-moves-and-what-is-imported);
+//   - fails when the page does not ask for its main font up front (a preload of the Latin file, which the build
+//     names with a hash: spa/vite.config.ts) or has lost the frame it draws before any script runs (`#boot`);
 //   - fails when the files with a hash in their name are not kept for a year (`_headers`, from spa/public): Workers
 //     sends `max-age=0, must-revalidate` for every static file unless told otherwise.
 //
@@ -113,6 +115,27 @@ if (!css.includes("@keyframes progress-slide")) {
   failed = true;
 }
 
+// The page asks for the main font with the script and the stylesheet, and the file it names is in the build; and the signed-in
+// frame is on screen from the first byte (spa/index.html, `#boot`).
+let indexHtml = "";
+try {
+  indexHtml = readFileSync(path.join(root, "index.html"), "utf8");
+} catch {
+  // reported below
+}
+const preload = /<link rel="preload" as="font" type="font\/woff2" crossorigin="" href="\/(assets\/plus-jakarta-sans-latin-wght-normal-[\w-]+\.woff2)">/.exec(indexHtml);
+if (!preload) {
+  console.error("FAIL: dist/spa/index.html does not preload the main font (the plugin in spa/vite.config.ts): the text would change shape when the font arrives");
+  failed = true;
+} else if (!readdirSync(path.join(root, "assets")).includes(path.basename(preload[1]))) {
+  console.error(`FAIL: dist/spa/index.html preloads ${preload[1]}, which is not in the build`);
+  failed = true;
+}
+if (!indexHtml.includes('id="boot"') || !indexHtml.includes(".boot-aside")) {
+  console.error("FAIL: dist/spa/index.html has no #boot frame: the page would be white until the script has run");
+  failed = true;
+}
+
 console.log(`${"JS + CSS total".padEnd(40)} ${kb(total.raw).padStart(11)}  gzip ${kb(total.gzip).padStart(10)}`);
 if (failed) process.exit(1);
-console.log("OK: the mock and zod are not in the build, the SPA's own classes are in the CSS, and the hashed files are cached for a year.");
+console.log("OK: the mock and zod are not in the build, the SPA's own classes are in the CSS, the hashed files are cached for a year, and the page preloads its font and draws its frame at once.");

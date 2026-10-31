@@ -50,7 +50,9 @@ describe("count badges", () => {
 
   test("nothing waiting, no badge: zero is not news", async () => {
     const { nav } = await open("/", respond(dashboardWith(0, 0)));
-    await waitFor(() => expect(screen.queryByText("Memuat dashboard…")).toBeNull());
+    // The answer is in once the dashboard page has drawn it (the shell's counts come from the same answer).
+    await screen.findByRole("region", { name: "Perlu perhatian" });
+    await act(async () => {});
     expect(within(nav).getByRole("link", { name: "Pendaftar" })).toBeTruthy();
     expect(within(nav).getByRole("link", { name: "Pesan" })).toBeTruthy();
   });
