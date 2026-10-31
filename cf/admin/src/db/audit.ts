@@ -12,6 +12,7 @@ export type Db = DrizzleD1Database<typeof schema>;
 export type AuditAction =
   // Uploads to R2 (src/uploads/store.ts). New names: the legacy app wrote one per kind (blog.upload_image, team.upload_photo).
   | "upload.create"
+  | "upload.update"
   | "upload.delete"
   // The CRUD kit's `<name>.create|update|delete` for every resource the legacy admin had (src/api/crud, docs/cloudflare/admin-crud.md).
   | CrudAction

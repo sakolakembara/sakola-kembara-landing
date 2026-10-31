@@ -1,21 +1,25 @@
-import { and, count, desc, gte, lt } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
+import { z } from "zod";
 import { loadAccess, type Access } from "../auth/guard";
 import { can } from "../auth/permissions";
 import type { AppEnv } from "../context";
 import * as schema from "../db/schema";
 import { checkLimits, limitedResponse } from "../security/rate-limit";
-import { keyRange } from "../uploads/key";
+import { kindOfKey, keyRange, nameOfKey } from "../uploads/key";
 import { areaOfPurpose, isUploadKind, KIND_RULES, MAX_UPLOAD_BYTES, megabytes, MULTIPART_OVERHEAD_BYTES, uploadAreas, type UploadKind } from "../uploads/kinds";
 import { FILE_TYPES, MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE, SNIFF_WINDOW, sniff, type FileType } from "../uploads/sniff";
-import { deleteUnusedUpload, findMedia, storeUpload } from "../uploads/store";
+import { deleteUnusedUpload, findMedia, menusUsing, storeUpload, updateAltText } from "../uploads/store";
 import { getDb } from "../db/client";
+import { invalidQuery, notFound, parseBody } from "./crud";
 
-// Uploads to R2 (SAKEM-082, docs/cloudflare/uploads.md). Admin only. Three
-// routes, none of them public:
+// Uploads to R2 (SAKEM-082, docs/cloudflare/uploads.md) and the Media library on
+// top of them (SAKEM-117). Admin only, none of the routes public:
 //
 //   POST   /api/admin/uploads        multipart: `file` and `kind`
-//   GET    /api/admin/uploads        ?kind=&page=&pageSize=   what a picker lists
+//   GET    /api/admin/uploads        ?kind=&q=&type=&from=&to=&page=&pageSize=   what a picker or the library lists
+//   GET    /api/admin/uploads/:id    one file, and the menus that use it
+//   PATCH  /api/admin/uploads/:id    its text alternative
 //   DELETE /api/admin/uploads/:id    only while no content row references the file
 //
 // The owning area comes from the KIND (src/uploads/kinds.ts), and the caller
@@ -139,57 +143,185 @@ function positiveInt(value: string | undefined, fallback: number, max: number): 
   return Number.isInteger(parsed) && parsed >= 1 ? Math.min(parsed, max) : fallback;
 }
 
-// What a picker shows: newest first, one kind at a time. Read access to the kind's area is enough.
+const MAX_SEARCH_LENGTH = 100;
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
+/** What the filters take for a date: `2026-10-01` (the start of that day, UTC) or a full instant with its zone. Anything looser is refused: `Date.parse("1")` is a year. */
+const INSTANT = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
+
+/** The file name inside a key, in SQL: everything after the last "/". The folder names ("blog-image") must not match a search. */
+const fileNameSql = sql`replace(${schema.media.key}, rtrim(${schema.media.key}, replace(${schema.media.key}, '/', '')), '')`;
+
+type Conditions = { ok: true; conditions: SQL[] } | { ok: false; param: string };
+
+/**
+ * The search and filters of the list, as conditions on the media table (all on `media` columns, so the count needs no join).
+ * `q` is plain text matched against the file's name and its text alternative: `instr`, not LIKE, so a "%" or "_" matches only itself.
+ */
+function filtersOf(c: Context<AppEnv>): Conditions {
+  const conditions: SQL[] = [];
+
+  const q = c.req.query("q")?.trim();
+  if (q) {
+    if (q.length > MAX_SEARCH_LENGTH) return { ok: false, param: "q" };
+    // SQLite's lower() folds ASCII only, which is what file names and Indonesian text are made of.
+    const needle = q.toLowerCase();
+    conditions.push(or(sql`instr(lower(${fileNameSql}), ${needle}) > 0`, sql`instr(lower(coalesce(${schema.media.altText}, '')), ${needle}) > 0`)!);
+  }
+
+  const type = c.req.query("type");
+  if (type) {
+    if (type === "image") conditions.push(sql`${schema.media.contentType} like 'image/%'`);
+    else if (type === "pdf") conditions.push(sql`${schema.media.contentType} = 'application/pdf'`);
+    else return { ok: false, param: "type" };
+  }
+
+  for (const [param, apply] of [
+    ["from", (at: Date) => gte(schema.media.createdAt, at)],
+    ["to", (at: Date) => lt(schema.media.createdAt, at)],
+  ] as const) {
+    const raw = c.req.query(param);
+    if (!raw) continue;
+    const at = INSTANT.test(raw) ? new Date(raw) : null;
+    if (!at || Number.isNaN(at.getTime())) return { ok: false, param };
+    conditions.push(apply(at));
+  }
+  return { ok: true, conditions };
+}
+
+interface MediaItemRow {
+  id: string;
+  key: string;
+  contentType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  altText: string | null;
+  createdAt: Date;
+  uploadedByName: string | null;
+}
+
+/** What the library and a picker see of one file. Explicit fields: the uploader's id and e-mail are not part of the answer, only the name staff know them by. */
+function present(row: MediaItemRow) {
+  return {
+    id: row.id,
+    path: `/${row.key}`,
+    name: nameOfKey(row.key),
+    kind: kindOfKey(row.key),
+    contentType: row.contentType,
+    size: row.size,
+    width: row.width,
+    height: row.height,
+    altText: row.altText,
+    uploadedByName: row.uploadedByName,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+const mediaColumns = {
+  id: schema.media.id,
+  key: schema.media.key,
+  purpose: schema.media.purpose,
+  contentType: schema.media.contentType,
+  size: schema.media.size,
+  width: schema.media.width,
+  height: schema.media.height,
+  altText: schema.media.altText,
+  createdAt: schema.media.createdAt,
+  uploadedByName: schema.users.name,
+};
+
+// What a picker or the Media library shows: newest first. With `kind`, one kind (a picker for a field that takes only that kind);
+// without it, every file the caller may read (the library). Read access to the kind's area (to the area of each purpose) is enough.
 uploadRoutes.get("/", async (c) => {
   const access = await loadAccess(c);
   if (!access) return c.json({ error: "unauthenticated" }, 401);
+  const db = getDb(c.env.DB);
+
   const kind = c.req.query("kind");
-  if (!isUploadKind(kind)) return refuse(c, 400, "invalid_kind", "Jenis unggahan tidak dikenal.");
-  if (!can(access.user.role, access.grantedAreas, KIND_RULES[kind].area, "read")) return c.json({ error: "forbidden" }, 403);
+  let scope: SQL;
+  if (kind !== undefined) {
+    if (!isUploadKind(kind)) return refuse(c, 400, "invalid_kind", "Jenis unggahan tidak dikenal.");
+    if (!can(access.user.role, access.grantedAreas, KIND_RULES[kind].area, "read")) return c.json({ error: "forbidden" }, 403);
+    const range = keyRange(kind);
+    scope = and(gte(schema.media.key, range.from), lt(schema.media.key, range.to))!;
+  } else {
+    // The library: the purposes whose area the caller can read. A caller who can read none gets the same refusal as a picker.
+    const purposes = schema.mediaPurpose.filter((purpose) => can(access.user.role, access.grantedAreas, areaOfPurpose(purpose), "read"));
+    if (purposes.length === 0) return c.json({ error: "forbidden" }, 403);
+    scope = inArray(schema.media.purpose, purposes);
+  }
+
+  const filters = filtersOf(c);
+  if (!filters.ok) return invalidQuery(c, filters.param);
+  const where = and(scope, ...filters.conditions);
 
   const page = positiveInt(c.req.query("page"), 1, 100_000);
   const pageSize = positiveInt(c.req.query("pageSize"), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  const db = getDb(c.env.DB);
-  const range = keyRange(kind);
-  const inKind = and(gte(schema.media.key, range.from), lt(schema.media.key, range.to));
 
   // One round trip: the page and the total.
   const [rows, totals] = await db.batch([
     db
-      .select({
-        id: schema.media.id,
-        key: schema.media.key,
-        contentType: schema.media.contentType,
-        size: schema.media.size,
-        width: schema.media.width,
-        height: schema.media.height,
-        createdAt: schema.media.createdAt,
-      })
+      .select(mediaColumns)
       .from(schema.media)
-      .where(inKind)
+      .leftJoin(schema.users, eq(schema.media.uploadedBy, schema.users.id))
+      .where(where)
       .orderBy(desc(schema.media.createdAt), desc(schema.media.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
-    db.select({ total: count() }).from(schema.media).where(inKind),
+    db.select({ total: count() }).from(schema.media).where(where),
   ]);
   const total = totals[0]?.total ?? 0;
 
-  // Explicit fields: the uploader's id is not part of the answer.
   return c.json({
-    items: rows.map((row) => ({
-      id: row.id,
-      path: `/${row.key}`,
-      contentType: row.contentType,
-      size: row.size,
-      width: row.width,
-      height: row.height,
-      createdAt: row.createdAt.toISOString(),
-    })),
+    items: rows.map(present),
     page,
     pageSize,
     total,
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
   });
+});
+
+async function loadMedia(c: Context<AppEnv>, id: string) {
+  const [row] = await getDb(c.env.DB).select(mediaColumns).from(schema.media).leftJoin(schema.users, eq(schema.media.uploadedBy, schema.users.id)).where(eq(schema.media.id, id)).limit(1);
+  return row ?? null;
+}
+
+// One file with the menus that use it (the panel of the library: "Dipakai di").
+uploadRoutes.get("/:id", async (c) => {
+  const access = await loadAccess(c);
+  if (!access) return c.json({ error: "unauthenticated" }, 401);
+  const id = c.req.param("id");
+  const row = UUID.test(id) ? await loadMedia(c, id) : null;
+  if (!row) return notFound(c);
+  if (!can(access.user.role, access.grantedAreas, areaOfPurpose(row.purpose), "read")) return c.json({ error: "forbidden" }, 403);
+  return c.json({ item: present(row), usedBy: await menusUsing(c.env.DB, `/${row.key}`) });
+});
+
+/** The text alternative: up to 300 characters (a sentence or two); empty is none. */
+const altTextBody = z.object({
+  altText: z
+    .string()
+    .trim()
+    .max(300, "Teks alternatif maksimal 300 karakter.")
+    .nullable()
+    .transform((value) => (value === "" ? null : value)),
+});
+
+// Only the text alternative can be edited: the file itself never changes (a name is never overwritten). Same area rule as a delete.
+// No If-Match: a media row has no version, and two people writing the same sentence for a picture is not worth a conflict.
+uploadRoutes.patch("/:id", async (c) => {
+  const access = await loadAccess(c);
+  if (!access) return c.json({ error: "unauthenticated" }, 401);
+  const id = c.req.param("id");
+  const found = UUID.test(id) ? await findMedia(c.env.DB, { id }) : null;
+  if (!found) return notFound(c);
+  if (!can(access.user.role, access.grantedAreas, areaOfPurpose(found.purpose), "write")) return c.json({ error: "forbidden" }, 403);
+
+  const body = await parseBody(c, altTextBody);
+  if (!body.ok) return body.response;
+  if (!(await updateAltText(c.env, access.user, id, body.data.altText))) return notFound(c);
+  const row = await loadMedia(c, id);
+  return row ? c.json({ item: present(row) }) : notFound(c);
 });
 
 uploadRoutes.delete("/:id", uploadWriter, async (c) => {

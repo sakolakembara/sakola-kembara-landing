@@ -62,6 +62,12 @@ export function kindOfKey(key: string): UploadKind | null {
   return isUploadKind(kind) ? kind : null;
 }
 
+/** The name a person knows a file by, from its key: the slug and the extension, without the media id in front ("hero-kelas.webp"). */
+export function nameOfKey(key: string): string {
+  const last = key.split("/").pop() ?? key;
+  return last.replace(new RegExp(`^${UUID}-`), "");
+}
+
 /** The media id inside a valid key. */
 export function idOfKey(key: string): string | null {
   return KEY_PATTERN.exec(key)?.[2] ?? null;
