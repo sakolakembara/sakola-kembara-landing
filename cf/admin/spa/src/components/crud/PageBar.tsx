@@ -13,23 +13,43 @@ import { useIsDesktop } from "~/lib/use-desktop";
  * at the bottom edge, where a thumb is.
  *
  * Without the shell (a form rendered on its own) it draws the phone's version, so nothing is lost.
+ *
+ * A page that only shows something (a detail page of an applicant) has no actions of its own: it passes none, the shell
+ * keeps its link to the public site and the phone gets no bar at the bottom. `crumbHref` is for a page below its list
+ * that wants the breadcrumb's list step to lead back to the list as the person had it (its filters), not the plain list.
  */
-export function PageBar({ title, back, status, actions }: { title: string; back: { href: string; label?: string }; status?: ReactNode; actions: ReactNode }) {
+export function PageBar({
+  title,
+  back,
+  status,
+  actions,
+  crumbHref,
+}: {
+  title: string;
+  back: { href: string; label?: string };
+  status?: ReactNode;
+  actions?: ReactNode;
+  crumbHref?: string;
+}) {
   const chrome = usePageChrome();
   const desktop = useIsDesktop();
   const slots = desktop && chrome?.actions ? { leading: chrome.leading, actions: chrome.actions } : null;
   const setLeaf = chrome?.setLeaf;
+  const setCrumbHref = chrome?.setCrumbHref;
   const setHasActions = chrome?.setHasActions;
+  const hasActions = Boolean(actions);
 
   useEffect(() => {
     if (!slots) return;
     setLeaf?.(title);
-    setHasActions?.(true);
+    setCrumbHref?.(crumbHref ?? null);
+    setHasActions?.(hasActions);
     return () => {
       setLeaf?.(null);
+      setCrumbHref?.(null);
       setHasActions?.(false);
     };
-  }, [Boolean(slots), title, setLeaf, setHasActions]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [Boolean(slots), title, crumbHref, hasActions, setLeaf, setCrumbHref, setHasActions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (slots) {
     return (
@@ -49,7 +69,9 @@ export function PageBar({ title, back, status, actions }: { title: string; back:
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{title}</span>
         {status}
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-border bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 *:flex-1 md:hidden">{actions}</div>
+      {actions && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-border bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 *:flex-1 md:hidden">{actions}</div>
+      )}
     </>
   );
 }

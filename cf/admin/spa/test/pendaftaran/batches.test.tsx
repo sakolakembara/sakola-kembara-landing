@@ -361,13 +361,38 @@ async function openDetail(who: Who, batch: BatchDetail, routes: Parameters<typeo
 }
 
 describe("the page of one batch", () => {
-  test("the facts: the name, the year, the window, the phase, and the legacy ways back", async () => {
+  // The detail frame (SAKEM-119, pattern 3): the name ends the breadcrumb, the phase is beside it, "Ubah Data" is the bar's
+  // one action (it opens a page and decides nothing), and the facts are a card of the page, not a section with its own button.
+  test("the bar: the name ends the breadcrumb, the phase is beside it, 'Ubah Data' is the action; the facts are a card", async () => {
     await openDetail(editorWho, detail());
-    expect(screen.getByText("Batch 2026")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Kembali ke daftar batch" }).getAttribute("href")).toBe("/batches");
-    expect(screen.getByText("Menunggu keputusan")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Ubah Data" }).getAttribute("href")).toBe("/batches/b1/edit");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(await within(crumbs).findByText("Gen 7 — 2026/2027")).toBeTruthy();
+    expect(within(crumbs).getAllByRole("listitem").map((crumb) => crumb.textContent)).toEqual(["Pendaftaran", "Batch", "Gen 7 — 2026/2027"]);
+    expect(within(crumbs).getByRole("link", { name: "Batch" }).getAttribute("href")).toBe("/batches");
+    const bar = within(crumbs.closest("header")!);
+    expect(bar.getByText("Menunggu keputusan")).toBeTruthy();
+    expect(bar.getByRole("link", { name: "Ubah Data" }).getAttribute("href")).toBe("/batches/b1/edit");
+    const page = within(screen.getByRole("main"));
+    expect(page.queryByRole("link", { name: "Kembali ke daftar batch" })).toBeNull();
+    expect(page.queryByRole("link", { name: "Ubah Data" })).toBeNull();
+    expect(page.queryByText("Batch 2026")).toBeNull();
+    const data = within(page.getByRole("region", { name: "Data Batch" }));
+    expect(data.getByText("Tahun angkatan")).toBeTruthy();
+    expect(data.getByText("2026")).toBeTruthy();
+    expect(data.getByText("Pendaftaran")).toBeTruthy();
+    expect(data.getByText("Deskripsi")).toBeTruthy();
     await waitFor(() => expect(document.title).toBe("Gen 7 — 2026/2027 | Admin Sakola Kembara"));
+  });
+
+  test("the data card says there is no description, or shows it as typed, line breaks kept", async () => {
+    const view = await openDetail(editorWho, detail());
+    expect(within(screen.getByRole("region", { name: "Data Batch" })).getByText("Tidak ada deskripsi.")).toBeTruthy();
+    view.unmount();
+
+    await openDetail(editorWho, detail({ description: "Angkatan ketujuh.\n\nPendaftaran dibuka Agustus." }));
+    const text = within(screen.getByRole("region", { name: "Data Batch" })).getByText(/Angkatan ketujuh/);
+    expect(text.className).toContain("whitespace-pre-wrap");
+    expect(text.textContent).toBe("Angkatan ketujuh.\n\nPendaftaran dibuka Agustus.");
   });
 
   test("the tiles are the four statuses with their counts, each a link to the applicants of this batch in that status", async () => {
@@ -422,7 +447,7 @@ describe("the page of one batch: publishing the results", () => {
 
   test("the panel says the legacy things: the rule, the numbers, and why the button is off", async () => {
     await openDetail(editorWho, detail());
-    const panel = screen.getByRole("complementary", { name: "Publikasi Hasil" });
+    const panel = screen.getByRole("region", { name: "Publikasi Hasil" });
     expect(within(panel).getByText(/Siswa hanya melihat hasil pendaftarannya setelah kamu klik publikasikan/)).toBeTruthy();
     expect(within(panel).getByText(/Total pendaftar:/).textContent).toBe("• Total pendaftar: 10");
     expect(within(panel).getByText(/Belum diputuskan:/).textContent).toBe("• Belum diputuskan: 5");
@@ -489,11 +514,11 @@ describe("the page of one batch: publishing the results", () => {
   // Negative test (scripts/negative-checks-spa-pendaftaran.mjs): show the publish buttons to a role that cannot write.
   test("a viewer sees the state and the numbers and no button to publish or to cancel", async () => {
     await openDetail(["viewer", []], ready);
-    const panel = screen.getByRole("complementary", { name: "Publikasi Hasil" });
+    const panel = screen.getByRole("region", { name: "Publikasi Hasil" });
     expect(within(panel).getByText(/Total pendaftar:/)).toBeTruthy();
     expect(within(panel).queryByRole("button")).toBeNull();
     expect(screen.queryByRole("link", { name: "Ubah Data" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Lihat Data" }).getAttribute("href")).toBe("/batches/b1/edit");
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).closest("header")!).getByRole("link", { name: "Lihat Data" }).getAttribute("href")).toBe("/batches/b1/edit");
     const view = screen.getByRole("main");
     expect(within(view).queryByRole("button", { name: /Publikasikan|Batalkan/ })).toBeNull();
   });

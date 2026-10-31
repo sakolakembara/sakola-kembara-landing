@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
 import { api } from "~/lib/api";
 import { useMutation } from "~/lib/crud/useMutation";
@@ -74,18 +75,18 @@ export function PurgeFiles({ applicationId, fullName, files, onPurged }: PurgePr
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-      <header className="border-b border-gray-100 px-6 py-4">
-        <h2 className="text-base font-semibold tracking-tight text-gray-900">Berkas Pendaftar</h2>
-      </header>
-      <div className="space-y-3 p-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Berkas Pendaftar</CardTitle>
+      </CardHeader>
+      <CardContent>
         <p className="text-sm text-gray-700">
           {files.length} berkas · {formatBytes(total)} tersimpan di penyimpanan pribadi. Berkas tidak dihapus otomatis.
         </p>
         <Button variant="danger" fullWidth onClick={() => setAsking(true)}>
           Hapus Semua Berkas
         </Button>
-      </div>
+      </CardContent>
       <ConfirmDialog
         open={asking}
         title="Hapus semua berkas pendaftar ini?"
@@ -104,6 +105,6 @@ export function PurgeFiles({ applicationId, fullName, files, onPurged }: PurgePr
           purge.clearErrors();
         }}
       />
-    </div>
+    </Card>
   );
 }

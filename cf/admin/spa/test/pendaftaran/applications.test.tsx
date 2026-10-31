@@ -154,8 +154,9 @@ describe("the list: who sees it, and what it shows", () => {
     expect(screen.getByRole("link", { name: "Siti Contoh" }).getAttribute("href")).toBe("/applications/a1");
     await user.click(screen.getByRole("link", { name: "Lihat Siti Contoh" }));
     await waitFor(() => expect(location()).toBe("/applications/a1"));
-    // "Kembali ke daftar" goes back to the list as it was: the batch and the status.
-    expect((await screen.findByRole("link", { name: "Kembali ke daftar" })).getAttribute("href")).toBe("/applications?batch=b26&status=pending");
+    // The breadcrumb's list step goes back to the list as it was: the batch and the status.
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    await waitFor(() => expect(within(crumbs).getByRole("link", { name: "Pendaftar" }).getAttribute("href")).toBe("/applications?batch=b26&status=pending"));
   });
 
   test("the empty list says 'Belum ada pendaftar untuk filter ini.'", async () => {
@@ -265,14 +266,49 @@ async function openDetail(who: Who, application: ApplicationDetail, routes: Para
 }
 
 describe("the page of one applicant", () => {
-  test("the header: the name, the status, the email, the batch it belongs to and the way back", async () => {
+  // The detail frame (SAKEM-119, pattern 3): the name ends the breadcrumb, the status is beside it, one line under the bar
+  // says who, which batch and when; the page has no big title, no "Kembali" link and no actions in the bar.
+  test("the bar: the name ends the breadcrumb, the status is beside it, and the email, the batch and the date are one line", async () => {
     await openDetail(["viewer", []], detail({ status: "under_review" }));
-    expect(screen.getByText("Detail pendaftar")).toBeTruthy();
-    expect(screen.getByText("Dalam Review")).toBeTruthy();
-    expect(screen.getAllByText("siti@contoh.test").length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: "2026 · Gen 7 — 2026/2027" }).getAttribute("href")).toBe("/batches/b26");
-    expect(screen.getByRole("link", { name: "Kembali ke daftar" }).getAttribute("href")).toBe("/applications");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(await within(crumbs).findByText("Siti Contoh")).toBeTruthy();
+    expect(within(crumbs).getAllByRole("listitem").map((crumb) => crumb.textContent)).toEqual(["Pendaftaran", "Pendaftar", "Siti Contoh"]);
+    expect(within(crumbs.parentElement!).getByText("Dalam Review")).toBeTruthy();
+    const page = within(screen.getByRole("main"));
+    // One line, in this order: the address (which the answers repeat below), the batch, when it was sent.
+    const batch = page.getByRole("link", { name: "2026 · Gen 7 — 2026/2027" });
+    expect(batch.getAttribute("href")).toBe("/batches/b26");
+    const line = batch.closest("span")!.parentElement!;
+    expect(Array.from(line.children).map((part) => part.textContent)).toEqual(["siti@contoh.test", "Batch: 2026 · Gen 7 — 2026/2027", expect.stringMatching(/^Dikirim \d/)]);
+    expect(page.queryByText("Detail pendaftar")).toBeNull();
+    expect(page.queryByRole("link", { name: "Kembali ke daftar" })).toBeNull();
+    expect(page.getByRole("heading", { level: 1, name: "Siti Contoh" }).className).toContain("sr-only");
+    // No action of its own: the shell keeps its link to the public site.
+    expect(within(crumbs.parentElement!).getByRole("link", { name: /Lihat situs/ })).toBeTruthy();
     await waitFor(() => expect(document.title).toBe("Siti Contoh | Admin Sakola Kembara"));
+  });
+
+  // The list's step of the breadcrumb is the page's to lead, and only while the page is open: the next page below another
+  // list (the batch) has its own plain list again.
+  test("what the page led the breadcrumb to does not stay when the person goes on to the batch", async () => {
+    const user = userEvent.setup();
+    const batch = { id: "b26", year: 2026, name: "Gen 7 — 2026/2027", description: null, opensAt: "2026-08-01T00:00:00.000Z", closesAt: "2026-09-30T00:00:00.000Z", resultsPublishedAt: null, createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z", phase: "open", counts: { pending: 1, under_review: 0, accepted: 0, rejected: 0, total: 1 }, canPublish: false, recent: [] };
+    await openList(["viewer", []], "/applications?batch=b26&status=pending", { [`GET ${LIST}/a1`]: respond({ item: detail() }), "GET /api/admin/batches/b26": respond({ item: batch }) });
+    await user.click(screen.getByRole("link", { name: "Lihat Siti Contoh" }));
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    await waitFor(() => expect(within(crumbs).getByRole("link", { name: "Pendaftar" }).getAttribute("href")).toBe("/applications?batch=b26&status=pending"));
+    await user.click(screen.getByRole("link", { name: "2026 · Gen 7 — 2026/2027" }));
+    await within(screen.getByRole("navigation", { name: "Breadcrumb" })).findByText("Gen 7 — 2026/2027");
+    const now = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+    expect(now.getByRole("link", { name: "Batch" }).getAttribute("href")).toBe("/batches");
+    expect(now.queryByRole("link", { name: "Pendaftar" })).toBeNull();
+  });
+
+  test("without a list to go back to, the breadcrumb's list step is the plain list", async () => {
+    await openDetail(["viewer", []], detail());
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    await within(crumbs).findByText("Siti Contoh");
+    expect(within(crumbs).getByRole("link", { name: "Pendaftar" }).getAttribute("href")).toBe("/applications");
   });
 
   test("the sections, each a heading, with the answers; what the applicant pasted is a link only when it is a web address", async () => {
@@ -317,10 +353,10 @@ describe("the page of one applicant", () => {
   // Negative test (scripts/negative-checks-spa-pendaftaran.mjs): show the review form to a role that cannot write.
   test("a viewer reads everything and is offered no way to change the status", async () => {
     await openDetail(["viewer", []], detail());
-    const aside = screen.getByRole("complementary", { name: "Ubah Status" });
-    expect(within(aside).queryByRole("button")).toBeNull();
-    expect(within(aside).queryByRole("combobox")).toBeNull();
-    expect(within(aside).getByRole("status").textContent).toContain("Kamu hanya bisa melihat data ini");
+    const card = screen.getByRole("heading", { level: 2, name: "Ubah Status" }).closest("[data-slot='card']") as HTMLElement;
+    expect(within(card).queryByRole("button")).toBeNull();
+    expect(within(card).queryByRole("combobox")).toBeNull();
+    expect(within(card).getByRole("status").textContent).toContain("Kamu hanya bisa melihat data ini");
     expect(screen.queryByRole("form", { name: "Ubah status pendaftar" })).toBeNull();
   });
 });

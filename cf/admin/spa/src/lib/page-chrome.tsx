@@ -9,6 +9,9 @@ interface PageChrome {
   /** The last step of the breadcrumb, after the entry of the menu. */
   leaf: string | null;
   setLeaf: (label: string | null) => void;
+  /** Where the list's step of the breadcrumb leads, when the page wants it to be the list as the person had it (its filters). */
+  crumbHref: string | null;
+  setCrumbHref: (href: string | null) => void;
   /** A page has put actions in the bar: the link to the public site makes room for them. */
   hasActions: boolean;
   setHasActions: (has: boolean) => void;
@@ -22,10 +25,14 @@ const Context = createContext<PageChrome | null>(null);
 
 export function PageChromeProvider({ children }: { children: ReactNode }) {
   const [leaf, setLeaf] = useState<string | null>(null);
+  const [crumbHref, setCrumbHref] = useState<string | null>(null);
   const [hasActions, setHasActions] = useState(false);
   const [leading, setLeading] = useState<HTMLElement | null>(null);
   const [actions, setActions] = useState<HTMLElement | null>(null);
-  const value = useMemo(() => ({ leaf, setLeaf, hasActions, setHasActions, leading, setLeading, actions, setActions }), [leaf, hasActions, leading, actions]);
+  const value = useMemo(
+    () => ({ leaf, setLeaf, crumbHref, setCrumbHref, hasActions, setHasActions, leading, setLeading, actions, setActions }),
+    [leaf, crumbHref, hasActions, leading, actions],
+  );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

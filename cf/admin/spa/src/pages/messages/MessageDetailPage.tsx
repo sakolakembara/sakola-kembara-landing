@@ -1,12 +1,12 @@
-import { Mail, Reply, Trash2 } from "lucide-react";
+import { Mail, MailOpen, Reply, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card } from "~/components/ui/card";
 import { ConfirmDialog } from "~/components/crud/ConfirmDialog";
-import { Flash } from "~/components/crud/Flash";
+import { DetailShell } from "~/components/crud/DetailShell";
 import { makeStatusMap, StatusTag } from "~/components/crud/StatusTag";
-import { PageHeader } from "~/components/PageHeader";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
 import { describeFailure } from "~/lib/crud/errors";
@@ -19,7 +19,9 @@ import { useMe } from "~/lib/session";
 import { API_PATH, mailtoFor, type MessageItem, ROUTE, SUBJECT_LABEL, SUBJECT_TONE } from "./model";
 
 // One message. A port of app/(admin)/admin/messages/[id]/page.tsx: the sender, the subject tag, "Dikirim ...", the
-// reply link, the toggle, the delete, and the text as it was typed (line breaks kept).
+// reply link, the toggle, the delete, and the text as it was typed (line breaks kept). On the detail frame
+// (DetailShell): the sender and the subject in the top bar, and the page's actions (delete, the toggle, the reply) as the
+// bar's buttons; there is nothing to decide in a card, so there is no column at the right.
 //
 // What differs from the legacy page, on purpose:
 //  - Opening a message marks it read, as before, but by an explicit `POST /api/admin/messages/:id/read` that this page
@@ -34,8 +36,6 @@ const SUBJECT_STATUS = makeStatusMap({
   donation: { label: SUBJECT_LABEL.donation, tone: SUBJECT_TONE.donation },
   other: { label: SUBJECT_LABEL.other, tone: SUBJECT_TONE.other },
 });
-
-const TOGGLE = "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 hover:underline disabled:opacity-60";
 
 export function MessageDetailPage() {
   const { id } = useParams();
@@ -118,51 +118,47 @@ export function MessageDetailPage() {
   const unread = message.readAt === null;
 
   return (
-    <div className="max-w-3xl p-6 md:p-10">
-      <PageHeader
-        back={{ href: ROUTE, label: "Kembali ke daftar" }}
-        title={message.fullName}
-        documentTitle="Detail Pesan"
-        overline="Detail pesan"
-        className="md:items-start"
-        actions={<StatusTag map={SUBJECT_STATUS} value={message.subject} size="lg" />}
-      >
-        <p className="text-sm text-gray-600">{message.email}</p>
-      </PageHeader>
-
-      <Flash flash={notice.flash} dismiss={notice.dismiss} />
-
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-4 text-sm">
-          <div className="text-gray-500">Dikirim {new Date(message.createdAt).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}</div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button href={mailtoFor(message.email, message.subject)} size="sm">
-              <Reply size={14} aria-hidden="true" /> Balas via Email
+    <DetailShell
+      title={message.fullName}
+      documentTitle="Detail Pesan"
+      back={{ href: ROUTE, label: "Kembali ke daftar" }}
+      status={<StatusTag map={SUBJECT_STATUS} value={message.subject} />}
+      actions={
+        <>
+          {canWrite && (
+            <Button variant="ghost" className="text-destructive hover:text-destructive" aria-haspopup="dialog" onClick={() => remove.ask(message)}>
+              <Trash2 aria-hidden="true" />
+              {/* On a phone three buttons share the bar at the bottom, and the long words of all three do not fit a 375 px
+                  screen: the two quieter ones are their icons (the word stays as their name), the reply keeps its word. */}
+              <span className="max-md:sr-only">Hapus</span>
             </Button>
-            {canWrite && !marking && (
-              <button type="button" disabled={lock.pending} onClick={() => void toggle(unread ? "read" : "unread")} className={TOGGLE}>
-                <Mail size={14} aria-hidden="true" /> {unread ? "Tandai sudah dibaca" : "Tandai belum dibaca"}
-              </button>
-            )}
-            {canWrite && (
-              <button
-                type="button"
-                onClick={() => remove.ask(message)}
-                aria-haspopup="dialog"
-                className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline"
-              >
-                <Trash2 size={14} aria-hidden="true" /> Hapus
-              </button>
-            )}
-          </div>
+          )}
+          {canWrite && !marking && (
+            <Button variant="neutral" disabled={lock.pending} onClick={() => void toggle(unread ? "read" : "unread")}>
+              {unread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
+              <span className="max-md:sr-only">{unread ? "Tandai sudah dibaca" : "Tandai belum dibaca"}</span>
+            </Button>
+          )}
+          <Button href={mailtoFor(message.email, message.subject)}>
+            <Reply aria-hidden="true" />
+            Balas lewat email
+          </Button>
+        </>
+      }
+      meta={<span>{message.email}</span>}
+      flash={notice}
+    >
+      <Card className="max-w-3xl gap-0 overflow-hidden py-0 md:py-0">
+        <div className="border-b border-gray-100 px-5 py-4 text-[13px] text-gray-500 md:px-6">
+          Dikirim {new Date(message.createdAt).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
         </div>
-        <div className="p-6">
+        <div className="p-5 md:p-6">
           <p className="whitespace-pre-wrap leading-relaxed text-gray-800">{message.message}</p>
         </div>
-        {markedId === message.id && !unread && <div className="px-6 pb-4 text-xs text-gray-400">Pesan ini ditandai sebagai sudah dibaca saat kamu membukanya.</div>}
-      </section>
+        {markedId === message.id && !unread && <div className="px-5 pb-4 text-xs text-gray-400 md:px-6">Pesan ini ditandai sebagai sudah dibaca saat kamu membukanya.</div>}
+      </Card>
 
       <ConfirmDialog {...remove.dialogProps} />
-    </div>
+    </DetailShell>
   );
 }

@@ -207,19 +207,46 @@ async function openDetail(who: Who, routes: Parameters<typeof stubApi>[0] = {}, 
 const toggleButton = () => screen.queryByRole("button", { name: /^Tandai/ });
 
 describe("the detail page: what it shows", () => {
-  test("the legacy page: back link, overline, the sender and address, the subject tag, when it was sent, the text as typed", async () => {
+  // The detail frame (SAKEM-119, pattern 3): the sender ends the breadcrumb and the subject is beside it; the heading is
+  // only for a screen reader; there is no "Kembali" link and no overline; the address is the line under the bar.
+  test("the bar and the page: the sender, the address, the subject tag, when it was sent, the text as typed", async () => {
     await openDetail(["viewer", []]);
-    expect(screen.getByRole("link", { name: "Kembali ke daftar" }).getAttribute("href")).toBe("/messages");
-    expect(screen.getByText("Detail pesan")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Ayu Contoh");
-    expect(screen.getByText("ayu.contoh@example.test")).toBeTruthy();
-    expect(screen.getByText("Kerjasama")).toBeTruthy();
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(await within(crumbs).findByText("Ayu Contoh")).toBeTruthy();
+    expect(within(crumbs).getByRole("link", { name: "Pesan" }).getAttribute("href")).toBe("/messages");
+    expect(within(crumbs.parentElement!).getByText("Kerjasama")).toBeTruthy();
+    const page = within(screen.getByRole("main"));
+    expect(page.queryByRole("link", { name: "Kembali ke daftar" })).toBeNull();
+    expect(page.queryByText("Detail pesan")).toBeNull();
+    expect(page.getByRole("heading", { level: 1 }).textContent).toBe("Ayu Contoh");
+    expect(page.getByRole("heading", { level: 1 }).className).toContain("sr-only");
+    expect(page.getByText("ayu.contoh@example.test")).toBeTruthy();
     expect(screen.getByText(/^Dikirim /)).toBeTruthy();
     const text = screen.getByText(/Kami ingin bekerja sama/);
     expect(text.className).toContain("whitespace-pre-wrap");
     expect(text.textContent).toBe("Kami ingin bekerja sama mengadakan kelas membaca.\n\nBisakah kita berdiskusi?");
     // The tab title does not carry a visitor's name.
     await waitFor(() => expect(document.title).toBe("Detail Pesan | Admin Sakola Kembara"));
+  });
+
+  test("the actions are the bar's: delete, the toggle and the reply for who writes, only the reply for a reader, none in the page", async () => {
+    const view = await openDetail(["editor", ["komunikasi"]]);
+    const header = () => screen.getByRole("navigation", { name: "Breadcrumb" }).closest("header")!;
+    await within(header()).findByRole("button", { name: "Tandai belum dibaca" }); // the automatic mark has landed
+    const names = Array.from(header().querySelectorAll("a[data-slot='button'], button[data-slot='button']")).map((control) => control.textContent);
+    expect(names).toEqual(["Hapus", "Tandai belum dibaca", "Balas lewat email"]);
+    // On a phone the three words do not fit a 375 px screen: Hapus and the toggle are their icons there (the words stay as names).
+    expect(within(header()).getByText("Hapus").className).toContain("max-md:sr-only");
+    expect(within(header()).getByText("Tandai belum dibaca").className).toContain("max-md:sr-only");
+    expect(within(header()).getByText("Balas lewat email").className).not.toContain("sr-only");
+    expect(within(header()).queryByRole("link", { name: /Lihat situs/ })).toBeNull(); // the bar's buttons need the room
+    const page = within(screen.getByRole("main"));
+    expect(page.queryByRole("button", { name: /Hapus|Tandai/ })).toBeNull();
+    expect(page.queryByRole("link", { name: /Balas/ })).toBeNull();
+    view.unmount();
+
+    await openDetail(["viewer", []]);
+    expect(Array.from(header().querySelectorAll("a[data-slot='button'], button[data-slot='button']")).map((control) => control.textContent)).toEqual(["Balas lewat email"]);
   });
 
   test("text from a visitor is text: markup in it is not run or drawn", async () => {
@@ -229,10 +256,10 @@ describe("the detail page: what it shows", () => {
     expect(screen.getByText("<img src=x onerror=alert(1)> halo & selamat")).toBeTruthy();
   });
 
-  test("'Balas via Email' is the legacy mailto, per subject, with the address and the subject line encoded", async () => {
+  test("'Balas lewat email' is the legacy mailto, per subject, with the address and the subject line encoded", async () => {
     for (const subject of ["partnership", "donation", "other"] as const) {
       const view = await openDetail(["viewer", []], {}, whole({ subject, email: "ayu.contoh+kelas@example.test" }));
-      const link = screen.getByRole("link", { name: /Balas via Email/ });
+      const link = screen.getByRole("link", { name: /Balas lewat email/ });
       expect(link.getAttribute("href")).toBe(`mailto:${encodeURIComponent("ayu.contoh+kelas@example.test")}?subject=${encodeURIComponent(SUBJECT_LINE[subject])}`);
       view.unmount();
     }
@@ -291,7 +318,7 @@ describe("the detail page: opening a message marks it read, once, by an explicit
     expect(toggleButton()).toBeNull();
     expect(screen.queryByRole("button", { name: /Hapus/ })).toBeNull();
     expect(screen.queryByText(/ditandai sebagai sudah dibaca/)).toBeNull();
-    expect(screen.getByRole("link", { name: /Balas via Email/ })).toBeTruthy(); // reading includes replying
+    expect(screen.getByRole("link", { name: /Balas lewat email/ })).toBeTruthy(); // reading includes replying
   });
 
   test("a message that is already read is not marked again, and has no note", async () => {

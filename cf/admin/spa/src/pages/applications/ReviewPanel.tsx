@@ -56,7 +56,7 @@ export function ReviewPanel({ application, onSaved, onReload }: Props) {
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} aria-label="Ubah status pendaftar" className="space-y-4 p-6">
+    <form onSubmit={(event) => void submit(event)} aria-label="Ubah status pendaftar" className="space-y-4">
       {save.stale && (
         <Alert tone="warning">
           <p>Data ini sudah diubah orang lain sejak kamu membukanya. Muat ulang untuk melihat versi terbaru. Perubahan yang belum disimpan akan hilang.</p>
