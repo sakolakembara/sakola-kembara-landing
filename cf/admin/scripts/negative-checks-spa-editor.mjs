@@ -482,4 +482,27 @@ export const editorSpaChecks = [
     to: "",
     tests: t("blog-mock.test.ts"),
   },
+
+  // ---------------------------------------------- Informasi Dasar on Publikasi
+  {
+    name: "editor: the Excerpt is `required` for the browser again (on a tab nobody sees it refuses the save without a word)",
+    file: BLOG_FORM,
+    from: '<Textarea aria-required="true" rows={4}',
+    to: "<Textarea required rows={4}",
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: an error on the Slug does not bring the person to Publikasi",
+    file: "spa/src/pages/blog/form.ts",
+    from: '  slug: "publikasi",',
+    to: '  slug: "konten",',
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: an error on the Excerpt does not bring the person to Publikasi",
+    file: "spa/src/pages/blog/form.ts",
+    from: '  excerpt: "publikasi",',
+    to: '  excerpt: "konten",',
+    tests: t(BLOG),
+  },
 ];

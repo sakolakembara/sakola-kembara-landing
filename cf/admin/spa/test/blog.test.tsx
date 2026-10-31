@@ -268,6 +268,11 @@ const panel = (name: "Konten" | "Publikasi" | "SEO") => document.getElementById(
 const openTab = (user: ReturnType<typeof userEvent.setup>, name: "Konten" | "Publikasi" | "SEO") => user.click(within(screen.getByRole("tablist", { name: "Bagian editor" })).getByRole("tab", { name }));
 /** The notice after a save. (Not `getByRole("status")`: the file field keeps a quiet status line of its own.) */
 const notice = (text: string) => screen.findByText(text);
+/** Writes the Excerpt, which is on Publikasi (the tab stays open after it). */
+const typeExcerpt = async (user: ReturnType<typeof userEvent.setup>, text = "Ringkasan tentang cara belajar yang efektif.") => {
+  await openTab(user, "Publikasi");
+  await user.type(screen.getByLabelText(/^Excerpt/), text);
+};
 
 describe("the form: create", () => {
   test("the editor: three tabs with their cards, the legacy defaults, and only Konten open at first", async () => {
@@ -278,16 +283,20 @@ describe("the form: create", () => {
     expect(panel("Konten").hasAttribute("hidden")).toBe(false);
     expect(panel("Publikasi").hasAttribute("hidden")).toBe(true);
     expect(panel("SEO").hasAttribute("hidden")).toBe(true);
-    expect(screen.getByRole("heading", { level: 2, name: "Informasi Dasar" })).toBeTruthy();
     expect(screen.getByLabelText("Judul")).toBeTruthy(); // the title is the first line of the page, not a field in a card
     expect(await screen.findByRole("textbox", { name: "Isi Artikel" })).toBeTruthy();
-    expect(screen.getByText("20-500 karakter. Muncul di list artikel dan SEO description.")).toBeTruthy();
-    expect(screen.getByText("Kosongkan agar dibuat otomatis dari judul.")).toBeTruthy();
+    // Konten is the page to write and nothing else: the address and the summary are on Publikasi
+    expect(panel("Konten").querySelector("#slug, #excerpt")).toBeNull();
+    expect(panel("Konten").querySelector("h2")).toBeNull();
     expect(screen.getByRole("button", { name: "Buat Artikel" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull(); // nothing to publish before it exists
 
     await openTab(user, "Publikasi");
-    for (const name of ["Publikasi", "Gambar Hero"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
+    for (const name of ["Publikasi", "Informasi Dasar", "Gambar Hero"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
+    expect(panel("Publikasi").querySelector("#slug")).toBeTruthy();
+    expect(panel("Publikasi").querySelector("#excerpt")).toBeTruthy();
+    expect(screen.getByText("20-500 karakter. Muncul di list artikel dan SEO description.")).toBeTruthy();
+    expect(screen.getByText("Kosongkan agar dibuat otomatis dari judul.")).toBeTruthy();
     expect((screen.getByLabelText(/^Kategori/) as HTMLSelectElement).value).toBe("Cerita");
     expect((screen.getByLabelText(/^Penulis/) as HTMLInputElement).value).toBe("Tester"); // the signed-in person's own name
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).type).toBe("date");
@@ -316,8 +325,8 @@ describe("the form: create", () => {
     expect((box as HTMLInputElement).checked).toBe(true);
     await openTab(user, "Konten");
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await typeExcerpt(user);
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
     await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1));
     expect(api.last(`POST ${LIST}`)?.body).toMatchObject({ seoTitle: "  Cara   Belajar Efektif untuk Siswa SMA  ", noindex: true });
@@ -342,9 +351,8 @@ describe("the form: create", () => {
       [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }),
     });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
-    await openTab(user, "Publikasi");
+    await typeExcerpt(user);
     await user.selectOptions(screen.getByLabelText(/^Kategori/), "Tips");
     const save = screen.getByRole("button", { name: "Buat Artikel" });
     await act(async () => {
@@ -379,8 +387,7 @@ describe("the form: create", () => {
       [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { contentMarkdown: "Isi minimal 50 karakter", seoTitle: "Judul SEO terlalu panjang" } }, 400),
     });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul yang sah");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await openTab(user, "Publikasi"); // the form is refused from another tab: the editor goes back to the one with the first error
+    await typeExcerpt(user); // the form is refused from another tab (Publikasi): the editor goes back to the one with the first error
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
 
     const summary = await screen.findByRole("alert");
@@ -398,14 +405,34 @@ describe("the form: create", () => {
     expect(screen.getByLabelText(/^Judul SEO/).getAttribute("aria-invalid")).toBe("true");
   });
 
+  test("an Excerpt left empty is not stopped by the browser on a tab nobody sees: the save reaches the Worker, which refuses it, and Publikasi opens at the Excerpt", async () => {
+    const user = userEvent.setup();
+    const { api } = await openForm(WRITER, "/blog/new", {
+      [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { excerpt: "Excerpt minimal 20 karakter" } }, 400),
+    });
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul yang sah");
+    await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    const excerpt = screen.getByLabelText(/^Excerpt/) as HTMLTextAreaElement;
+    expect(excerpt.required).toBe(false); // a `required` one on a hidden tab makes the browser refuse the save without a word
+    expect(excerpt.getAttribute("aria-required")).toBe("true"); // and a screen reader still hears that it is needed
+    await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
+    await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1)); // sent: nothing stopped it on the way
+    await waitFor(() => expect(panel("Publikasi").hasAttribute("hidden")).toBe(false));
+    expect(panel("Konten").hasAttribute("hidden")).toBe(true);
+    expect(excerpt.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText("Excerpt minimal 20 karakter", { selector: "p" })).toBeTruthy();
+  });
+
   test("a slug that is taken is a message on the slug field, with the slug tab shown", async () => {
     const user = userEvent.setup();
     await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ error: "conflict", message: "Data bentrok dengan data lain yang sudah ada.", fields: { slug: "Slug sudah dipakai" } }, 409) });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul yang sah");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
+    await typeExcerpt(user);
     await user.type(screen.getByLabelText(/^Slug/), "halo");
+    await openTab(user, "Konten"); // saved from another tab: the page has to bring the person back to the slug
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
     expect(await screen.findByText("Slug sudah dipakai", { selector: "p" })).toBeTruthy();
+    await waitFor(() => expect(panel("Publikasi").hasAttribute("hidden")).toBe(false));
     expect(screen.getByLabelText(/^Slug/).getAttribute("aria-invalid")).toBe("true");
   });
 
@@ -502,7 +529,9 @@ describe("the form: edit", () => {
     const published = (overrides: Record<string, unknown> = {}) => article({ status: "published", date: "2026-05-21", ...overrides });
 
     test("a published article links to its page on the public site (siteUrl of /api/config + /blog/<slug>), in a new tab, and the config is asked for once", async () => {
+      const user = userEvent.setup();
       const { api } = await openEdit(WRITER, published(), config("https://sakolakembara.org"));
+      await openTab(user, "Publikasi"); // the article's address is on Publikasi, under the Slug
       const link = await screen.findByRole("link", { name: "Lihat di publik" });
       expect(link.getAttribute("href")).toBe("https://sakolakembara.org/blog/cara-belajar-efektif");
       expect(link.getAttribute("target")).toBe("_blank");
@@ -516,24 +545,34 @@ describe("the form: edit", () => {
     });
 
     test("a draft is not on the site, so it has no link", async () => {
+      const user = userEvent.setup();
       const { api } = await openEdit(WRITER, article(), config("https://sakolakembara.org"));
       await waitFor(() => expect(api.count("GET /api/config")).toBe(1));
+      await openTab(user, "Publikasi"); // look where the link would be: a closed tab would answer "none" whatever it holds
+      expect(within(panel("Publikasi")).getByText("Tautan:")).toBeTruthy();
       expect(screen.queryByRole("link", { name: "Lihat di publik" })).toBeNull();
     });
 
     test("without the site's address (empty, missing, or not an origin) there is no link, and no guess", async () => {
+      const user = userEvent.setup();
       for (const siteUrl of ["", undefined, "sakolakembara.org", "javascript:alert(1)", "https://sakolakembara.org/blog"]) {
         resetUploadsBase();
         const { api, unmount } = await openEdit(WRITER, published(), config(siteUrl));
         await waitFor(() => expect(api.count("GET /api/config")).toBe(1));
+        await openTab(user, "Publikasi"); // look where the link would be
+        expect(within(panel("Publikasi")).getByText("Tautan:"), String(siteUrl)).toBeTruthy();
         expect(screen.queryByRole("link", { name: "Lihat di publik" }), String(siteUrl)).toBeNull();
         unmount();
       }
     });
 
     test("an answer of /api/config that cannot be read leaves the editor working, without the link", async () => {
-      await openEdit(WRITER, published(), { "GET /api/config": respond({ error: "internal" }, 500) });
+      const user = userEvent.setup();
+      const { api } = await openEdit(WRITER, published(), { "GET /api/config": respond({ error: "internal" }, 500) });
       expect(screen.getByRole("button", { name: "Simpan Perubahan" })).toBeTruthy();
+      await waitFor(() => expect(api.count("GET /api/config")).toBe(1));
+      await openTab(user, "Publikasi"); // look where the link would be
+      expect(within(panel("Publikasi")).getByText("Tautan:")).toBeTruthy();
       expect(screen.queryByRole("link", { name: "Lihat di publik" })).toBeNull();
     });
   });
@@ -618,8 +657,8 @@ describe("the form: the meta description (SAKEM-094)", () => {
     const user = userEvent.setup();
     const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await typeExcerpt(user);
     await openTab(user, "SEO");
     await typeIn(user, "Cara belajar efektif untuk siswa.");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
@@ -786,6 +825,7 @@ describe("the form: publish and unpublish", () => {
     const { api } = await openEdit(WRITER, article(), {
       [`PUT ${LIST}/b1`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { excerpt: "Excerpt minimal 20 karakter" } }, 400),
     });
+    await openTab(user, "Publikasi");
     await user.clear(screen.getByLabelText(/^Excerpt/));
     await user.type(screen.getByLabelText(/^Excerpt/), "pendek");
     await user.click(screen.getByRole("button", { name: "Terbitkan" }));

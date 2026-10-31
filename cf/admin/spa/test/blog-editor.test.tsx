@@ -115,13 +115,14 @@ describe("the page is written like a page", () => {
     const user = userEvent.setup();
     const { api, editor } = await open({ [`POST ${LIST}`]: respond({ item: { id: "new-id", updatedAt: "2026-10-31T00:00:00.000Z" } }, 201) });
     await user.type(screen.getByLabelText("Judul"), "Cara Belajar");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await run(() => {
       editor.commands.focus("end");
       typeInto(editor, "## Mulai dari jadwal");
       editor.commands.insertContent({ type: "paragraph" });
       typeInto(editor, "Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
     });
+    await user.click(screen.getByRole("tab", { name: "Publikasi" })); // the Excerpt is on Publikasi
+    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
     await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1));
     expect(api.last(`POST ${LIST}`)?.body).toMatchObject({ contentMarkdown: "## Mulai dari jadwal\n\nIsi artikel yang cukup panjang untuk lolos batas lima puluh karakter." });

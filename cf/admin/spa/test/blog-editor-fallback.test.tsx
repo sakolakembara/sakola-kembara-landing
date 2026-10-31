@@ -28,9 +28,10 @@ describe("the editor could not be loaded", () => {
     expect(box.tagName).toBe("TEXTAREA");
 
     await user.type(screen.getByLabelText("Judul"), "Cara Belajar");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.click(box);
     await user.paste("## Mulai\n\nIsi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await user.click(screen.getByRole("tab", { name: "Publikasi" })); // the Excerpt is on Publikasi
+    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
     await waitFor(() => expect(api.count(`POST ${API_PATH}`)).toBe(1));
     expect(api.last(`POST ${API_PATH}`)?.body).toMatchObject({ contentMarkdown: "## Mulai\n\nIsi artikel yang cukup panjang untuk lolos batas lima puluh karakter." });

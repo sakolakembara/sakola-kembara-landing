@@ -59,10 +59,10 @@ describe("the author of an article is chosen from the accounts that can write", 
   test("choosing another account is what the save sends", async () => {
     const { api, user } = await open("/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id", author: "Budi Konten" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id", author: "Budi Konten" }) }) });
     await user.type(screen.getByLabelText("Judul"), "Cara Belajar");
-    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     const editor = ((await screen.findByLabelText("Isi Artikel")) as HTMLElement & { editor: Editor }).editor;
     await act(async () => void editor.chain().focus("end").insertContent("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.").run());
     await publikasi(user);
+    await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
     await user.click(author());
     await user.click(await screen.findByRole("option", { name: "Budi Konten" }));
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
