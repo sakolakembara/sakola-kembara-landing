@@ -8,7 +8,7 @@ import { describeSeoTitleCount } from "~/pages/blog/SeoTitleField";
 import { cleanMetaDescription, defaultAuthor, formatIsoDay, imageMarkdown, insertAtCursor } from "~/pages/blog/rules";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
-// The blog screens: the list, the editor with its two tabs, the preview, the image insertion, the draft and
+// The blog screens: the list, the editor with its three tabs (Konten, Publikasi, SEO) under the shell's top bar, the preview, the image insertion, the draft and
 // publish states, and what a read-only role is shown. What every block of the kit does by itself is proved in
 // test/crud/*; the legacy texts are the ones of app/(admin)/admin/blog.
 
@@ -253,45 +253,58 @@ async function openEdit(who: Who, item = article(), routes: Parameters<typeof st
 
 const bodyField = () => screen.getByLabelText("Isi Artikel") as HTMLTextAreaElement;
 /** A panel of the editor by name. By id: the accessible name of a panel that is `hidden` is empty, which would make it unfindable by role. */
-const panel = (name: "Detail" | "Konten") => document.getElementById(`panel-${name.toLowerCase()}`)!;
+const panel = (name: "Konten" | "Publikasi" | "SEO") => document.getElementById(`panel-${name.toLowerCase()}`)!;
+/** Opens a tab of the editor (a writer's page has three, in a tablist named "Bagian editor"; a field on a closed tab cannot be typed into). */
+const openTab = (user: ReturnType<typeof userEvent.setup>, name: "Konten" | "Publikasi" | "SEO") => user.click(within(screen.getByRole("tablist", { name: "Bagian editor" })).getByRole("tab", { name }));
 /** The notice after a save. (Not `getByRole("status")`: the file field keeps a quiet status line of its own.) */
 const notice = (text: string) => screen.findByText(text);
 
 describe("the form: create", () => {
-  test("the legacy editor: the Detail tab with its three sections, the legacy defaults, the Konten tab hidden until chosen", async () => {
+  test("the editor: three tabs with their cards, the legacy defaults, and only Konten open at first", async () => {
+    const user = userEvent.setup();
     await openForm(WRITER, "/blog/new");
     expect(screen.getByRole("heading", { level: 1, name: "Tulis Artikel" })).toBeTruthy();
-    for (const name of ["Informasi Dasar", "Klasifikasi & Publikasi", "Gambar Hero"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
+    expect(within(screen.getByRole("tablist", { name: "Bagian editor" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Konten", "Publikasi", "SEO"]);
+    expect(panel("Konten").hasAttribute("hidden")).toBe(false);
+    expect(panel("Publikasi").hasAttribute("hidden")).toBe(true);
+    expect(panel("SEO").hasAttribute("hidden")).toBe(true);
+    for (const name of ["Informasi Dasar", "Isi Artikel"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
+    expect(screen.getByText("20-500 karakter. Muncul di list artikel dan SEO description.")).toBeTruthy();
+    expect(screen.getByText("Kosongkan agar dibuat otomatis dari judul.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Buat Artikel" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull(); // nothing to publish before it exists
+
+    await openTab(user, "Publikasi");
+    for (const name of ["Publikasi", "Gambar Hero"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
     expect((screen.getByLabelText(/^Kategori/) as HTMLSelectElement).value).toBe("Cerita");
     expect((screen.getByLabelText(/^Penulis/) as HTMLInputElement).value).toBe("tester");
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).type).toBe("date");
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).value).toBe("");
-    expect(screen.getByText("20-500 karakter. Muncul di list artikel dan SEO description.")).toBeTruthy();
-    expect(screen.getByText("Kosongkan agar dibuat otomatis dari judul.")).toBeTruthy();
-    expect(screen.getByLabelText(/Tampilkan sebagai artikel unggulan/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Buat Artikel" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull(); // nothing to publish before it exists
-    expect(panel("Detail").hasAttribute("hidden")).toBe(false);
-    expect(panel("Konten").hasAttribute("hidden")).toBe(true);
+    expect((screen.getByRole("switch", { name: /Featured/ }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText("Tampilkan sebagai artikel unggulan di blog index.")).toBeTruthy();
+
+    await openTab(user, "SEO");
+    expect(screen.getByRole("heading", { level: 2, name: "Mesin Pencari" })).toBeTruthy();
     await waitFor(() => expect(document.title).toBe("Tulis Artikel | Admin Sakola Kembara"));
   });
 
   test("SAKEM-109: the SEO title is counted as the Worker stores it, and 'Sembunyikan dari Google' is sent as noindex: true", async () => {
     const user = userEvent.setup();
     const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
+    await openTab(user, "SEO");
     const seo = screen.getByLabelText(/^Judul SEO/);
     // described by its hint and its counter, so a screen reader reads both on focus
     const described = (seo.getAttribute("aria-describedby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent ?? "");
     expect(described.join(" | ")).toMatch(/dipakai apa adanya.*\| 0 karakter \(disarankan 30-60, maksimal 70\)$/);
     await user.type(seo, "  Cara   Belajar Efektif untuk Siswa SMA  ");
     expect(screen.getByText("36 karakter (disarankan 30-60, maksimal 70)")).toBeTruthy();
-    const box = screen.getByRole("checkbox", { name: /Sembunyikan dari Google/ });
+    const box = screen.getByRole("switch", { name: /Sembunyikan dari Google/ });
     expect((box as HTMLInputElement).checked).toBe(false);
     await user.click(box);
     expect((box as HTMLInputElement).checked).toBe(true);
+    await openTab(user, "Konten");
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
     await user.click(bodyField());
     await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
     await act(async () => screen.getByRole("button", { name: "Buat Artikel" }).click());
@@ -317,10 +330,10 @@ describe("the form: create", () => {
     });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await user.selectOptions(screen.getByLabelText(/^Kategori/), "Tips");
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
     await user.click(bodyField());
     await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await openTab(user, "Publikasi");
+    await user.selectOptions(screen.getByLabelText(/^Kategori/), "Tips");
     const save = screen.getByRole("button", { name: "Buat Artikel" });
     await act(async () => {
       save.click();
@@ -351,25 +364,26 @@ describe("the form: create", () => {
   test("a refused form opens the tab that holds the first error, marks both tabs, and the summary reaches a field on the other tab", async () => {
     const user = userEvent.setup();
     await openForm(WRITER, "/blog/new", {
-      [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { contentMarkdown: "Isi minimal 50 karakter", title: "Judul minimal 3 karakter" } }, 400),
+      [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { contentMarkdown: "Isi minimal 50 karakter", seoTitle: "Judul SEO terlalu panjang" } }, 400),
     });
-    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "ab");
+    await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul yang sah");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
+    await openTab(user, "Publikasi"); // the form is refused from another tab: the editor goes back to the one with the first error
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
 
     const summary = await screen.findByRole("alert");
     // The first error is in the body: the Konten tab is shown, and both tabs carry the red dot.
     await waitFor(() => expect(panel("Konten").hasAttribute("hidden")).toBe(false));
-    expect(panel("Detail").hasAttribute("hidden")).toBe(true);
+    expect(panel("SEO").hasAttribute("hidden")).toBe(true);
     expect(screen.getAllByRole("img", { name: "Ada kesalahan" })).toHaveLength(2);
     expect(bodyField().getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByText("Isi minimal 50 karakter", { selector: "span" })).toBeTruthy();
 
-    // The title is on the other tab: its link shows the tab, then puts the cursor in the field.
-    await user.click(within(summary).getByRole("link", { name: "Judul: Judul minimal 3 karakter" }));
-    expect(panel("Detail").hasAttribute("hidden")).toBe(false);
-    expect(document.activeElement).toBe(screen.getByLabelText(/^Judul(?! SEO)/));
-    expect(screen.getByLabelText(/^Judul(?! SEO)/).getAttribute("aria-invalid")).toBe("true");
+    // The SEO title is on the other tab: its link shows the tab, then puts the cursor in the field.
+    await user.click(within(summary).getByRole("link", { name: "Judul SEO: Judul SEO terlalu panjang" }));
+    expect(panel("SEO").hasAttribute("hidden")).toBe(false);
+    expect(document.activeElement).toBe(screen.getByLabelText(/^Judul SEO/));
+    expect(screen.getByLabelText(/^Judul SEO/).getAttribute("aria-invalid")).toBe("true");
   });
 
   test("a slug that is taken is a message on the slug field, with the slug tab shown", async () => {
@@ -386,7 +400,6 @@ describe("the form: create", () => {
   test("leaving with typed text asks first: the body counts as a change", async () => {
     const user = userEvent.setup();
     await openForm(WRITER, "/blog/new");
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
     await user.click(bodyField());
     await user.paste("Sebuah draf yang belum disimpan.");
     await user.click(screen.getByRole("link", { name: "Batal" }));
@@ -396,7 +409,7 @@ describe("the form: create", () => {
 });
 
 describe("the form: edit", () => {
-  test("the article is loaded into both tabs, and saving sends If-Match of the version loaded", async () => {
+  test("the article is loaded into all three tabs, and saving sends If-Match of the version loaded", async () => {
     const user = userEvent.setup();
     const loaded = article({ date: "2026-05-21", featured: true, category: "News" });
     const { api } = await openEdit(WRITER, loaded, {
@@ -406,16 +419,22 @@ describe("the form: edit", () => {
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).value).toBe("cara-belajar-efektif");
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).disabled).toBe(false); // a draft
     expect(screen.getByText("Alamat artikel: /blog/slug. Bisa diubah selama artikel masih draf.")).toBeTruthy();
-    expect((screen.getByLabelText(/^Kategori/) as HTMLSelectElement).value).toBe("News");
-    expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).value).toBe("2026-05-21");
-    expect((screen.getByLabelText(/Tampilkan sebagai artikel unggulan/) as HTMLInputElement).checked).toBe(true);
     expect(bodyField().value).toContain("## Mulai dari jadwal");
     expect(screen.getByText("/blog/cara-belajar-efektif")).toBeTruthy();
-    expect(screen.getByText("Draf")).toBeTruthy();
+    // The status is in the top bar, next to the breadcrumb, and on the Publikasi tab.
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Draf")).toBeTruthy();
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Cara Belajar Efektif")).toBeTruthy();
 
+    await openTab(user, "Publikasi");
+    expect((screen.getByLabelText(/^Kategori/) as HTMLSelectElement).value).toBe("News");
+    expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).value).toBe("2026-05-21");
+    expect((screen.getByRole("switch", { name: /Featured/ }) as HTMLInputElement).checked).toBe(true);
+    expect(within(panel("Publikasi")).getByText("Draf")).toBeTruthy();
+
+    await openTab(user, "Konten");
     await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul baru");
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     expect(await notice("Artikel berhasil disimpan.")).toBeTruthy();
     const put = api.last(`PUT ${LIST}/b1`)!;
     expect(put.headers["if-match"]).toBe('"2026-10-01T00:00:00.000Z"');
@@ -432,7 +451,7 @@ describe("the form: edit", () => {
     });
     await waitFor(() => expect((screen.getByLabelText(/^Judul(?! SEO)/) as HTMLInputElement).value).toBe("Cara Belajar Efektif"));
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " saya");
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     expect((await screen.findByText(/Data ini sudah diubah orang lain/)).textContent).toContain("Perubahan yang belum disimpan akan hilang");
 
     served = article({ title: "Dari orang lain", updatedAt: "2026-10-05T00:00:00.000Z" });
@@ -442,15 +461,22 @@ describe("the form: edit", () => {
   });
 
   test("a published article: the slug is locked and says so, the date is required, and the button takes it back to a draft", async () => {
+    const user = userEvent.setup();
     await openEdit(WRITER, article({ status: "published", date: "2026-05-21" }));
     const slug = screen.getByLabelText(/^Slug/) as HTMLInputElement;
     expect(slug.disabled).toBe(true);
     expect(screen.getByText("Slug tidak bisa diubah setelah artikel terbit.")).toBeTruthy();
+    // One way to save, and the status is in the top bar.
+    expect(screen.getByRole("button", { name: "Simpan Perubahan" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Simpan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull();
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Terbit")).toBeTruthy();
+
+    await openTab(user, "Publikasi");
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).required).toBe(true);
     expect(screen.queryByText("Kosongkan agar terisi otomatis saat diterbitkan.")).toBeNull();
-    expect(screen.getByText("Terbit")).toBeTruthy();
+    expect(within(panel("Publikasi")).getByText("Terbit")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Kembalikan ke Draf" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull();
   });
 
   test("a draft's date field says it fills itself when the article is published", async () => {
@@ -495,7 +521,7 @@ describe("the form: edit", () => {
 
     test("an answer of /api/config that cannot be read leaves the editor working, without the link", async () => {
       await openEdit(WRITER, published(), { "GET /api/config": respond({ error: "internal" }, 500) });
-      expect(screen.getByRole("button", { name: "Kembalikan ke Draf" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Simpan Perubahan" })).toBeTruthy();
       expect(screen.queryByRole("link", { name: "Lihat di publik" })).toBeNull();
     });
   });
@@ -520,12 +546,14 @@ describe("the form: the meta description (SAKEM-094)", () => {
     await user.paste(text);
   };
 
-  test("an optional textarea after the Excerpt, in Informasi Dasar, with the hint and a counter that read on focus", async () => {
+  test("an optional textarea after the SEO title, in Mesin Pencari, with the hint and a counter that read on focus", async () => {
+    const user = userEvent.setup();
     await openForm(WRITER, "/blog/new");
-    const section = screen.getByRole("heading", { level: 2, name: "Informasi Dasar" }).closest("section")!;
-    expect(section.contains(field())).toBe(true);
-    // Right after the Excerpt.
-    expect(screen.getByLabelText(/^Excerpt/).compareDocumentPosition(field()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await openTab(user, "SEO");
+    const card = screen.getByRole("heading", { level: 2, name: "Mesin Pencari" }).closest("[data-slot='card']")!;
+    expect(card.contains(field())).toBe(true);
+    // Right after the SEO title.
+    expect(screen.getByLabelText(/^Judul SEO/).compareDocumentPosition(field()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Optional: no asterisk on its label, no `required` on the control.
     expect(screen.getByText("Deskripsi meta", { selector: "label" }).textContent).toBe("Deskripsi meta");
     expect(field().required).toBe(false);
@@ -543,6 +571,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
   test("the counter counts what the Worker will store, and says how that compares with a search result, in words as well as in colour", async () => {
     const user = userEvent.setup();
     await openForm(WRITER, "/blog/new");
+    await openTab(user, "SEO");
     await typeIn(user, "  halo   dunia \n ");
     expect(counter().textContent).toBe(`10 karakter ${ideal}`); // trimmed, one space between the words
     expect(counter().className).toContain("text-warning-fg"); // under 50
@@ -578,10 +607,9 @@ describe("the form: the meta description (SAKEM-094)", () => {
     const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
     await user.click(bodyField());
     await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
-    await user.click(screen.getByRole("tab", { name: /Detail/ }));
+    await openTab(user, "SEO");
     await typeIn(user, "Cara belajar efektif untuk siswa.");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
     await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1));
@@ -599,13 +627,14 @@ describe("the form: the meta description (SAKEM-094)", () => {
     // Nothing changed in it: the stored text goes back.
     await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Judul baru");
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     expect(await notice("Artikel berhasil disimpan.")).toBeTruthy();
     expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ title: "Judul baru", metaDescription: "Cara belajar efektif untuk siswa." });
 
-    // Emptied: the key is there, null.
+    // Emptied: the key is there, null. (The form started again from the saved article, on its first tab.)
+    await openTab(user, "SEO");
     await user.clear(field());
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     await waitFor(() => expect(api.count(`PUT ${LIST}/b1`)).toBe(2));
     expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ metaDescription: null });
     expect(api.last(`PUT ${LIST}/b1`)?.headers["if-match"]).toBe('"2026-10-02T00:00:00.000Z"');
@@ -616,6 +645,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
     const { api } = await openEdit(WRITER, article({ metaDescription: LONG }), {
       [`PUT ${LIST}/b1`]: (call) => Promise.resolve(respond({ item: article({ ...(call.body as object), updatedAt: "2026-10-02T00:00:00.000Z" }) })),
     });
+    await openTab(user, "SEO");
     expect(field().value).toBe(LONG);
     expect(counter().textContent).toBe(`562 karakter ${ideal}. Bagian akhir bisa terpotong di hasil pencarian.`);
     expect(counter().className).toContain("text-warning-fg");
@@ -630,7 +660,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
     expect(counter().className).toContain("text-warning-fg");
 
     // And the form sends it untouched, which the Worker accepts for the stored one.
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     await waitFor(() => expect(api.count(`PUT ${LIST}/b1`)).toBe(1));
     expect(((api.last(`PUT ${LIST}/b1`)?.body as { metaDescription: string }).metaDescription).trim()).toBe(LONG);
   });
@@ -640,15 +670,16 @@ describe("the form: the meta description (SAKEM-094)", () => {
     await openEdit(WRITER, article(), {
       [`PUT ${LIST}/b1`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { metaDescription: "Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML" } }, 400),
     });
+    await openTab(user, "SEO");
     await typeIn(user, "<b>tebal</b>");
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     const summary = await screen.findByRole("alert");
     expect(await screen.findByText("Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML", { selector: "p" })).toBeTruthy();
     expect(field().getAttribute("aria-invalid")).toBe("true");
     expect(field().getAttribute("aria-describedby")).toBe("metaDescription-error metaDescription-count");
     expect(screen.queryByText(HINT)).toBeNull(); // the Field shows the error in its place
     expect(counter().textContent).toBe(`12 karakter ${ideal}`);
-    expect(panel("Detail").hasAttribute("hidden")).toBe(false); // it is on the Detail tab, which is where the error opens
+    expect(panel("SEO").hasAttribute("hidden")).toBe(false); // it is on the SEO tab, which is where the error opens
     await user.click(within(summary).getByRole("link", { name: "Deskripsi meta: Deskripsi meta hanya boleh berupa teks biasa, tanpa tag HTML" }));
     expect(document.activeElement).toBe(field());
   });
@@ -656,6 +687,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
   test("typing in it is a change: leaving asks first", async () => {
     const user = userEvent.setup();
     await openEdit(WRITER);
+    await openTab(user, "SEO");
     await typeIn(user, "Belum disimpan.");
     await user.click(screen.getByRole("link", { name: "Batal" }));
     expect(await screen.findByRole("alertdialog", { name: "Tinggalkan halaman?" })).toBeTruthy();
@@ -674,6 +706,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
         return Promise.resolve(respond({ item: article({ status: "published", date: "2026-10-12", metaDescription: "Siap terbit.", updatedAt: "2026-10-04T00:00:00.000Z" }) }));
       },
     });
+    await openTab(user, "SEO");
     await typeIn(user, "Siap terbit.");
     await user.click(screen.getByRole("button", { name: "Terbitkan" }));
     expect(await notice("Artikel berhasil diterbitkan.")).toBeTruthy();
@@ -707,9 +740,10 @@ describe("the form: publish and unpublish", () => {
 
     await act(async () => gate.resolve(respond({ item: published() })));
     expect(await notice("Artikel berhasil diterbitkan.")).toBeTruthy();
-    expect(screen.getByText("Terbit")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Kembalikan ke Draf" })).toBeTruthy();
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Terbit")).toBeTruthy();
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).disabled).toBe(true);
+    await openTab(user, "Publikasi");
+    expect(screen.getByRole("button", { name: "Kembalikan ke Draf" })).toBeTruthy();
     // The day the Worker gave it is in the form.
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).value).toBe("2026-10-12");
   });
@@ -761,12 +795,13 @@ describe("the form: publish and unpublish", () => {
     const { api } = await openEdit(WRITER, published(), {
       [`POST ${LIST}/b1/unpublish`]: respond({ item: article({ status: "draft", date: "2026-10-12", updatedAt: "2026-10-06T00:00:00.000Z" }) }),
     });
+    await openTab(user, "Publikasi");
     await user.click(screen.getByRole("button", { name: "Kembalikan ke Draf" }));
     expect(await notice("Artikel dikembalikan menjadi draf.")).toBeTruthy();
     expect(api.last(`POST ${LIST}/b1/unpublish`)?.headers["if-match"]).toBe('"2026-10-02T00:00:00.000Z"');
     expect(screen.getByRole("button", { name: "Terbitkan" })).toBeTruthy();
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).disabled).toBe(false);
-    expect(screen.getByText("Draf")).toBeTruthy();
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Draf")).toBeTruthy();
   });
 
   test("a read-only role is offered neither", async () => {
@@ -780,9 +815,8 @@ describe("the form: publish and unpublish", () => {
 describe("the form: read-only", () => {
   test("a viewer sees the details and the text on one page, can change none of it, and has no preview or image button", async () => {
     await openEdit(["viewer", []], article({ date: "2026-05-21" }));
-    expect(screen.queryByRole("tab")).toBeNull(); // no tabs: both parts are on the page
-    expect(panel("Detail").hasAttribute("hidden")).toBe(false);
-    expect(panel("Konten").hasAttribute("hidden")).toBe(false);
+    expect(screen.queryByRole("tab")).toBeNull(); // no tabs: all three parts are on the page
+    for (const name of ["Konten", "Publikasi", "SEO"] as const) expect(panel(name).hasAttribute("hidden"), name).toBe(false);
     expect(screen.getByLabelText(/^Judul(?! SEO)/).matches(":disabled")).toBe(true);
     expect(bodyField().readOnly).toBe(true);
     expect(bodyField().value).toContain("## Mulai dari jadwal");
@@ -858,14 +892,12 @@ describe("the preview", () => {
       [PREVIEW]: respond({ html: "<p>Pratinjau</p>" }),
       [`PUT ${LIST}/b1`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { title: "Judul minimal 3 karakter", contentMarkdown: "Isi minimal 50 karakter" } }, 400),
     });
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
     await user.click(screen.getByRole("tab", { name: /Preview/ }));
     await screen.findByText("Pratinjau");
-    await user.click(screen.getByRole("tab", { name: /Detail/ }));
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " ");
     await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "ab");
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     const summary = await screen.findByRole("alert");
     await user.click(within(summary).getByRole("link", { name: "Isi Artikel: Isi minimal 50 karakter" }));
     expect(bodyField().hidden).toBe(false);
@@ -941,10 +973,11 @@ describe("the hero image", () => {
     const path = "/uploads/blog-image/2026/0a1b2c3d-1111-4222-8333-444455556666-sampul.png";
     setUploader(async ({ file }) => ({ ok: true, result: { id: "u9", path, contentType: "image/png", size: file.size, width: 1200, height: 630 } }));
     const { api } = await openEdit(WRITER, article(), { [`PUT ${LIST}/b1`]: (call) => Promise.resolve(respond({ item: article({ ...(call.body as object), imageWidth: 1200, imageHeight: 630, updatedAt: "2026-10-02T00:00:00.000Z" }) })) });
+    await openTab(user, "Publikasi");
     const field = screen.getByRole("group", { name: /Gambar Hero/ });
     await user.upload(field.querySelector<HTMLInputElement>("input[type='file']")!, new File([new Uint8Array(500)], "sampul.png", { type: "image/png" }));
     await waitFor(() => expect(within(field).getByRole("button", { name: "Ganti" })).toBeTruthy());
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     await screen.findByText("Artikel berhasil disimpan.");
     expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ image: path });
     // The size is not sent: the Worker reads it from what it stored at upload.
@@ -957,7 +990,7 @@ describe("the hero image", () => {
       [`PUT ${LIST}/b1`]: respond({ item: article({ image: "/blog/images/2026/05/sampul.jpg", updatedAt: "2026-10-02T00:00:00.000Z" }) }),
     });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " baru");
-    await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+    await user.click(screen.getByRole("button", { name: "Simpan" }));
     await screen.findByText("Artikel berhasil disimpan.");
     expect(api.last(`PUT ${LIST}/b1`)?.body).toMatchObject({ image: "/blog/images/2026/05/sampul.jpg" });
   });

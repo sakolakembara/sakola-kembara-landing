@@ -4,7 +4,7 @@ import type { Column } from "~/components/crud/DataTable";
 import { ListPage } from "~/components/crud/ListPage";
 import { formatDateTime } from "~/lib/format";
 import { SITE_URL } from "~/lib/site";
-import { CopyButton } from "./CopyButton";
+import { CopyButton } from "~/components/crud/CopyButton";
 import { API_PATH, LIST_SPEC, ROUTE, type ShortlinkItem, shortUrl } from "./model";
 
 // The list of shortlinks, built with `ListPage` (docs/cloudflare/admin-crud.md). The columns and the wording are the

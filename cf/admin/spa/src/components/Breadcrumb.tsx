@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { NAV, navItemFor } from "~/lib/nav";
+import { usePageChrome } from "~/lib/page-chrome";
 
 interface Crumb {
   label: string;
@@ -20,15 +21,20 @@ export function crumbsFor(pathname: string): Crumb[] {
   return crumbs;
 }
 
-/** Where the page sits in the menu, in the desktop top bar: "Pendaftaran / Pendaftar". */
+/**
+ * Where the page sits in the menu, in the desktop top bar: "Pendaftaran / Pendaftar". An editor page adds a last step,
+ * the title of what it edits ("Konten Situs / Blog / Cara Belajar Efektif"), through the page chrome.
+ */
 export function Breadcrumb() {
-  const crumbs = crumbsFor(useLocation().pathname);
-  if (crumbs.length === 0) return null;
+  const leaf = usePageChrome()?.leaf;
+  const found = crumbsFor(useLocation().pathname);
+  if (found.length === 0) return null;
+  const crumbs = leaf ? [...found, { label: leaf }] : found;
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 text-[13px] font-medium text-foreground">
       <ol className="flex items-center gap-1.5">
         {crumbs.map((crumb, index) => (
-          <li key={crumb.label} className="flex min-w-0 items-center gap-1.5">
+          <li key={`${index}-${crumb.label}`} className={`flex items-center gap-1.5 ${index === crumbs.length - 1 ? "min-w-0" : "shrink-0"}`}>
             {index > 0 && <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-gray-400" />}
             {crumb.href ? (
               <Link to={crumb.href} className="truncate text-gray-600 hover:text-foreground hover:underline">

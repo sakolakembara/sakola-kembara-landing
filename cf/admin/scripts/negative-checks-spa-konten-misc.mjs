@@ -162,14 +162,14 @@ export const kontenMiscSpaChecks = [
   // ---------------------------------------------- Shortlink: the address, the copy, the red state
   {
     name: "konten: the copy button says it copied without copying",
-    file: "spa/src/pages/shortlinks/CopyButton.tsx",
+    file: "spa/src/components/crud/CopyButton.tsx",
     from: "      await navigator.clipboard.writeText(url);\n",
     to: "",
     tests: t(SHORTLINKS),
   },
   {
     name: "konten: the copy button says it copied when the copy failed",
-    file: "spa/src/pages/shortlinks/CopyButton.tsx",
+    file: "spa/src/components/crud/CopyButton.tsx",
     from: '    } catch {\n      setState("failed");',
     to: '    } catch {\n      setState("copied");',
     tests: t(SHORTLINKS),
