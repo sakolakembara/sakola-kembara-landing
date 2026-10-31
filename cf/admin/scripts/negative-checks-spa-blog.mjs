@@ -99,15 +99,15 @@ export const blogSpaChecks = [
   // ------------------------------------------------------------------ errors reach the person
   {
     name: "blog: a refused save does not open the tab that holds the first error",
-    file: FORM,
-    from: '    setTab(wanted);\n    if (first === "contentMarkdown") setBodyMode("edit");\n  }, [save.failures]',
-    to: '    if (first === "contentMarkdown") setBodyMode("edit");\n  }, [save.failures]',
+    file: "spa/src/lib/crud/useFormTabs.ts",
+    from: "    setTab(wanted);\n    latest.current.onReveal?.(first);",
+    to: "    latest.current.onReveal?.(first);",
     tests: BLOG,
   },
   {
     name: "blog: a link of the error summary does not show the tab of its field first",
-    file: FORM,
-    from: '    document.addEventListener("click", reveal, true);',
+    file: "spa/src/lib/crud/useFormTabs.ts",
+    from: 'document.addEventListener("click", reveal, true);',
     to: "",
     tests: BLOG,
   },

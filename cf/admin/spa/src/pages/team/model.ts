@@ -150,6 +150,19 @@ export function toBody(values: TeamValues, education: readonly EducationRow[], w
 }
 
 /** For the error summary: the field names the Worker reports, in the legacy labels. */
+/** The two tabs of the form: who the person is, and the lists of what they did. */
+export type TeamTab = "profil" | "riwayat";
+
+/**
+ * The tab a field is on, by the name its error has (`useFormTabs`). The rows of the two lists are named
+ * "educationHistory.1.institution" (a row the Worker kept), "educationHistory-extra-row-3.year" (a row it did not
+ * see) or just "workHistory" (the list as a whole): all of them are on Riwayat.
+ */
+export function tabOf(name: string): TeamTab | undefined {
+  if (/^(educationHistory|workHistory)([.-]|$)/.test(name)) return "riwayat";
+  return ["name", "role", "category", "displayOrder", "image", "bio"].includes(name) ? "profil" : undefined;
+}
+
 export function fieldLabels(): Record<string, string> {
   const labels: Record<string, string> = {
     name: "Nama Lengkap",
