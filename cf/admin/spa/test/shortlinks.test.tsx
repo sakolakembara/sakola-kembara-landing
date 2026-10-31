@@ -270,6 +270,37 @@ describe("the form: create", () => {
   });
 });
 
+describe("the form: one bar and cards (SAKEM-119)", () => {
+  const loaded = link({ slug: "lama", active: true });
+
+  test("the breadcrumb ends with the page, Batal and the save button are its actions, and the form has no bar or back button of its own", async () => {
+    await openForm(["editor", ["konten"]], "/shortlinks/new");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("Shortlink baru")).toBeTruthy();
+    expect(within(crumbs).getByRole("link", { name: "Shortlink" }).getAttribute("href")).toBe("/shortlinks");
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/shortlinks");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
+    expect(within(crumbs.parentElement!).queryByText("Aktif")).toBeNull(); // nothing is saved yet, so there is no status to show
+  });
+
+  test("a saved link says whether it is on next to the breadcrumb, and the switch is in the Status card, apart from the address and the target", async () => {
+    const { unmount } = await openForm(["editor", ["konten"]], "/shortlinks/s1/edit", { [`GET ${LIST}/s1`]: respond({ item: loaded }) });
+    await waitFor(() => expect((screen.getByLabelText(/Slug/) as HTMLInputElement).value).toBe("lama"));
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("lama")).toBeTruthy();
+    expect(within(crumbs.parentElement!).getByText("Aktif")).toBeTruthy();
+    const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+    expect(card("Status").contains(screen.getByRole("switch", { name: /Aktifkan/ }))).toBe(true);
+    expect(card("Status").parentElement).not.toBe(card("Alamat pendek").parentElement); // the small card is in the side column
+    expect(card("Alamat pendek").parentElement).toBe(card("Tujuan").parentElement);
+    unmount();
+
+    await openForm(["editor", ["konten"]], "/shortlinks/s1/edit", { [`GET ${LIST}/s1`]: respond({ item: { ...loaded, active: false } }) });
+    await waitFor(() => expect((screen.getByLabelText(/Slug/) as HTMLInputElement).value).toBe("lama"));
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Nonaktif")).toBeTruthy();
+  });
+});
+
 describe("the form: edit", () => {
   const loaded = link({ slug: "lama", targetUrl: "https://example.org/a", note: null, active: true });
 

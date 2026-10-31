@@ -1,7 +1,7 @@
 import { FileText } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { Field, Input, Select, Textarea } from "~/components/ui/field";
-import { FormSection, FormShell } from "~/components/crud/FormShell";
+import { FormCard, FormColumns, FormShell } from "~/components/crud/FormShell";
 import { UploadField } from "~/components/crud/UploadField";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
@@ -77,55 +77,8 @@ function ReportForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
 
   const { fields } = save;
   const currentYear = new Date().getUTCFullYear();
-
-  return (
-    <FormShell
-      title={item ? "Edit Metadata" : "Upload Laporan"}
-      back={{ href: ROUTE }}
-      save={save}
-      dirty={form.dirty}
-      onSubmit={() => void submit()}
-      onReload={onReload}
-      readOnly={!canWrite}
-      saveLabel={item ? "Simpan Perubahan" : "Upload Laporan"}
-      fieldLabels={FIELD_LABELS}
-      flash={notice}
-    >
-      <FormSection title="Metadata" description="Informasi yang muncul di list publik dan admin.">
-        <Field label="Judul" id="title" required error={fields.title}>
-          <Input type="text" required {...form.field("title")} placeholder="Contoh: Laporan Tahunan Sakola Kembara 2025/2026" />
-        </Field>
-        <Field label="Deskripsi" id="description" error={fields.description} hint="Ringkasan isi laporan. Muncul di kartu laporan publik.">
-          <Textarea
-            rows={3}
-            {...form.field("description")}
-            placeholder="Contoh: Ringkasan kegiatan, pencapaian, dan tantangan sepanjang tahun ajaran 2025/2026."
-            className="min-h-[80px] resize-y"
-          />
-        </Field>
-        <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Kategori" id="category" required error={fields.category}>
-            <Select required {...form.field("category")}>
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {CATEGORY_LABEL[category]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field
-            label="Tahun"
-            id="year"
-            required
-            error={fields.year}
-            hint={`Tahun laporan. Gunakan format tahun ajaran (${currentYear}/${currentYear + 1}) atau tahun tunggal (${currentYear}).`}
-          >
-            <Input type="text" required inputMode="numeric" pattern="\d{4}(/\d{4})?" {...form.field("year")} placeholder={defaultYear()} />
-          </Field>
-        </div>
-      </FormSection>
-
-      <FormSection
+  const fileCard = (
+      <FormCard
         title="File"
         description={item ? "File PDF tidak bisa diganti dari sini. Hapus laporan dan buat baru jika perlu mengganti file." : "PDF, maksimal 20 MB. Wajib diupload."}
       >
@@ -156,7 +109,58 @@ function ReportForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
             disabled={!canWrite}
           />
         )}
-      </FormSection>
+      </FormCard>
+  );
+
+  return (
+    <FormShell
+      title={item ? "Edit Metadata" : "Upload Laporan"}
+      back={{ href: ROUTE }}
+      save={save}
+      dirty={form.dirty}
+      onSubmit={() => void submit()}
+      onReload={onReload}
+      readOnly={!canWrite}
+      saveLabel={item ? "Simpan Perubahan" : "Upload Laporan"}
+      fieldLabels={FIELD_LABELS}
+      flash={notice}
+      page={{ crumb: item ? item.title : "Laporan baru" }}
+    >
+      <FormColumns aside={fileCard}>
+        <FormCard title="Metadata" description="Informasi yang muncul di list publik dan admin.">
+          <Field label="Judul" id="title" required error={fields.title}>
+            <Input type="text" required {...form.field("title")} placeholder="Contoh: Laporan Tahunan Sakola Kembara 2025/2026" />
+          </Field>
+          <Field label="Deskripsi" id="description" error={fields.description} hint="Ringkasan isi laporan. Muncul di kartu laporan publik.">
+            <Textarea
+              rows={3}
+              {...form.field("description")}
+              placeholder="Contoh: Ringkasan kegiatan, pencapaian, dan tantangan sepanjang tahun ajaran 2025/2026."
+              className="min-h-[80px] resize-y"
+            />
+          </Field>
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="Kategori" id="category" required error={fields.category}>
+              <Select required {...form.field("category")}>
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {CATEGORY_LABEL[category]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              label="Tahun"
+              id="year"
+              required
+              error={fields.year}
+              hint={`Tahun laporan. Gunakan format tahun ajaran (${currentYear}/${currentYear + 1}) atau tahun tunggal (${currentYear}).`}
+            >
+              <Input type="text" required inputMode="numeric" pattern="\d{4}(/\d{4})?" {...form.field("year")} placeholder={defaultYear()} />
+            </Field>
+          </div>
+        </FormCard>
+      </FormColumns>
     </FormShell>
   );
 }

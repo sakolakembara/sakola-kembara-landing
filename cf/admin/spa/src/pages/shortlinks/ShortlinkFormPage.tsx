@@ -1,6 +1,8 @@
 import { useNavigate, useParams } from "react-router";
 import { Field, Input } from "~/components/ui/field";
-import { FormSection, FormShell } from "~/components/crud/FormShell";
+import { FormCard, FormColumns, FormShell } from "~/components/crud/FormShell";
+import { StatusTag } from "~/components/crud/StatusTag";
+import { SwitchField } from "~/components/ui/switch";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
 import { ifMatch } from "~/lib/crud/etag";
@@ -14,7 +16,7 @@ import { useMe } from "~/lib/session";
 import { SITE_HOST, SITE_URL } from "~/lib/site";
 import { ForbiddenPage } from "../Forbidden";
 import { itemGate } from "../konten/itemGate";
-import { API_PATH, FIELD_LABELS, ROUTE, type ShortlinkItem, type ShortlinkValues, SLUG_PLACEHOLDER, toBody, toValues } from "./model";
+import { API_PATH, FIELD_LABELS, ROUTE, type ShortlinkItem, type ShortlinkValues, SLUG_PLACEHOLDER, STATUS, toBody, toValues } from "./model";
 
 // Create and edit a shortlink, built with the form blocks of docs/cloudflare/admin-crud.md. The same screen serves
 // `/shortlinks/new` and `/shortlinks/:id/edit`. What the legacy admin did, kept: the slug is typed after a fixed
@@ -86,52 +88,57 @@ function ShortlinkForm({ item, canWrite, notice, onSaved, onReload }: FormProps)
       saveLabel={item ? "Simpan Perubahan" : "Buat Shortlink"}
       fieldLabels={FIELD_LABELS}
       flash={notice}
+      page={{ crumb: item ? item.slug : "Shortlink baru", status: item && <StatusTag map={STATUS} value={item.active ? "active" : "inactive"} /> }}
     >
-      <FormSection title="Alamat pendek" description="Bagian setelah nama domain. Inilah yang dibagikan ke publik.">
-        <Field label="Slug" id="slug" required error={fields.slug}>
-          {/* The host is shown as a prefix that cannot be edited, so it is obvious the box holds only the path segment. */}
-          <div
-            className={`flex items-stretch overflow-hidden rounded-xl border-2 focus-within:border-primary-blue ${fields.slug ? "border-danger-fg focus-within:border-danger-fg" : "border-gray-200"}`}
-          >
-            <span aria-hidden="true" className="flex select-none items-center whitespace-nowrap border-r-2 border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
-              {SITE_HOST}/
-            </span>
-            <input
-              type="text"
-              required
-              {...slugField}
-              placeholder="daftar-2026"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-invalid={fields.slug ? true : undefined}
-              aria-describedby={fields.slug ? "slug-error" : "slug-help"}
-              className="min-w-0 flex-1 px-3 py-3 focus:outline-none"
+      <FormColumns
+        aside={
+          <FormCard title="Status">
+            <SwitchField
+              label="Aktifkan"
+              description="Saat dinonaktifkan, alamat pendek menampilkan halaman 404, tapi slug tetap dipesan sehingga tidak bisa dipakai ulang."
+              error={fields.active}
+              {...form.checkbox("active")}
             />
-          </div>
-        </Field>
-        <p id="slug-help" className="-mt-2 text-xs text-gray-500">
-          Huruf kecil, angka, dan tanda hubung. Akan terbuka di <span className="break-all font-mono text-gray-700">{`${SITE_URL}/${previewSlug}`}</span>
-        </p>
-      </FormSection>
+          </FormCard>
+        }
+      >
+        <FormCard title="Alamat pendek" description="Bagian setelah nama domain. Inilah yang dibagikan ke publik.">
+          <Field label="Slug" id="slug" required error={fields.slug}>
+            {/* The host is shown as a prefix that cannot be edited, so it is obvious the box holds only the path segment. */}
+            <div
+              className={`flex items-stretch overflow-hidden rounded-xl border-2 focus-within:border-primary-blue ${fields.slug ? "border-danger-fg focus-within:border-danger-fg" : "border-gray-200"}`}
+            >
+              <span aria-hidden="true" className="flex select-none items-center whitespace-nowrap border-r-2 border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+                {SITE_HOST}/
+              </span>
+              <input
+                type="text"
+                required
+                {...slugField}
+                placeholder="daftar-2026"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={fields.slug ? true : undefined}
+                aria-describedby={fields.slug ? "slug-error" : "slug-help"}
+                className="min-w-0 flex-1 px-3 py-3 focus:outline-none"
+              />
+            </div>
+          </Field>
+          <p id="slug-help" className="-mt-2 text-xs text-gray-500">
+            Huruf kecil, angka, dan tanda hubung. Akan terbuka di <span className="break-all font-mono text-gray-700">{`${SITE_URL}/${previewSlug}`}</span>
+          </p>
+        </FormCard>
 
-      <FormSection title="Tujuan" description="Ke mana pengunjung diarahkan saat membuka alamat di atas.">
-        <Field label="URL tujuan" id="targetUrl" required error={fields.targetUrl} hint="URL lengkap (https://...) atau jalur di situs ini (/gabung-siswa).">
-          <Input type="text" required {...form.field("targetUrl")} placeholder="https://forms.gle/..." autoCapitalize="none" autoCorrect="off" spellCheck={false} />
-        </Field>
-        <Field label="Catatan" id="note" error={fields.note} hint="Hanya terlihat di admin. Contoh: dipakai di bio Instagram.">
-          <Input type="text" {...form.field("note")} placeholder="Dibagikan lewat broadcast WhatsApp angkatan 2026" />
-        </Field>
-      </FormSection>
-
-      <FormSection title="Status">
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 transition-colors hover:border-gray-300">
-          <input type="checkbox" {...form.checkbox("active")} className="h-4 w-4 accent-primary-blue" />
-          <span className="text-sm text-gray-700">
-            <span className="font-medium text-gray-900">Aktifkan.</span> Saat dinonaktifkan, alamat pendek menampilkan halaman 404 — tapi slug tetap dipesan sehingga tidak bisa dipakai ulang.
-          </span>
-        </label>
-      </FormSection>
+        <FormCard title="Tujuan" description="Ke mana pengunjung diarahkan saat membuka alamat di atas.">
+          <Field label="URL tujuan" id="targetUrl" required error={fields.targetUrl} hint="URL lengkap (https://...) atau jalur di situs ini (/gabung-siswa).">
+            <Input type="text" required {...form.field("targetUrl")} placeholder="https://forms.gle/..." autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+          </Field>
+          <Field label="Catatan" id="note" error={fields.note} hint="Hanya terlihat di admin. Contoh: dipakai di bio Instagram.">
+            <Input type="text" {...form.field("note")} placeholder="Dibagikan lewat broadcast WhatsApp angkatan 2026" />
+          </Field>
+        </FormCard>
+      </FormColumns>
     </FormShell>
   );
 }
