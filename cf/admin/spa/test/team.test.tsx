@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test } from "vitest";
 import { resetUploadsBase, setUploader, type UploadOutcome, type UploadRequest } from "~/lib/crud/upload-client";
-import { blankEducation, blankWork, cleanEducation, cleanWork, educationRows, fieldLabels, MAX_HISTORY, type TeamItem, toBody, toValues, workRows } from "~/pages/team/model";
+import { blankEducation, blankWork, cleanEducation, cleanWork, educationRows, fieldLabels, MAX_HISTORY, type TeamItem, toBody, toValues, workRows, tabOf } from "~/pages/team/model";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
 // Tim, the screens: the list (ListPage) and the form (FormShell, the upload field, two editable lists of entries),
@@ -157,6 +157,9 @@ async function openForm(who: Who, path: string, routes: Parameters<typeof stubAp
   return { api, ...view };
 }
 const location = () => screen.getByTestId("location").textContent;
+/** Opens a tab of the form (a writer's page has two, in a tablist named "Bagian formulir"; a control on a closed tab cannot be used). */
+const openTab = (user: ReturnType<typeof userEvent.setup>, name: "Profil" | "Riwayat") => user.click(within(screen.getByRole("tablist", { name: "Bagian formulir" })).getByRole("tab", { name }));
+const panel = (name: "Profil" | "Riwayat") => document.getElementById(`panel-${name.toLowerCase()}`)!;
 
 function fakeUploader() {
   const requests: UploadRequest[] = [];
@@ -171,9 +174,10 @@ const fileInput = () => document.querySelector<HTMLInputElement>('input[type="fi
 
 describe("the form: create", () => {
   test("the legacy form: its sections, labels and hints, the order starting at 100, one empty row for each history", async () => {
+    const user = userEvent.setup();
     await openForm(["editor", ["konten"]], "/team/new");
     expect(screen.getByRole("heading", { level: 1, name: "Anggota Baru" })).toBeTruthy();
-    for (const name of ["Identitas", "Foto", "Bio", "Riwayat Pendidikan", "Riwayat Pekerjaan"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
+    for (const name of ["Identitas", "Foto", "Bio"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
     expect(screen.getByLabelText(/Nama Lengkap/)).toBeTruthy();
     expect(screen.getByLabelText(/Peran/, { selector: "#role" })).toBeTruthy();
     expect(within(screen.getByLabelText(/Kategori/)).getAllByRole("option").map((option) => (option as HTMLOptionElement).value)).toEqual(["dewan_pembina", "dewan_pengawas", "pengurus"]);
@@ -181,6 +185,8 @@ describe("the form: create", () => {
     expect((screen.getByLabelText(/Urutan Tampil/) as HTMLInputElement).value).toBe("100");
     expect(screen.getByText("Lebih kecil = lebih dulu (dalam kategori yang sama). Kelipatan 10 dianjurkan.")).toBeTruthy();
     expect(screen.getByText("Foto kotak 1:1 paling rapi (akan ditampilkan sebagai lingkaran di publik). Maksimal 5 MB.")).toBeTruthy();
+    await openTab(user, "Riwayat");
+    for (const name of ["Riwayat Pendidikan", "Riwayat Pekerjaan"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
     expect(screen.getAllByText("Kosongkan institusi untuk menghapus baris saat disimpan.")).toHaveLength(1);
     expect(screen.getAllByText("Kosongkan organisasi untuk menghapus baris saat disimpan.")).toHaveLength(1);
     expect(screen.getByLabelText("Institusi pendidikan 1")).toBeTruthy();
@@ -208,6 +214,7 @@ describe("the form: create", () => {
     expect(uploads.map((request) => request.kind)).toEqual(["team-photo"]);
 
     // Education: a row with an institution, a row with only a degree (which goes), and an untouched blank one.
+    await openTab(user, "Riwayat");
     await user.type(screen.getByLabelText("Institusi pendidikan 1"), "Universitas Contoh");
     await user.type(screen.getByLabelText("Gelar atau jurusan pendidikan 1"), "S1 Pendidikan");
     await user.click(screen.getByRole("button", { name: "Tambah Pendidikan" }));
@@ -243,11 +250,13 @@ describe("the form: create", () => {
   test("a row can be removed, and the last row removed leaves none (nothing is sent)", async () => {
     const user = userEvent.setup();
     const { api } = await openForm(["editor", ["konten"]], "/team/new", { [`POST ${LIST}`]: respond({ item: member({ id: "n" }) }, 201), [`GET ${LIST}/n`]: respond({ item: member({ id: "n" }) }) });
+    await openTab(user, "Riwayat");
     await user.click(screen.getByRole("button", { name: "Tambah Pendidikan" }));
     expect(screen.getAllByRole("button", { name: /^Hapus baris pendidikan/ })).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: "Hapus baris pendidikan 2" }));
     await user.click(screen.getByRole("button", { name: "Hapus baris pendidikan 1" }));
     expect(screen.queryByLabelText("Institusi pendidikan 1")).toBeNull();
+    await openTab(user, "Profil");
     await user.type(screen.getByLabelText(/Nama Lengkap/), "Ahmad");
     await user.type(screen.getByLabelText(/Peran/, { selector: "#role" }), "Ketua");
     await user.click(screen.getByRole("button", { name: "Buat Anggota" }));
@@ -258,6 +267,7 @@ describe("the form: create", () => {
   test("at most 20 entries: the button that adds a row is disabled at 20", async () => {
     const user = userEvent.setup();
     await openForm(["editor", ["konten"]], "/team/new");
+    await openTab(user, "Riwayat");
     for (let n = 1; n < MAX_HISTORY; n++) await user.click(screen.getByRole("button", { name: "Tambah Pendidikan" }));
     expect(screen.getAllByLabelText(/^Institusi pendidikan/)).toHaveLength(MAX_HISTORY);
     expect(screen.getByRole("button", { name: "Tambah Pendidikan" })).toHaveProperty("disabled", true);
@@ -292,11 +302,16 @@ describe("the form: create", () => {
     });
     await user.type(screen.getByLabelText(/Nama Lengkap/), "A");
     await user.type(screen.getByLabelText(/Peran/, { selector: "#role" }), "Ketua");
+    await openTab(user, "Riwayat");
     await user.click(screen.getByRole("button", { name: "Tambah Pendidikan" }));
     await user.type(screen.getByLabelText("Institusi pendidikan 2"), "UI");
     await user.click(screen.getByRole("button", { name: "Buat Anggota" }));
 
     const summary = await screen.findByRole("alert");
+    // The first error is the name, on Profil: the form goes back there, and both tabs carry the red dot.
+    await waitFor(() => expect(panel("Profil").hasAttribute("hidden")).toBe(false));
+    expect(panel("Riwayat").hasAttribute("hidden")).toBe(true);
+    expect(screen.getAllByRole("img", { name: "Ada kesalahan" })).toHaveLength(2);
     expect(within(summary).getByRole("link", { name: "Nama Lengkap: Nama minimal 2 karakter" })).toBeTruthy();
     expect(within(summary).getByRole("link", { name: "Pendidikan 1, Tahun: Tahun maksimal 50 karakter" })).toBeTruthy();
     expect(within(summary).getByRole("link", { name: "Urutan Tampil: Wajib diisi" })).toBeTruthy();
@@ -306,6 +321,7 @@ describe("the form: create", () => {
     expect(within(secondRow as HTMLElement).getByText("Tahun maksimal 50 karakter")).toBeTruthy();
     expect(screen.getByLabelText("Tahun pendidikan 2").id).toBe("educationHistory.0.year");
     await user.click(within(summary).getByRole("link", { name: /^Pendidikan 1, Tahun/ }));
+    expect(panel("Riwayat").hasAttribute("hidden")).toBe(false); // the link shows its tab before it puts the cursor there
     expect(document.activeElement).toBe(screen.getByLabelText("Tahun pendidikan 2"));
     expect(location()).toBe("/team/new");
   });
@@ -318,6 +334,70 @@ describe("the form: create", () => {
       expect(screen.queryByRole("form")).toBeNull();
       view.unmount();
     }
+  });
+});
+
+describe("the form: one bar and two tabs (SAKEM-119)", () => {
+  test("the breadcrumb ends with the page, Batal is an action, there is no back button, and Profil is open first with the photo in the side column", async () => {
+    await openForm(["editor", ["konten"]], "/team/new");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("Anggota baru")).toBeTruthy();
+    expect(within(crumbs).getByRole("link", { name: "Tim" }).getAttribute("href")).toBe("/team");
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/team");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
+    expect(within(screen.getByRole("tablist", { name: "Bagian formulir" })).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Profil", "Riwayat"]);
+    expect(panel("Profil").hasAttribute("hidden")).toBe(false);
+    expect(panel("Riwayat").hasAttribute("hidden")).toBe(true);
+    const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+    expect(card("Identitas").parentElement).toBe(card("Bio").parentElement);
+    expect(card("Foto").parentElement).not.toBe(card("Identitas").parentElement); // the photo is in the side column
+  });
+
+  test("a saved member: the breadcrumb ends with the name", async () => {
+    await openForm(["editor", ["konten"]], "/team/t1/edit", { [`GET ${LIST}/t1`]: respond({ item: member({ id: "t1", name: "Ahmad Fadillah" }) }) });
+    await waitFor(() => expect((screen.getByLabelText(/Nama Lengkap/) as HTMLInputElement).value).toBe("Ahmad Fadillah"));
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Ahmad Fadillah")).toBeTruthy();
+  });
+
+  test("the identity boxes are not `required` for the browser: with Riwayat open, an empty name is refused by the Worker and the page goes back to Profil, not silently by the browser", async () => {
+    const user = userEvent.setup();
+    const { api } = await openForm(["editor", ["konten"]], "/team/new", {
+      [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { name: "Nama minimal 2 karakter" } }, 400),
+    });
+    for (const id of ["name", "role", "category", "displayOrder"]) {
+      const control = document.getElementById(id) as HTMLInputElement;
+      expect(control.required, id).toBe(false);
+      expect(control.getAttribute("aria-required"), id).toBe("true");
+    }
+    await openTab(user, "Riwayat");
+    await user.click(screen.getByRole("button", { name: "Buat Anggota" }));
+    await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1)); // sent: nothing stopped it on the way
+    await waitFor(() => expect(panel("Profil").hasAttribute("hidden")).toBe(false));
+    expect(panel("Riwayat").hasAttribute("hidden")).toBe(true);
+    expect(screen.getAllByRole("img", { name: "Ada kesalahan" })).toHaveLength(1);
+    expect(within(screen.getByRole("tab", { name: /Profil/ })).getByRole("img", { name: "Ada kesalahan" })).toBeTruthy();
+  });
+
+  test("an error in a list of rows opens Riwayat and marks only that tab", async () => {
+    const user = userEvent.setup();
+    const { api } = await openForm(["editor", ["konten"]], "/team/new", {
+      [`POST ${LIST}`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { "workHistory.0.period": "Periode maksimal 50 karakter" } }, 400),
+    });
+    await user.type(screen.getByLabelText(/Nama Lengkap/), "Siti");
+    await user.type(screen.getByLabelText(/Peran/, { selector: "#role" }), "Ketua");
+    await user.click(screen.getByRole("button", { name: "Buat Anggota" }));
+    await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1));
+    await waitFor(() => expect(panel("Riwayat").hasAttribute("hidden")).toBe(false));
+    expect(panel("Profil").hasAttribute("hidden")).toBe(true);
+    expect(within(screen.getByRole("tab", { name: /Riwayat/ })).getByRole("img", { name: "Ada kesalahan" })).toBeTruthy();
+    expect(within(screen.getByRole("tab", { name: "Profil" })).queryByRole("img", { name: "Ada kesalahan" })).toBeNull();
+  });
+
+  test("which tab a field is on, by the name of its error", () => {
+    for (const name of ["name", "role", "category", "displayOrder", "image", "bio"]) expect(tabOf(name), name).toBe("profil");
+    for (const name of ["educationHistory", "workHistory", "educationHistory.19.degree", "workHistory.0.period", "educationHistory-extra-row-3.year"]) expect(tabOf(name), name).toBe("riwayat");
+    expect(tabOf("something-else")).toBeUndefined();
+    expect(tabOf("educationHistoryX")).toBeUndefined();
   });
 });
 
@@ -372,6 +452,7 @@ describe("the form: edit", () => {
       [`PUT ${LIST}/t1`]: respond({ item: loaded }),
     });
     await waitFor(() => expect((screen.getByLabelText(/Nama Lengkap/) as HTMLInputElement).value).toBe("Ahmad Fadillah"));
+    await openTab(user, "Riwayat");
     await user.click(screen.getByRole("button", { name: "Tambah Pekerjaan" }));
     expect(screen.getAllByLabelText(/^Organisasi pekerjaan/)).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
@@ -411,6 +492,7 @@ describe("the form: edit", () => {
     await openForm(["editor", ["konten"]], "/team/t1/edit", { [`GET ${LIST}/t1`]: respond({ item: loaded }), [`GET ${LIST}`]: respond(envelope([row()])) });
     await waitFor(() => expect((screen.getByLabelText(/Nama Lengkap/) as HTMLInputElement).value).toBe("Ahmad Fadillah"));
 
+    await openTab(user, "Riwayat");
     await user.click(screen.getByRole("button", { name: "Tambah Pendidikan" })); // a blank row is not a change
     await user.click(screen.getByRole("link", { name: "Batal" }));
     await waitFor(() => expect(location()).toBe("/team"));
@@ -420,6 +502,7 @@ describe("the form: edit", () => {
     const user = userEvent.setup();
     await openForm(["editor", ["konten"]], "/team/t1/edit", { [`GET ${LIST}/t1`]: respond({ item: loaded }), [`GET ${LIST}`]: respond(envelope([row()])) });
     await waitFor(() => expect((screen.getByLabelText("Institusi pendidikan 1") as HTMLInputElement).value).toBe("UI"));
+    await openTab(user, "Riwayat");
     await user.type(screen.getByLabelText("Institusi pendidikan 1"), " Depok");
     await user.click(screen.getByRole("link", { name: "Batal" }));
     expect(await screen.findByRole("alertdialog", { name: "Tinggalkan halaman?" })).toBeTruthy();
@@ -448,6 +531,9 @@ describe("the form: edit", () => {
     for (const element of [screen.getByLabelText(/Nama Lengkap/), screen.getByLabelText("Institusi pendidikan 1"), screen.getByRole("button", { name: "Tambah Pendidikan" }), screen.getByRole("button", { name: "Hapus baris pekerjaan 1" })]) {
       expect(element.matches(":disabled")).toBe(true);
     }
+    expect(screen.queryByRole("tablist")).toBeNull(); // nothing to switch between, and a disabled form would disable the tabs: both parts are on one page
+    expect(panel("Profil").hasAttribute("hidden")).toBe(false);
+    expect(panel("Riwayat").hasAttribute("hidden")).toBe(false);
     expect(screen.queryByRole("button", { name: "Simpan Perubahan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pilih file" })).toBeNull(); // no way to change the photo either
     expect(screen.getByRole("link", { name: "Tutup" })).toBeTruthy();

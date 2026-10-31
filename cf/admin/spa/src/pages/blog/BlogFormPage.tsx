@@ -1,6 +1,5 @@
 import { Eye, PencilLine, Save, Send } from "lucide-react";
 import { type ChangeEventHandler, useEffect, useState } from "react";
-import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
@@ -19,6 +18,7 @@ import { describeFailure } from "~/lib/crud/errors";
 import { ifMatch } from "~/lib/crud/etag";
 import { type FlashControl, flashState, useFlash } from "~/lib/crud/flash";
 import type { ItemPayload } from "~/lib/crud/types";
+import { useFormTabs } from "~/lib/crud/useFormTabs";
 import { useFormValues } from "~/lib/crud/useFormValues";
 import { useItem } from "~/lib/crud/useItem";
 import { useMutation } from "~/lib/crud/useMutation";
@@ -107,7 +107,6 @@ const FLASH: Record<Action, string> = {
 function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormProps) {
   const form = useFormValues<BlogValues>(toValues(item, author));
   const navigate = useNavigate();
-  const [tab, setTab] = useState<EditorTab>("konten");
   const [bodyMode, setBodyMode] = useState<BodyMode>("edit");
   const [running, setRunning] = useState<Action | null>(null);
   const published = item?.status === "published";
@@ -143,33 +142,16 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
   }
 
   const { fields } = save;
-  const errorTabs = new Set(Object.keys(fields).map((name) => FIELD_TAB[name]).filter(Boolean));
-
-  // The editor opens the tab that holds the first error.
-  useEffect(() => {
-    const first = Object.keys(save.fields)[0];
-    const wanted = first ? FIELD_TAB[first] : undefined;
-    if (!wanted) return;
-    setTab(wanted);
-    if (first === "contentMarkdown") setBodyMode("edit");
-  }, [save.failures]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // A link of the error summary points at a field that may be on another tab (or under the preview): show it
-  // before the summary tries to put the cursor there (a hidden control cannot take focus).
-  useEffect(() => {
-    const reveal = (event: MouseEvent) => {
-      const link = event.target instanceof Element ? event.target.closest("a[href^='#']") : null;
-      const name = link?.getAttribute("href")?.slice(1);
-      const wanted = name ? FIELD_TAB[name] : undefined;
-      if (!name || !wanted) return;
-      flushSync(() => {
-        setTab(wanted);
-        if (name === "contentMarkdown") setBodyMode("edit");
-      });
-    };
-    document.addEventListener("click", reveal, true);
-    return () => document.removeEventListener("click", reveal, true);
-  }, []);
+  const { tab, setTab, errorTabs } = useFormTabs<EditorTab>({
+    initial: "konten",
+    tabOf: (name) => FIELD_TAB[name],
+    fields,
+    failures: save.failures,
+    // The text under the preview cannot take a cursor: a refusal or a link that points at it goes back to writing.
+    onReveal: (name) => {
+      if (name === "contentMarkdown") setBodyMode("edit");
+    },
+  });
 
   // "Pratinjau" is in the top bar and works from any tab: it brings the person to the text, which is where the preview is.
   const previewing = canWrite && bodyMode === "preview";
