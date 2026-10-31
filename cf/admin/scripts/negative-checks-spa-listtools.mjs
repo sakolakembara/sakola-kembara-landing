@@ -218,6 +218,14 @@ export const listToolsSpaChecks = [
     tests: t(TOOLS),
   },
 
+  {
+    name: "tools: why a menu item is off is left out (the reason was only a tooltip, which a keyboard never sees)",
+    file: "spa/src/components/crud/RowMenu.tsx",
+    from: "{item.hint ? (",
+    to: "{false ? (",
+    tests: t("settings.test.tsx"),
+  },
+
   // ---------------------------------------------- Kolom
   {
     name: "tools: the first column, the one that names the row, is offered to be hidden",

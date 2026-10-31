@@ -131,15 +131,22 @@ export const sistemSpaChecks = [
   {
     name: "sistem: an admin may deactivate themselves from the list",
     file: "spa/src/pages/settings/SettingsPage.tsx",
-    from: ") : row.id === me.id ? (",
-    to: ") : false ? (",
+    from: "} else if (row.id === me.id) {",
+    to: "} else if (false) {",
     tests: t(SETTINGS),
   },
   {
-    name: "sistem: resending an invitation can be sent twice by a double click",
+    name: "sistem: a second invitation can be sent while one is on its way",
     file: "spa/src/pages/settings/SettingsPage.tsx",
-    from: "if (resendLock.current) return;",
-    to: "",
+    from: "disabled: resending !== null,",
+    to: "disabled: resending === row.id,",
+    tests: t(SETTINGS),
+  },
+  {
+    name: "sistem: the row's secondary actions are back in the row, in a line of buttons (no menu)",
+    file: "spa/src/pages/settings/SettingsPage.tsx",
+    from: "<RowMenu name={row.email} items={menuItems(row)} />",
+    to: "null",
     tests: t(SETTINGS),
   },
   {

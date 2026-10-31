@@ -1,4 +1,4 @@
-import { Edit, Plus, ShieldCheck, User } from "lucide-react";
+import { Edit, Mail, Plus, ShieldCheck, User, UserCheck, UserX } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -9,6 +9,7 @@ import { FilterBar } from "~/components/crud/FilterBar";
 import { Flash } from "~/components/crud/Flash";
 import { Pagination } from "~/components/crud/Pagination";
 import { StatusTag } from "~/components/crud/StatusTag";
+import { RowMenu, type RowMenuItem } from "~/components/crud/RowMenu";
 import { PageHeader } from "~/components/PageHeader";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
@@ -125,38 +126,41 @@ export function SettingsPage() {
     },
   ];
 
+  // Edit is the one thing a row is for; the rest is in its "..." menu, as on the blog's list (RowMenu): sending the invitation
+  // again, deactivating, activating again. Each of them still asks or acts exactly as before.
+  const menuItems = (row: AdminItem): RowMenuItem[] => {
+    const items: RowMenuItem[] = [];
+    if (row.status === "invited") {
+      // One at a time: while an invitation is on its way, none can be chosen (the label says which one is).
+      items.push({ key: "resend", label: resending === row.id ? "Mengirim..." : "Kirim ulang undangan", icon: Mail, disabled: resending !== null, onSelect: () => void resend(row) });
+    }
+    if (row.status === "deactivated") {
+      items.push({ key: "reactivate", label: "Aktifkan kembali", icon: UserCheck, onSelect: () => reactivate.ask(row) });
+    } else if (row.id === me.id) {
+      // Nobody deactivates themselves: the same answer the Worker gives, said before the question.
+      items.push({ key: "deactivate", label: "Nonaktifkan", icon: UserX, destructive: true, disabled: true, hint: "Tidak dapat menonaktifkan akun sendiri", onSelect: () => undefined });
+    } else {
+      items.push({ key: "deactivate", label: "Nonaktifkan", icon: UserX, destructive: true, onSelect: () => deactivate.ask(row) });
+    }
+    return items;
+  };
+
   const actions = (row: AdminItem) =>
     canWrite ? (
       <>
-        <Button href={`${ROUTE}/${encodeURIComponent(row.id)}/edit`} variant="ghost" size="sm" aria-label={`Edit ${row.email}`} className="text-primary-blue hover:text-primary-blue">
-          <Edit aria-hidden="true" /> Edit
+        <Button
+          href={`${ROUTE}/${encodeURIComponent(row.id)}/edit`}
+          variant="ghost"
+          size="sm"
+          aria-label={`Edit ${row.email}`}
+          title="Edit"
+          className="text-primary-blue hover:text-primary-blue md:max-xl:px-2.5"
+        >
+          <Edit aria-hidden="true" />
+          {/* Between a phone and a wide desktop the table is tight: the icon stands for the word (still its name, and its tooltip). */}
+          <span className="md:max-xl:sr-only">Edit</span>
         </Button>
-        {row.status === "invited" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void resend(row)}
-            disabled={resending === row.id}
-            aria-label={`Kirim ulang undangan ${row.email}`}
-            className="text-primary-blue hover:text-primary-blue"
-          >
-            {resending === row.id ? "Mengirim..." : "Kirim ulang undangan"}
-          </Button>
-        )}
-        {row.status === "deactivated" ? (
-          <Button variant="ghost" size="sm" onClick={() => reactivate.ask(row)} aria-label={`Aktifkan kembali ${row.email}`} aria-haspopup="dialog" className="text-primary-blue hover:text-primary-blue">
-            Aktifkan lagi
-          </Button>
-        ) : row.id === me.id ? (
-          // Nobody deactivates themselves: the same answer the Worker gives, said before the question.
-          <span title="Tidak dapat menonaktifkan akun sendiri" className="inline-flex min-h-10 cursor-not-allowed items-center px-3 text-sm font-medium text-gray-300 md:min-h-[34px]">
-            Nonaktifkan
-          </span>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={() => deactivate.ask(row)} aria-label={`Nonaktifkan ${row.email}`} aria-haspopup="dialog" className="text-red-700 hover:bg-danger-bg hover:text-red-800">
-            Nonaktifkan
-          </Button>
-        )}
+        <RowMenu name={row.email} items={menuItems(row)} />
       </>
     ) : (
       <Button href={`${ROUTE}/${encodeURIComponent(row.id)}/edit`} variant="ghost" size="sm" aria-label={`Lihat ${row.email}`} className="text-primary-blue hover:text-primary-blue">

@@ -31,6 +31,13 @@ function admin(overrides: Record<string, unknown> = {}) {
 const envelope = (items: unknown[], extra: { page?: number; pageSize?: number; total?: number } = {}) => ({ items, users: items, page: extra.page ?? 1, pageSize: extra.pageSize ?? 50, total: extra.total ?? items.length });
 const location = () => screen.getByTestId("location").textContent;
 
+/** Opens a row's "..." menu (its button is named for the admin) and returns the panel. */
+async function openMenu(user: ReturnType<typeof userEvent.setup>, email: string) {
+  const trigger = screen.getByRole("button", { name: `Aksi lainnya untuk ${email}` });
+  await user.click(trigger);
+  return document.getElementById(trigger.getAttribute("aria-controls")!)!;
+}
+
 type Who = Parameters<typeof meBody>;
 
 async function openList(routes: Parameters<typeof stubApi>[0] = {}, path = "/settings", who: Who = ["super_admin", []]) {
@@ -98,7 +105,8 @@ describe("the list", () => {
     expect(text(3)).toContain("Nonaktif");
   });
 
-  test("the actions of a row follow its state: edit for all, resend only for an invitation, deactivate or reactivate, never deactivate yourself", async () => {
+  test("a row has Edit and a menu; the menu follows its state: resend only for an invitation, deactivate or reactivate, never deactivate yourself", async () => {
+    const user = userEvent.setup();
     await openList({
       [`GET ${LIST}`]: respond(
         envelope([
@@ -111,12 +119,25 @@ describe("the list", () => {
     });
     expect(screen.getByRole("link", { name: "Edit dewi@contoh.test" }).getAttribute("href")).toBe("/settings/u1/edit");
     expect(screen.getAllByRole("link", { name: /^Edit / })).toHaveLength(4);
-    expect(screen.getAllByRole("button", { name: /^Kirim ulang undangan/ }).map((button) => button.getAttribute("aria-label"))).toEqual(["Kirim ulang undangan baru@contoh.test"]);
-    expect(screen.getAllByRole("button", { name: /^Aktifkan kembali/ }).map((button) => button.getAttribute("aria-label"))).toEqual(["Aktifkan kembali sari@contoh.test"]);
-    expect(screen.getAllByRole("button", { name: /^Nonaktifkan / }).map((button) => button.getAttribute("aria-label"))).toEqual(["Nonaktifkan dewi@contoh.test", "Nonaktifkan baru@contoh.test"]);
-    // Your own row: said before the question, as the Worker would say it after.
-    expect(screen.queryByRole("button", { name: "Nonaktifkan tester@contoh.test" })).toBeNull();
-    expect(within(grid()).getAllByTitle("Tidak dapat menonaktifkan akun sendiri")).toHaveLength(1);
+    // As on the blog's list: nothing but Edit and the menu's button is in the row itself.
+    expect(screen.getAllByRole("button", { name: /^Aksi lainnya untuk / })).toHaveLength(4);
+    expect(screen.queryByRole("button", { name: /^(Kirim ulang undangan|Aktifkan kembali|Nonaktifkan)/ })).toBeNull();
+
+    const items = async (email: string) => {
+      const panel = await openMenu(user, email);
+      const names = within(panel).getAllByRole("button").map((button) => button.textContent);
+      await user.keyboard("{Escape}");
+      return names;
+    };
+    expect(await items("dewi@contoh.test")).toEqual(["Nonaktifkan"]);
+    expect(await items("baru@contoh.test")).toEqual(["Kirim ulang undangan", "Nonaktifkan"]);
+    expect(await items("sari@contoh.test")).toEqual(["Aktifkan kembali"]);
+
+    // Your own row: said before the question, as the Worker would say it after, in words that can be read.
+    const own = await openMenu(user, "tester@contoh.test");
+    const deactivate = within(own).getByRole("button", { name: /^Nonaktifkan/ }) as HTMLButtonElement;
+    expect(deactivate.disabled).toBe(true);
+    expect(deactivate.textContent).toContain("Tidak dapat menonaktifkan akun sendiri");
     // Nothing deletes an admin any more.
     expect(screen.queryByRole("button", { name: /^Hapus/ })).toBeNull();
   });
@@ -161,7 +182,7 @@ describe("the list", () => {
 describe("deactivate", () => {
   async function ask(user: ReturnType<typeof userEvent.setup>, routes: Parameters<typeof stubApi>[0] = {}) {
     const view = await openList(routes);
-    await user.click(screen.getByRole("button", { name: "Nonaktifkan dewi@contoh.test" }));
+    await user.click(within(await openMenu(user, "dewi@contoh.test")).getByRole("button", { name: "Nonaktifkan" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Nonaktifkan admin?" });
     return { ...view, dialog };
   }
@@ -251,7 +272,7 @@ describe("reactivate", () => {
   test("the question names the role they come back with; confirming sends the POST and says so", async () => {
     const user = userEvent.setup();
     const { api } = await openList({ [`GET ${LIST}`]: respond(envelope([admin({ status: "deactivated", role: "viewer", areas: [] })])), [`POST ${LIST}/u1/reactivate`]: respond({ user: admin() }) });
-    await user.click(screen.getByRole("button", { name: "Aktifkan kembali dewi@contoh.test" }));
+    await user.click(within(await openMenu(user, "dewi@contoh.test")).getByRole("button", { name: "Aktifkan kembali" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Aktifkan kembali admin?" });
     expect(dialog.textContent).toContain("bisa masuk lagi dengan peran Viewer");
     expect(dialog.textContent).toContain("Sesi yang lama tidak dipulihkan");
@@ -270,25 +291,42 @@ describe("resend an invitation", () => {
   const invited = admin({ id: "u3", email: "baru@contoh.test", status: "invited" });
   const open = (routes: Parameters<typeof stubApi>[0]) => openList({ [`GET ${LIST}`]: respond(envelope([invited])), ...routes });
 
-  test("one press sends it, once however often it is pressed, and says so", async () => {
+  test("choosing it sends it, once however often it is chosen, and says so", async () => {
+    const user = userEvent.setup();
     const gate = deferred<Response>();
     const { api } = await open({ [`POST ${LIST}/u3/resend-invite`]: () => gate.promise });
-    const button = screen.getByRole("button", { name: "Kirim ulang undangan baru@contoh.test" });
-    await act(async () => {
-      button.click();
-      button.click();
-    });
+    await user.click(within(await openMenu(user, "baru@contoh.test")).getByRole("button", { name: "Kirim ulang undangan" }));
     expect(api.count(`POST ${LIST}/u3/resend-invite`)).toBe(1);
-    expect(button.textContent).toBe("Mengirim...");
+    // While it is on its way the item says so and cannot be chosen again.
+    const again = within(await openMenu(user, "baru@contoh.test")).getByRole("button", { name: "Mengirim..." }) as HTMLButtonElement;
+    expect(again.disabled).toBe(true);
+    await user.click(again);
+    expect(api.count(`POST ${LIST}/u3/resend-invite`)).toBe(1);
+    await user.keyboard("{Escape}");
     await act(async () => gate.resolve(respond({ user: invited, email: { sent: true, kind: "invite" } })));
     expect((await screen.findByRole("status")).textContent).toContain("Undangan dikirim ulang ke baru@contoh.test.");
-    expect(button.textContent).toBe("Kirim ulang undangan");
+    expect(within(await openMenu(user, "baru@contoh.test")).getByRole("button", { name: "Kirim ulang undangan" })).toBeTruthy();
+  });
+
+  test("while one invitation is on its way no other can be sent: its item is off in every row's menu", async () => {
+    const user = userEvent.setup();
+    const gate = deferred<Response>();
+    const second = admin({ id: "u5", email: "lain@contoh.test", status: "invited" });
+    const { api } = await openList({ [`GET ${LIST}`]: respond(envelope([invited, second])), [`POST ${LIST}/u3/resend-invite`]: () => gate.promise });
+    await user.click(within(await openMenu(user, "baru@contoh.test")).getByRole("button", { name: "Kirim ulang undangan" }));
+    const other = within(await openMenu(user, "lain@contoh.test")).getByRole("button", { name: "Kirim ulang undangan" }) as HTMLButtonElement;
+    expect(other.disabled).toBe(true);
+    await user.click(other);
+    expect(api.count(`POST ${LIST}/u5/resend-invite`)).toBe(0);
+    await user.keyboard("{Escape}");
+    await act(async () => gate.resolve(respond({ user: invited, email: { sent: true, kind: "invite" } })));
+    await screen.findByRole("status");
   });
 
   test("when the email does not go out, the Worker's words are shown as an error, never a success", async () => {
     const user = userEvent.setup();
     await open({ [`POST ${LIST}/u3/resend-invite`]: respond({ error: "email_failed", message: "Email belum terkirim. Akun sudah dibuat; kirim ulang undangannya nanti." }, 502) });
-    await user.click(screen.getByRole("button", { name: "Kirim ulang undangan baru@contoh.test" }));
+    await user.click(within(await openMenu(user, "baru@contoh.test")).getByRole("button", { name: "Kirim ulang undangan" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Email belum terkirim.");
     expect(screen.queryByText(/Undangan dikirim ulang/)).toBeNull();
   });
@@ -296,7 +334,7 @@ describe("resend an invitation", () => {
   test("an invitation accepted meanwhile (409): the sentence, and the list is loaded again to show the new state", async () => {
     const user = userEvent.setup();
     const { api } = await open({ [`POST ${LIST}/u3/resend-invite`]: respond({ error: "not_pending_invite", message: "Undangan hanya bisa dikirim ulang untuk admin yang belum menerimanya." }, 409) });
-    await user.click(screen.getByRole("button", { name: "Kirim ulang undangan baru@contoh.test" }));
+    await user.click(within(await openMenu(user, "baru@contoh.test")).getByRole("button", { name: "Kirim ulang undangan" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Undangan hanya bisa dikirim ulang");
     await waitFor(() => expect(api.count(`GET ${LIST}`)).toBe(2));
   });
@@ -481,7 +519,8 @@ describe("the form: create", () => {
     await user.click(screen.getByRole("button", { name: "Buat Admin" }));
     await waitFor(() => expect(location()).toBe("/settings"));
     expect((await screen.findByRole("alert")).textContent).toContain("Email belum terkirim. Akun sudah dibuat");
-    expect(await screen.findByRole("button", { name: "Kirim ulang undangan guru@contoh.test" })).toBeTruthy();
+    const panel = await openMenu(user, "guru@contoh.test");
+    expect(within(panel).getByRole("button", { name: "Kirim ulang undangan" })).toBeTruthy();
   });
 
   test("an email service that is down (503) stays on the form, with its sentence", async () => {
