@@ -20,6 +20,8 @@ export interface RowMenuItem {
   /** Red: it cannot be undone. */
   destructive?: boolean;
   disabled?: boolean;
+  /** A line under the label, for why it is off ("Tidak dapat menonaktifkan akun sendiri"): text, not a tooltip a keyboard never sees. */
+  hint?: string;
 }
 
 const GAP = 4;
@@ -71,7 +73,7 @@ export function RowMenu({ name, items }: { name: string; items: readonly RowMenu
           ref={panel}
           id={menu.panelId}
           style={place ? { top: place.top, right: place.right } : { top: 0, right: 0, visibility: "hidden" }}
-          className="fixed z-50 min-w-44 rounded-xl border border-border bg-card p-1.5 text-left shadow-lg"
+          className="fixed z-50 min-w-44 max-w-64 rounded-xl border border-border bg-card p-1.5 text-left shadow-lg"
         >
           {items.map((item) => (
             <button
@@ -88,7 +90,14 @@ export function RowMenu({ name, items }: { name: string; items: readonly RowMenu
               )}
             >
               <item.icon aria-hidden="true" />
-              {item.label}
+              {item.hint ? (
+                <span className="min-w-0">
+                  <span className="block">{item.label}</span>
+                  <span className="block text-xs font-normal leading-snug text-gray-500">{item.hint}</span>
+                </span>
+              ) : (
+                item.label
+              )}
             </button>
           ))}
         </div>
