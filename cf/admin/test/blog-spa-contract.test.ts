@@ -6,10 +6,11 @@ import { longDateJakarta } from "../src/public/dates";
 import { api, setTransport } from "../spa/src/lib/api";
 import { parseListQuery, toApiQuery } from "../spa/src/lib/crud/query";
 import { ifMatch } from "../spa/src/lib/crud/etag";
-import { API_PATH, type BlogItem, type BlogValues, FIELD_TAB, LIST_SPEC, PREVIEW_PATH, toBody, toValues } from "../spa/src/pages/blog/form";
-import { BLOG_CATEGORIES, BODY_LIMIT_LABEL, cleanMetaDescription as spaClean, defaultAuthor, formatIsoDay, hasMarkup as spaHasMarkup, LIMITS, META_DESCRIPTION_IDEAL as SPA_IDEAL } from "../spa/src/pages/blog/rules";
+import { displayName } from "../spa/src/lib/me";
+import { API_PATH, AUTHORS_PATH, type BlogItem, type BlogValues, FIELD_TAB, LIST_SPEC, PREVIEW_PATH, toBody, toValues } from "../spa/src/pages/blog/form";
+import { BLOG_CATEGORIES, BODY_LIMIT_LABEL, cleanMetaDescription as spaClean, formatIsoDay, hasMarkup as spaHasMarkup, LIMITS, META_DESCRIPTION_IDEAL as SPA_IDEAL } from "../spa/src/pages/blog/rules";
 import { META_CASES } from "../spa/test/blog-meta-cases";
-import { call, signedInCookie, uniqueEmail } from "./helpers";
+import { call, createVerifiedUser, signedInCookie, uniqueEmail } from "./helpers";
 
 // What the SPA's blog screens send and expect, checked against the real Worker in workerd (the SPA tests stub the API,
 // so these are what keep the two sides honest): the limits and categories the form shows, the date it writes, the
@@ -66,8 +67,17 @@ describe("the numbers and lists the form shows are the Worker's", () => {
     }
   });
 
-  test("a new article's author is made from the email like the legacy page did", () => {
-    expect(defaultAuthor("nama.depan@contoh.test")).toBe("nama depan");
+  test("the author a new article starts with (the person's display name) is one the Worker lists, with a name and without one", async () => {
+    const named = uniqueEmail("editor");
+    const cookie = await signedInCookie(named, "editor", ["konten"]);
+    over(cookie);
+    const bare = uniqueEmail("tanpa-nama");
+    await createVerifiedUser(bare, "editor", ["konten"]);
+    await env.DB.prepare("UPDATE users SET name = '' WHERE email = ?").bind(bare).run();
+    const listed = await api<{ authors: string[] }>(AUTHORS_PATH);
+    if (!listed.ok) throw new Error(JSON.stringify(listed));
+    expect(listed.data.authors).toContain(displayName({ name: "Tester", email: named })); // an account with a name
+    expect(listed.data.authors).toContain(displayName({ name: "", email: bare })); // one without: the part of its email before the "@"
   });
 });
 
@@ -92,11 +102,11 @@ describe("what the form sends is what the Worker takes", () => {
   test("a create, then the item the Worker answers opened in the form and saved unchanged, then published and saved again", async () => {
     const cookie = await signedInCookie(uniqueEmail("editor"), "editor", ["konten"]);
     over(cookie);
-    const typed = { ...toValues(null, "dzul@contoh.test"), title: "Cara Belajar yang Efektif", metaDescription: "  Cara belajar yang efektif   untuk siswa.  ", excerpt: "Ringkasan artikel tentang cara belajar yang efektif.", contentMarkdown: "## Mulai\n\nBuat jadwal belajar harian dan patuhi dengan **disiplin** setiap hari." };
+    const typed = { ...toValues(null, "Tester"), title: "Cara Belajar yang Efektif", metaDescription: "  Cara belajar yang efektif   untuk siswa.  ", excerpt: "Ringkasan artikel tentang cara belajar yang efektif.", contentMarkdown: "## Mulai\n\nBuat jadwal belajar harian dan patuhi dengan **disiplin** setiap hari." };
     const created = await api<{ item: BlogItem }>(API_PATH, { method: "POST", json: toBody(typed) });
     if (!created.ok) throw new Error(JSON.stringify(created));
     const item = created.data.item;
-    expect(item).toMatchObject({ slug: "cara-belajar-yang-efektif", status: "draft", author: "dzul", category: "Cerita", date: null, image: null, metaDescription: "Cara belajar yang efektif untuk siswa." });
+    expect(item).toMatchObject({ slug: "cara-belajar-yang-efektif", status: "draft", author: "Tester", category: "Cerita", date: null, image: null, metaDescription: "Cara belajar yang efektif untuk siswa." });
 
     // What the edit page does: GET, fill the form, press Simpan with nothing changed.
     const opened = await api<{ item: BlogItem }>(`${API_PATH}/${item.id}`);

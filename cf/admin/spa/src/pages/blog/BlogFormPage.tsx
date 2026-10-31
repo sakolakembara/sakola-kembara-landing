@@ -23,7 +23,9 @@ import { useFormValues } from "~/lib/crud/useFormValues";
 import { useItem } from "~/lib/crud/useItem";
 import { useMutation } from "~/lib/crud/useMutation";
 import { usePageTitle } from "~/lib/hooks";
+import { displayName } from "~/lib/me";
 import { useMe } from "~/lib/session";
+import { AuthorField } from "./AuthorField";
 import { BodyEditor, type BodyMode } from "./BodyEditor";
 import { MetaDescriptionField } from "./MetaDescriptionField";
 import { SeoTitleField } from "./SeoTitleField";
@@ -83,12 +85,13 @@ export function BlogFormPage() {
   }
 
   // Keyed by the version: after "Muat ulang" or a save the form starts again from the fresh values.
-  return <BlogForm key={item.item?.updatedAt ?? "new"} item={item.item} email={me.email} canWrite={canWrite} notice={notice} onSaved={item.replace} onReload={item.refetch} />;
+  return <BlogForm key={item.item?.updatedAt ?? "new"} item={item.item} author={displayName(me)} canWrite={canWrite} notice={notice} onSaved={item.replace} onReload={item.refetch} />;
 }
 
 interface FormProps {
   item: BlogItem | null;
-  email: string;
+  /** What a new article is written under: the signed-in person's name. */
+  author: string;
   canWrite: boolean;
   notice: FlashControl;
   onSaved: (next: BlogItem) => void;
@@ -101,8 +104,8 @@ const FLASH: Record<Action, string> = {
   unpublish: "Artikel dikembalikan menjadi draf.",
 };
 
-function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProps) {
-  const form = useFormValues<BlogValues>(toValues(item, email));
+function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormProps) {
+  const form = useFormValues<BlogValues>(toValues(item, author));
   const navigate = useNavigate();
   const [tab, setTab] = useState<EditorTab>("konten");
   const [bodyMode, setBodyMode] = useState<BodyMode>("edit");
@@ -304,9 +307,7 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
                   <Input type="date" required={published} {...form.field("date")} />
                 </Field>
               </div>
-              <Field label="Penulis" id="author" required error={fields.author}>
-                <Input type="text" required {...form.field("author")} />
-              </Field>
+              <AuthorField id="author" value={form.values.author} onChange={(name) => form.set("author", name)} error={fields.author} stored={item?.author ?? ""} readOnly={!canWrite} />
               <SwitchField label="Featured" description="Tampilkan sebagai artikel unggulan di blog index." error={fields.featured} {...form.checkbox("featured")} />
             </CardContent>
           </Card>

@@ -28,6 +28,11 @@ const SLASH_MENU = "spa/src/pages/blog/editor/SlashMenu.tsx";
 const SLASH_ITEMS = "spa/src/pages/blog/editor/slashItems.ts";
 const BUBBLE = "spa/src/pages/blog/editor/BubbleToolbar.tsx";
 const LINKS = "spa/src/pages/blog/editor/links.ts";
+const COMBOBOX_FILE = "spa/src/components/ui/combobox.tsx";
+const AUTHOR_FILE = "spa/src/pages/blog/AuthorField.tsx";
+const COMBOBOX = "combobox.test.tsx";
+const AUTHOR = "blog-author.test.tsx";
+const MOCK_BLOG = "spa/src/mock/resources/blog.ts";
 
 export const editorSpaChecks = [
   // ---------------------------------------------- the one bar
@@ -390,5 +395,91 @@ export const editorSpaChecks = [
     from: '`https://${text}`',
     to: "text",
     tests: t(EDITOR_TESTS),
+  },
+
+  // ---------------------------------------------- the author box (Penulis)
+  {
+    name: "editor: author: what is typed in the box that is no option is kept when the box is left",
+    file: COMBOBOX_FILE,
+    from: "          if (same) choose(same);\n          else close();",
+    to: "          if (same) choose(same);\n          else if (query !== null) {\n            onChange(query);\n            close();\n          } else close();",
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: Enter in the box reaches the form and saves it",
+    file: COMBOBOX_FILE,
+    from: '    } else if (event.key === "Enter") {\n      event.preventDefault();\n      if (current) choose(current);',
+    to: '    } else if (event.key === "Enter") {\n      if (current) choose(current);',
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: the arrow keys do not move through the list",
+    file: COMBOBOX_FILE,
+    from: "setActive((now) => (now + (event.key === \"ArrowDown\" ? 1 : -1) + visible.length) % visible.length)",
+    to: "setActive((now) => now)",
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: the box says the list is open when it is closed",
+    file: COMBOBOX_FILE,
+    from: "aria-expanded={open}",
+    to: "aria-expanded={true}",
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: the option under the arrows is not announced",
+    file: COMBOBOX_FILE,
+    from: "aria-activedescendant={current ? optionId(current) : undefined}",
+    to: "aria-activedescendant={undefined}",
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: typing does not narrow the list",
+    file: COMBOBOX_FILE,
+    from: "options.filter((option) => option.label.toLowerCase().includes(wanted))",
+    to: "options",
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: Escape leaves the typed text in the box",
+    file: COMBOBOX_FILE,
+    from: '    } else if (event.key === "Escape" && open) {\n      event.preventDefault();\n      event.stopPropagation();\n      close();',
+    to: '    } else if (event.key === "Escape" && open) {\n      event.preventDefault();\n      event.stopPropagation();\n      setOpen(false);',
+    tests: t(COMBOBOX),
+  },
+  {
+    name: "editor: author: the old author of an article is not offered, so it cannot be put back",
+    file: AUTHOR_FILE,
+    from: '    if (stored !== "" && !names.includes(stored)) list.unshift({ value: stored, label: stored, hint: "nama lama" });',
+    to: "    void stored;",
+    tests: t(AUTHOR),
+  },
+  {
+    name: "editor: author: a list that cannot be loaded blocks the field",
+    file: AUTHOR_FILE,
+    from: "{failed ? <Input",
+    to: "{false ? <Input",
+    tests: t(AUTHOR),
+  },
+  {
+    name: "editor: author: someone who cannot write asks for the list (only a writer may)",
+    file: AUTHOR_FILE,
+    from: "  if (readOnly) {",
+    to: "  if (false) {",
+    tests: t(AUTHOR),
+  },
+  {
+    name: "editor: author: a new article starts under the email, not the person's name",
+    file: "spa/src/pages/blog/BlogFormPage.tsx",
+    from: "author={displayName(me)}",
+    to: "author={me.email}",
+    tests: t(BLOG, AUTHOR),
+  },
+  {
+    name: "editor: author: the mock saves under any name, so the screen is never seen refused",
+    file: MOCK_BLOG,
+    from: '    if (!MOCK_AUTHORS.includes(parsed.values.author!)) return mockError(400, "invalid", "Periksa kembali isian formulir.", { fields: { author: AUTHOR_NOT_REGISTERED } });\n',
+    to: "",
+    tests: t("blog-mock.test.ts"),
   },
 ];

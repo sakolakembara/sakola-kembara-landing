@@ -29,7 +29,8 @@ function form(overrides: Record<string, unknown> = {}) {
     category: "Tips",
     excerpt: "Ringkasan artikel tentang cara belajar yang efektif untuk siswa.",
     contentMarkdown: BODY,
-    author: "Dzul",
+    // The name every account made by these tests has (`signUp`): an article is written under an account that can write.
+    author: "Tester",
     featured: false,
     ...overrides,
   };
@@ -1005,7 +1006,7 @@ describe("blog: publish and unpublish", () => {
     const live = await internalFetch(`/api/public/blog/${item.slug}`);
     expect(live.status).toBe(200);
     const body = (await live.json()) as { article: { slug: string; contentHtml: string; dateISO: string; author: string; contentMarkdown: string } };
-    expect(body.article).toMatchObject({ slug: item.slug, contentHtml: renderArticle(BODY).html, dateISO: isoDayJakarta(before), author: "Dzul", contentMarkdown: BODY });
+    expect(body.article).toMatchObject({ slug: item.slug, contentHtml: renderArticle(BODY).html, dateISO: isoDayJakarta(before), author: "Tester", contentMarkdown: BODY });
     const index = (await (await internalFetch("/api/public/blog")).json()) as { featured: { slug: string } };
     expect(index.featured.slug).toBe(item.slug);
   });
@@ -1460,5 +1461,110 @@ describe("blog: query plans", () => {
   test("the list sorts a table that stays small (about 80 articles, a few hundred in years): a scan is the documented choice, no index per sort", async () => {
     // docs/cloudflare/admin-blog.md, "D1 budget": rows read per list view are twice the table, far inside the free daily budget.
     expect(await plan("SELECT id, slug, title FROM blog_posts ORDER BY updated_at DESC, id ASC LIMIT 20")).toMatch(/SCAN blog_posts/);
+  });
+});
+
+// -------------------------------------------------------------------------------- the author (SAKEM-116)
+
+describe("blog: the author is an account that can write", () => {
+  const AUTHORS = `${LIST}/authors`;
+  const NOT_REGISTERED = { author: "Penulis harus akun yang terdaftar di admin" };
+
+  /** An account made as an admin screen would, named as an article is written under. */
+  async function account(label: string, role: "student" | "viewer" | "editor" | "super_admin", areas: ("konten" | "komunikasi")[], name: string) {
+    const email = uniqueEmail(label);
+    const id = await createVerifiedUser(email, role, areas);
+    await env.DB.prepare("UPDATE users SET name = ? WHERE id = ?").bind(name, id).run();
+    return { email, id };
+  }
+
+  async function authorsFor(cookie: string): Promise<string[]> {
+    const res = await call(AUTHORS, { cookie });
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { authors: string[] }).authors;
+  }
+
+  test("the list: every super_admin and every editor granted konten, once each and in order; nobody who cannot write, nobody deactivated", async () => {
+    await account("super", "super_admin", [], "Ana Super");
+    await account("konten1", "editor", ["konten"], "Budi Konten");
+    await account("konten2", "editor", ["konten"], "Budi Konten"); // the same name twice is one name
+    await account("komunikasi", "editor", ["komunikasi"], "Cici Komunikasi"); // an editor of another area cannot write articles
+    await account("viewer", "viewer", [], "Dedi Pembaca");
+    await account("student", "student", [], "Eko Siswa");
+    const gone = await account("gone", "editor", ["konten"], "Fani Dinonaktifkan");
+    await env.DB.prepare("UPDATE users SET deactivated_at = ? WHERE id = ?").bind(Date.now(), gone.id).run();
+    const nameless = await account("nameless", "editor", ["konten"], "   "); // no name: the part of the email before the "@"
+    const cookie = await editor(); // signed in, named "Tester"
+
+    const expected = ["Ana Super", "Budi Konten", "Tester", nameless.email.split("@")[0]!].sort();
+    expect(await authorsFor(cookie)).toEqual(expected);
+  });
+
+  test("who may ask: a super_admin and an editor of konten; a viewer, an editor of another area, a student and nobody are refused", async () => {
+    expect((await call(AUTHORS)).status).toBe(401);
+    for (const [label, role, areas, status] of [
+      ["student", "student", [], 403],
+      ["viewer", "viewer", [], 403],
+      ["komunikasi", "editor", ["komunikasi"], 403],
+      ["konten", "editor", ["konten"], 200],
+      ["super", "super_admin", [], 200],
+    ] as const) {
+      const cookie = await signedInCookie(uniqueEmail(label), role, areas);
+      expect((await call(AUTHORS, { cookie })).status, label).toBe(status);
+    }
+  });
+
+  test("a new article is written under one of them: any other name is refused on the field, and nothing is written", async () => {
+    const cookie = await editor();
+    await account("budi", "editor", ["konten"], "Budi Konten");
+    const refused = await post(cookie, { author: "Orang Asing" });
+    expect(refused.res.status).toBe(400);
+    expect(await fieldsOf(refused.res)).toEqual(NOT_REGISTERED);
+    expect(await count("blog_posts")).toBe(0);
+    expect(await count("audit_log")).toBe(0);
+    // A name is compared as written (trimmed by the schema), and a name of an account is taken, also one that is not the signed-in person's.
+    expect((await post(cookie, { author: "budi konten" })).res.status).toBe(400);
+    const accepted = await post(cookie, { author: "  Budi Konten  " });
+    expect(accepted.res.status).toBe(201);
+    expect(accepted.body.item.author).toBe("Budi Konten");
+  });
+
+  test("a deactivated account, a viewer and an editor of another area are not authors either", async () => {
+    const cookie = await editor();
+    await account("viewer", "viewer", [], "Dedi Pembaca");
+    await account("komunikasi", "editor", ["komunikasi"], "Cici Komunikasi");
+    const gone = await account("gone", "editor", ["konten"], "Fani Dinonaktifkan");
+    await env.DB.prepare("UPDATE users SET deactivated_at = ? WHERE id = ?").bind(Date.now(), gone.id).run();
+    for (const author of ["Dedi Pembaca", "Cici Komunikasi", "Fani Dinonaktifkan"]) expect(await fieldsOf((await post(cookie, { author })).res), author).toEqual(NOT_REGISTERED);
+  });
+
+  test("an update keeps the author the article has, whoever it is (the legacy ones have no account), and refuses any other name that is not one", async () => {
+    const cookie = await editor();
+    const legacy = await seed({ slug: "tulisan-lama", author: "Tim Sakola Kembara", status: "draft", published_at: null });
+    const saved = await put(cookie, legacy.id, { author: "Tim Sakola Kembara" });
+    expect(saved.status, await saved.clone().text()).toBe(200);
+    const again = await put(cookie, legacy.id, { author: "  Tim Sakola Kembara  ", title: "Judul yang diubah" });
+    expect(again.status).toBe(200);
+    const refused = await put(cookie, legacy.id, { author: "Orang Asing" });
+    expect(refused.status).toBe(400);
+    expect(await fieldsOf(refused)).toEqual(NOT_REGISTERED);
+    expect((await row(legacy.id)).author).toBe("Tim Sakola Kembara"); // nothing was written
+    // And to one that is: the article is now written under it, and the old name is no longer free to come back.
+    expect((await put(cookie, legacy.id, { author: "Tester" })).status).toBe(200);
+    expect((await row(legacy.id)).author).toBe("Tester");
+    expect((await put(cookie, legacy.id, { author: "Tim Sakola Kembara" })).status).toBe(400);
+  });
+
+  test("it costs one read of the accounts on a create, and none on an update that leaves the author as it is", async () => {
+    const cookie = await editor();
+    const create = spyOnD1(env.DB);
+    const res = await call(LIST, { method: "POST", cookie, json: form(), env: { DB: create.db } });
+    expect(res.status).toBe(201);
+    const item = ((await res.json()) as { item: Item }).item;
+    const update = spyOnD1(env.DB);
+    expect((await call(`${LIST}/${item.id}`, { method: "PUT", cookie, headers: await ifMatch(item.id), json: form({ title: "Judul lain" }), env: { DB: update.db } })).status).toBe(200);
+    // Both read the signed-in user (the guard); only the create reads the list of authors besides.
+    expect(update.touching("users")).toHaveLength(1);
+    expect(create.touching("users")).toHaveLength(2);
   });
 });
