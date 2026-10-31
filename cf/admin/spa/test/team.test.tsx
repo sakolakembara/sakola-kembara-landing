@@ -341,7 +341,7 @@ describe("the form: one bar and two tabs (SAKEM-119)", () => {
   test("the breadcrumb ends with the page, Batal is an action, there is no back button, and Profil is open first with the photo in the side column", async () => {
     await openForm(["editor", ["konten"]], "/team/new");
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(within(crumbs).getByText("Anggota baru")).toBeTruthy();
+    expect(await within(crumbs).findByText("Anggota baru")).toBeTruthy();
     expect(within(crumbs).getByRole("link", { name: "Tim" }).getAttribute("href")).toBe("/team");
     expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/team");
     expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
@@ -356,7 +356,7 @@ describe("the form: one bar and two tabs (SAKEM-119)", () => {
   test("a saved member: the breadcrumb ends with the name", async () => {
     await openForm(["editor", ["konten"]], "/team/t1/edit", { [`GET ${LIST}/t1`]: respond({ item: member({ id: "t1", name: "Ahmad Fadillah" }) }) });
     await waitFor(() => expect((screen.getByLabelText(/Nama Lengkap/) as HTMLInputElement).value).toBe("Ahmad Fadillah"));
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Ahmad Fadillah")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" })).findByText("Ahmad Fadillah")).toBeTruthy();
   });
 
   test("the identity boxes are not `required` for the browser: with Riwayat open, an empty name is refused by the Worker and the page goes back to Profil, not silently by the browser", async () => {
