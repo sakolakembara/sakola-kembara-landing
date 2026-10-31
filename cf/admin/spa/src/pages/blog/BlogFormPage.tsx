@@ -1,5 +1,5 @@
 import { Save, Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ChangeEventHandler, useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
@@ -51,6 +51,9 @@ export function BlogFormPage() {
   // (or one that arrived with the navigation) has to survive that.
   const notice = useFlash();
   usePageTitle(id ? "Edit Artikel" : "Tulis Artikel");
+  // The editor is a file of its own (BodyEditor loads it when it is first shown): start fetching it now, while the article
+  // is being fetched, so the page does not wait for it afterwards. A failure is BodyEditor's to handle when it asks.
+  useEffect(() => void import("./editor/RichEditor").catch(() => undefined), []);
 
   if (id && (item.status === "loading" || item.status === "idle") && !item.item) {
     return (
@@ -228,23 +231,25 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
     >
       <div className={tabbed ? undefined : "space-y-8"}>
         <div role="tabpanel" id="panel-konten" aria-labelledby={tabbed ? "tab-konten" : undefined} aria-label={tabbed ? undefined : "Konten"} hidden={!showKonten} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <section className="min-w-0">
-            <h2 className="text-base font-semibold leading-snug tracking-tight text-foreground">
-              Isi Artikel
-            </h2>
-            <p className="mb-3 mt-1 text-[13px] leading-relaxed text-muted-foreground">Tulis dalam Markdown (GFM: tabel, checklist, kode). Gunakan tombol Sisipkan Gambar untuk menambah gambar.</p>
-            <BodyEditor id="contentMarkdown" value={form.values.contentMarkdown} onChange={(next) => form.set("contentMarkdown", next)} mode={bodyMode} onModeChange={setBodyMode} error={fields.contentMarkdown} readOnly={!canWrite} />
+          <section aria-label="Tulis artikel" className="min-w-0">
+            <BodyEditor
+              id="contentMarkdown"
+              header={<TitleField field={form.field("title")} error={fields.title} />}
+              value={form.values.contentMarkdown}
+              onChange={(next) => form.set("contentMarkdown", next)}
+              mode={bodyMode}
+              onModeChange={setBodyMode}
+              error={fields.contentMarkdown}
+              readOnly={!canWrite}
+            />
           </section>
 
           <Card className="lg:sticky lg:top-[68px]">
             <CardHeader>
               <CardTitle>Informasi Dasar</CardTitle>
-              <CardDescription>Judul dan ringkasan yang muncul di list, hasil pencarian, dan SEO.</CardDescription>
+              <CardDescription>Alamat dan ringkasan artikel di list, hasil pencarian, dan SEO.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Field label="Judul" id="title" required error={fields.title}>
-                <Input type="text" required {...form.field("title")} placeholder="Contoh: Cerita Lulusan Sakola Kembara di ITB" />
-              </Field>
               <div>
                 <Field
                   label="Slug"
@@ -341,6 +346,37 @@ function BlogForm({ item, email, canWrite, notice, onSaved, onReload }: FormProp
         </div>
       </div>
     </FormShell>
+  );
+}
+
+/**
+ * The title, written on the page like the text under it (Medium's way): large, with no box, and the first line of the
+ * page. Enter does not save the form, as it would in any text box of a form: it goes to the text.
+ */
+function TitleField({ field, error }: { field: { id: string; name: string; value: string; onChange: ChangeEventHandler<HTMLInputElement> }; error?: string }) {
+  return (
+    <div className="mb-11">
+      <input
+        type="text"
+        required
+        aria-label="Judul"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${field.id}-error` : undefined}
+        placeholder="Judul artikel"
+        {...field}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          document.getElementById("contentMarkdown")?.focus();
+        }}
+        className="w-full border-b border-transparent bg-transparent pb-1 text-[28px] font-bold leading-tight tracking-tight text-primary-blue-dark transition-colors placeholder:text-gray-300 focus:border-gray-200 focus:outline-none disabled:cursor-not-allowed md:text-[40px]"
+      />
+      {error && (
+        <p id={`${field.id}-error`} className="mt-2 text-[13px] text-danger-fg">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

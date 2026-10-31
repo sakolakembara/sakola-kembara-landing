@@ -75,19 +75,11 @@ export function defaultAuthor(email: string | null | undefined): string {
   return local ? local : "Sakola Kembara";
 }
 
-/** `text` with `insertion` put in place of the selection `[start, end)`, and where the cursor goes after it. */
-export function insertAtCursor(text: string, start: number, end: number, insertion: string): { value: string; cursor: number } {
-  const from = Math.max(0, Math.min(start, text.length));
-  const to = Math.max(from, Math.min(end, text.length));
-  return { value: text.slice(0, from) + insertion + text.slice(to), cursor: from + insertion.length };
-}
-
-/** The markdown a "Sisipkan Gambar" writes: on its own lines, the alt text made from the file name (the legacy rule). */
-export function imageMarkdown(fileName: string, path: string): string {
-  const alt = fileName
+/** The alt text of a picture that has only a file name: the name without its extension, dashes and underscores as spaces (the legacy rule). */
+export function altFromFileName(fileName: string): string {
+  return fileName
     .replace(/\.[^.]+$/, "")
     .replace(/[-_]/g, " ")
     .replace(/[\[\]\r\n]/g, " ")
     .trim();
-  return `\n![${alt}](${path})\n`;
 }

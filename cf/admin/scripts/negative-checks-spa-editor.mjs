@@ -9,6 +9,9 @@ const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
 const FRAME = "editor-frame.test.tsx";
 const BLOG = "blog.test.tsx";
+const EDITOR_TESTS = "blog-editor.test.tsx";
+const ROUND_TRIP = "blog-editor-roundtrip.test.ts";
+const FALLBACK = "blog-editor-fallback.test.tsx";
 
 const BREADCRUMB = "spa/src/components/Breadcrumb.tsx";
 const SHELL = "spa/src/components/Shell.tsx";
@@ -16,6 +19,15 @@ const PAGE_BAR = "spa/src/components/crud/PageBar.tsx";
 const PAGE_TABS = "spa/src/components/crud/PageTabs.tsx";
 const BLOG_FORM = "spa/src/pages/blog/BlogFormPage.tsx";
 const SWITCH = "spa/src/components/ui/switch.tsx";
+const BODY = "spa/src/pages/blog/BodyEditor.tsx";
+const RICH = "spa/src/pages/blog/editor/RichEditor.tsx";
+const EXTENSIONS = "spa/src/pages/blog/editor/extensions.ts";
+const SERIALIZE = "spa/src/pages/blog/editor/serialize.ts";
+const SLASH = "spa/src/pages/blog/editor/SlashCommand.ts";
+const SLASH_MENU = "spa/src/pages/blog/editor/SlashMenu.tsx";
+const SLASH_ITEMS = "spa/src/pages/blog/editor/slashItems.ts";
+const BUBBLE = "spa/src/pages/blog/editor/BubbleToolbar.tsx";
+const LINKS = "spa/src/pages/blog/editor/links.ts";
 
 export const editorSpaChecks = [
   // ---------------------------------------------- the one bar
@@ -141,5 +153,242 @@ export const editorSpaChecks = [
     from: "aria-invalid={error ? true : undefined}",
     to: "aria-invalid={undefined}",
     tests: t(FRAME),
+  },
+
+  // ---------------------------------------------- the text editor (TipTap)
+  {
+    name: "editor: the text is saved with the gaps the editor keeps (an empty line becomes &nbsp;)",
+    file: SERIALIZE,
+    from: '.filter((node: JSONContent) => !(node.type === "paragraph" && (node.content ?? []).length === 0))',
+    to: ".filter(() => true)",
+    tests: t(EDITOR_TESTS, ROUND_TRIP),
+  },
+  {
+    name: "editor: what the editor reports is not the Markdown (the form never learns of a change)",
+    file: RICH,
+    from: "onUpdate: ({ editor: current }) => onChangeRef.current(articleMarkdown(current)),",
+    to: "onUpdate: () => undefined,",
+    tests: t(BLOG, EDITOR_TESTS),
+  },
+  {
+    name: "editor: a role that cannot write can change the text",
+    file: RICH,
+    from: "editable: !readOnly,",
+    to: "editable: true,",
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: the screen reader is not told the text is wrong when it is refused",
+    file: RICH,
+    from: 'flag("aria-invalid", invalid);',
+    to: "void invalid;",
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: a picture pasted from the clipboard is left to the browser",
+    file: RICH,
+    from: 'if (files.length === 0 || data?.getData("text/plain") || data?.getData("text/html")) return false;',
+    to: "if (files.length >= 0) return false;",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a dropped picture goes where the cursor is, not where it was dropped",
+    file: RICH,
+    from: "else editor.chain().focus().insertContentAt(position, picture).run();",
+    to: "else editor.chain().focus().insertContent(picture).run();",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a file that is not a picture, dropped on the page, is left to the browser (which opens it and leaves the page and the unsaved text)",
+    file: RICH,
+    from: "const files = moved ? [] : Array.from(event.dataTransfer?.files ?? []);",
+    to: "const files = moved ? [] : picturesIn(event.dataTransfer?.files);",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a clipboard with words and a picture is taken for a picture, and the words are lost",
+    file: RICH,
+    from: 'if (files.length === 0 || data?.getData("text/plain") || data?.getData("text/html")) return false;',
+    to: "if (files.length === 0) return false;",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a picture drawn before the files domain was known stays pointed at this host",
+    file: RICH,
+    from: '      for (const image of editor.view.dom.querySelectorAll<HTMLImageElement>(\'img[src^="/uploads/"]\')) image.setAttribute("src", uploadUrl(image.getAttribute("src") ?? "", base));',
+    to: "      void base;",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: pictures are drawn from the page's own host, not the files domain",
+    file: RICH,
+    from: "displaySrc: (src) => uploadUrl(src, baseRef.current),",
+    to: "displaySrc: (src) => src,",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a picture copied out of the page keeps the address it was drawn from (the text loses its path)",
+    file: RICH,
+    from: "return origin !== \"\" && src.startsWith(`${origin}/uploads/`) ? src.slice(origin.length) : src;",
+    to: "return src;",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the preview shows the text the editor started from, not the text now",
+    file: BODY,
+    from: "  if (previewing) seed.current = value;",
+    to: "  if (previewing) seed.current = seed.current;",
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: if the editor cannot be loaded nothing takes its place",
+    file: BODY,
+    from: "<EditorBoundary fallback={<PlainBody",
+    to: "<EditorBoundary fallback={null} data-was={<PlainBody",
+    tests: t(FALLBACK),
+  },
+  {
+    name: "editor: Enter in the title saves the form",
+    file: "spa/src/pages/blog/BlogFormPage.tsx",
+    from: "          event.preventDefault();\n          document.getElementById(\"contentMarkdown\")?.focus();",
+    to: "          document.getElementById(\"contentMarkdown\")?.focus();",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the editor accepts the underline Markdown cannot say",
+    file: EXTENSIONS,
+    from: "      underline: false,",
+    to: "      underline: {},",
+    tests: t(EDITOR_TESTS, ROUND_TRIP),
+  },
+  {
+    name: "editor: only the first heading levels are read (a # or ##### heading becomes text)",
+    file: EXTENSIONS,
+    from: "heading: { levels: [1, 2, 3, 4, 5, 6] },",
+    to: "heading: { levels: [2, 3] },",
+    tests: t(ROUND_TRIP),
+  },
+  {
+    name: "editor: a table is not in the editor, so a table of an article is flattened",
+    file: EXTENSIONS,
+    from: "    TableKit.configure({ table: { resizable: false } }),",
+    to: "",
+    tests: t(ROUND_TRIP, EDITOR_TESTS),
+  },
+
+  // ---------------------------------------------- the "/" menu
+  {
+    name: "editor: the '/' menu opens in code, where a '/' is a '/'",
+    file: SLASH,
+    from: 'allow: ({ editor }) => !editor.isActive("codeBlock") && !editor.isActive("code"),',
+    to: "allow: () => true,",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: an address is a command (the '/' after 'https:' opens the menu)",
+    file: SLASH,
+    from: 'allowedPrefixes: [" "],',
+    to: "allowedPrefixes: null,",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: Enter does not insert the item the arrows chose",
+    file: SLASH_MENU,
+    from: 'else if (event.key === "Enter") command(items[active] ?? items[0]!);',
+    to: 'else if (event.key === "Enter") void 0;',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the arrow keys do not move down the list",
+    file: SLASH_MENU,
+    from: 'if (event.key === "ArrowDown") setActive((now) => (now + 1) % items.length);',
+    to: 'if (event.key === "ArrowDown") setActive((now) => now);',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the screen reader is not told which item is chosen",
+    file: SLASH_MENU,
+    from: '    if (current) dom.setAttribute("aria-activedescendant", optionId(current));\n    else dom.removeAttribute("aria-activedescendant");',
+    to: '    dom.removeAttribute("aria-activedescendant");',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the editor still says a list is open after it closed",
+    file: SLASH_MENU,
+    from: '      dom.setAttribute("aria-expanded", "false");',
+    to: "      void 0;",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the words a writer would try ('foto', 'daftar') find nothing, only the title does",
+    file: SLASH_ITEMS,
+    from: "const words = (item: SlashItem) => [item.title.toLowerCase(), ...item.keywords];",
+    to: "const words = (item: SlashItem) => [item.title.toLowerCase()];",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a query nothing matches still shows the whole list",
+    file: SLASH_ITEMS,
+    from: "  return [...starts, ...contains];",
+    to: "  return [...starts, ...contains].length > 0 ? [...starts, ...contains] : SLASH_ITEMS;",
+    tests: t(EDITOR_TESTS),
+  },
+
+  // ---------------------------------------------- the toolbar over a selection and the links
+  {
+    name: "editor: the toolbar for words shows over a picture too",
+    file: BUBBLE,
+    from: 'shouldShow={({ editor: current, from, to }) => from !== to && !current.isActive("image") && !current.isActive("codeBlock")}',
+    to: 'shouldShow={({ editor: current, from, to }) => from !== to && !current.isActive("codeBlock")}',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: the alt text box loses the picture after one letter (the node is replaced and the selection falls to the text)",
+    file: BUBBLE,
+    from: "      tr.setSelection(NodeSelection.create(tr.doc, selection.from));\n",
+    to: "",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: Enter in the alt text box saves the article",
+    file: BUBBLE,
+    from: '            if (event.key === "Enter" || event.key === "Escape") {\n              event.preventDefault();',
+    to: '            if (event.key === "Enter" || event.key === "Escape") {\n              void 0;',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: Enter in the link box saves the article",
+    file: BUBBLE,
+    from: '    } else if (event.key === "Enter") {\n      event.preventDefault();\n      applyLink();',
+    to: '    } else if (event.key === "Enter") {\n      applyLink();',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: Ctrl+K over some words does nothing",
+    file: RICH,
+    from: 'event.key.toLowerCase() === "k"',
+    to: 'event.key.toLowerCase() === "kk"',
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a link to anything but http, https, mailto, tel or a page of ours is kept (javascript:)",
+    file: LINKS,
+    from: '    return url.protocol === "http:" || url.protocol === "https:" ? withScheme : null;',
+    to: "    return withScheme;",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: an address with two slashes at the start is read as a page of ours",
+    file: LINKS,
+    from: '  if (text.startsWith("//")) return null; // another site\'s address without its scheme: not ours to guess',
+    to: "",
+    tests: t(EDITOR_TESTS),
+  },
+  {
+    name: "editor: a site without a scheme is kept as typed, so it becomes a path of ours",
+    file: LINKS,
+    from: '`https://${text}`',
+    to: "text",
+    tests: t(EDITOR_TESTS),
   },
 ];

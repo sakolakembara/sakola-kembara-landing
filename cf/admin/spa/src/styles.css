@@ -96,3 +96,53 @@
     }
   }
 }
+
+/* The article editor (pages/blog/editor/RichEditor.tsx). TipTap draws the text with the public article's own classes
+   (`.blog-content`, so the page looks like the site); this only adds what an editor has and a reader does not: the
+   hint on an empty page, the ring on a picture that is selected, the check boxes of a task list, and the cells of a
+   table that are selected. */
+.article-editor-text {
+  min-height: 420px;
+  outline: none;
+}
+.article-editor-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted-foreground);
+}
+.article-editor-text img.ProseMirror-selectednode {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+.article-editor-text ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.article-editor-text ul[data-type="taskList"] > li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.article-editor-text ul[data-type="taskList"] > li > label {
+  margin-top: 0.4rem;
+}
+.article-editor-text ul[data-type="taskList"] > li > div {
+  flex: 1;
+}
+.article-editor-text .tableWrapper {
+  overflow-x: auto;
+}
+.article-editor-text td,
+.article-editor-text th {
+  position: relative;
+  vertical-align: top;
+}
+.article-editor-text .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--ring) 15%, transparent);
+}
