@@ -1,3 +1,5 @@
+import type { Editor } from "@tiptap/core";
+import { articleMarkdown } from "~/pages/blog/editor/serialize";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -5,7 +7,7 @@ import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/up
 import { API_PATH, PREVIEW_PATH, toBody, toValues } from "~/pages/blog/form";
 import { describeCount } from "~/pages/blog/MetaDescriptionField";
 import { describeSeoTitleCount } from "~/pages/blog/SeoTitleField";
-import { cleanMetaDescription, defaultAuthor, formatIsoDay, imageMarkdown, insertAtCursor } from "~/pages/blog/rules";
+import { altFromFileName, cleanMetaDescription, defaultAuthor, formatIsoDay } from "~/pages/blog/rules";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
 // The blog screens: the list, the editor with its three tabs (Konten, Publikasi, SEO) under the shell's top bar, the preview, the image insertion, the draft and
@@ -73,16 +75,10 @@ describe("the pure helpers", () => {
     expect(defaultAuthor(null)).toBe("Sakola Kembara");
   });
 
-  test("insertAtCursor replaces the selection and says where the cursor goes", () => {
-    expect(insertAtCursor("abcdef", 3, 3, "XY")).toEqual({ value: "abcXYdef", cursor: 5 });
-    expect(insertAtCursor("abcdef", 1, 4, "-")).toEqual({ value: "a-ef", cursor: 2 });
-    expect(insertAtCursor("abc", 99, 120, "Z")).toEqual({ value: "abcZ", cursor: 4 });
-    expect(insertAtCursor("", 0, 0, "Z")).toEqual({ value: "Z", cursor: 1 });
-  });
-
-  test("the markdown of an inserted image is on its own lines, with the alt text made from the file name", () => {
-    expect(imageMarkdown("foto-siswa_belajar.PNG", "/uploads/blog-image/2026/x.png")).toBe("\n![foto siswa belajar](/uploads/blog-image/2026/x.png)\n");
-    expect(imageMarkdown("a[b].png", "/p.png")).toBe("\n![a b](/p.png)\n");
+  test("the alt text of a picture that has only a file name: the name, without its extension, dashes and underscores as spaces", () => {
+    expect(altFromFileName("foto-siswa_belajar.PNG")).toBe("foto siswa belajar");
+    expect(altFromFileName("a[b].png")).toBe("a b");
+    expect(altFromFileName("tanpa-ekstensi")).toBe("tanpa ekstensi");
   });
 
   test("the form's values and the body of a save", () => {
@@ -251,7 +247,17 @@ async function openEdit(who: Who, item = article(), routes: Parameters<typeof st
   return view;
 }
 
-const bodyField = () => screen.getByLabelText("Isi Artikel") as HTMLTextAreaElement;
+/** The text of the article: TipTap's editable element, which is on the page once the editor's file has loaded. */
+const bodyField = () => screen.findByLabelText("Isi Artikel");
+/** The TipTap editor behind it (TipTap keeps it on its element). */
+const editorOf = async () => ((await bodyField()) as HTMLElement & { editor: Editor }).editor;
+/** The Markdown the form would send as the text. */
+const markdownOf = async () => articleMarkdown(await editorOf());
+/** Writes at the end of the article, as typing there would. */
+const writeBody = async (text: string) => {
+  const editor = await editorOf();
+  await act(async () => void editor.chain().focus("end").insertContent(text).run());
+};
 /** A panel of the editor by name. By id: the accessible name of a panel that is `hidden` is empty, which would make it unfindable by role. */
 const panel = (name: "Konten" | "Publikasi" | "SEO") => document.getElementById(`panel-${name.toLowerCase()}`)!;
 /** Opens a tab of the editor (a writer's page has three, in a tablist named "Bagian editor"; a field on a closed tab cannot be typed into). */
@@ -268,7 +274,9 @@ describe("the form: create", () => {
     expect(panel("Konten").hasAttribute("hidden")).toBe(false);
     expect(panel("Publikasi").hasAttribute("hidden")).toBe(true);
     expect(panel("SEO").hasAttribute("hidden")).toBe(true);
-    for (const name of ["Informasi Dasar", "Isi Artikel"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Informasi Dasar" })).toBeTruthy();
+    expect(screen.getByLabelText("Judul")).toBeTruthy(); // the title is the first line of the page, not a field in a card
+    expect(await screen.findByRole("textbox", { name: "Isi Artikel" })).toBeTruthy();
     expect(screen.getByText("20-500 karakter. Muncul di list artikel dan SEO description.")).toBeTruthy();
     expect(screen.getByText("Kosongkan agar dibuat otomatis dari judul.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Buat Artikel" })).toBeTruthy();
@@ -305,10 +313,11 @@ describe("the form: create", () => {
     await openTab(user, "Konten");
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await user.click(bodyField());
-    await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
-    await act(async () => screen.getByRole("button", { name: "Buat Artikel" }).click());
+    await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
+    await waitFor(() => expect(api.count(`POST ${LIST}`)).toBe(1));
     expect(api.last(`POST ${LIST}`)?.body).toMatchObject({ seoTitle: "  Cara   Belajar Efektif untuk Siswa SMA  ", noindex: true });
+    await waitFor(() => expect(location()).toBe("/blog/new-id/edit")); // the save runs to its end before the test does
   });
 
   test("SAKEM-109: the SEO title counter says, in words, what a result shows and what the Worker refuses", () => {
@@ -330,8 +339,7 @@ describe("the form: create", () => {
     });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await user.click(bodyField());
-    await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
     await openTab(user, "Publikasi");
     await user.selectOptions(screen.getByLabelText(/^Kategori/), "Tips");
     const save = screen.getByRole("button", { name: "Buat Artikel" });
@@ -376,7 +384,7 @@ describe("the form: create", () => {
     await waitFor(() => expect(panel("Konten").hasAttribute("hidden")).toBe(false));
     expect(panel("SEO").hasAttribute("hidden")).toBe(true);
     expect(screen.getAllByRole("img", { name: "Ada kesalahan" })).toHaveLength(2);
-    expect(bodyField().getAttribute("aria-invalid")).toBe("true");
+    await waitFor(async () => expect((await bodyField()).getAttribute("aria-invalid")).toBe("true"));
     expect(screen.getByText("Isi minimal 50 karakter", { selector: "span" })).toBeTruthy();
 
     // The SEO title is on the other tab: its link shows the tab, then puts the cursor in the field.
@@ -400,8 +408,7 @@ describe("the form: create", () => {
   test("leaving with typed text asks first: the body counts as a change", async () => {
     const user = userEvent.setup();
     await openForm(WRITER, "/blog/new");
-    await user.click(bodyField());
-    await user.paste("Sebuah draf yang belum disimpan.");
+    await writeBody("Sebuah draf yang belum disimpan.");
     await user.click(screen.getByRole("link", { name: "Batal" }));
     expect(await screen.findByRole("alertdialog", { name: "Tinggalkan halaman?" })).toBeTruthy();
     expect(location()).toBe("/blog/new");
@@ -419,7 +426,8 @@ describe("the form: edit", () => {
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).value).toBe("cara-belajar-efektif");
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).disabled).toBe(false); // a draft
     expect(screen.getByText("Alamat artikel: /blog/slug. Bisa diubah selama artikel masih draf.")).toBeTruthy();
-    expect(bodyField().value).toContain("## Mulai dari jadwal");
+    expect(await markdownOf()).toContain("## Mulai dari jadwal");
+    expect(within(await bodyField()).getByRole("heading", { level: 2, name: "Mulai dari jadwal" })).toBeTruthy(); // drawn as a heading, not as "##"
     expect(screen.getByText("/blog/cara-belajar-efektif")).toBeTruthy();
     // The status is in the top bar, next to the breadcrumb, and on the Publikasi tab.
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Draf")).toBeTruthy();
@@ -607,8 +615,7 @@ describe("the form: the meta description (SAKEM-094)", () => {
     const { api } = await openForm(WRITER, "/blog/new", { [`POST ${LIST}`]: respond({ item: article({ id: "new-id" }) }, 201), [`GET ${LIST}/new-id`]: respond({ item: article({ id: "new-id" }) }) });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "Cara Belajar Efektif");
     await user.type(screen.getByLabelText(/^Excerpt/), "Ringkasan tentang cara belajar yang efektif.");
-    await user.click(bodyField());
-    await user.paste("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
+    await writeBody("Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.");
     await openTab(user, "SEO");
     await typeIn(user, "Cara belajar efektif untuk siswa.");
     await user.click(screen.getByRole("button", { name: "Buat Artikel" }));
@@ -818,11 +825,13 @@ describe("the form: read-only", () => {
     expect(screen.queryByRole("tab")).toBeNull(); // no tabs: all three parts are on the page
     for (const name of ["Konten", "Publikasi", "SEO"] as const) expect(panel(name).hasAttribute("hidden"), name).toBe(false);
     expect(screen.getByLabelText(/^Judul(?! SEO)/).matches(":disabled")).toBe(true);
-    expect(bodyField().readOnly).toBe(true);
-    expect(bodyField().value).toContain("## Mulai dari jadwal");
+    const body = await bodyField();
+    expect(body.getAttribute("contenteditable")).toBe("false");
+    expect(body.getAttribute("aria-readonly")).toBe("true");
+    expect(within(body).getByRole("heading", { level: 2, name: "Mulai dari jadwal" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Simpan Perubahan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Sisipkan Gambar" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: /Preview/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pratinjau" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pilih file" })).toBeNull();
     expect(screen.getByText(/Kamu hanya bisa melihat data ini/)).toBeTruthy();
   });
@@ -833,21 +842,21 @@ describe("the form: read-only", () => {
 describe("the preview", () => {
   const PREVIEW = `POST ${PREVIEW_PATH}`;
 
-  test("'Preview' asks the Worker to render the text, shows its HTML, and 'Tulis' brings the text back untouched", async () => {
+  test("'Pratinjau' asks the Worker to render the text, shows its HTML, and 'Kembali menulis' brings the text back, edits included", async () => {
     const user = userEvent.setup();
     const { api } = await openEdit(WRITER, article(), { [PREVIEW]: respond({ html: "<h2>Mulai dari jadwal</h2>\n<p>Isi <strong>tebal</strong>.</p>" }) });
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    await user.click(screen.getByRole("tab", { name: /Preview/ }));
+    await writeBody(" Tambahan.");
+    await user.click(screen.getByRole("button", { name: "Pratinjau" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Mulai dari jadwal" })).toBeTruthy();
     expect(api.count(PREVIEW)).toBe(1);
-    expect(api.last(PREVIEW)?.body).toEqual({ contentMarkdown: article().contentMarkdown });
-    expect(bodyField().hidden).toBe(true);
+    expect(api.last(PREVIEW)?.body).toEqual({ contentMarkdown: `${article().contentMarkdown} Tambahan.` });
+    expect(screen.queryByLabelText("Isi Artikel")).toBeNull(); // the editor is not on the page while the preview is
+    expect(screen.queryByRole("button", { name: "Sisipkan Gambar" })).toBeNull();
 
-    await user.click(screen.getByRole("tab", { name: /Tulis/ }));
-    expect(bodyField().hidden).toBe(false);
-    expect(bodyField().value).toBe(article().contentMarkdown);
+    await user.click(screen.getByRole("button", { name: "Kembali menulis" }));
+    expect(await markdownOf()).toBe(`${article().contentMarkdown} Tambahan.`);
     // Back to the preview without having typed: remembered, nothing asked again.
-    await user.click(screen.getByRole("tab", { name: /Preview/ }));
+    await user.click(screen.getByRole("button", { name: "Pratinjau" }));
     await screen.findByRole("heading", { level: 2, name: "Mulai dari jadwal" });
     expect(api.count(PREVIEW)).toBe(1);
   });
@@ -859,16 +868,14 @@ describe("the preview", () => {
       "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.org" }),
       [PREVIEW]: respond({ html: `<p><span class="block my-6"><img src="${path}" alt="foto" class="rounded-xl"></span></p>` }),
     });
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    await user.click(screen.getByRole("tab", { name: /Preview/ }));
+    await user.click(await screen.findByRole("button", { name: "Pratinjau" }));
     await waitFor(() => expect((screen.getByAltText("foto") as HTMLImageElement).getAttribute("src")).toBe(`https://files.example.org${path}`));
   });
 
   test("an empty text says so and asks for nothing", async () => {
     const user = userEvent.setup();
     const { api } = await openForm(WRITER, "/blog/new", { [PREVIEW]: respond({ html: "<p>x</p>" }) });
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    await user.click(screen.getByRole("tab", { name: /Preview/ }));
+    await user.click(await screen.findByRole("button", { name: "Pratinjau" }));
     expect(await screen.findByText("Belum ada isi.")).toBeTruthy();
     expect(api.count(PREVIEW)).toBe(0);
   });
@@ -877,8 +884,7 @@ describe("the preview", () => {
     const user = userEvent.setup();
     let fail = true;
     const { api } = await openEdit(WRITER, article(), { [PREVIEW]: () => Promise.resolve(fail ? respond({ error: "internal" }, 500) : respond({ html: "<p>Pulih.</p>" })) });
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    await user.click(screen.getByRole("tab", { name: /Preview/ }));
+    await user.click(await screen.findByRole("button", { name: "Pratinjau" }));
     expect((await screen.findByRole("alert")).textContent).toBe("Terjadi kesalahan di server. Coba lagi sebentar lagi.");
     fail = false;
     await user.click(screen.getByRole("button", { name: "Coba lagi" }));
@@ -886,22 +892,22 @@ describe("the preview", () => {
     expect(api.count(PREVIEW)).toBe(2);
   });
 
-  test("the hidden textarea does not stop the error summary: a link to the body shows the writing mode again", async () => {
+  test("the preview does not stop the error summary: a link to the body shows the writing page again", async () => {
     const user = userEvent.setup();
     await openEdit(WRITER, article(), {
       [PREVIEW]: respond({ html: "<p>Pratinjau</p>" }),
       [`PUT ${LIST}/b1`]: respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { title: "Judul minimal 3 karakter", contentMarkdown: "Isi minimal 50 karakter" } }, 400),
     });
-    await user.click(screen.getByRole("tab", { name: /Preview/ }));
-    await screen.findByText("Pratinjau");
+    await user.click(await screen.findByRole("button", { name: "Pratinjau" }));
+    await screen.findByText("Pratinjau", { selector: "p" });
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), " ");
     await user.clear(screen.getByLabelText(/^Judul(?! SEO)/));
     await user.type(screen.getByLabelText(/^Judul(?! SEO)/), "ab");
     await user.click(screen.getByRole("button", { name: "Simpan" }));
     const summary = await screen.findByRole("alert");
     await user.click(within(summary).getByRole("link", { name: "Isi Artikel: Isi minimal 50 karakter" }));
-    expect(bodyField().hidden).toBe(false);
-    expect(document.activeElement).toBe(bodyField());
+    const body = await bodyField(); // the link shows the writing page again, then puts the cursor in it
+    expect(document.activeElement).toBe(body);
   });
 });
 
@@ -910,32 +916,38 @@ describe("the preview", () => {
 
 describe("inserting an image", () => {
   const png = (name = "foto-siswa.png", size = 2000) => new File([new Uint8Array(size)], name, { type: "image/png" });
-  const bodyPicker = () => document.querySelector<HTMLInputElement>("#panel-konten input[type='file']")!;
+  const bodyPicker = async () => {
+    await bodyField(); // the picker is part of the editor, which loads when it is first shown
+    return document.querySelector<HTMLInputElement>("#panel-konten input[type='file']")!;
+  };
   const uploaded = (request: UploadRequest) => ({
     ok: true as const,
     result: { id: "u1", path: "/uploads/blog-image/2026/0a1b2c3d-1111-4222-8333-444455556666-foto-siswa.png", contentType: "image/png", size: request.file.size, width: 800, height: 450 },
   });
 
-  test("uploads the file as a blog image and writes its markdown at the cursor, then shows the writing mode", async () => {
+  test("uploads the file as a blog image and writes it into the text at the cursor, with alt text made from its name", async () => {
     const user = userEvent.setup();
     const requests: UploadRequest[] = [];
     setUploader(async (request) => {
       requests.push(request);
       return uploaded(request);
     });
-    await openEdit(WRITER, article({ contentMarkdown: "Paragraf pertama yang cukup panjang untuk contoh.\n\nParagraf kedua yang juga cukup panjang." }));
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    bodyField().focus();
-    bodyField().setSelectionRange(50, 50);
-    await user.upload(bodyPicker(), png());
+    const first = "Paragraf pertama yang cukup panjang untuk contoh.";
+    await openEdit(WRITER, article({ contentMarkdown: `${first}\n\nParagraf kedua yang juga cukup panjang.` }));
+    const editor = await editorOf();
+    await act(async () => void editor.chain().focus().setTextSelection(1 + first.length).run());
+    await user.upload(await bodyPicker(), png());
 
-    await waitFor(() => expect(bodyField().value).toContain("![foto siswa](/uploads/blog-image/2026/0a1b2c3d-1111-4222-8333-444455556666-foto-siswa.png)"));
+    const path = "/uploads/blog-image/2026/0a1b2c3d-1111-4222-8333-444455556666-foto-siswa.png";
+    await waitFor(async () => expect(await markdownOf()).toContain(`![foto siswa](${path})`));
     expect(requests).toHaveLength(1);
     expect(requests[0]!.kind).toBe("blog-image");
-    const text = bodyField().value;
-    expect(text.startsWith("Paragraf pertama yang cukup panjang untuk contoh.")).toBe(true);
-    expect(text.indexOf("![foto siswa]")).toBe(50 + 1); // at the cursor, on its own line
+    const text = await markdownOf();
+    expect(text.startsWith(first)).toBe(true);
+    expect(text.indexOf("![foto siswa]")).toBeGreaterThan(first.length - 1); // after the first paragraph, where the cursor was
+    expect(text.indexOf("![foto siswa]")).toBeLessThan(text.indexOf("Paragraf kedua"));
     expect(text.endsWith("Paragraf kedua yang juga cukup panjang.")).toBe(true);
+    expect((await bodyField()).querySelector('img[alt="foto siswa"]')?.getAttribute("src")).toBe(path); // drawn in the page
   });
 
   test("a refusal (a file the kind does not take, a failed upload) is a sentence above the text, and the text is untouched", async () => {
@@ -943,13 +955,12 @@ describe("inserting an image", () => {
     const user = userEvent.setup({ applyAccept: false });
     setUploader(async () => ({ ok: false, status: 413, message: "Ukuran file maksimal 5 MB." }));
     await openEdit(WRITER);
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    const before = bodyField().value;
-    await user.upload(bodyPicker(), new File(["x"], "dokumen.pdf", { type: "application/pdf" }));
+    const before = await markdownOf();
+    await user.upload(await bodyPicker(), new File(["x"], "dokumen.pdf", { type: "application/pdf" }));
     expect((await screen.findByRole("alert")).textContent).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP, GIF.");
-    await user.upload(bodyPicker(), png("besar.png"));
+    await user.upload(await bodyPicker(), png("besar.png"));
     expect((await screen.findByText("Ukuran file maksimal 5 MB.")).closest("[role='alert']")).toBeTruthy();
-    expect(bodyField().value).toBe(before);
+    expect(await markdownOf()).toBe(before);
   });
 
   test("shows 'Mengupload...' and refuses a second picking while one runs", async () => {
@@ -957,8 +968,7 @@ describe("inserting an image", () => {
     const gate = deferred<ReturnType<typeof uploaded>>();
     setUploader(() => gate.promise);
     await openEdit(WRITER);
-    await user.click(screen.getByRole("tab", { name: /Konten/ }));
-    await user.upload(bodyPicker(), png());
+    await user.upload(await bodyPicker(), png());
     expect(await screen.findByRole("button", { name: "Mengupload..." })).toHaveProperty("disabled", true);
     await act(async () => gate.resolve(uploaded({ file: png(), kind: "blog-image" })));
     expect(await screen.findByRole("button", { name: "Sisipkan Gambar" })).toHaveProperty("disabled", false);

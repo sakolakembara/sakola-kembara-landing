@@ -1,22 +1,27 @@
-import { Edit3, Eye, ImagePlus } from "lucide-react";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { Eye, ImagePlus, PencilLine } from "lucide-react";
+import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
-import { uploadFile, useUploadsBase } from "~/lib/crud/upload-client";
-import { acceptFor, checkUploadFile, uploadUrl } from "~/lib/crud/upload-kinds";
-import { BODY_LIMIT_LABEL, imageMarkdown, insertAtCursor, LIMITS } from "./rules";
+import { Skeleton } from "~/components/ui/skeleton";
+import { useUploadsBase } from "~/lib/crud/upload-client";
+import { uploadUrl } from "~/lib/crud/upload-kinds";
+import { EditorBoundary } from "./editor/EditorBoundary";
+import type { RichEditorHandle } from "./editor/RichEditor";
+import { BODY_LIMIT_LABEL, LIMITS } from "./rules";
 import { usePreview } from "./usePreview";
 
-// The article body: a plain textarea, a toggle between writing and the preview, and a button that uploads an
-// image and writes its markdown at the cursor. No editor library: a textarea costs nothing, and the preview is the
-// Worker's own render (usePreview), so what is shown is what will be stored. The legacy editor was this, with the
-// preview rendered in the browser by react-markdown.
+// The article body: the page it is written on (a title above it, TipTap under it; see editor/RichEditor.tsx), a count
+// under it, and "Pratinjau", which shows what the Worker renders from the text (usePreview), so what is shown is what
+// will be stored. The editor is a separate file that loads when it is first shown; if it cannot load, a plain box
+// takes its place, because the text is Markdown either way.
 
 export type BodyMode = "edit" | "preview";
 
 export interface BodyEditorProps {
-  /** The textarea's id: the field name, so the error summary can link to it. */
+  /** The editable element's id: the field name, so the error summary can link to it. */
   id: string;
+  /** The page's first line: the title, written in the page. */
+  header?: ReactNode;
   value: string;
   onChange: (next: string) => void;
   mode: BodyMode;
@@ -26,16 +31,20 @@ export interface BodyEditorProps {
   readOnly?: boolean;
 }
 
-const MODE_BUTTON = "inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs transition-colors";
+const RichEditor = lazy(() => import("./editor/RichEditor"));
 
-export function BodyEditor({ id, value, onChange, mode, onModeChange, error, readOnly = false }: BodyEditorProps) {
-  const textarea = useRef<HTMLTextAreaElement>(null);
-  const picker = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+const SURFACE = "min-h-[420px]";
+
+export function BodyEditor({ id, header, value, onChange, mode, onModeChange, error, readOnly = false }: BodyEditorProps) {
   const previewing = mode === "preview" && !readOnly;
   const preview = usePreview(value, previewing);
   const base = useUploadsBase();
+  const editor = useRef<RichEditorHandle>(null);
+  const [uploading, setUploading] = useState(false);
+  // What the editor starts from each time it is shown: the text as it is while the preview is on (the editor is gone
+  // then), and after that the editor is the owner of the text, so this is not read again until the preview.
+  const seed = useRef(value);
+  if (previewing) seed.current = value;
 
   // Uploaded pictures are served from the files domain, not from this host: show them from there.
   const pane = useRef<HTMLDivElement>(null);
@@ -46,109 +55,17 @@ export function BodyEditor({ id, value, onChange, mode, onModeChange, error, rea
     }
   }, [previewing, preview.html, preview.status, base]);
 
-  async function insertImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = ""; // the same file can be picked again
-    if (!file) return;
-    setUploadError(null);
-    const problem = checkUploadFile(file, "blog-image");
-    if (problem) {
-      setUploadError(problem);
-      return;
-    }
-    setUploading(true);
-    const outcome = await uploadFile({ kind: "blog-image", file });
-    setUploading(false);
-    if (!outcome.ok) {
-      setUploadError(outcome.message);
-      return;
-    }
-    const field = textarea.current;
-    const at = insertAtCursor(value, field?.selectionStart ?? value.length, field?.selectionEnd ?? value.length, imageMarkdown(file.name, outcome.result.path));
-    onChange(at.value);
-    onModeChange("edit");
-    // Put the cursor after the picture once React has written the new text.
-    requestAnimationFrame(() => {
-      const target = textarea.current;
-      if (!target) return;
-      target.focus();
-      target.setSelectionRange(at.cursor, at.cursor);
-    });
-  }
-
   const count = value.length;
   const over = count > LIMITS.bodyMax;
+  const describedBy = `${id}-count`;
 
   return (
     <div>
-      <div className="overflow-hidden rounded-lg border border-gray-200">
-        {!readOnly && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
-            <div className="flex gap-1" role="tablist" aria-label="Mode editor">
-              <button
-                type="button"
-                role="tab"
-                id={`${id}-tab-edit`}
-                aria-selected={mode === "edit"}
-                aria-controls={`${id}-panel`}
-                onClick={() => onModeChange("edit")}
-                className={`${MODE_BUTTON} ${mode === "edit" ? "bg-primary text-primary-foreground" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"}`}
-              >
-                <Edit3 size={12} aria-hidden="true" /> Tulis
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id={`${id}-tab-preview`}
-                aria-selected={mode === "preview"}
-                aria-controls={`${id}-panel`}
-                onClick={() => onModeChange("preview")}
-                className={`${MODE_BUTTON} ${mode === "preview" ? "bg-primary text-primary-foreground" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"}`}
-              >
-                <Eye size={12} aria-hidden="true" /> Preview
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input ref={picker} type="file" tabIndex={-1} aria-hidden="true" accept={acceptFor("blog-image")} disabled={uploading} onChange={insertImage} className="sr-only" />
-              <button
-                type="button"
-                onClick={() => picker.current?.click()}
-                disabled={uploading}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-60"
-              >
-                <ImagePlus size={12} aria-hidden="true" />
-                {uploading ? "Mengupload..." : "Sisipkan Gambar"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {uploadError && (
-          <div role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
-            {uploadError}
-          </div>
-        )}
-
-        <div id={`${id}-panel`} role={readOnly ? undefined : "tabpanel"} aria-labelledby={readOnly ? undefined : `${id}-tab-${previewing ? "preview" : "edit"}`}>
-          {/* Kept in the page while the preview shows: a hidden control cannot be focused by the error summary, and the text is not lost. */}
-          <textarea
-            ref={textarea}
-            id={id}
-            name={id}
-            aria-label="Isi Artikel"
-            hidden={previewing}
-            rows={24}
-            value={value}
-            readOnly={readOnly}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={`${id}-count`}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={"# Judul Sub Bagian\n\nTulis paragraf di sini..."}
-            className="min-h-[400px] w-full resize-y px-4 py-3 font-mono text-sm focus:outline-none"
-          />
-          {previewing && (
-            <div ref={pane} className="blog-content min-h-[400px] overflow-auto bg-white px-5 py-4" aria-busy={preview.status === "loading"}>
+      <div className="rounded-xl border border-border bg-card px-5 py-8 md:px-14 md:py-12">
+        <div className="mx-auto max-w-[720px]">
+          {header}
+          {previewing ? (
+            <div ref={pane} className={`blog-content ${SURFACE}`} aria-busy={preview.status === "loading"}>
               {preview.status === "empty" && <p className="italic text-gray-500">Belum ada isi.</p>}
               {preview.status === "error" && (
                 <div className="space-y-3">
@@ -165,17 +82,70 @@ export function BodyEditor({ id, value, onChange, mode, onModeChange, error, rea
               )}
               {(preview.status === "ready" || (preview.status === "loading" && preview.html !== "")) && <div dangerouslySetInnerHTML={{ __html: preview.html }} />}
             </div>
+          ) : (
+            <div className={SURFACE}>
+              <EditorBoundary fallback={<PlainBody id={id} value={value} onChange={onChange} readOnly={readOnly} invalid={Boolean(error)} describedBy={describedBy} />}>
+                <Suspense
+                  fallback={
+                    <div role="status" aria-label="Memuat editor" className="space-y-3">
+                      <Skeleton className="h-4 w-11/12" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  }
+                >
+                  <RichEditor ref={editor} id={id} initialMarkdown={seed.current} onChange={onChange} readOnly={readOnly} invalid={Boolean(error)} describedBy={describedBy} onBusyChange={setUploading} />
+                </Suspense>
+              </EditorBoundary>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-gray-500">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-gray-500">
         <span id={`${id}-count`} className={over ? "text-danger-fg" : undefined}>
           {count.toLocaleString("id-ID")} karakter (maksimal {BODY_LIMIT_LABEL})
         </span>
         {/* The form's error summary announces it; this is where the eye is. */}
         {error && <span className="text-danger-fg">{error}</span>}
+        {!readOnly && (
+          <div className="ml-auto flex items-center gap-1">
+            {!previewing && (
+              <Button variant="ghost" size="sm" disabled={uploading} onClick={() => editor.current?.pickImage()}>
+                <ImagePlus aria-hidden="true" />
+                {uploading ? "Mengupload..." : "Sisipkan Gambar"}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" aria-pressed={previewing} onClick={() => onModeChange(previewing ? "edit" : "preview")}>
+              {previewing ? <PencilLine aria-hidden="true" /> : <Eye aria-hidden="true" />}
+              {previewing ? "Kembali menulis" : "Pratinjau"}
+            </Button>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+/** What stands in for the editor when it cannot be loaded: the Markdown in a plain box. */
+function PlainBody({ id, value, onChange, readOnly, invalid, describedBy }: { id: string; value: string; onChange: (next: string) => void; readOnly: boolean; invalid: boolean; describedBy: string }) {
+  return (
+    <div className="space-y-2">
+      <p role="status" className="text-[13px] text-muted-foreground">
+        Editor belum bisa dimuat. Tulis dengan Markdown di kotak ini; hasilnya sama.
+      </p>
+      <textarea
+        id={id}
+        name={id}
+        aria-label="Isi Artikel"
+        rows={20}
+        value={value}
+        readOnly={readOnly}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-[360px] w-full resize-y rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      />
     </div>
   );
 }

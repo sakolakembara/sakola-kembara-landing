@@ -3,9 +3,13 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { setTransport } from "~/lib/api";
 import { clearReadCache } from "~/lib/crud/readCache";
 import { installDialogShim } from "./dialog-shim";
+import { installProseMirrorShim } from "./prosemirror-shim";
 
 // jsdom has no <dialog> modal methods (test/dialog-shim.ts).
 installDialogShim();
+
+// jsdom has no layout, which the article editor (ProseMirror) asks for (test/prosemirror-shim.ts).
+installProseMirrorShim();
 
 // A test fails when the page logs an error or a warning (a React "not wrapped
 // in act" or key warning, a failed prop type...) unless the test says it

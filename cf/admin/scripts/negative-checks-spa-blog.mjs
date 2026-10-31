@@ -33,8 +33,8 @@ export const blogSpaChecks = [
   {
     name: "blog: a read-only role is offered the preview and the image button",
     file: EDITOR,
-    from: "        {!readOnly && (\n          <div className=\"flex flex-wrap items-center justify-between",
-    to: "        {(\n          <div className=\"flex flex-wrap items-center justify-between",
+    from: "        {!readOnly && (\n          <div className=\"ml-auto flex items-center gap-1\">",
+    to: "        {(\n          <div className=\"ml-auto flex items-center gap-1\">",
     tests: BLOG,
   },
   {
@@ -159,16 +159,16 @@ export const blogSpaChecks = [
   // ------------------------------------------------------------------ inserting an image
   {
     name: "blog: an inserted image goes to the end of the text instead of the cursor",
-    file: EDITOR,
-    from: "field?.selectionStart ?? value.length, field?.selectionEnd ?? value.length",
-    to: "value.length, value.length",
+    file: "spa/src/pages/blog/editor/RichEditor.tsx",
+    from: "if (position === undefined) editor.chain().focus().insertContent(picture).run();",
+    to: 'if (position === undefined) editor.chain().focus("end").insertContent(picture).run();',
     tests: BLOG,
   },
   {
     name: "blog: a file the kind does not take is sent to the Worker without a check",
-    file: EDITOR,
-    from: '    const problem = checkUploadFile(file, "blog-image");',
-    to: "    const problem: string | null = null;",
+    file: "spa/src/pages/blog/editor/images.ts",
+    from: '  const problem = checkUploadFile(file, "blog-image");',
+    to: "  const problem: string | null = null;",
     tests: BLOG,
   },
 
