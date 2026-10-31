@@ -154,9 +154,9 @@ export const shellSpaChecks = [
   },
   {
     name: "shell: the frame is not a positioned box (the same, for what sticks out of the sidebar side)",
-    file: "spa/src/components/Shell.tsx",
-    from: 'className="relative flex h-dvh flex-col overflow-hidden bg-background md:flex-row"',
-    to: 'className="flex h-dvh flex-col overflow-hidden bg-background md:flex-row"',
+    file: "spa/src/components/shell-parts.tsx",
+    from: '"relative flex h-dvh flex-col overflow-hidden bg-background md:flex-row"',
+    to: '"flex h-dvh flex-col overflow-hidden bg-background md:flex-row"',
     tests: t(SHELL),
   },
 

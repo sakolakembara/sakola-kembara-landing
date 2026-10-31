@@ -170,8 +170,8 @@ const checks = [
   {
     name: "a dashboard the server does not have is shown as an error with a retry",
     file: "spa/src/lib/use-dashboard.ts",
-    from: "} else if (result.status === 404 || result.status === 501) {",
-    to: "} else if (false) {",
+    from: "return result.status === 404 || result.status === 501 ?",
+    to: "return false ?",
     tests: t("dashboard.test.tsx"),
   },
   // Route guard
