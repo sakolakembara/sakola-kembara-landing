@@ -8,8 +8,9 @@ import { api } from "~/lib/api";
 import { ifMatch } from "~/lib/crud/etag";
 import { type FlashControl, flashState, useFlash } from "~/lib/crud/flash";
 import type { ItemPayload } from "~/lib/crud/types";
+import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
-import { uploadUrl } from "~/lib/crud/upload-kinds";
+import { storedFileUrl } from "~/lib/crud/upload-kinds";
 import { useFormValues } from "~/lib/crud/useFormValues";
 import { useItem } from "~/lib/crud/useItem";
 import { useMutation } from "~/lib/crud/useMutation";
@@ -57,6 +58,7 @@ function ReportForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
   const form = useFormValues<ReportValues>(toValues(item));
   const navigate = useNavigate();
   const base = useUploadsBase();
+  const { siteUrl } = useConfig();
   const save = useMutation<ReportValues, ItemPayload<ReportItem>>((values) =>
     item
       ? api<ItemPayload<ReportItem>>(`${API_PATH}/${encodeURIComponent(item.id)}`, { method: "PUT", json: toUpdateBody(values), ifMatch: ifMatch(item.updatedAt) })
@@ -86,7 +88,7 @@ function ReportForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
           <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
             <FileText size={20} aria-hidden="true" className="shrink-0 text-gray-500" />
             <div className="min-w-0 flex-1">
-              <a href={uploadUrl(item.filePath, base)} target="_blank" rel="noopener noreferrer" title={item.filePath} className="block truncate text-sm font-medium text-primary-blue hover:underline">
+              <a href={storedFileUrl(item.filePath, base, siteUrl)} target="_blank" rel="noopener noreferrer" title={item.filePath} className="block truncate text-sm font-medium text-primary-blue hover:underline">
                 {item.filePath}
               </a>
               <div className="mt-0.5 text-xs text-gray-500">

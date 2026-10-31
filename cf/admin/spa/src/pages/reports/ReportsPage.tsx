@@ -3,8 +3,9 @@ import { Link } from "react-router";
 import type { Column } from "~/components/crud/DataTable";
 import { ListPage } from "~/components/crud/ListPage";
 import { StatusTag } from "~/components/crud/StatusTag";
+import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
-import { uploadUrl } from "~/lib/crud/upload-kinds";
+import { storedFileUrl } from "~/lib/crud/upload-kinds";
 import { formatDate } from "~/lib/format";
 import { SITE_URL } from "~/lib/site";
 import { API_PATH, CATEGORIES, CATEGORY_LABEL, CATEGORY_STATUS, formatBytes, LIST_SPEC, type ReportItem, ROUTE, yearKind } from "./model";
@@ -12,12 +13,13 @@ import { API_PATH, CATEGORIES, CATEGORY_LABEL, CATEGORY_STATUS, formatBytes, LIS
 // The list of reports, built with `ListPage` (docs/cloudflare/admin-crud.md). The columns, the wording and the
 // order are the legacy page's (app/(admin)/admin/reports/page.tsx): newest year first, then newest upload.
 
-/** The PDF, opened in a tab. The file lives on the public files domain, so its address needs the base from /api/config. */
+/** The PDF, opened in a tab. An upload lives on the public files domain, a legacy file on the public site: both addresses come from /api/config. */
 function FileLink({ row }: { row: ReportItem }) {
   const base = useUploadsBase();
+  const { siteUrl } = useConfig();
   return (
     <a
-      href={uploadUrl(row.filePath, base)}
+      href={storedFileUrl(row.filePath, base, siteUrl)}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Buka PDF ${row.title}`}

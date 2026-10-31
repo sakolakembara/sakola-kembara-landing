@@ -154,7 +154,7 @@ export const kontenMiscSpaChecks = [
   {
     name: "konten: the list of the team shows the photos from this host, not the public files domain",
     file: "spa/src/pages/team/TeamPage.tsx",
-    from: "src={uploadUrl(member.image, base)}",
+    from: "src={storedFileUrl(member.image, base, siteUrl)}",
     to: "src={member.image}",
     tests: t(TEAM),
   },
@@ -208,5 +208,27 @@ export const kontenMiscSpaChecks = [
     from: 'const everyLink = list.status === "ready" && list.total === list.items.length;',
     to: 'const everyLink = list.status === "ready";',
     tests: t(SHORTLINKS),
+  },
+  // ---------------------------------------------- files that predate the admin (a path of the public site)
+  {
+    name: "konten: the team list draws a legacy photo ('/images/team/...') from the admin's own host, where it collapses",
+    file: "spa/src/pages/team/TeamPage.tsx",
+    from: "src={storedFileUrl(member.image, base, siteUrl)}",
+    to: 'src={member.image.startsWith("/uploads/") ? storedFileUrl(member.image, base, siteUrl) : member.image}',
+    tests: t(TEAM),
+  },
+  {
+    name: "konten: the reports list opens a legacy file ('/reports/...') from the admin's own host",
+    file: "spa/src/pages/reports/ReportsPage.tsx",
+    from: "href={storedFileUrl(row.filePath, base, siteUrl)}",
+    to: 'href={row.filePath.startsWith("/uploads/") ? storedFileUrl(row.filePath, base, siteUrl) : row.filePath}',
+    tests: t(REPORTS),
+  },
+  {
+    name: "konten: the report form links a legacy file to the admin's own host",
+    file: "spa/src/pages/reports/ReportFormPage.tsx",
+    from: "href={storedFileUrl(item.filePath, base, siteUrl)}",
+    to: 'href={item.filePath.startsWith("/uploads/") ? storedFileUrl(item.filePath, base, siteUrl) : item.filePath}',
+    tests: t(REPORTS),
   },
 ];

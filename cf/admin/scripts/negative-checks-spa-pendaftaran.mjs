@@ -169,7 +169,7 @@ export const pendaftaranSpaChecks = [
   {
     name: "pendaftaran: an uploaded document is opened from the admin's own address instead of the files domain",
     file: "spa/src/pages/resources/ResourcesPage.tsx",
-    from: "uploadUrl(row.filePath, base)",
+    from: "storedFileUrl(row.filePath, base, siteUrl)",
     to: "row.filePath",
     tests: t(RESOURCES),
   },
@@ -195,5 +195,12 @@ export const pendaftaranSpaChecks = [
     from: "row.fullName.toLowerCase().startsWith(q)",
     to: "row.fullName.toLowerCase().includes(q)",
     tests: t(MOCK),
+  },
+  {
+    name: "pendaftaran: the document list opens a legacy file ('/resources/...') from the admin's own host",
+    file: "spa/src/pages/resources/ResourcesPage.tsx",
+    from: "storedFileUrl(row.filePath, base, siteUrl) : row.contentType",
+    to: '(row.filePath.startsWith("/uploads/") ? storedFileUrl(row.filePath, base, siteUrl) : row.filePath) : row.contentType',
+    tests: t(RESOURCES),
   },
 ];

@@ -104,18 +104,28 @@ describe("the list: what a row shows", () => {
     expect(screen.getByRole("link", { name: "/tim" }).getAttribute("href")).toBe("https://sakolakembara.org/tim");
   });
 
-  test("an uploaded photo is read from the public files domain, a legacy photo from where it is, and no photo is a placeholder", async () => {
-    await openList(["viewer", []], {
-      [`GET ${LIST}`]: respond(
-        envelope([
-          row({ id: "a", name: "Dengan Unggahan", image: "/uploads/team-photo/2026/00000000-0000-4000-8000-000000000001-foto.png" }),
-          row({ id: "b", name: "Dengan Foto Lama", image: "/images/team/lama-ab12cd.jpg" }),
-          row({ id: "c", name: "Tanpa Foto" }),
-        ]),
-      ),
-    }, "/team", "Tanpa Foto");
+  // A member that predates the admin keeps a path of the public site ("/images/team/..."): this host has no such file, so asked
+  // from here the photo collapses (the same thing as the migrated articles' pictures, SAKEM-116).
+  const LEGACY_AND_UPLOAD = {
+    [`GET ${LIST}`]: respond(
+      envelope([
+        row({ id: "a", name: "Dengan Unggahan", image: "/uploads/team-photo/2026/00000000-0000-4000-8000-000000000001-foto.png" }),
+        row({ id: "b", name: "Dengan Foto Lama", image: "/images/team/lama-ab12cd.jpg" }),
+        row({ id: "c", name: "Tanpa Foto" }),
+      ]),
+    ),
+  };
+  const photos = () => [...document.querySelectorAll("table img")].map((img) => img.getAttribute("src"));
+
+  test("an uploaded photo is read from the public files domain, a legacy photo from the public site, and no photo is a placeholder", async () => {
+    await openList(["viewer", []], { ...LEGACY_AND_UPLOAD, "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.test", siteUrl: "https://sakolakembara.org" }) }, "/team", "Tanpa Foto");
     await waitFor(() => expect(document.querySelectorAll("table img")).toHaveLength(2));
-    await waitFor(() => expect([...document.querySelectorAll("table img")].map((img) => img.getAttribute("src"))).toEqual(["https://files.example.test/uploads/team-photo/2026/00000000-0000-4000-8000-000000000001-foto.png", "/images/team/lama-ab12cd.jpg"]));
+    await waitFor(() => expect(photos()).toEqual(["https://files.example.test/uploads/team-photo/2026/00000000-0000-4000-8000-000000000001-foto.png", "https://sakolakembara.org/images/team/lama-ab12cd.jpg"]));
+  });
+
+  test("a legacy photo is left as it is when the public site's address is not known", async () => {
+    await openList(["viewer", []], { ...LEGACY_AND_UPLOAD, "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.test", siteUrl: "" }) }, "/team", "Tanpa Foto");
+    await waitFor(() => expect(photos()).toEqual(["https://files.example.test/uploads/team-photo/2026/00000000-0000-4000-8000-000000000001-foto.png", "/images/team/lama-ab12cd.jpg"]));
   });
 
   test("the Worker is asked for every member the page can hold, in the public page's order", async () => {

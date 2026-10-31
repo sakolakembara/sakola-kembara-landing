@@ -13,7 +13,8 @@ import { accessTo } from "~/lib/access";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
 import { useFlash } from "~/lib/crud/flash";
 import { isFiltered } from "~/lib/crud/query";
-import { uploadUrl } from "~/lib/crud/upload-kinds";
+import { useConfig } from "~/lib/config";
+import { storedFileUrl } from "~/lib/crud/upload-kinds";
 import { useUploadsBase } from "~/lib/crud/upload-client";
 import { useDeleteAction } from "~/lib/crud/useDeleteAction";
 import { useList } from "~/lib/crud/useList";
@@ -43,6 +44,7 @@ export function ResourcesPage() {
   const me = useMe();
   const canWrite = accessTo(me, "pendaftaran") === "write";
   const base = useUploadsBase();
+  const { siteUrl } = useConfig();
   const list = useList<ResourceItem>(API_PATH, LIST_SPEC);
   const notice = useFlash();
 
@@ -88,7 +90,7 @@ export function ResourcesPage() {
   ];
 
   const actions = (row: ResourceItem) => {
-    const target = row.contentType === "file" && row.filePath ? uploadUrl(row.filePath, base) : row.contentType === "url" ? row.externalUrl : null;
+    const target = row.contentType === "file" && row.filePath ? storedFileUrl(row.filePath, base, siteUrl) : row.contentType === "url" ? row.externalUrl : null;
     return (
       <>
         {target && (
