@@ -232,12 +232,12 @@ export function FormCard({ title, description, children }: { title: string; desc
 
 /**
  * The columns of a one-page form: its cards on the left and, from `lg`, a 340 px column of the smaller ones (status,
- * schedule, the file) on the right; one column below that, the main cards first. A small form does not stretch to the
- * width of the window: past 1024 px the fields would be longer than anyone reads.
+ * schedule, the file) on the right; one column below that, the main cards first. It is as wide as the window, like the
+ * article page and the wireframe that was approved: a cap on the width left a wide window empty at the right.
  */
 export function FormColumns({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
-    <div className={cn("grid max-w-5xl items-start gap-6", aside && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+    <div className={cn("grid items-start gap-6", aside && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
       <div className="min-w-0 space-y-6">{children}</div>
       {aside && <div className="min-w-0 space-y-6">{aside}</div>}
     </div>
