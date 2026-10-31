@@ -69,12 +69,6 @@ export function formatIsoDay(iso: string | null | undefined): string {
   return `${Number(match[3])} ${MONTHS_ID[month]} ${match[1]}`;
 }
 
-/** The author a new article starts with: the part of the signed-in email before the "@", dots, hyphens and underscores as spaces (as the legacy page did). */
-export function defaultAuthor(email: string | null | undefined): string {
-  const local = email?.split("@")[0]?.replace(/[.\-_]/g, " ").trim();
-  return local ? local : "Sakola Kembara";
-}
-
 /** The alt text of a picture that has only a file name: the name without its extension, dashes and underscores as spaces (the legacy rule). */
 export function altFromFileName(fileName: string): string {
   return fileName

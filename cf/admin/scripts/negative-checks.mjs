@@ -25,6 +25,7 @@ import { portalDraftsChecks } from "./negative-checks-portal-drafts.mjs";
 import { portalStagingChecks } from "./negative-checks-portal-staging.mjs";
 import { blogMetaChecks } from "./negative-checks-blog-meta.mjs";
 import { blogSeoChecks } from "./negative-checks-blog-seo.mjs";
+import { blogAuthorChecks } from "./negative-checks-blog-author.mjs";
 
 const PERMISSION_TESTS = "test/permissions.test.ts test/areas.test.ts test/announcements.test.ts";
 
@@ -78,6 +79,7 @@ const checks = [
   // The blog's meta description (SAKEM-094): scripts/negative-checks-blog-meta.mjs.
   ...blogMetaChecks,
   ...blogSeoChecks,
+  ...blogAuthorChecks,
 
   // ---------------------------------------------------------------- auth
   {

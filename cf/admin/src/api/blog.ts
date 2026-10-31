@@ -1,4 +1,4 @@
-import { and, count, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import { requireArea } from "../auth/guard";
@@ -187,6 +187,35 @@ const previewInput = z.object({
 
 const DATE_REQUIRED = "Format harus YYYY-MM-DD";
 const SLUG_LOCKED = "Slug tidak bisa diubah setelah artikel terbit";
+const AUTHOR_NOT_REGISTERED = "Penulis harus akun yang terdaftar di admin";
+
+/**
+ * The name an account writes under: its name, or the part of its email before the "@" when it has none (the same rule as the
+ * SPA's `displayName`, so the author a new article starts with is always one of these).
+ */
+const authorLabel = sql<string>`coalesce(nullif(trim(${schema.users.name}), ''), substr(${schema.users.email}, 1, instr(${schema.users.email}, '@') - 1))`;
+
+/**
+ * The names an article may be written under (SAKEM-116): the accounts that can write in Konten, that is every super_admin and every
+ * editor granted `konten`, as long as the account is not deactivated (an invited one counts: it is registered, and writes as
+ * soon as it is accepted). A viewer cannot write, so it is not an author. Sorted, each name once.
+ */
+export async function authorNames(db: Db): Promise<string[]> {
+  const rows = await db
+    .select({ name: authorLabel })
+    .from(schema.users)
+    .where(
+      and(
+        isNull(schema.users.deactivatedAt),
+        or(
+          eq(schema.users.role, "super_admin"),
+          and(eq(schema.users.role, "editor"), sql`exists (select 1 from admin_area_grants g where g.user_id = ${schema.users.id} and g.area = 'konten')`),
+        ),
+      ),
+    )
+    .orderBy(asc(authorLabel));
+  return [...new Set(rows.map((row) => row.name.trim()).filter((name) => name !== ""))];
+}
 const IMAGE_INVALID = "Berkas tidak valid. Unggah ulang berkasnya.";
 
 const dayOf = (row: Pick<Row, "publishedAt">) => (row.publishedAt ? isoDayJakarta(row.publishedAt.getTime()) : null);
@@ -433,6 +462,9 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     return c.json(pageOf(rows.map(presentListItem), query, totals[0]?.total ?? 0));
   });
 
+  // Before "/:id". The names the "Penulis" box offers (SAKEM-116); only someone who can write has a use for them.
+  app.get("/authors", requireArea("konten", "write"), async (c) => c.json({ authors: await authorNames(getDb(c.env.DB)) }));
+
   // The brake on the preview: every request is a render, so it is counted per signed-in user, before the body is
   // read (a refused request costs no parse). Without the binding a local run counts in memory; production refuses (503).
   const previewLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
@@ -459,6 +491,8 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     const user = c.get("user");
     const db = getDb(c.env.DB);
 
+    // The author is one of the accounts that can write: a free name is how an article ends up under a name nobody has.
+    if (!(await authorNames(db)).includes(form.author)) return validationError(c, { author: AUTHOR_NOT_REGISTERED });
     const prepared = await prepare(db, form, null);
     if (!prepared.ok) return validationError(c, prepared.fields);
     const slug = form.slug ?? (await freeSlug(db, slugify(form.title)));
@@ -527,10 +561,13 @@ export function createBlogRoutes(deps: CrudDeps = { notify: notifyContentChanged
     if (form.metaDescription && form.metaDescription.length > META_DESCRIPTION_MAX && form.metaDescription !== before.metaDescription) problems.metaDescription = META_DESCRIPTION_TOO_LONG;
     if (form.slug !== null && form.slug !== before.slug && before.status === "published") problems.slug = SLUG_LOCKED;
     if (before.status === "published" && form.date === null) problems.date = DATE_REQUIRED;
+    const db = getDb(c.env.DB);
+    // The author the article already has stays valid as it is (the legacy ones were written by names that have no account);
+    // another one must be an account that can write.
+    if (form.author !== before.author.trim() && !(await authorNames(db)).includes(form.author)) problems.author = AUTHOR_NOT_REGISTERED;
     if (Object.keys(problems).length > 0) return validationError(c, problems);
 
     const user = c.get("user");
-    const db = getDb(c.env.DB);
     const prepared = await prepare(db, form, before);
     if (!prepared.ok) return validationError(c, prepared.fields);
 

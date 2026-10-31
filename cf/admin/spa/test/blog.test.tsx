@@ -7,7 +7,7 @@ import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/up
 import { API_PATH, PREVIEW_PATH, toBody, toValues } from "~/pages/blog/form";
 import { describeCount } from "~/pages/blog/MetaDescriptionField";
 import { describeSeoTitleCount } from "~/pages/blog/SeoTitleField";
-import { altFromFileName, cleanMetaDescription, defaultAuthor, formatIsoDay } from "~/pages/blog/rules";
+import { altFromFileName, cleanMetaDescription, formatIsoDay } from "~/pages/blog/rules";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
 // The blog screens: the list, the editor with its three tabs (Konten, Publikasi, SEO) under the shell's top bar, the preview, the image insertion, the draft and
@@ -69,10 +69,14 @@ describe("the pure helpers", () => {
     expect(formatIsoDay("2026-13-01")).toBe("2026-13-01");
   });
 
-  test("a new article starts with the author the legacy page chose from the email", () => {
-    expect(defaultAuthor("dzul.rahman_x-y@sakolakembara.org")).toBe("dzul rahman x y");
-    expect(defaultAuthor("")).toBe("Sakola Kembara");
-    expect(defaultAuthor(null)).toBe("Sakola Kembara");
+  test("a new article starts with the author the page gives it (the signed-in person's own name), and an opened one keeps its own", () => {
+    expect(toValues(null, "Sari Contoh").author).toBe("Sari Contoh");
+    expect(toValues(null, "  Sari Contoh  ").author).toBe("Sari Contoh");
+    expect(toValues(null, "").author).toBe("Sakola Kembara");
+    expect(toValues(null, "   ").author).toBe("Sakola Kembara");
+    expect(toValues(null, null).author).toBe("Sakola Kembara");
+    expect(toValues(null).author).toBe("Sakola Kembara");
+    expect(toValues(article({ author: "Tim Sakola Kembara" }) as never, "Sari Contoh").author).toBe("Tim Sakola Kembara");
   });
 
   test("the alt text of a picture that has only a file name: the name, without its extension, dashes and underscores as spaces", () => {
@@ -82,7 +86,7 @@ describe("the pure helpers", () => {
   });
 
   test("the form's values and the body of a save", () => {
-    expect(toValues(null, "dzul@contoh.test")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", seoTitle: "", noindex: false, contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
+    expect(toValues(null, "dzul")).toEqual({ title: "", slug: "", category: "Cerita", excerpt: "", metaDescription: "", seoTitle: "", noindex: false, contentMarkdown: "", author: "dzul", featured: false, date: "", image: "" });
     const item = article({ status: "published", date: "2026-05-21", image: "/uploads/blog-image/2026/a.png" }) as never;
     expect(toBody(toValues(item))).toEqual({
       title: "Cara Belajar Efektif",
@@ -285,7 +289,7 @@ describe("the form: create", () => {
     await openTab(user, "Publikasi");
     for (const name of ["Publikasi", "Gambar Hero"]) expect(screen.getByRole("heading", { level: 2, name })).toBeTruthy();
     expect((screen.getByLabelText(/^Kategori/) as HTMLSelectElement).value).toBe("Cerita");
-    expect((screen.getByLabelText(/^Penulis/) as HTMLInputElement).value).toBe("tester");
+    expect((screen.getByLabelText(/^Penulis/) as HTMLInputElement).value).toBe("Tester"); // the signed-in person's own name
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).type).toBe("date");
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).value).toBe("");
     expect((screen.getByRole("switch", { name: /Featured/ }) as HTMLInputElement).checked).toBe(false);
@@ -357,7 +361,7 @@ describe("the form: create", () => {
       seoTitle: null,
       noindex: false,
       contentMarkdown: "Isi artikel yang cukup panjang untuk lolos batas lima puluh karakter.",
-      author: "tester",
+      author: "Tester",
       featured: false,
       date: null,
       image: null,

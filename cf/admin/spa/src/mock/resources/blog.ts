@@ -15,6 +15,10 @@ const text = (value: unknown) => (typeof value === "string" ? value.trim() : "")
 const STALE = "Data ini sudah diubah orang lain sejak kamu membukanya. Muat ulang untuk melihat versi terbaru.";
 const NOT_FOUND = "Data tidak ditemukan. Mungkin sudah dihapus.";
 
+/** The accounts that can write in this mock (every persona is "Pengguna Contoh"); the Worker's `authorNames` is the real list. */
+const MOCK_AUTHORS = ["Editor Contoh", "Konten Contoh", "Pengguna Contoh"];
+const AUTHOR_NOT_REGISTERED = "Penulis harus akun yang terdaftar di admin";
+
 const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 const dayOf = (iso: string) => iso.slice(0, 10);
 
@@ -210,7 +214,10 @@ function custom({ method, rest, init, rows }: MockRequest<MockBlog>): Response |
   const isPreview = method === "POST" && rest === "preview";
   const isUpdate = method === "PUT" && parts.length === 1 && rest !== "";
   const isVerb = method === "POST" && parts.length === 2 && (parts[1] === "publish" || parts[1] === "unpublish");
-  if (!isCreate && !isPreview && !isUpdate && !isVerb) return null; // the generic store: list, one, delete
+  const isAuthors = method === "GET" && rest === "authors";
+  if (!isCreate && !isPreview && !isUpdate && !isVerb && !isAuthors) return null; // the generic store: list, one, delete
+
+  if (isAuthors) return mockJson({ authors: MOCK_AUTHORS });
 
   const headers = new Headers(init.headers);
   const today = new Date().toISOString().slice(0, 10);
@@ -228,6 +235,7 @@ function custom({ method, rest, init, rows }: MockRequest<MockBlog>): Response |
     if (!body) return mockError(400, "invalid_json", "Isi permintaan bukan JSON yang valid.");
     const parsed = parse(body);
     if (!parsed.ok) return mockError(400, "invalid", "Periksa kembali isian formulir.", { fields: parsed.fields });
+    if (!MOCK_AUTHORS.includes(parsed.values.author!)) return mockError(400, "invalid", "Periksa kembali isian formulir.", { fields: { author: AUTHOR_NOT_REGISTERED } });
     const wanted = parsed.values.slug || "";
     if (wanted && rows.some((row) => row.slug === wanted)) return mockError(409, "conflict", "Data bentrok dengan data lain yang sudah ada.", { fields: { slug: "Slug sudah dipakai" } });
     let slug = wanted || slugify(parsed.values.title!);
@@ -267,6 +275,8 @@ function custom({ method, rest, init, rows }: MockRequest<MockBlog>): Response |
     const slug = parsed.values.slug || row.slug;
     if (parsed.values.slug && parsed.values.slug !== row.slug && row.status === "published") problems.slug = "Slug tidak bisa diubah setelah artikel terbit";
     if (row.status === "published" && !parsed.values.date) problems.date = "Format harus YYYY-MM-DD";
+    // The author the article has stays valid as it is; another one must be an account that can write.
+    if (parsed.values.author !== row.author.trim() && !MOCK_AUTHORS.includes(parsed.values.author!)) problems.author = AUTHOR_NOT_REGISTERED;
     if (Object.keys(problems).length > 0) return mockError(400, "invalid", "Periksa kembali isian formulir.", { fields: problems });
     if (rows.some((other) => other.id !== row.id && other.slug === slug)) return mockError(409, "conflict", "Data bentrok dengan data lain yang sudah ada.", { fields: { slug: "Slug sudah dipakai" } });
     const next = { ...parsed.values, metaDescription: parsed.values.metaDescription === undefined ? row.metaDescription || null : parsed.values.metaDescription, seoTitle: parsed.values.seoTitle === undefined ? row.seoTitle || null : parsed.values.seoTitle, noindex: parsed.values.noindex ?? row.noindex, slug, publishedAt: parsed.values.date === row.date ? row.publishedAt : parsed.values.date ? `${parsed.values.date}T00:00:00.000Z` : null };

@@ -1,5 +1,4 @@
 import type { ListSpec } from "../../lib/crud/query";
-import { defaultAuthor } from "./rules";
 
 // What the blog screens share and that is not React: the types, the paths and the form's values with their mapping
 // to the body of a save. Pure (no `~` imports), so the Worker's contract test imports it and sends what the form
@@ -7,6 +6,8 @@ import { defaultAuthor } from "./rules";
 
 /** The API collection and the SPA route of the menu. */
 export const API_PATH = "/api/admin/blog";
+/** The names an article may be written under: the accounts that can write (`GET`, answers `{ authors: string[] }`). */
+export const AUTHORS_PATH = `${API_PATH}/authors`;
 export const ROUTE = "/blog";
 export const PREVIEW_PATH = `${API_PATH}/preview`;
 
@@ -68,7 +69,11 @@ export interface BlogValues extends Record<string, string | boolean> {
   image: string;
 }
 
-export function toValues(item: BlogItem | null, email?: string | null): BlogValues {
+/**
+ * `author` is the name a NEW article starts with: the signed-in person's own (the page gives `displayName(me)`: their name, or
+ * the part of their email before the "@"), which is one of the names the Worker accepts since they can write.
+ */
+export function toValues(item: BlogItem | null, author?: string | null): BlogValues {
   return {
     title: item?.title ?? "",
     // A new article has none: the Worker makes it from the title.
@@ -80,7 +85,7 @@ export function toValues(item: BlogItem | null, email?: string | null): BlogValu
     seoTitle: item?.seoTitle ?? "",
     noindex: item?.noindex ?? false,
     contentMarkdown: item?.contentMarkdown ?? "",
-    author: item?.author ?? defaultAuthor(email),
+    author: item?.author ?? (author?.trim() || "Sakola Kembara"),
     featured: item?.featured ?? false,
     date: item?.date ?? "",
     image: item?.image ?? "",

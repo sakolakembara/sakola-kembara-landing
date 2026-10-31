@@ -16,7 +16,7 @@ const valid = {
   category: "Tips",
   excerpt: "Ringkasan artikel contoh yang cukup panjang.",
   contentMarkdown: "Isi artikel contoh yang cukup panjang untuk lolos batas lima puluh karakter.",
-  author: "Dzul",
+  author: "Pengguna Contoh", // one of the mock's accounts that can write
   featured: false,
   date: null,
   image: null,
@@ -175,6 +175,29 @@ describe("the blog mock", () => {
     const taken = await call("POST", PATH, { ...valid, slug: "pilihan-saya" });
     expect(taken.status).toBe(409);
     expect(taken.body).toMatchObject({ error: "conflict", fields: { slug: "Slug sudah dipakai" } });
+  });
+
+  test("the authors: the accounts that can write are listed, a new article must be written under one, and an old one keeps its own name", async () => {
+    const { call } = mock();
+    const list = await call("GET", `${PATH}/authors`);
+    expect(list.status).toBe(200);
+    expect(list.body.authors).toEqual(["Editor Contoh", "Konten Contoh", "Pengguna Contoh"]);
+
+    const refused = await call("POST", PATH, { ...valid, author: "Orang Asing" });
+    expect(refused.status).toBe(400);
+    expect(refused.body.fields).toEqual({ author: "Penulis harus akun yang terdaftar di admin" });
+    expect((await call("POST", PATH, { ...valid, author: "Konten Contoh" })).status).toBe(201);
+
+    // An article of the seed has an author no account carries ("Tim Sakola Kembara"): saving it unchanged is fine, another free name is not.
+    const old = (await call("GET", `${PATH}?pageSize=1`)).body.items[0] as { id: string; author: string };
+    const opened = await call("GET", `${PATH}/${old.id}`);
+    const item = opened.body.item as Record<string, unknown>;
+    const etag = opened.headers.get("ETag") ?? "";
+    const form = { title: item.title, slug: item.slug, category: item.category, excerpt: item.excerpt, contentMarkdown: item.contentMarkdown, author: item.author, featured: item.featured, date: item.date, image: item.image };
+    expect((await call("PUT", `${PATH}/${old.id}`, form, { "If-Match": etag })).status).toBe(200);
+    const changed = await call("PUT", `${PATH}/${old.id}`, { ...form, author: "Orang Asing" }, { "If-Match": etag });
+    expect(changed.status).toBe(400);
+    expect(changed.body.fields).toEqual({ author: "Penulis harus akun yang terdaftar di admin" });
   });
 
   test("refuses the legacy rules with the legacy messages", async () => {
