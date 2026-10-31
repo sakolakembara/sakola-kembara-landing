@@ -106,10 +106,10 @@ Registered in `spa/src/pages/screens/komunikasi.ts`; the menu entries are in `li
 | SPA route | Screen | Notes |
 | --- | --- | --- |
 | `/messages` | `MessagesPage` | header "N total · M belum dibaca.", the pills Semua / Belum dibaca / Sudah dibaca with counts (links `/messages`, `?filter=unread`, `?filter=read`), a row per message (unread dot, sender, address, subject tag, a line of text, time), pages of 20 |
-| `/messages/:id` | `MessageDetailPage` | back link, "Detail pesan", sender, subject tag, "Dikirim ...", Balas via Email, Tandai belum dibaca, Hapus, the text as typed (line breaks kept) |
+| `/messages/:id` | `MessageDetailPage` | the detail frame (`DetailShell`): the sender ends the breadcrumb, the subject tag is next to it, the address is the line under the bar, "Dikirim ..." and the text as typed (line breaks kept) are the card; the bar holds Hapus, Tandai belum dibaca and Balas lewat email (on a phone Hapus and the toggle are icons). The tab's title stays "Detail Pesan" |
 | `/announcements`, `/new`, `/:id/edit` | `AnnouncementsPage`, `AnnouncementFormPage` | the reference list and form of the kit; the list's Status column is the server's `status` |
 
-Read-only look: a viewer gets the inbox and the detail page with only "Balas via Email" (no toggle, no Hapus, no automatic mark), and the announcements list with "Lihat" and a read-only form; there is no write affordance for a role that cannot write, and the server refuses the write anyway. An area that was not granted is the 403 page; `lib/audit.ts` and the dashboard's tile already link to `/messages/<id>` and `/messages?filter=unread`.
+Read-only look: a viewer gets the inbox and the detail page with only "Balas lewat email" (no toggle, no Hapus, no automatic mark), and the announcements list with "Lihat" and a read-only form; there is no write affordance for a role that cannot write, and the server refuses the write anyway. An area that was not granted is the 403 page; `lib/audit.ts` and the dashboard's tile already link to `/messages/<id>` and `/messages?filter=unread`.
 
 The numbers of the header and the pills come from their own request (`GET /counts`), because a list answers the page it was asked for and its `total` follows the filter; when it fails the labels carry no number rather than a wrong one. After a delete the person goes back to the list with "Pesan berhasil dihapus." (the kit's dialog asks first and names the sender).
 

@@ -1,11 +1,11 @@
-import { Briefcase, Calendar, ExternalLink, FileText, GraduationCap, Home, Instagram, MessageCircle, Settings2, User, Users } from "lucide-react";
+import { Briefcase, Calendar, ExternalLink, FileText, GraduationCap, Home, Instagram, MessageCircle, User, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
-import { Tag } from "~/components/ui/tag";
-import { Flash } from "~/components/crud/Flash";
-import { PageHeader } from "~/components/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { DetailShell } from "~/components/crud/DetailShell";
+import { StatusTag } from "~/components/crud/StatusTag";
 import { accessTo } from "~/lib/access";
 import { describeFailure } from "~/lib/crud/errors";
 import { useFlash } from "~/lib/crud/flash";
@@ -17,8 +17,11 @@ import { API_PATH, APPLICATION_STATUS, type ApplicationWithFiles, ROUTE } from "
 import { ReviewPanel } from "./ReviewPanel";
 
 // The page of one applicant: every answer, the documents they linked, the notes, and the review. A port of
-// app/(admin)/admin/applications/[id]/page.tsx. The sections are built by `profileSections` (answers.ts), which has
-// the rules of what is shown when; this file draws them.
+// app/(admin)/admin/applications/[id]/page.tsx, on the detail frame (DetailShell): the name and the status in the top
+// bar, one line under it (email, batch, when it was sent), the answers in a card on the left, and on the right the two
+// decisions this page has, "Ubah Status" and, for who may, "Hapus semua berkas". It has no actions in the bar: nothing
+// here is done by a bar button. The sections are built by `profileSections` (answers.ts), which has the rules of what
+// is shown when; this file draws them.
 //
 // What the applicant gave is shown as text. A version 2 application has links the applicant pasted (the legacy wizard
 // asked for a link to their own Drive folder); a link is clickable only when it is an http or https address. A version
@@ -116,7 +119,7 @@ function Section({ section, last }: { section: ProfileSection; last: boolean }):
   const IconComponent = ICONS[section.id] ?? User;
   return (
     <section aria-labelledby={`section-${section.id}`} className={last ? "" : "border-b border-gray-100"}>
-      <header className="flex items-center gap-2 px-6 pb-3 pt-5">
+      <header className="flex items-center gap-2 px-5 pb-3 pt-5 md:px-6">
         <span className="text-gray-500">
           <IconComponent size={14} aria-hidden="true" />
         </span>
@@ -124,7 +127,7 @@ function Section({ section, last }: { section: ProfileSection; last: boolean }):
           {section.title}
         </h2>
       </header>
-      <div className="space-y-3 px-6 pb-5">
+      <div className="space-y-3 px-5 pb-5 md:px-6">
         {section.rows.map((row, index) => (
           <Row key={`${row.label}-${index}`} row={row} />
         ))}
@@ -175,88 +178,78 @@ export function ApplicationDetailPage() {
 
   const application = item.item;
   const sections = profileSections(application);
+  const backHref = backTarget(location.state);
 
   return (
-    <div className="max-w-6xl p-6 md:p-10">
-      <PageHeader
-        back={{ href: backTarget(location.state), label: "Kembali ke daftar" }}
-        title={application.fullName}
-        overline="Detail pendaftar"
-        className="md:items-start"
-        actions={
-          <Tag tone={APPLICATION_STATUS[application.status].tone} size="lg">
-            {APPLICATION_STATUS[application.status].label}
-          </Tag>
-        }
-      >
-        <p className="text-gray-600">{application.email}</p>
-        <p className="mt-1 text-sm text-gray-600">
-          Batch:{" "}
-          <Link to={`/batches/${encodeURIComponent(application.batch.id)}`} className="font-medium text-primary-blue hover:underline">
-            {application.batch.year} · {application.batch.name}
-          </Link>
-        </p>
-      </PageHeader>
-
-      <Flash flash={notice.flash} dismiss={notice.dismiss} />
-
-      <div className="grid items-start gap-6 lg:grid-cols-5">
-        {/* Left: the applicant's profile. */}
-        <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-100 bg-white lg:col-span-3">
-          {sections.map((section, index) => (
-            <Section key={section.id} section={section} last={index === sections.length - 1} />
-          ))}
-        </div>
-
-        {/* Right: the review. */}
-        <aside aria-labelledby="review-heading" className="min-w-0 lg:sticky lg:top-10 lg:col-span-2">
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
-            <header className="flex items-center gap-2 border-b border-gray-100 px-6 py-4">
-              <Settings2 size={14} aria-hidden="true" className="text-gray-500" />
-              <h2 id="review-heading" className="text-base font-semibold tracking-tight text-gray-900">
-                Ubah Status
-              </h2>
-            </header>
-            {canWrite ? (
-              // Keyed by the version: after a save or "Muat ulang" the form starts again from the fresh values.
-              <ReviewPanel
-                key={application.updatedAt}
-                application={application}
-                onSaved={(next) => {
-                  // The answer of a review has no files, no `canOpenFiles` and no version: what the page had stays.
-                  item.replace({ ...application, ...next });
-                  notice.show({ tone: "success", text: "Status pendaftar berhasil diubah." });
-                }}
-                onReload={() => {
-                  notice.dismiss();
-                  item.refetch();
-                }}
-              />
-            ) : (
-              <div className="p-6">
+    <DetailShell
+      title={application.fullName}
+      back={{ href: backHref, label: "Kembali ke daftar" }}
+      crumbHref={backHref}
+      status={<StatusTag map={APPLICATION_STATUS} value={application.status} />}
+      meta={
+        <>
+          <span>{application.email}</span>
+          <span>
+            Batch:{" "}
+            <Link to={`/batches/${encodeURIComponent(application.batch.id)}`} className="font-medium text-primary-blue hover:underline">
+              {application.batch.year} · {application.batch.name}
+            </Link>
+          </span>
+          <span>Dikirim {new Date(application.submittedAt).toLocaleDateString("id-ID", { dateStyle: "medium" })}</span>
+        </>
+      }
+      flash={notice}
+      aside={
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Ubah Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {canWrite ? (
+                // Keyed by the version: after a save or "Muat ulang" the form starts again from the fresh values.
+                <ReviewPanel
+                  key={application.updatedAt}
+                  application={application}
+                  onSaved={(next) => {
+                    // The answer of a review has no files, no `canOpenFiles` and no version: what the page had stays.
+                    item.replace({ ...application, ...next });
+                    notice.show({ tone: "success", text: "Status pendaftar berhasil diubah." });
+                  }}
+                  onReload={() => {
+                    notice.dismiss();
+                    item.refetch();
+                  }}
+                />
+              ) : (
                 <Alert tone="info">Kamu hanya bisa melihat data ini. Perubahan tidak bisa disimpan dengan peranmu.</Alert>
-              </div>
-            )}
-          </div>
+              )}
+            </CardContent>
+          </Card>
           {application.canOpenFiles && application.files.length > 0 && (
-            <div className="mt-6">
-              <PurgeFiles
-                applicationId={application.id}
-                fullName={application.fullName}
-                files={application.files}
-                onPurged={({ pending }) => {
-                  item.refetch();
-                  notice.show(
-                    pending > 0
-                      ? { tone: "danger", text: "Berkas sudah dihapus dari daftar, tetapi sebagian belum terhapus dari penyimpanan. Sistem akan mencoba lagi otomatis." }
-                      : { tone: "success", text: "Semua berkas pendaftar sudah dihapus." },
-                  );
-                }}
-              />
-            </div>
+            <PurgeFiles
+              applicationId={application.id}
+              fullName={application.fullName}
+              files={application.files}
+              onPurged={({ pending }) => {
+                item.refetch();
+                notice.show(
+                  pending > 0
+                    ? { tone: "danger", text: "Berkas sudah dihapus dari daftar, tetapi sebagian belum terhapus dari penyimpanan. Sistem akan mencoba lagi otomatis." }
+                    : { tone: "success", text: "Semua berkas pendaftar sudah dihapus." },
+                );
+              }}
+            />
           )}
-        </aside>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {/* The applicant's profile: one card, a section per kind of answer. */}
+      <Card className="gap-0 overflow-hidden py-0 md:py-0">
+        {sections.map((section, index) => (
+          <Section key={section.id} section={section} last={index === sections.length - 1} />
+        ))}
+      </Card>
+    </DetailShell>
   );
 }

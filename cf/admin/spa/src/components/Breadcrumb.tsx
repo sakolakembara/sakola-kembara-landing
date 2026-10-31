@@ -26,10 +26,14 @@ export function crumbsFor(pathname: string): Crumb[] {
  * the title of what it edits ("Konten Situs / Blog / Cara Belajar Efektif"), through the page chrome.
  */
 export function Breadcrumb() {
-  const leaf = usePageChrome()?.leaf;
+  const chrome = usePageChrome();
+  const leaf = chrome?.leaf;
+  const crumbHref = chrome?.crumbHref;
   const found = crumbsFor(useLocation().pathname);
   if (found.length === 0) return null;
-  const crumbs = leaf ? [...found, { label: leaf }] : found;
+  // A page below its list may lead the list's step back to the list as the person had it (a filtered one).
+  const steps = crumbHref ? found.map((crumb) => (crumb.href ? { ...crumb, href: crumbHref } : crumb)) : found;
+  const crumbs = leaf ? [...steps, { label: leaf }] : steps;
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 text-[13px] font-medium text-foreground">
       <ol className="flex items-center gap-1.5">
