@@ -106,9 +106,9 @@ function ShortlinkForm({ item, canWrite, notice, onSaved, onReload }: FormProps)
           <Field label="Slug" id="slug" required error={fields.slug}>
             {/* The host is shown as a prefix that cannot be edited, so it is obvious the box holds only the path segment. */}
             <div
-              className={`flex items-stretch overflow-hidden rounded-xl border-2 focus-within:border-primary-blue ${fields.slug ? "border-danger-fg focus-within:border-danger-fg" : "border-gray-200"}`}
+              className={`flex items-stretch overflow-hidden rounded-lg border bg-card transition-colors focus-within:border-primary ${fields.slug ? "border-danger-fg focus-within:border-danger-fg" : "border-input"}`}
             >
-              <span aria-hidden="true" className="flex select-none items-center whitespace-nowrap border-r-2 border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+              <span aria-hidden="true" className="flex select-none items-center whitespace-nowrap border-r border-input bg-gray-50 px-3 text-sm text-muted-foreground">
                 {SITE_HOST}/
               </span>
               <input
@@ -121,7 +121,7 @@ function ShortlinkForm({ item, canWrite, notice, onSaved, onReload }: FormProps)
                 spellCheck={false}
                 aria-invalid={fields.slug ? true : undefined}
                 aria-describedby={fields.slug ? "slug-error" : "slug-help"}
-                className="min-w-0 flex-1 px-3 py-3 focus:outline-none"
+                className="min-h-11 min-w-0 flex-1 px-3 py-2 text-base placeholder:text-gray-400 focus:outline-none md:min-h-10 md:text-sm"
               />
             </div>
           </Field>

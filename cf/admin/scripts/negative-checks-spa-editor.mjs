@@ -577,4 +577,62 @@ export const editorSpaChecks = [
     to: 'crumb: "Batch baru"',
     tests: t("pendaftaran/batches.test.tsx"),
   },
+
+  // ---------------------------------------------- Pusat Dokumen and the admin form on the frame, and the polish (SAKEM-119)
+  {
+    name: "editor: one-page forms: the breadcrumb of a saved document says 'Berkas baru' instead of its title",
+    file: "spa/src/pages/resources/ResourceFormPage.tsx",
+    from: 'crumb: item ? item.title : "Berkas baru"',
+    to: 'crumb: "Berkas baru"',
+    tests: t("pendaftaran/resources.test.tsx"),
+  },
+  {
+    name: "editor: one-page forms: the document's type field is outside the Tipe Konten card",
+    file: "spa/src/pages/resources/ResourceFormPage.tsx",
+    from: '{contentType === "file" && (\n            <UploadField',
+    to: '</FormCard>\n        <FormCard title="Tipe file">\n          {contentType === "file" && (\n            <UploadField',
+    tests: t("pendaftaran/resources.test.tsx"),
+  },
+  {
+    name: "editor: one-page forms: the admin form has no card of areas in the side column",
+    file: "spa/src/pages/settings/AdminFormPage.tsx",
+    from: "<FormColumns aside={areaCard}>",
+    to: "<FormColumns>",
+    tests: t("settings.test.tsx"),
+  },
+  {
+    name: "editor: one-page forms: a saved admin does not show its status next to the breadcrumb",
+    file: "spa/src/pages/settings/AdminFormPage.tsx",
+    from: "status: item ? <StatusTag map={STATUS} value={item.status} /> : undefined",
+    to: "status: undefined",
+    tests: t("settings.test.tsx"),
+  },
+  {
+    name: "editor: one-page forms: the breadcrumb of a saved admin says 'Admin baru' instead of its name",
+    file: "spa/src/pages/settings/AdminFormPage.tsx",
+    from: 'crumb: item ? item.name?.trim() || item.email : "Admin baru"',
+    to: 'crumb: "Admin baru"',
+    tests: t("settings.test.tsx"),
+  },
+  {
+    name: "editor: polish: a hidden label of a group is drawn after all, repeating the title of its card",
+    file: "spa/src/components/ui/field.tsx",
+    from: 'hideLabel ? "sr-only" : "mb-1.5")}>\n          {label}\n          {asterisk}\n        </legend>',
+    to: '"mb-1.5")}>\n          {label}\n          {asterisk}\n        </legend>',
+    tests: t("ui-kit.test.tsx"),
+  },
+  {
+    name: "editor: polish: a hidden label of a single field is drawn after all",
+    file: "spa/src/components/ui/field.tsx",
+    from: 'hideLabel ? "sr-only" : !labelAside && "mb-1.5")}>',
+    to: '!labelAside && "mb-1.5")}>',
+    tests: t("ui-kit.test.tsx"),
+  },
+  {
+    name: "editor: polish: the slug box goes back to the heavy 2 px border",
+    file: "spa/src/pages/shortlinks/ShortlinkFormPage.tsx",
+    from: "overflow-hidden rounded-lg border bg-card transition-colors",
+    to: "overflow-hidden rounded-xl border-2 bg-card transition-colors",
+    tests: t("shortlinks.test.tsx"),
+  },
 ];

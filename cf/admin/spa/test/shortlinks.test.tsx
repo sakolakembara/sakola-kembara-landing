@@ -283,6 +283,15 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
     expect(within(crumbs.parentElement!).queryByText("Aktif")).toBeNull(); // nothing is saved yet, so there is no status to show
   });
 
+  test("the slug box is drawn like the other inputs (a 1 px border, rounded-lg), and turns red with its error", async () => {
+    await openForm(["editor", ["konten"]], "/shortlinks/new");
+    const box = screen.getByLabelText(/Slug/).parentElement!;
+    expect(box.className).toContain("rounded-lg");
+    expect(box.className).toContain("border-input");
+    expect(box.className).not.toContain("border-2");
+    expect(box.className).not.toContain("border-danger-fg");
+  });
+
   test("a saved link says whether it is on next to the breadcrumb, and the switch is in the Status card, apart from the address and the target", async () => {
     const { unmount } = await openForm(["editor", ["konten"]], "/shortlinks/s1/edit", { [`GET ${LIST}/s1`]: respond({ item: loaded }) });
     await waitFor(() => expect((screen.getByLabelText(/Slug/) as HTMLInputElement).value).toBe("lama"));

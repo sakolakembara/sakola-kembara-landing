@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Field, Input, Select, Textarea } from "~/components/ui/field";
-import { FormSection, FormShell } from "~/components/crud/FormShell";
+import { FormCard, FormColumns, FormShell } from "~/components/crud/FormShell";
 import { UploadField } from "~/components/crud/UploadField";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
@@ -121,99 +121,103 @@ function ResourceForm({ item, canWrite, notice, onSaved, onReload }: FormProps) 
       saveLabel={item ? "Simpan Perubahan" : "Buat Berkas"}
       fieldLabels={FIELD_LABELS}
       flash={notice}
+      page={{ crumb: item ? item.title : "Berkas baru" }}
     >
-      <FormSection title="Metadata">
-        <Field label="Judul" id="title" required error={fields.title}>
-          <Input type="text" required {...form.field("title")} placeholder="Contoh: Panduan Pendaftaran Sakola Kembara Gen 6" />
-        </Field>
+      <FormColumns
+        aside={
+          <>
+            <FormCard title="Tampil di situs">
+              <Field label="Kategori" id="category" required error={fields.category} hint="Menentukan section di halaman /gabung-siswa/docs.">
+                <Select required {...form.field("category")}>
+                  {CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {CATEGORY_LABEL[category]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Urutan Tampil" id="displayOrder" required error={fields.displayOrder} hint="Lebih kecil = lebih dulu di dalam kategori.">
+                <Input type="number" required min={0} max={9999} {...form.field("displayOrder")} />
+              </Field>
+            </FormCard>
 
-        <Field label="Deskripsi" id="description" error={fields.description} hint="Muncul di bawah judul di /gabung-siswa/docs. Boleh dikosongkan.">
-          <Textarea rows={3} {...form.field("description")} placeholder="Ringkas isi atau instruksi penggunaan berkas ini." className="min-h-[80px] resize-y" />
-        </Field>
-
-        <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Kategori" id="category" required error={fields.category} hint="Menentukan section di halaman /gabung-siswa/docs.">
-            <Select required {...form.field("category")}>
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {CATEGORY_LABEL[category]}
-                </option>
-              ))}
-            </Select>
+            <FormCard title="Catatan Internal" description="Tidak ditampilkan ke publik. Untuk keperluan tim admin saja.">
+              <Field label="Catatan" id="notes" error={fields.notes}>
+                <Input type="text" {...form.field("notes")} placeholder="Sumber asli, kredit desain, dsb." />
+              </Field>
+            </FormCard>
+          </>
+        }
+      >
+        <FormCard title="Berkas" description="Judul dan ringkasan yang muncul di /gabung-siswa/docs.">
+          <Field label="Judul" id="title" required error={fields.title}>
+            <Input type="text" required {...form.field("title")} placeholder="Contoh: Panduan Pendaftaran Sakola Kembara Gen 6" />
           </Field>
-          <Field label="Urutan Tampil" id="displayOrder" required error={fields.displayOrder} hint="Lebih kecil = lebih dulu di dalam kategori.">
-            <Input type="number" required min={0} max={9999} {...form.field("displayOrder")} />
+
+          <Field label="Deskripsi" id="description" error={fields.description} hint="Muncul di bawah judul di /gabung-siswa/docs. Boleh dikosongkan.">
+            <Textarea rows={3} {...form.field("description")} placeholder="Ringkas isi atau instruksi penggunaan berkas ini." className="min-h-[80px] resize-y" />
           </Field>
-        </div>
-      </FormSection>
+        </FormCard>
 
-      <FormSection title="Tipe Konten" description="Setiap berkas hanya salah satu tipe: file, link, atau teks.">
-        <Field group label="Tipe konten" error={fields.contentType}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {CONTENT_TYPES.map((type) => {
-              const help = CONTENT_TYPE_HELP[type];
-              const active = contentType === type;
-              const Icon = TYPE_ICON[type];
-              return (
-                <label
-                  key={type}
-                  className={`flex cursor-pointer flex-col gap-2 rounded-xl border-2 p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary-blue ${
-                    active ? "border-primary-blue bg-primary-blue/5" : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <input type="radio" name="contentType" id={type === "file" ? "contentType" : undefined} value={type} checked={active} onChange={() => form.set("contentType", type)} className="sr-only" />
-                  <span className="flex items-center gap-2">
-                    <Icon size={16} className={active ? "text-primary-blue" : "text-gray-500"} aria-hidden="true" />
-                    <span className={`text-sm font-semibold ${active ? "text-primary-blue" : "text-gray-800"}`}>{help.label}</span>
-                  </span>
-                  <span className="text-xs leading-relaxed text-gray-600">{help.description}</span>
-                </label>
-              );
-            })}
-          </div>
-        </Field>
-      </FormSection>
-
-      {contentType === "file" && (
-        <FormSection title="File">
-          <UploadField
-            id="filePath"
-            label="File"
-            kind="resource"
-            required
-            disabled={!canWrite}
-            value={form.values.filePath || null}
-            onChange={(path, result) => {
-              form.set("filePath", path ?? "");
-              form.set("fileSize", result ? String(result.size) : "");
-            }}
-            error={fields.filePath ?? fields.fileSize}
-            hint="PDF, PNG, JPEG, atau WebP. Maksimal 25 MB."
-          />
-        </FormSection>
-      )}
-
-      {contentType === "url" && (
-        <FormSection title="Link Eksternal">
-          <Field label="URL" id="externalUrl" required error={fields.externalUrl} hint="Contoh: https://drive.google.com/…, https://youtube.com/…">
-            <Input type="url" {...form.field("externalUrl")} placeholder="https://…" />
+        <FormCard title="Tipe Konten" description="Setiap berkas hanya salah satu tipe: file, link, atau teks.">
+          <Field group hideLabel label="Tipe konten" error={fields.contentType}>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              {CONTENT_TYPES.map((type) => {
+                const help = CONTENT_TYPE_HELP[type];
+                const active = contentType === type;
+                const Icon = TYPE_ICON[type];
+                return (
+                  <label
+                    key={type}
+                    className={`flex cursor-pointer flex-col gap-2 rounded-xl border-2 p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary-blue ${
+                      active ? "border-primary-blue bg-primary-blue/5" : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <input type="radio" name="contentType" id={type === "file" ? "contentType" : undefined} value={type} checked={active} onChange={() => form.set("contentType", type)} className="sr-only" />
+                    <span className="flex items-center gap-2">
+                      <Icon size={16} className={active ? "text-primary-blue" : "text-gray-500"} aria-hidden="true" />
+                      <span className={`text-sm font-semibold ${active ? "text-primary-blue" : "text-gray-800"}`}>{help.label}</span>
+                    </span>
+                    <span className="text-xs leading-relaxed text-gray-600">{help.description}</span>
+                  </label>
+                );
+              })}
+            </div>
           </Field>
-        </FormSection>
-      )}
 
-      {contentType === "text" && (
-        <FormSection title="Teks Isi" description="Muncul di /gabung-siswa/docs dalam blok kode dengan tombol Salin.">
-          <Field label="Teks" id="bodyText" required error={fields.bodyText} hint="Contoh: caption Instagram, template pesan broadcast.">
-            <Textarea rows={10} {...form.field("bodyText")} placeholder="Tulis teks yang ingin bisa disalin calon siswa…" className="min-h-[200px] resize-y font-mono text-xs" />
-          </Field>
-        </FormSection>
-      )}
+          {contentType === "file" && (
+            <UploadField
+              id="filePath"
+              label="File"
+              kind="resource"
+              required
+              disabled={!canWrite}
+              value={form.values.filePath || null}
+              onChange={(path, result) => {
+                form.set("filePath", path ?? "");
+                form.set("fileSize", result ? String(result.size) : "");
+              }}
+              error={fields.filePath ?? fields.fileSize}
+              hint="PDF, PNG, JPEG, atau WebP. Maksimal 25 MB."
+            />
+          )}
 
-      <FormSection title="Catatan Internal" description="Tidak ditampilkan ke publik. Untuk keperluan tim admin saja.">
-        <Field label="Catatan" id="notes" error={fields.notes}>
-          <Input type="text" {...form.field("notes")} placeholder="Sumber asli, kredit desain, dsb." />
-        </Field>
-      </FormSection>
+          {contentType === "url" && (
+            <Field label="URL" id="externalUrl" required error={fields.externalUrl} hint="Contoh: https://drive.google.com/…, https://youtube.com/…">
+              <Input type="url" {...form.field("externalUrl")} placeholder="https://…" />
+            </Field>
+          )}
+
+          {contentType === "text" && (
+            <>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">Muncul di /gabung-siswa/docs dalam blok kode dengan tombol Salin.</p>
+              <Field label="Teks" id="bodyText" required error={fields.bodyText} hint="Contoh: caption Instagram, template pesan broadcast.">
+                <Textarea rows={10} {...form.field("bodyText")} placeholder="Tulis teks yang ingin bisa disalin calon siswa…" className="min-h-[200px] resize-y font-mono text-xs" />
+              </Field>
+            </>
+          )}
+        </FormCard>
+      </FormColumns>
     </FormShell>
   );
 }

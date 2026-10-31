@@ -110,8 +110,8 @@ export const sistemSpaChecks = [
   {
     name: "sistem: the form does not show the role field's error when the last super_admin cannot step down",
     file: "spa/src/pages/settings/AdminFormPage.tsx",
-    from: '<Field group label="Peran" required error={fields.role}>',
-    to: '<Field group label="Peran" required>',
+    from: '<Field group hideLabel label="Peran" required error={fields.role}>',
+    to: '<Field group hideLabel label="Peran" required>',
     tests: t(SETTINGS),
   },
   {

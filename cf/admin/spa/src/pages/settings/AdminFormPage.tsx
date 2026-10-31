@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Field, Input } from "~/components/ui/field";
-import { FormSection, FormShell } from "~/components/crud/FormShell";
+import { FormCard, FormColumns, FormShell } from "~/components/crud/FormShell";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { accessTo } from "~/lib/access";
 import { type ApiFailure, api } from "~/lib/api";
@@ -128,6 +128,25 @@ function AdminForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
   const { fields } = save;
   const role = form.values.role;
 
+  const areaCard =
+    role === "editor" ? (
+      <FormCard title="Area" description="Area yang boleh dilihat dan diubah editor ini. Area yang tidak dicentang tidak terlihat olehnya. Sistem tidak bisa diberikan: hanya untuk Super Admin.">
+        <Field group hideLabel label="Area editor" error={fields.areas} hint={form.values.pendaftaran || form.values.komunikasi || form.values.konten ? undefined : "Belum ada area dipilih: editor hanya akan melihat Dashboard."}>
+          <div className="space-y-2">
+            {AREAS.map((area, index) => (
+              <label key={area} className={ROLE_CARD}>
+                <input type="checkbox" {...form.checkbox(area)} id={index === 0 ? "areas" : area} className="mt-1 accent-primary-blue" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-gray-900">{AREA_LABEL[area]}</span>
+                  <span className="mt-0.5 block text-xs text-gray-500">{AREA_MENUS[area]}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Field>
+      </FormCard>
+    ) : undefined;
+
   return (
     <FormShell
       title={item ? "Edit Admin" : "Admin Baru"}
@@ -139,72 +158,56 @@ function AdminForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
       readOnly={!canWrite}
       saveLabel={item ? "Simpan Perubahan" : "Buat Admin"}
       fieldLabels={FIELD_LABELS}
-      meta={item ? <StatusTag map={STATUS} value={item.status} /> : undefined}
       flash={notice}
+      page={{ crumb: item ? item.name?.trim() || item.email : "Admin baru", status: item ? <StatusTag map={STATUS} value={item.status} /> : undefined }}
     >
-      <FormSection title="Identitas" description="Email yang dipakai untuk login admin. Bisa dipakai untuk login Google atau email + password.">
-        <Field label="Email" id="email" required={!item} error={fields.email} hint={item ? "Email tidak dapat diubah setelah admin dibuat." : "Gunakan email yang aktif untuk login."}>
-          <Input type="email" required={!item} readOnly={Boolean(item)} {...form.field("email")} placeholder="nama@contoh.com" autoComplete="off" className={item ? "cursor-not-allowed bg-gray-50" : undefined} />
-        </Field>
-        <Field label="Nama" id="name" required={Boolean(item)} error={fields.name} hint="Opsional. Muncul sebagai pengirim di log aktivitas.">
-          <Input type="text" required={Boolean(item)} {...form.field("name")} placeholder="Contoh: Ahmad Fadillah" autoComplete="off" />
-        </Field>
-        {!item && (
-          <Field
-            label="Password"
-            id="password"
-            error={fields.password}
-            hint="Opsional. Kosongkan untuk mengundang lewat email: admin memilih sendiri password-nya lewat tautan di email (berlaku 7 hari). Jika diisi, admin langsung bisa masuk dengan password itu tanpa verifikasi email, jadi pastikan emailnya benar dan sampaikan password-nya langsung ke admin."
-          >
-            <Input type="password" {...form.field("password")} autoComplete="new-password" placeholder="Password awal (opsional)" />
+      <FormColumns aside={areaCard}>
+        <FormCard title="Identitas" description="Email yang dipakai untuk login admin. Bisa dipakai untuk login Google atau email + password.">
+          <Field label="Email" id="email" required={!item} error={fields.email} hint={item ? "Email tidak dapat diubah setelah admin dibuat." : "Gunakan email yang aktif untuk login."}>
+            <Input type="email" required={!item} readOnly={Boolean(item)} {...form.field("email")} placeholder="nama@contoh.com" autoComplete="off" className={item ? "cursor-not-allowed bg-gray-50" : undefined} />
           </Field>
-        )}
-        {!item && form.values.password !== "" && (
-          <Field
-            label="Ketik ulang email"
-            id="emailConfirm"
-            required
-            error={fields.emailConfirm}
-            hint="Admin dengan password langsung bisa masuk tanpa verifikasi email, jadi alamatnya diketik dua kali."
-          >
-            <Input type="email" required {...form.field("emailConfirm")} placeholder="nama@contoh.com" autoComplete="off" />
+          <Field label="Nama" id="name" required={Boolean(item)} error={fields.name} hint="Opsional. Muncul sebagai pengirim di log aktivitas.">
+            <Input type="text" required={Boolean(item)} {...form.field("name")} placeholder="Contoh: Ahmad Fadillah" autoComplete="off" />
           </Field>
-        )}
-      </FormSection>
+          {!item && (
+            <Field
+              label="Password"
+              id="password"
+              error={fields.password}
+              hint="Opsional. Kosongkan untuk mengundang lewat email: admin memilih sendiri password-nya lewat tautan di email (berlaku 7 hari). Jika diisi, admin langsung bisa masuk dengan password itu tanpa verifikasi email, jadi pastikan emailnya benar dan sampaikan password-nya langsung ke admin."
+            >
+              <Input type="password" {...form.field("password")} autoComplete="new-password" placeholder="Password awal (opsional)" />
+            </Field>
+          )}
+          {!item && form.values.password !== "" && (
+            <Field
+              label="Ketik ulang email"
+              id="emailConfirm"
+              required
+              error={fields.emailConfirm}
+              hint="Admin dengan password langsung bisa masuk tanpa verifikasi email, jadi alamatnya diketik dua kali."
+            >
+              <Input type="email" required {...form.field("emailConfirm")} placeholder="nama@contoh.com" autoComplete="off" />
+            </Field>
+          )}
+        </FormCard>
 
-      <FormSection title="Peran" description="Menentukan apa saja yang bisa diakses oleh admin ini.">
-        <Field group label="Peran" required error={fields.role}>
-          <div className="space-y-2">
-            {ROLES.map((value) => (
-              <label key={value} className={ROLE_CARD}>
-                <input type="radio" name="role" id={value === ROLES[0] ? "role" : undefined} value={value} required checked={role === value} onChange={() => form.set("role", value)} className="mt-1 accent-primary-blue" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-gray-900">{ROLE_LABEL[value]}</span>
-                  <span className="mt-0.5 block text-xs text-gray-500">{ROLE_HINT[value]}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </Field>
-      </FormSection>
-
-      {role === "editor" && (
-        <FormSection title="Area" description="Area yang boleh dilihat dan diubah editor ini. Area yang tidak dicentang tidak terlihat olehnya. Sistem tidak bisa diberikan: hanya untuk Super Admin.">
-          <Field group label="Area editor" error={fields.areas} hint={form.values.pendaftaran || form.values.komunikasi || form.values.konten ? undefined : "Belum ada area dipilih: editor hanya akan melihat Dashboard."}>
+        <FormCard title="Peran" description="Menentukan apa saja yang bisa diakses oleh admin ini.">
+          <Field group hideLabel label="Peran" required error={fields.role}>
             <div className="space-y-2">
-              {AREAS.map((area, index) => (
-                <label key={area} className={ROLE_CARD}>
-                  <input type="checkbox" {...form.checkbox(area)} id={index === 0 ? "areas" : area} className="mt-1 accent-primary-blue" />
+              {ROLES.map((value) => (
+                <label key={value} className={ROLE_CARD}>
+                  <input type="radio" name="role" id={value === ROLES[0] ? "role" : undefined} value={value} required checked={role === value} onChange={() => form.set("role", value)} className="mt-1 accent-primary-blue" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-gray-900">{AREA_LABEL[area]}</span>
-                    <span className="mt-0.5 block text-xs text-gray-500">{AREA_MENUS[area]}</span>
+                    <span className="block text-sm font-semibold text-gray-900">{ROLE_LABEL[value]}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500">{ROLE_HINT[value]}</span>
                   </span>
                 </label>
               ))}
             </div>
           </Field>
-        </FormSection>
-      )}
+        </FormCard>
+      </FormColumns>
     </FormShell>
   );
 }
