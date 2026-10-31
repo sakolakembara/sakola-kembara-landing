@@ -324,6 +324,18 @@ describe("the form: create", () => {
   });
 });
 
+describe("the form: one bar and cards (SAKEM-119)", () => {
+  test("the breadcrumb ends with the page, Batal and the save button are its actions, and the File card is in the side column", async () => {
+    await openForm(["editor", ["konten"]], "/reports/new");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("Laporan baru")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/reports");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
+    const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+    expect(card("File").parentElement).not.toBe(card("Metadata").parentElement);
+  });
+});
+
 describe("the form: edit", () => {
   const loaded = item();
 

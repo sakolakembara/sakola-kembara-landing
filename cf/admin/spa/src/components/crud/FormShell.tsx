@@ -1,8 +1,10 @@
 import { ArrowLeft, Save } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useId, useRef } from "react";
 import { Link, useBlocker } from "react-router";
+import { cn } from "@/lib/cn";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import type { FlashControl } from "~/lib/crud/flash";
 import type { MutationState } from "~/lib/crud/useMutation";
 import { usePageTitle } from "~/lib/hooks";
@@ -48,10 +50,12 @@ export interface FormShellProps {
    * The editor layout (cf/admin/DESIGN.md, "Forms: one bar"), for a page that has tabs and a column beside its text:
    * no bar of its own and no card around the fields. The title, the status and the actions are put in the shell's top bar
    * (`PageBar`), the tabs sit under it, and the page is as wide as the window. `title` is then the page's hidden heading and
-   * `crumb` the last step of the breadcrumb. The actions are the page's own (a draft has "Simpan" and "Terbitkan"); a
-   * button that saves is `type="submit" form={formId}`, so the browser's own checks of the fields still run first.
+   * `crumb` the last step of the breadcrumb. The actions are the page's own when it has more than one way to save (a
+   * draft has "Simpan" and "Terbitkan"); a button that saves is `type="submit" form={formId}`, so the browser's own
+   * checks of the fields still run first. Without `actions` the page gets the usual pair: "Batal" (or "Tutup" for a
+   * reader) and the save button named by `saveLabel`. The fields are then `FormCard`s in `FormColumns`.
    */
-  page?: { crumb: string; status?: ReactNode; actions: (formId: string) => ReactNode; tabs?: ReactNode };
+  page?: { crumb: string; status?: ReactNode; actions?: (formId: string) => ReactNode; tabs?: ReactNode };
   children: ReactNode;
 }
 
@@ -93,6 +97,20 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
     onSubmit();
   }
 
+  const usualActions = (
+    <>
+      <Button variant="ghost" href={back.href}>
+        {readOnly ? "Tutup" : "Batal"}
+      </Button>
+      {!readOnly && (
+        <Button type="submit" form={formId} disabled={save.pending}>
+          <Save aria-hidden="true" />
+          {save.pending ? "Menyimpan..." : saveLabel}
+        </Button>
+      )}
+    </>
+  );
+
   return (
     <>
       <form id={formId} onSubmit={submit} aria-label={title}>
@@ -103,7 +121,7 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
         {page ? (
           <>
             <h1 className="sr-only">{title}</h1>
-            <PageBar title={page.crumb} back={back} status={page.status} actions={page.actions(formId)} />
+            <PageBar title={page.crumb} back={back} status={page.status} actions={page.actions ? page.actions(formId) : usualActions} />
             {page.tabs}
           </>
         ) : (
@@ -193,6 +211,36 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
         onCancel={() => blocker.reset?.()}
       />
     </>
+  );
+}
+
+/**
+ * A titled card of fields, for a form with the `page` frame (cf/admin/DESIGN.md, "Forms: one bar"): what the card is
+ * and what it is for in its header, the fields under it.
+ */
+export function FormCard({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The columns of a one-page form: its cards on the left and, from `lg`, a 340 px column of the smaller ones (status,
+ * schedule, the file) on the right; one column below that, the main cards first. A small form does not stretch to the
+ * width of the window: past 1024 px the fields would be longer than anyone reads.
+ */
+export function FormColumns({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className={cn("grid max-w-5xl items-start gap-6", aside && "lg:grid-cols-[minmax(0,1fr)_340px]")}>
+      <div className="min-w-0 space-y-6">{children}</div>
+      {aside && <div className="min-w-0 space-y-6">{aside}</div>}
+    </div>
   );
 }
 

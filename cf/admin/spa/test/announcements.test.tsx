@@ -341,6 +341,20 @@ describe("the form: create", () => {
   });
 });
 
+describe("the form: one bar and cards (SAKEM-119)", () => {
+  test("the breadcrumb ends with the page, Batal and the save button are its actions, and the schedule, with its switch, is in the side column", async () => {
+    await openForm(["editor", ["komunikasi"]], "/announcements/new");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("Pengumuman baru")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/announcements");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
+    const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+    expect(card("Jadwal").contains(screen.getByRole("switch", { name: /Aktifkan/ }))).toBe(true);
+    expect(card("Jadwal").parentElement).not.toBe(card("Konten").parentElement);
+    expect(card("Konten").parentElement).toBe(card("Tampilan").parentElement);
+  });
+});
+
 describe("the form: edit", () => {
   const loaded = item({ id: "m1", title: "Judul lama", body: "Isi lama", severity: "warning", active: true, ctaLabel: "Daftar", ctaUrl: "/gabung-siswa", startsAt: "2026-11-01T01:30:00.000Z", endsAt: null });
 

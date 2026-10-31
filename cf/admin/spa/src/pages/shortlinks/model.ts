@@ -1,3 +1,4 @@
+import { makeStatusMap } from "~/components/crud/StatusTag";
 import type { ListSpec } from "~/lib/crud/query";
 import { SITE_URL } from "~/lib/site";
 
@@ -8,6 +9,12 @@ import { SITE_URL } from "~/lib/site";
 /** The API collection and the SPA route of the menu. */
 export const API_PATH = "/api/admin/shortlinks";
 export const ROUTE = "/shortlinks";
+
+/** What the top bar of the form says about a saved link. */
+export const STATUS = makeStatusMap({
+  active: { label: "Aktif", tone: "green" },
+  inactive: { label: "Nonaktif", tone: "gray" },
+});
 
 /** An item as the API answers it (`present` in src/api/shortlinks.ts). */
 export interface ShortlinkItem {

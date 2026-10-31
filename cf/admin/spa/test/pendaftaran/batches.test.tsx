@@ -185,7 +185,17 @@ describe("the form: create", () => {
     expect(screen.getByLabelText(/Buka pendaftaran/).getAttribute("type")).toBe("datetime-local");
     expect(screen.getByLabelText(/Tutup pendaftaran/).getAttribute("type")).toBe("datetime-local");
     expect(screen.getByRole("button", { name: "Buat Batch" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Kembali" }).getAttribute("href")).toBe("/batches");
+    // One bar: the breadcrumb is the way back and ends with the page, "Batal" is the other way out.
+    const crumbs = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+    expect(crumbs.getByRole("link", { name: "Batch" }).getAttribute("href")).toBe("/batches");
+    expect(crumbs.getByText("Batch baru")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/batches");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull(); // no bar or back button of the form's own
+    // the schedule is a card of its own in the side column, apart from the batch's name and year
+    const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+    expect(card("Jadwal pendaftaran").contains(screen.getByLabelText(/Buka pendaftaran/))).toBe(true);
+    expect(card("Jadwal pendaftaran").contains(screen.getByLabelText(/Tutup pendaftaran/))).toBe(true);
+    expect(card("Jadwal pendaftaran").parentElement).not.toBe(card("Batch").parentElement);
     await waitFor(() => expect(document.title).toBe("Batch Baru | Admin Sakola Kembara"));
   });
 
@@ -274,8 +284,9 @@ describe("the form: edit", () => {
     expect((screen.getByLabelText(/Deskripsi/) as HTMLTextAreaElement).value).toBe("Lama");
     expect((screen.getByLabelText(/Buka pendaftaran/) as HTMLInputElement).value).toBe(toLocalDatetime("2026-08-01T01:30:00.000Z"));
     expect(screen.getByRole("heading", { level: 1, name: "Edit Batch" })).toBeTruthy();
-    // Back goes to the batch's page, not the list.
-    expect(screen.getByRole("link", { name: "Kembali" }).getAttribute("href")).toBe("/batches/b1");
+    // The breadcrumb ends with the batch's name, and "Batal" goes to the batch's page, not the list.
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Gen 7")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/batches/b1");
 
     await user.clear(screen.getByLabelText(/Nama batch/));
     await user.type(screen.getByLabelText(/Nama batch/), "Gen 7 baru");

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Field, Input, Textarea } from "~/components/ui/field";
-import { FormShell } from "~/components/crud/FormShell";
+import { FormCard, FormColumns, FormShell } from "~/components/crud/FormShell";
 import { accessTo } from "~/lib/access";
 import { api } from "~/lib/api";
 import { describeFailure } from "~/lib/crud/errors";
@@ -106,27 +106,34 @@ function BatchForm({ item, canWrite, notice, onSaved, onReload }: FormProps) {
       saveLabel={item ? "Simpan Perubahan" : "Buat Batch"}
       fieldLabels={FIELD_LABELS}
       flash={notice}
+      page={{ crumb: item ? item.name : "Batch baru" }}
     >
-      <Field label="Tahun angkatan" id="year" required error={fields.year} hint="Contoh: 2026 untuk periode 2026/2027.">
-        <Input type="number" required min={2024} max={2100} {...form.field("year")} />
-      </Field>
+      <FormColumns
+        aside={
+          <FormCard title="Jadwal pendaftaran" description="Kapan siswa bisa mendaftar di batch ini.">
+            <Field label="Buka pendaftaran" id="opensAt" required error={fields.opensAt}>
+              <Input type="datetime-local" required {...form.field("opensAt")} />
+            </Field>
+            <Field label="Tutup pendaftaran" id="closesAt" required error={fields.closesAt}>
+              <Input type="datetime-local" required {...form.field("closesAt")} />
+            </Field>
+          </FormCard>
+        }
+      >
+        <FormCard title="Batch" description="Nama dan tahun angkatan yang dilihat siswa dan admin.">
+          <Field label="Tahun angkatan" id="year" required error={fields.year} hint="Contoh: 2026 untuk periode 2026/2027.">
+            <Input type="number" required min={2024} max={2100} {...form.field("year")} />
+          </Field>
 
-      <Field label="Nama batch" id="name" required error={fields.name} hint="Muncul di halaman siswa dan admin. Contoh: “Gen 7 — 2026/2027”.">
-        <Input type="text" required {...form.field("name")} placeholder="Contoh: Gen 7 — 2026/2027" />
-      </Field>
+          <Field label="Nama batch" id="name" required error={fields.name} hint="Muncul di halaman siswa dan admin. Contoh: “Gen 7 — 2026/2027”.">
+            <Input type="text" required {...form.field("name")} placeholder="Contoh: Gen 7 — 2026/2027" />
+          </Field>
 
-      <Field label="Deskripsi (opsional)" id="description" error={fields.description}>
-        <Textarea rows={3} {...form.field("description")} />
-      </Field>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Buka pendaftaran" id="opensAt" required error={fields.opensAt}>
-          <Input type="datetime-local" required {...form.field("opensAt")} />
-        </Field>
-        <Field label="Tutup pendaftaran" id="closesAt" required error={fields.closesAt}>
-          <Input type="datetime-local" required {...form.field("closesAt")} />
-        </Field>
-      </div>
+          <Field label="Deskripsi (opsional)" id="description" error={fields.description}>
+            <Textarea rows={3} {...form.field("description")} />
+          </Field>
+        </FormCard>
+      </FormColumns>
     </FormShell>
   );
 }

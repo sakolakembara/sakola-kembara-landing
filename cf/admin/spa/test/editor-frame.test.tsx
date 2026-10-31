@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { FormCard, FormColumns } from "~/components/crud/FormShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { SwitchField } from "~/components/ui/switch";
 import { API_PATH } from "~/pages/blog/form";
@@ -169,6 +170,46 @@ describe("Card", () => {
     );
     expect(screen.getByRole("heading", { level: 2, name: "Informasi Dasar" }).closest("[data-slot='card']")?.textContent).toContain("Judul dan ringkasan.isi");
     expect(screen.getByRole("heading", { level: 3, name: "Bagian kecil" })).toBeTruthy();
+  });
+});
+
+describe("FormCard and FormColumns (the one-page forms, SAKEM-119)", () => {
+  test("FormCard is a Card: the title is an h2, the description is there only when it was given, and the fields follow", () => {
+    const { rerender } = render(
+      <FormCard title="Alamat pendek" description="Bagian setelah nama domain.">
+        <input aria-label="Slug" />
+      </FormCard>,
+    );
+    const card = screen.getByRole("heading", { level: 2, name: "Alamat pendek" }).closest("[data-slot='card']")!;
+    expect(card.textContent).toContain("Bagian setelah nama domain.");
+    expect(card.contains(screen.getByLabelText("Slug"))).toBe(true);
+    rerender(
+      <FormCard title="Status">
+        <input aria-label="Aktif" />
+      </FormCard>,
+    );
+    expect(document.querySelector("[data-slot='card-description']")).toBeNull();
+  });
+
+  test("with a side column the cards of the form come first and the side column is the second, 340 px wide from lg; without one there is a single column", () => {
+    const { container, rerender } = render(
+      <FormColumns aside={<p>samping</p>}>
+        <p>utama</p>
+      </FormColumns>,
+    );
+    const grid = container.firstElementChild as HTMLElement;
+    expect(Array.from(grid.children).map((column) => column.textContent)).toEqual(["utama", "samping"]);
+    expect(grid.className).toContain("lg:grid-cols-[minmax(0,1fr)_340px]");
+    expect(grid.className).toContain("max-w-5xl"); // a small form does not stretch across a wide window
+
+    rerender(
+      <FormColumns>
+        <p>utama</p>
+      </FormColumns>,
+    );
+    const single = container.firstElementChild as HTMLElement;
+    expect(single.children).toHaveLength(1);
+    expect(single.className).not.toContain("lg:grid-cols");
   });
 });
 
