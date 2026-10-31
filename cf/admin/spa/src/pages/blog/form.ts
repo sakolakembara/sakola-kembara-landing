@@ -134,9 +134,9 @@ export type EditorTab = "konten" | "publikasi" | "seo";
 /** The tab each field lives on: the editor opens the tab that holds the first error. */
 export const FIELD_TAB: Record<string, EditorTab> = {
   title: "konten",
-  slug: "konten",
-  excerpt: "konten",
   contentMarkdown: "konten",
+  slug: "publikasi",
+  excerpt: "publikasi",
   category: "publikasi",
   date: "publikasi",
   author: "publikasi",

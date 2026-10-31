@@ -233,7 +233,7 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
       }}
     >
       <div className={tabbed ? undefined : "space-y-8"}>
-        <div role="tabpanel" id="panel-konten" aria-labelledby={tabbed ? "tab-konten" : undefined} aria-label={tabbed ? undefined : "Konten"} hidden={!showKonten} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div role="tabpanel" id="panel-konten" aria-labelledby={tabbed ? "tab-konten" : undefined} aria-label={tabbed ? undefined : "Konten"} hidden={!showKonten}>
           <section aria-label="Tulis artikel" className="min-w-0">
             <BodyEditor
               id="contentMarkdown"
@@ -246,29 +246,6 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
               readOnly={!canWrite}
             />
           </section>
-
-          <Card className="lg:sticky lg:top-[68px]">
-            <CardHeader>
-              <CardTitle>Informasi Dasar</CardTitle>
-              <CardDescription>Alamat dan ringkasan artikel di list, hasil pencarian, dan SEO.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Field
-                  label="Slug"
-                  id="slug"
-                  error={fields.slug}
-                  hint={slugLocked ? "Slug tidak bisa diubah setelah artikel terbit." : item ? "Alamat artikel: /blog/slug. Bisa diubah selama artikel masih draf." : "Kosongkan agar dibuat otomatis dari judul."}
-                >
-                  <Input type="text" {...form.field("slug")} disabled={slugLocked} placeholder="cerita-lulusan-sakola-kembara-di-itb" />
-                </Field>
-                {item && <ArticleLink slug={item.slug} siteUrl={siteUrl} published={published} />}
-              </div>
-              <Field label="Excerpt" id="excerpt" required error={fields.excerpt} hint={`${LIMITS.excerptMin}-${LIMITS.excerptMax} karakter. Muncul di list artikel dan SEO description.`}>
-                <Textarea required rows={4} {...form.field("excerpt")} placeholder="Ringkasan singkat artikel..." />
-              </Field>
-            </CardContent>
-          </Card>
         </div>
 
         <div role="tabpanel" id="panel-publikasi" aria-labelledby={tabbed ? "tab-publikasi" : undefined} aria-label={tabbed ? undefined : "Publikasi"} hidden={!showPublikasi} className="grid items-start gap-6 lg:grid-cols-2">
@@ -312,24 +289,50 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Gambar Hero</CardTitle>
-              <CardDescription>Gambar utama yang tampil di atas artikel dan sebagai thumbnail di list.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <UploadField
-                id="image"
-                label="Gambar Hero"
-                kind="blog-image"
-                value={form.values.image === "" ? null : form.values.image}
-                onChange={(path) => form.set("image", path ?? "")}
-                error={fields.image}
-                disabled={!canWrite}
-                hint="Pilih file (≤ 5 MB): PNG, JPEG, WebP, atau GIF."
-              />
-            </CardContent>
-          </Card>
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informasi Dasar</CardTitle>
+                <CardDescription>Alamat dan ringkasan artikel di list, hasil pencarian, dan SEO.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <Field
+                    label="Slug"
+                    id="slug"
+                    error={fields.slug}
+                    hint={slugLocked ? "Slug tidak bisa diubah setelah artikel terbit." : item ? "Alamat artikel: /blog/slug. Bisa diubah selama artikel masih draf." : "Kosongkan agar dibuat otomatis dari judul."}
+                  >
+                    <Input type="text" {...form.field("slug")} disabled={slugLocked} placeholder="cerita-lulusan-sakola-kembara-di-itb" />
+                  </Field>
+                  {item && <ArticleLink slug={item.slug} siteUrl={siteUrl} published={published} />}
+                </div>
+                <Field label="Excerpt" id="excerpt" required error={fields.excerpt} hint={`${LIMITS.excerptMin}-${LIMITS.excerptMax} karakter. Muncul di list artikel dan SEO description.`}>
+                  {/* Not `required`: an empty one on a hidden tab would make the browser refuse the save without saying where. The Worker refuses it and the page opens this tab. */}
+                  <Textarea aria-required="true" rows={4} {...form.field("excerpt")} placeholder="Ringkasan singkat artikel..." />
+                </Field>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Gambar Hero</CardTitle>
+                <CardDescription>Gambar utama yang tampil di atas artikel dan sebagai thumbnail di list.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UploadField
+                  id="image"
+                  label="Gambar Hero"
+                  kind="blog-image"
+                  value={form.values.image === "" ? null : form.values.image}
+                  onChange={(path) => form.set("image", path ?? "")}
+                  error={fields.image}
+                  disabled={!canWrite}
+                  hint="Pilih file (≤ 5 MB): PNG, JPEG, WebP, atau GIF."
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div role="tabpanel" id="panel-seo" aria-labelledby={tabbed ? "tab-seo" : undefined} aria-label={tabbed ? undefined : "SEO"} hidden={!showSeo} className="max-w-3xl">
