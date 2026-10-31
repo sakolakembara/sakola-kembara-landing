@@ -536,10 +536,10 @@ export const editorSpaChecks = [
     tests: t("editor-frame.test.tsx"),
   },
   {
-    name: "editor: one-page forms: a small form stretches across the whole window",
+    name: "editor: one-page forms: the form is capped in width again and leaves a wide window empty at the right",
     file: "spa/src/components/crud/FormShell.tsx",
-    from: 'cn("grid max-w-5xl items-start gap-6"',
-    to: 'cn("grid items-start gap-6"',
+    from: 'cn("grid items-start gap-6"',
+    to: 'cn("grid max-w-5xl items-start gap-6"',
     tests: t("editor-frame.test.tsx"),
   },
   {

@@ -200,7 +200,7 @@ describe("FormCard and FormColumns (the one-page forms, SAKEM-119)", () => {
     const grid = container.firstElementChild as HTMLElement;
     expect(Array.from(grid.children).map((column) => column.textContent)).toEqual(["utama", "samping"]);
     expect(grid.className).toContain("lg:grid-cols-[minmax(0,1fr)_340px]");
-    expect(grid.className).toContain("max-w-5xl"); // a small form does not stretch across a wide window
+    expect(grid.className).not.toMatch(/max-w-/); // as wide as the window: a cap left a wide window empty at the right
 
     rerender(
       <FormColumns>
