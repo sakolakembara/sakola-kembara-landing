@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
-import { PageHeader } from "~/components/PageHeader";
+import { DescriptionSkeleton, PageHeader } from "~/components/PageHeader";
 import { type Column, DataTable } from "~/components/crud/DataTable";
 import { ColumnsMenu } from "~/components/crud/ColumnsMenu";
 import { FilterBar, type FilterSpec } from "~/components/crud/FilterBar";
@@ -10,6 +10,7 @@ import { StatusTag } from "~/components/crud/StatusTag";
 import { api } from "~/lib/api";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
 import { isFiltered, pageSizeChoices } from "~/lib/crud/query";
+import { cachedRead, keepRead, readCacheVersion } from "~/lib/crud/readCache";
 import type { ListPayload } from "~/lib/crud/types";
 import { useColumnChoice } from "~/lib/crud/useColumnChoice";
 import { useList } from "~/lib/crud/useList";
@@ -37,15 +38,30 @@ interface BatchOptions {
   message: string;
 }
 
-/** The batches, newest year first: for the batch select and to know which one is the newest. A few rows a year. */
+/** The search box of the list, and of the loading page that stands in for it. A prefix match on purpose, and the box says so. */
+const SEARCH = { label: "Cari", placeholder: "Awal nama atau email" } as const;
+
+/** The batches' request: a few rows a year, newest first. */
+const BATCHES_PATH = "/api/admin/batches?pageSize=100&sort=-year";
+
+/**
+ * The batches, newest year first: for the batch select and to know which one is the newest. A few rows a year. The
+ * last answer is kept in memory like a list's (lib/crud/readCache.ts): coming back to Pendaftar shows the page at once
+ * and asks again, instead of waiting for the batches before the applicants can even be asked for.
+ */
 function useBatches(): BatchOptions {
-  const [state, setState] = useState<{ status: BatchOptions["status"]; batches: BatchItem[]; message: string }>({ status: "loading", batches: [], message: "" });
+  const [state, setState] = useState<{ status: BatchOptions["status"]; batches: BatchItem[]; message: string }>(() => {
+    const kept = cachedRead<ListPayload<BatchItem>>(BATCHES_PATH);
+    return kept ? { status: "ready", batches: kept.items, message: "" } : { status: "loading", batches: [], message: "" };
+  });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    setState((previous) => ({ ...previous, status: "loading" }));
-    void api<ListPayload<BatchItem>>("/api/admin/batches?pageSize=100&sort=-year", { signal: controller.signal }).then((result) => {
+    const version = readCacheVersion();
+    setState((previous) => (previous.batches.length > 0 ? previous : { ...previous, status: "loading" }));
+    void api<ListPayload<BatchItem>>(BATCHES_PATH, { signal: controller.signal }).then((result) => {
       if (controller.signal.aborted) return;
+      if (result.ok) keepRead(BATCHES_PATH, result.data, version);
       setState(result.ok ? { status: "ready", batches: result.data.items, message: "" } : { status: "error", batches: [], message: describeFailure(result).message });
     });
     return () => controller.abort();
@@ -53,38 +69,67 @@ function useBatches(): BatchOptions {
   return { ...state, retry: () => setAttempt((count) => count + 1) };
 }
 
+/**
+ * Pendaftar while the batches are on their way (and while the address is being given the newest one): the page's own
+ * parts in their places, so what arrives fills them in. The filter bar is drawn, switched off, because its height is
+ * what everything under it waits on; there is nothing to choose before the batches are known.
+ */
+function PendaftarLoading() {
+  return (
+    <div className="p-6 md:p-10">
+      <PageHeader title="Pendaftar">
+        <DescriptionSkeleton />
+      </PageHeader>
+      <PendaftarTabs current="applicants" />
+      <fieldset disabled className="contents">
+        <FilterBar
+          list={{ query: { page: 1, pageSize: 20, q: "", sort: "", filters: {} }, apply: () => undefined, reset: () => undefined }}
+          search={SEARCH}
+          filters={[
+            { name: "batch", label: "Batch", allLabel: "Semua batch", options: [] },
+            { name: "status", label: "Status", allLabel: "Semua status", options: STATUS_OPTIONS },
+          ]}
+        />
+      </fieldset>
+      <DataTable<ApplicationListed> caption="Daftar pendaftar" columns={COLUMNS("")} rows={[]} rowKey={(row) => row.id} state="loading" emptyText="" />
+    </div>
+  );
+}
+
 export function ApplicationsPage() {
   const batches = useBatches();
   const [params] = useSearchParams();
+
+  if (batches.status === "loading") return <PendaftarLoading />;
 
   if (batches.status !== "ready") {
     return (
       <div className="p-6 md:p-10">
         <PageHeader title="Pendaftar" />
-        {batches.status === "loading" ? (
-          <p role="status" className="text-sm text-gray-500">
-            Memuat data...
+        <div className="space-y-4">
+          <p role="alert" className="text-gray-700">
+            {batches.message || MESSAGES.loadFailed}
           </p>
-        ) : (
-          <div className="space-y-4">
-            <p role="alert" className="text-gray-700">
-              {batches.message || MESSAGES.loadFailed}
-            </p>
-            <Button variant="neutral" onClick={batches.retry}>
-              Coba lagi
-            </Button>
-          </div>
-        )}
+          <Button variant="neutral" onClick={batches.retry}>
+            Coba lagi
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // Nothing says which batch: the newest one (when there is one at all).
+  // Nothing says which batch: the newest one (when there is one at all). The page stays as it was while the address
+  // changes: a `<Navigate>` on its own draws nothing for the commit it takes to land, and the page went blank.
   const newest = newestBatch(batches.batches);
   if (needsDefaultBatch(params) && newest) {
     const next = new URLSearchParams(params);
     next.set("batch", newest.id);
-    return <Navigate to={`?${next.toString()}`} replace />;
+    return (
+      <>
+        <PendaftarLoading />
+        <Navigate to={`?${next.toString()}`} replace />
+      </>
+    );
   }
 
   return <ApplicantList batches={batches.batches} />;
@@ -144,23 +189,28 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
   return (
     <div className="p-6 md:p-10">
       <PageHeader title="Pendaftar">
-        <p className="text-gray-600">
-          {chosen ? (
-            <>
-              Batch <b>{chosen.name}</b>. {list.total.toLocaleString("id-ID")} pendaftar.
-            </>
-          ) : (
-            <>
-              Daftar pendaftar siswa Sakola Kembara. {list.total.toLocaleString("id-ID")} pendaftar{isFiltered({ ...list.query, filters: otherFilters }) ? " (filter aktif)" : ""}.
-            </>
-          )}
-        </p>
+        {list.status === "loading" ? (
+          // The count is not known until the list is there: a "0 pendaftar" that changes a moment later would be false.
+          <DescriptionSkeleton />
+        ) : (
+          <p className="text-gray-600">
+            {chosen ? (
+              <>
+                Batch <b>{chosen.name}</b>. {list.total.toLocaleString("id-ID")} pendaftar.
+              </>
+            ) : (
+              <>
+                Daftar pendaftar siswa Sakola Kembara. {list.total.toLocaleString("id-ID")} pendaftar{isFiltered({ ...list.query, filters: otherFilters }) ? " (filter aktif)" : ""}.
+              </>
+            )}
+          </p>
+        )}
       </PageHeader>
 
       {/* For who may purge: the drafts that hold files (SAKEM-093). A viewer sees no tabs. */}
       <PendaftarTabs current="applicants" />
 
-      <FilterBar list={bar} search={{ label: "Cari", placeholder: "Awal nama atau email" }} filters={filters} trailing={<ColumnsMenu choice={columnChoice} />} />
+      <FilterBar list={bar} search={SEARCH} filters={filters} trailing={<ColumnsMenu choice={columnChoice} />} />
 
       <DataTable<ApplicationListed>
         caption="Daftar pendaftar"

@@ -2,7 +2,7 @@ import { Edit, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "~/components/ui/button";
-import { PageHeader } from "~/components/PageHeader";
+import { DescriptionSkeleton, PageHeader } from "~/components/PageHeader";
 import { type Access, accessTo, type Section } from "~/lib/access";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
 import { useFlash } from "~/lib/crud/flash";
@@ -175,7 +175,10 @@ export function ListPage<T extends Versioned>(props: ListPageProps<T>) {
           ) : undefined
         }
       >
-        {description && <div className="text-gray-600">{typeof description === "function" ? description(list) : description}</div>}
+        {description && (
+          // A description that counts the list has nothing true to say until the list is there.
+          <div className="text-gray-600">{typeof description === "function" ? (list.status === "loading" ? <DescriptionSkeleton /> : description(list)) : description}</div>
+        )}
       </PageHeader>
 
       <Flash flash={notice.flash} dismiss={notice.dismiss} />

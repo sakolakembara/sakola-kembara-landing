@@ -59,6 +59,9 @@ describe("the tabs", () => {
       [`GET ${DRAFT_FILES_PATH}`]: respond(envelope([OLD])),
     });
     renderApp("/applications?batch=b26");
+    // The tabs are there from the first frame, in the loading page too, which is then replaced by the page itself:
+    // the search box sits in a switched-off fieldset until the batches are known.
+    await waitFor(() => expect(screen.getByLabelText("Cari").closest("fieldset")).toBeNull());
     const tabs = await screen.findByRole("navigation", { name: "Bagian Pendaftar" });
     const [first, second] = within(tabs).getAllByRole("link");
     expect([first!.textContent, first!.getAttribute("aria-current")]).toEqual(["Pendaftar", "page"]);

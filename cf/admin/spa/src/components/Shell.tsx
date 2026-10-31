@@ -1,5 +1,5 @@
 import { ExternalLink, Menu, PanelLeft } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/cn";
 import { DashboardProvider, useSharedDashboard } from "~/lib/dashboard-provider";
@@ -47,7 +47,7 @@ function ShellFrame() {
   const main = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
 
-  // After moving to another page, start reading at its content, not on the
+  // After moving to another page, start reading at its content, at the top and not on the
   // link just pressed (what a full page load does), and close the drawer.
   const lastPath = useRef(pathname);
   useEffect(() => {
@@ -55,6 +55,16 @@ function ShellFrame() {
     lastPath.current = pathname;
     setDrawerOpen(false);
     main.current?.focus({ preventScroll: true });
+  }, [pathname]);
+
+  // <main> is the scroller and it is the same element on every page: without this a page opens where the last one was
+  // left (clamped to its own length), a long list scrolled halfway down the next page. A layout effect, so it is done
+  // before the page is painted: from a plain effect one frame of the new page shows at the old position first.
+  const scrolledFor = useRef(pathname);
+  useLayoutEffect(() => {
+    if (scrolledFor.current === pathname) return;
+    scrolledFor.current = pathname;
+    if (main.current) main.current.scrollTop = 0;
   }, [pathname]);
 
   // A drawer left open when the window grows to desktop width would hold

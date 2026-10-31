@@ -18,6 +18,7 @@ import { listSpaChecks } from "./negative-checks-spa-lists.mjs";
 import { listToolsSpaChecks } from "./negative-checks-spa-listtools.mjs";
 import { editorSpaChecks } from "./negative-checks-spa-editor.mjs";
 import { bootSpaChecks } from "./negative-checks-spa-boot.mjs";
+import { switchSpaChecks } from "./negative-checks-spa-switch.mjs";
 import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
@@ -45,6 +46,9 @@ const checks = [
 
   // The load sequence (SAKEM-115): scripts/negative-checks-spa-boot.mjs.
   ...bootSpaChecks,
+
+  // Moving from page to page (SAKEM-115): scripts/negative-checks-spa-switch.mjs.
+  ...switchSpaChecks,
 
   // Aktivitas and Pengaturan (SAKEM-082): scripts/negative-checks-spa-sistem.mjs.
   ...sistemSpaChecks,
