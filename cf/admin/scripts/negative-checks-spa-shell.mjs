@@ -14,7 +14,8 @@ const SIDEBAR = "sidebar.test.tsx";
 
 const PROVIDER = "spa/src/lib/dashboard-provider.tsx";
 const STATE = "spa/src/lib/sidebar-state.ts";
-const MENU = "spa/src/components/UserMenu.tsx";
+// The behaviour of the user menu's panel (opening, Escape, a press outside, Tab out) is the shared disclosure's.
+const DISCLOSURE = "spa/src/lib/use-disclosure.ts";
 const SIDE = "spa/src/components/Sidebar.tsx";
 
 export const shellSpaChecks = [
@@ -116,28 +117,28 @@ export const shellSpaChecks = [
   // ---------------------------------------------- the user menu
   {
     name: "shell: the user menu starts open",
-    file: MENU,
+    file: DISCLOSURE,
     from: "const [open, setOpen] = useState(false);",
     to: "const [open, setOpen] = useState(true);",
     tests: t(SHELL, DRAWER, SIDEBAR),
   },
   {
     name: "shell: a press outside the user menu leaves it open",
-    file: MENU,
+    file: DISCLOSURE,
     from: "if (!root.current?.contains(event.target as Node)) setOpen(false);",
     to: "void event;",
     tests: t(SHELL),
   },
   {
     name: "shell: Escape closes the user menu but focus is lost to the page",
-    file: MENU,
+    file: DISCLOSURE,
     from: "trigger.current?.focus();",
     to: "void trigger;",
     tests: t(SHELL),
   },
   {
     name: "shell: Tab out of the user menu leaves it open over the page",
-    file: MENU,
+    file: DISCLOSURE,
     from: "if (event.relatedTarget && !root.current?.contains(event.relatedTarget as Node)) setOpen(false);",
     to: "void event;",
     tests: t(SHELL),
