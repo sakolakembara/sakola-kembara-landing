@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { DashboardProvider, useSharedDashboard } from "~/lib/dashboard-provider";
 import { useSubmitLock } from "~/lib/hooks";
 import { visibleNav } from "~/lib/nav";
+import { ChromeSlot, PageChromeProvider, usePageChrome } from "~/lib/page-chrome";
 import { useMe, useSession } from "~/lib/session";
 import { useSidebarCollapsed } from "~/lib/sidebar-state";
 import { SITE_URL } from "~/lib/site";
@@ -24,7 +25,9 @@ import { SidebarBody } from "./Sidebar";
 export function Shell() {
   return (
     <DashboardProvider>
-      <ShellFrame />
+      <PageChromeProvider>
+        <ShellFrame />
+      </PageChromeProvider>
     </DashboardProvider>
   );
 }
@@ -33,6 +36,7 @@ function ShellFrame() {
   const me = useMe();
   const { signOut } = useSession();
   const { counts } = useSharedDashboard();
+  const chrome = usePageChrome();
   const groups = useMemo(() => visibleNav(me), [me]);
   const { pathname } = useLocation();
   const { collapsed, toggle } = useSidebarCollapsed();
@@ -140,16 +144,24 @@ function ShellFrame() {
           </button>
           <span aria-hidden="true" className="h-5 w-px bg-border" />
           <Breadcrumb />
-          <a
-            href={SITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Lihat situs (tab baru)"
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
-          >
-            Lihat situs
-            <ExternalLink size={15} aria-hidden="true" />
-          </a>
+          {/* Two places an editor page fills (PageBar): its status next to the breadcrumb, its actions on the right. */}
+          <ChromeSlot slot="leading" className="flex min-w-0 items-center gap-2 empty:hidden" />
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <ChromeSlot slot="actions" className="flex items-center gap-2 empty:hidden" />
+            {/* The page's own buttons need the room; its address is on the page. */}
+            {!chrome?.hasActions && (
+              <a
+                href={SITE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Lihat situs (tab baru)"
+                className="inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+              >
+                Lihat situs
+                <ExternalLink size={15} aria-hidden="true" />
+              </a>
+            )}
+          </div>
         </header>
 
         {/* main is the scroll container. Padding belongs to each page. */}

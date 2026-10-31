@@ -19,8 +19,8 @@ export const blogSpaChecks = [
   {
     name: "blog: a read-only role is offered 'Terbitkan' and 'Kembalikan ke Draf'",
     file: FORM,
-    from: "      {canWrite && (\n        <Button variant=\"neutral\" size=\"sm\"",
-    to: "      {(\n        <Button variant=\"neutral\" size=\"sm\"",
+    from: "{canWrite && item && !published && (",
+    to: "{item && !published && (",
     tests: BLOG,
   },
   {
@@ -207,22 +207,22 @@ export const blogSpaChecks = [
   {
     name: "blog: a draft is linked to the public site (where it does not exist)",
     file: FORM,
-    from: '{published && siteUrl !== "" && (',
-    to: '{siteUrl !== "" && (',
+    from: "{published ? (\n        siteUrl !== \"\" && (",
+    to: "{true ? (\n        siteUrl !== \"\" && (",
     tests: BLOG,
   },
   {
     name: "blog: the link to the public site is drawn without an address (a relative link into the admin)",
     file: FORM,
-    from: '{published && siteUrl !== "" && (',
-    to: "{published && (",
+    from: 'siteUrl !== "" && (\n          <a href={address}',
+    to: 'true && (\n          <a href={address}',
     tests: BLOG,
   },
   {
     name: "blog: the link to the public site opens in the editor's own tab, with the opener",
     file: FORM,
-    from: 'target="_blank" rel="noopener noreferrer" className="text-sm text-primary-blue hover:underline"',
-    to: 'className="text-sm text-primary-blue hover:underline"',
+    from: 'target="_blank" rel="noopener noreferrer" className="text-primary hover:underline"',
+    to: 'className="text-primary hover:underline"',
     tests: BLOG,
   },
   {

@@ -124,20 +124,20 @@ export const FIELD_LABELS: Record<string, string> = {
   contentMarkdown: "Isi Artikel",
 };
 
-export type EditorTab = "detail" | "konten";
+export type EditorTab = "konten" | "publikasi" | "seo";
 
-/** The tab each field lives on: the legacy editor opened the tab that held the first error. */
+/** The tab each field lives on: the editor opens the tab that holds the first error. */
 export const FIELD_TAB: Record<string, EditorTab> = {
-  title: "detail",
-  slug: "detail",
-  excerpt: "detail",
-  metaDescription: "detail",
-  seoTitle: "detail",
-  noindex: "detail",
-  category: "detail",
-  date: "detail",
-  author: "detail",
-  featured: "detail",
-  image: "detail",
+  title: "konten",
+  slug: "konten",
+  excerpt: "konten",
   contentMarkdown: "konten",
+  category: "publikasi",
+  date: "publikasi",
+  author: "publikasi",
+  featured: "publikasi",
+  image: "publikasi",
+  metaDescription: "seo",
+  seoTitle: "seo",
+  noindex: "seo",
 };

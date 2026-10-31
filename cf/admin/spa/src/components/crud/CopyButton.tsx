@@ -2,7 +2,8 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Copies the full shortlink to the clipboard (a port of app/(admin)/admin/shortlinks/_copy-button.tsx).
+ * Copies a link to the clipboard: a shortlink in its list, the address of an article in its form (a port of
+ * app/(admin)/admin/shortlinks/_copy-button.tsx).
  * `navigator.clipboard` needs a secure context, so it is absent over plain http on a LAN address: fall back to
  * telling the admin ("Salin manual") rather than silently doing nothing.
  */

@@ -16,6 +16,7 @@ import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
 import { shellSpaChecks } from "./negative-checks-spa-shell.mjs";
 import { listSpaChecks } from "./negative-checks-spa-lists.mjs";
 import { listToolsSpaChecks } from "./negative-checks-spa-listtools.mjs";
+import { editorSpaChecks } from "./negative-checks-spa-editor.mjs";
 import { bootSpaChecks } from "./negative-checks-spa-boot.mjs";
 import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
@@ -40,6 +41,7 @@ const checks = [
   // The lists, stage 3 of the admin polish (SAKEM-115): scripts/negative-checks-spa-lists.mjs.
   ...listSpaChecks,
   ...listToolsSpaChecks,
+  ...editorSpaChecks,
 
   // The load sequence (SAKEM-115): scripts/negative-checks-spa-boot.mjs.
   ...bootSpaChecks,

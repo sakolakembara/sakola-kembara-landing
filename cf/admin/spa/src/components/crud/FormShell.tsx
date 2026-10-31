@@ -1,5 +1,5 @@
 import { ArrowLeft, Save } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
+import { type FormEvent, type ReactNode, useEffect, useId, useRef } from "react";
 import { Link, useBlocker } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
@@ -8,6 +8,7 @@ import type { MutationState } from "~/lib/crud/useMutation";
 import { usePageTitle } from "~/lib/hooks";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Flash } from "./Flash";
+import { PageBar } from "./PageBar";
 
 /**
  * The frame of a create or edit form (a port of the legacy editor: `app/(admin)/admin/_editor.tsx`), with what the
@@ -43,11 +44,20 @@ export interface FormShellProps {
   meta?: ReactNode;
   /** The page's `useFlash()`: "Pengumuman berhasil disimpan." is shown above the form. */
   flash?: FlashControl;
+  /**
+   * The editor layout (cf/admin/DESIGN.md, "Forms: one bar"), for a page that has tabs and a column beside its text:
+   * no bar of its own and no card around the fields. The title, the status and the actions are put in the shell's top bar
+   * (`PageBar`), the tabs sit under it, and the page is as wide as the window. `title` is then the page's hidden heading and
+   * `crumb` the last step of the breadcrumb. The actions are the page's own (a draft has "Simpan" and "Terbitkan"); a
+   * button that saves is `type="submit" form={formId}`, so the browser's own checks of the fields still run first.
+   */
+  page?: { crumb: string; status?: ReactNode; actions: (formId: string) => ReactNode; tabs?: ReactNode };
   children: ReactNode;
 }
 
-export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOnly = false, saveLabel = "Simpan", fieldLabels = {}, meta, flash, children }: FormShellProps) {
+export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOnly = false, saveLabel = "Simpan", fieldLabels = {}, meta, flash, page, children }: FormShellProps) {
   usePageTitle(title);
+  const formId = useId();
   const guarded = dirty && !readOnly;
   // Read when a navigation is attempted, not when it was rendered: a save that just worked has not re-rendered yet.
   const latest = useRef({ guarded, save });
@@ -85,36 +95,44 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
 
   return (
     <>
-      <form onSubmit={submit} aria-label={title}>
-        {/* From `md` the bar stays at the top while the form scrolls: the title and what is known about the item (status,
+      <form id={formId} onSubmit={submit} aria-label={title}>
+        {/* The classic bar (no `page`): from `md` it stays at the top while the form scrolls: the title and what is known about the item (status,
             address, links) on the left, wrapping among themselves, the two buttons together on the right. On a phone the
             title scrolls away (it would take a third of the screen) and the buttons stay in a bar at the bottom: no
             backdrop blur on the header there, because that would make it the box a fixed child is placed in. */}
-        <header className="border-b border-gray-200 bg-white px-6 py-3 md:sticky md:top-0 md:z-20 md:bg-white/95 md:px-10 md:backdrop-blur">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <div className="min-w-0 flex-1 basis-72">
-              <Link to={back.href} className="inline-flex items-center gap-1 text-[13px] text-gray-600 transition-colors hover:text-gray-900">
-                <ArrowLeft size={14} aria-hidden="true" />
-                {back.label ?? "Kembali"}
-              </Link>
-              <h1 className="text-lg font-semibold leading-snug tracking-tight text-primary-blue-dark">{title}</h1>
-              {meta && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">{meta}</div>}
-            </div>
-            <div className="flex shrink-0 items-center gap-2 *:flex-1 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:border-t max-md:border-gray-200 max-md:bg-white max-md:px-4 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:pt-3 md:w-auto md:*:flex-none">
-              <Button variant="neutral" href={back.href}>
-                {readOnly ? "Tutup" : "Batal"}
-              </Button>
-              {!readOnly && (
-                <Button type="submit" disabled={save.pending}>
-                  <Save aria-hidden="true" />
-                  {save.pending ? "Menyimpan..." : saveLabel}
+        {page ? (
+          <>
+            <h1 className="sr-only">{title}</h1>
+            <PageBar title={page.crumb} back={back} status={page.status} actions={page.actions(formId)} />
+            {page.tabs}
+          </>
+        ) : (
+          <header className="border-b border-gray-200 bg-white px-6 py-3 md:sticky md:top-0 md:z-20 md:bg-white/95 md:px-10 md:backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+              <div className="min-w-0 flex-1 basis-72">
+                <Link to={back.href} className="inline-flex items-center gap-1 text-[13px] text-gray-600 transition-colors hover:text-gray-900">
+                  <ArrowLeft size={14} aria-hidden="true" />
+                  {back.label ?? "Kembali"}
+                </Link>
+                <h1 className="text-lg font-semibold leading-snug tracking-tight text-primary-blue-dark">{title}</h1>
+                {meta && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">{meta}</div>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2 *:flex-1 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:border-t max-md:border-gray-200 max-md:bg-white max-md:px-4 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:pt-3 md:w-auto md:*:flex-none">
+                <Button variant="neutral" href={back.href}>
+                  {readOnly ? "Tutup" : "Batal"}
                 </Button>
-              )}
+                {!readOnly && (
+                  <Button type="submit" disabled={save.pending}>
+                    <Save aria-hidden="true" />
+                    {save.pending ? "Menyimpan..." : saveLabel}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
-        <div className="max-w-4xl px-6 pb-28 pt-6 md:px-10 md:pb-12">
+        <div className={page ? "px-4 pb-28 pt-6 md:px-10 md:pb-12" : "max-w-4xl px-6 pb-28 pt-6 md:px-10 md:pb-12"}>
           {flash && <Flash flash={flash.flash} dismiss={flash.dismiss} />}
           <div className="mb-5 space-y-3 empty:hidden">
             {readOnly && <Alert tone="info">Kamu hanya bisa melihat data ini. Perubahan tidak bisa disimpan dengan peranmu.</Alert>}
@@ -158,7 +176,7 @@ export function FormShell({ title, back, save, dirty, onSubmit, onReload, readOn
           )}
 
           {/* A disabled fieldset disables every control inside it. */}
-          <fieldset disabled={readOnly} className="min-w-0 space-y-6 rounded-xl border border-gray-200 bg-white p-5 md:p-8">
+          <fieldset disabled={readOnly} className={page ? "min-w-0 space-y-6" : "min-w-0 space-y-6 rounded-xl border border-gray-200 bg-white p-5 md:p-8"}>
             <legend className="sr-only">{title}</legend>
             {children}
           </fieldset>
