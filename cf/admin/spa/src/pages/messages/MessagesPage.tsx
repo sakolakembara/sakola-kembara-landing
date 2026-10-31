@@ -4,7 +4,7 @@ import { TableCard } from "~/components/ui/table";
 import { makeStatusMap, StatusTag } from "~/components/crud/StatusTag";
 import { Flash } from "~/components/crud/Flash";
 import { Pagination } from "~/components/crud/Pagination";
-import { PageHeader } from "~/components/PageHeader";
+import { DescriptionSkeleton, PageHeader } from "~/components/PageHeader";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
 import { useFlash } from "~/lib/crud/flash";
 import { useList } from "~/lib/crud/useList";
@@ -44,7 +44,7 @@ const EMPTY: Record<string, string> = {
 
 export function MessagesPage() {
   const list = useList<MessageListItem>(API_PATH, LIST_SPEC);
-  const { counts, reload } = useMessageCounts();
+  const { counts, settled, reload } = useMessageCounts();
   const notice = useFlash();
   const filter = list.query.filters.filter ?? "";
 
@@ -55,10 +55,14 @@ export function MessagesPage() {
   return (
     <div className="p-6 md:p-10">
       <PageHeader title="Pesan">
-        {counts && (
+        {counts ? (
           <p className="text-gray-600">
             {counts.total} total · {counts.unread} belum dibaca.
           </p>
+        ) : (
+          // The counts come in their own request: the line is held, not added a moment later (everything below would move).
+          // A request that failed leaves no line at all, as before.
+          !settled && <DescriptionSkeleton />
         )}
       </PageHeader>
 

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Heading } from "@/components/ui/heading";
 import { cn } from "@/lib/cn";
+import { Skeleton } from "~/components/ui/skeleton";
 import { usePageTitle } from "~/lib/hooks";
 
 /**
@@ -51,5 +52,19 @@ export function PageHeader({
         {actions && <div className="shrink-0">{actions}</div>}
       </header>
     </>
+  );
+}
+
+/**
+ * A grey line where a page's description will be while the number in it is not known yet. A description such as
+ * "6 anggota tampil di /tim" used to say "0 anggota" for as long as the list was on its way and then change to the
+ * real count: a wrong number, then a flick. This holds the line's height (so nothing below moves when the text
+ * arrives) and says nothing; the table's own status text speaks for people who cannot see it.
+ */
+export function DescriptionSkeleton() {
+  return (
+    <div className="flex h-[1.6em] items-center">
+      <Skeleton className="h-4 w-72 max-w-full" />
+    </div>
   );
 }
