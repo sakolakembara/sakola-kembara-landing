@@ -188,7 +188,7 @@ describe("the form: create", () => {
     // One bar: the breadcrumb is the way back and ends with the page, "Batal" is the other way out.
     const crumbs = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
     expect(crumbs.getByRole("link", { name: "Batch" }).getAttribute("href")).toBe("/batches");
-    expect(crumbs.getByText("Batch baru")).toBeTruthy();
+    expect(await crumbs.findByText("Batch baru")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/batches");
     expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull(); // no bar or back button of the form's own
     // the schedule is a card of its own in the side column, apart from the batch's name and year
@@ -285,7 +285,7 @@ describe("the form: edit", () => {
     expect((screen.getByLabelText(/Buka pendaftaran/) as HTMLInputElement).value).toBe(toLocalDatetime("2026-08-01T01:30:00.000Z"));
     expect(screen.getByRole("heading", { level: 1, name: "Edit Batch" })).toBeTruthy();
     // The breadcrumb ends with the batch's name, and "Batal" goes to the batch's page, not the list.
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Gen 7")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" })).findByText("Gen 7")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/batches/b1");
 
     await user.clear(screen.getByLabelText(/Nama batch/));

@@ -220,22 +220,22 @@ export const editorSpaChecks = [
   {
     name: "editor: a picture drawn before the files domain was known stays pointed at this host",
     file: RICH,
-    from: '      for (const image of editor.view.dom.querySelectorAll<HTMLImageElement>(\'img[src^="/uploads/"]\')) image.setAttribute("src", uploadUrl(image.getAttribute("src") ?? "", base));',
-    to: "      void base;",
+    from: '      for (const image of editor.view.dom.querySelectorAll<HTMLImageElement>(\'img[src^="/"]\')) image.setAttribute("src", storedFileUrl(image.getAttribute("src") ?? "", base, siteUrl));',
+    to: "      void base;\n      void siteUrl;",
     tests: t(EDITOR_TESTS),
   },
   {
     name: "editor: pictures are drawn from the page's own host, not the files domain",
     file: RICH,
-    from: "displaySrc: (src) => uploadUrl(src, baseRef.current),",
+    from: "displaySrc: (src) => storedFileUrl(src, baseRef.current, siteRef.current),",
     to: "displaySrc: (src) => src,",
     tests: t(EDITOR_TESTS),
   },
   {
     name: "editor: a picture copied out of the page keeps the address it was drawn from (the text loses its path)",
     file: RICH,
-    from: "return origin !== \"\" && src.startsWith(`${origin}/uploads/`) ? src.slice(origin.length) : src;",
-    to: "return src;",
+    from: "storedSrc: (src) => storedFilePath(src, baseRef.current, siteRef.current),",
+    to: "storedSrc: (src) => src,",
     tests: t(EDITOR_TESTS),
   },
   {
@@ -634,5 +634,49 @@ export const editorSpaChecks = [
     from: "overflow-hidden rounded-lg border bg-card transition-colors",
     to: "overflow-hidden rounded-xl border-2 bg-card transition-colors",
     tests: t("shortlinks.test.tsx"),
+  },
+
+  // ---------------------------------------------- pictures of the migrated articles (a path of the public site)
+  {
+    name: "editor: pictures: a path of the public site is drawn from the admin's own host again (the picture collapses)",
+    file: "spa/src/lib/crud/upload-kinds.ts",
+    from: "  return site && SAFE_SITE_PATH.test(path) ? `${site}${path}` : path;",
+    to: "  return path;",
+    tests: t("crud/upload-kinds.test.ts", "blog-editor.test.tsx", BLOG),
+  },
+  {
+    name: "editor: pictures: a picture copied out of the page keeps the public site's address instead of coming back as its path",
+    file: "spa/src/lib/crud/upload-kinds.ts",
+    from: "  return site && src.startsWith(`${site}/`) && SAFE_SITE_PATH.test(src.slice(site.length)) ? src.slice(site.length) : src;",
+    to: "  return src;",
+    tests: t("crud/upload-kinds.test.ts", "blog-editor.test.tsx"),
+  },
+  {
+    name: "editor: pictures: a path with `..` in it is put behind the public site's address",
+    file: "spa/src/lib/crud/upload-kinds.ts",
+    from: "const SAFE_SITE_PATH = /^(?!.*\\/\\.\\.(?:\\/|$))",
+    to: "const SAFE_SITE_PATH = /^",
+    tests: t("crud/upload-kinds.test.ts"),
+  },
+  {
+    name: "editor: pictures: the pictures already on the page are not pointed at the site when its address arrives late",
+    file: "spa/src/pages/blog/editor/RichEditor.tsx",
+    from: `querySelectorAll<HTMLImageElement>('img[src^="/"]')`,
+    to: `querySelectorAll<HTMLImageElement>('img[src^="/uploads/"]')`,
+    tests: t("blog-editor.test.tsx"),
+  },
+  {
+    name: "editor: pictures: the preview shows a path of the public site from the admin's own host",
+    file: "spa/src/pages/blog/BodyEditor.tsx",
+    from: `querySelectorAll<HTMLImageElement>('img[src^="/"]')`,
+    to: `querySelectorAll<HTMLImageElement>('img[src^="/uploads/"]')`,
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: pictures: the hero picture of an older article is previewed from the admin's own host",
+    file: "spa/src/components/crud/UploadField.tsx",
+    from: "mine?.preview ?? storedFileUrl(value, base, siteUrl)",
+    to: "mine?.preview ?? value",
+    tests: t(BLOG),
   },
 ];

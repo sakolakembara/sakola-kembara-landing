@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { acceptFor, checkUploadFile, fileNameOf, megabytes, normaliseBase, UPLOAD_KINDS, UPLOAD_MESSAGES, uploadUrl } from "~/lib/crud/upload-kinds";
+import { acceptFor, checkUploadFile, fileNameOf, megabytes, normaliseBase, storedFilePath, storedFileUrl, UPLOAD_KINDS, UPLOAD_MESSAGES, uploadUrl } from "~/lib/crud/upload-kinds";
 
 // The client's copy of what the Worker accepts (the Worker's own test, test/crud-spa-contract.test.ts, fails when
 // the table differs from KIND_RULES). These tests prove what the browser does with it: it refuses early.
@@ -66,6 +66,46 @@ describe("the kinds", () => {
     expect(acceptFor("report")).toBe("application/pdf,.pdf");
     expect(acceptFor("team-photo")).toBe("image/png,.png,image/jpeg,.jpg,.jpeg,image/webp,.webp");
     expect(acceptFor("blog-image")).toBe("image/png,.png,image/jpeg,.jpg,.jpeg,image/webp,.webp,image/gif,.gif");
+  });
+});
+
+describe("storedFileUrl: where the admin draws a stored file from", () => {
+  const FILES = "https://files.example.org";
+  const SITE = "https://sakolakembara.org";
+  const upload = "/uploads/blog-image/2026/11111111-2222-3333-4444-555555555555-foto.png";
+  const legacy = "/blog/images/2026/02/IMG-20251203-WA0016-1.jpg";
+
+  test("an upload comes from the files domain, as before", () => {
+    expect(storedFileUrl(upload, FILES, SITE)).toBe(`${FILES}${upload}`);
+    expect(storedFileUrl(upload, "", SITE)).toBe(upload); // no files domain (development): the same host serves it
+  });
+
+  test("any other path of the site comes from the public site, because the admin's own host has no such file (the migrated articles' pictures)", () => {
+    expect(storedFileUrl(legacy, FILES, SITE)).toBe(`${SITE}${legacy}`);
+    expect(storedFileUrl("/images/team/dewi.jpg", FILES, SITE)).toBe(`${SITE}/images/team/dewi.jpg`);
+    expect(storedFileUrl(legacy, FILES, `${SITE}/`)).toBe(`${SITE}${legacy}`); // a trailing slash of the variable does not double
+  });
+
+  test("with no public address to put in front, the path stays as it is", () => {
+    expect(storedFileUrl(legacy, FILES, "")).toBe(legacy);
+    expect(storedFileUrl(legacy, FILES, "sakolakembara.org")).toBe(legacy); // not an origin
+    expect(storedFileUrl(legacy, FILES, null)).toBe(legacy);
+  });
+
+  test("an absolute address, an address without a scheme, a traversal, a query, a space and a backslash are left alone", () => {
+    for (const odd of ["https://elsewhere.example/a.jpg", "//elsewhere.example/a.jpg", "/blog/../admin/a.jpg", "/../a.jpg", "/blog/..", "/a.jpg?x=1", "/a.jpg#top", "/blog/a b.jpg", "/blog\\a.jpg", "relative/a.jpg", ""]) {
+      expect(storedFileUrl(odd, FILES, SITE), odd).toBe(odd);
+    }
+  });
+
+  test("storedFilePath is the inverse: what was drawn from the files domain or the site comes back as the stored path, anything else is untouched", () => {
+    expect(storedFilePath(`${FILES}${upload}`, FILES, SITE)).toBe(upload);
+    expect(storedFilePath(`${SITE}${legacy}`, FILES, SITE)).toBe(legacy);
+    expect(storedFilePath("https://elsewhere.example/a.jpg", FILES, SITE)).toBe("https://elsewhere.example/a.jpg");
+    expect(storedFilePath(`${SITE}/../x.jpg`, FILES, SITE)).toBe(`${SITE}/../x.jpg`);
+    expect(storedFilePath(`${SITE}.evil.example/a.jpg`, FILES, SITE)).toBe(`${SITE}.evil.example/a.jpg`); // another host that starts the same way
+    expect(storedFilePath(legacy, FILES, SITE)).toBe(legacy);
+    for (const path of [upload, legacy]) expect(storedFilePath(storedFileUrl(path, FILES, SITE), FILES, SITE)).toBe(path);
   });
 });
 

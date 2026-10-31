@@ -252,7 +252,7 @@ describe("the form: create", () => {
     for (const name of ["Berkas", "Tipe Konten", "Tampil di situs", "Catatan Internal"]) expect(screen.getByRole("heading", { level: 2, name }), name).toBeTruthy();
     // One bar and cards: the breadcrumb ends with the page, Batal is an action, the type's field is inside the Tipe Konten card,
     // and the category, the order and the note are small cards in the side column.
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Berkas baru")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" })).findByText("Berkas baru")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/resources");
     expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
     const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
@@ -401,7 +401,7 @@ describe("the form: edit", () => {
     expect(screen.getByRole("link", { name: "panduan.pdf" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ganti" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Edit Berkas" })).toBeTruthy();
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Panduan Pendaftaran")).toBeTruthy(); // the breadcrumb ends with the document's title
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" })).findByText("Panduan Pendaftaran")).toBeTruthy(); // the breadcrumb ends with the document's title
 
     await user.clear(screen.getByLabelText(/Judul/));
     await user.type(screen.getByLabelText(/Judul/), "Panduan baru");

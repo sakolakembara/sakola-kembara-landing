@@ -276,7 +276,7 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
   test("the breadcrumb ends with the page, Batal and the save button are its actions, and the form has no bar or back button of its own", async () => {
     await openForm(["editor", ["konten"]], "/shortlinks/new");
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(within(crumbs).getByText("Shortlink baru")).toBeTruthy();
+    expect(await within(crumbs).findByText("Shortlink baru")).toBeTruthy();
     expect(within(crumbs).getByRole("link", { name: "Shortlink" }).getAttribute("href")).toBe("/shortlinks");
     expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/shortlinks");
     expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
@@ -296,8 +296,8 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
     const { unmount } = await openForm(["editor", ["konten"]], "/shortlinks/s1/edit", { [`GET ${LIST}/s1`]: respond({ item: loaded }) });
     await waitFor(() => expect((screen.getByLabelText(/Slug/) as HTMLInputElement).value).toBe("lama"));
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(within(crumbs).getByText("lama")).toBeTruthy();
-    expect(within(crumbs.parentElement!).getByText("Aktif")).toBeTruthy();
+    expect(await within(crumbs).findByText("lama")).toBeTruthy();
+    expect(await within(crumbs.parentElement!).findByText("Aktif")).toBeTruthy();
     const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
     expect(card("Status").contains(screen.getByRole("switch", { name: /Aktifkan/ }))).toBe(true);
     expect(card("Status").parentElement).not.toBe(card("Alamat pendek").parentElement); // the small card is in the side column
@@ -306,7 +306,7 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
 
     await openForm(["editor", ["konten"]], "/shortlinks/s1/edit", { [`GET ${LIST}/s1`]: respond({ item: { ...loaded, active: false } }) });
     await waitFor(() => expect((screen.getByLabelText(/Slug/) as HTMLInputElement).value).toBe("lama"));
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Nonaktif")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).findByText("Nonaktif")).toBeTruthy();
   });
 });
 

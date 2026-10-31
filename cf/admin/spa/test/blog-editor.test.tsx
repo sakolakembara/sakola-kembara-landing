@@ -432,6 +432,29 @@ describe("pictures", () => {
     expect(articleMarkdown(editor)).toBe(`![x](${PATH})`); // the text is not touched by it
   });
 
+  test("a picture of the migrated articles (a path of the public site) is drawn from the public site, not from this host, and the text keeps the path", async () => {
+    const LEGACY = "/blog/images/2026/02/foto-lama.jpg";
+    const { api, editor, dom } = await open({ "GET /api/config": respond({ google: false, uploadsBaseUrl: "https://files.example.org", siteUrl: "https://sakolakembara.org" }) });
+    await waitFor(() => expect(api.count("GET /api/config")).toBe(1));
+    await run(async () => void (await new Promise((resolve) => setTimeout(resolve, 30)))); // the answer is in
+    await run(() => void editor.commands.setContent(`![lama](${LEGACY})`, { contentType: "markdown" }));
+    await waitFor(() => expect(dom.querySelector('img[alt="lama"]')?.getAttribute("src")).toBe(`https://sakolakembara.org${LEGACY}`));
+    expect(articleMarkdown(editor)).toBe(`![lama](${LEGACY})`); // what is saved is the path, not the address it is drawn from
+    await run(() => void editor.commands.setContent(`<p><img src="https://sakolakembara.org${LEGACY}" alt="salin"></p>`, { contentType: "html" }));
+    expect(articleMarkdown(editor)).toBe(`![salin](${LEGACY})`); // one copied out of the page comes back as the path
+  });
+
+  test("a picture drawn before the public site's address is known is pointed at it when it arrives", async () => {
+    const LEGACY = "/blog/images/2026/02/foto-lama.jpg";
+    const config = deferred<Response>();
+    const { editor, dom } = await open({ "GET /api/config": () => config.promise });
+    await run(() => void editor.commands.setContent(`![lama](${LEGACY})`, { contentType: "markdown" }));
+    expect(dom.querySelector('img[alt="lama"]')?.getAttribute("src")).toBe(LEGACY);
+    await act(async () => config.resolve(respond({ google: false, uploadsBaseUrl: "", siteUrl: "https://sakolakembara.org" })));
+    await waitFor(() => expect(dom.querySelector('img[alt="lama"]')?.getAttribute("src")).toBe(`https://sakolakembara.org${LEGACY}`));
+    expect(articleMarkdown(editor)).toBe(`![lama](${LEGACY})`);
+  });
+
   test("a picture is drawn from the files domain and written down with its path; one copied out of the page comes back as the path", async () => {
     const { api, editor, dom } = await open({ "GET /api/config": respond({ google: false, uploadsBaseUrl: "https://files.example.org", siteUrl: "" }) });
     await waitFor(() => expect(api.count("GET /api/config")).toBe(1));

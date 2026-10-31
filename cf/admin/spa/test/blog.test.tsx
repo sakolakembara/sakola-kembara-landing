@@ -461,8 +461,8 @@ describe("the form: edit", () => {
     expect(within(await bodyField()).getByRole("heading", { level: 2, name: "Mulai dari jadwal" })).toBeTruthy(); // drawn as a heading, not as "##"
     expect(screen.getByText("/blog/cara-belajar-efektif")).toBeTruthy();
     // The status is in the top bar, next to the breadcrumb, and on the Publikasi tab.
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Draf")).toBeTruthy();
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Cara Belajar Efektif")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).findByText("Draf")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" })).findByText("Cara Belajar Efektif")).toBeTruthy();
 
     await openTab(user, "Publikasi");
     expect((screen.getByLabelText(/^Kategori/) as HTMLSelectElement).value).toBe("News");
@@ -509,7 +509,7 @@ describe("the form: edit", () => {
     expect(screen.getByRole("button", { name: "Simpan Perubahan" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Simpan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Terbitkan" })).toBeNull();
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Terbit")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).findByText("Terbit")).toBeTruthy();
 
     await openTab(user, "Publikasi");
     expect((screen.getByLabelText(/^Tanggal Publikasi/) as HTMLInputElement).required).toBe(true);
@@ -790,7 +790,7 @@ describe("the form: publish and unpublish", () => {
 
     await act(async () => gate.resolve(respond({ item: published() })));
     expect(await notice("Artikel berhasil diterbitkan.")).toBeTruthy();
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Terbit")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).findByText("Terbit")).toBeTruthy();
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).disabled).toBe(true);
     await openTab(user, "Publikasi");
     expect(screen.getByRole("button", { name: "Kembalikan ke Draf" })).toBeTruthy();
@@ -852,7 +852,7 @@ describe("the form: publish and unpublish", () => {
     expect(api.last(`POST ${LIST}/b1/unpublish`)?.headers["if-match"]).toBe('"2026-10-02T00:00:00.000Z"');
     expect(screen.getByRole("button", { name: "Terbitkan" })).toBeTruthy();
     expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).disabled).toBe(false);
-    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).getByText("Draf")).toBeTruthy();
+    expect(await within(screen.getByRole("navigation", { name: "Breadcrumb" }).parentElement!).findByText("Draf")).toBeTruthy();
   });
 
   test("a read-only role is offered neither", async () => {
@@ -914,6 +914,25 @@ describe("the preview", () => {
     });
     await user.click(await screen.findByRole("button", { name: "Pratinjau" }));
     await waitFor(() => expect((screen.getByAltText("foto") as HTMLImageElement).getAttribute("src")).toBe(`https://files.example.org${path}`));
+  });
+
+  test("the hero picture of an older article (a path of the public site) is previewed from the public site", async () => {
+    const user = userEvent.setup();
+    const path = "/blog/images/2026/02/sampul-lama.jpg";
+    await openEdit(WRITER, article({ image: path }) as never, { "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.org", siteUrl: "https://sakolakembara.org" }) });
+    await openTab(user, "Publikasi");
+    await waitFor(() => expect((screen.getByAltText(/^Pratinjau/) as HTMLImageElement).getAttribute("src")).toBe(`https://sakolakembara.org${path}`));
+  });
+
+  test("an image of the older articles (a path of the public site) is shown from the public site in the preview too", async () => {
+    const user = userEvent.setup();
+    const path = "/blog/images/2026/02/foto-lama.jpg";
+    await openEdit(WRITER, article(), {
+      "GET /api/config": respond({ uploadsBaseUrl: "https://files.example.org", siteUrl: "https://sakolakembara.org" }),
+      [PREVIEW]: respond({ html: `<p><img src="${path}" alt="lama"></p>` }),
+    });
+    await user.click(await screen.findByRole("button", { name: "Pratinjau" }));
+    await waitFor(() => expect((screen.getByAltText("lama") as HTMLImageElement).getAttribute("src")).toBe(`https://sakolakembara.org${path}`));
   });
 
   test("an empty text says so and asks for nothing", async () => {
