@@ -3,13 +3,15 @@ import { Link, Navigate, useLocation, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/PageHeader";
 import { type Column, DataTable } from "~/components/crud/DataTable";
+import { ColumnsMenu } from "~/components/crud/ColumnsMenu";
 import { FilterBar, type FilterSpec } from "~/components/crud/FilterBar";
 import { Pagination } from "~/components/crud/Pagination";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { api } from "~/lib/api";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
-import { isFiltered } from "~/lib/crud/query";
+import { isFiltered, pageSizeChoices } from "~/lib/crud/query";
 import type { ListPayload } from "~/lib/crud/types";
+import { useColumnChoice } from "~/lib/crud/useColumnChoice";
 import { useList } from "~/lib/crud/useList";
 import type { BatchItem } from "../batches/model";
 import { PendaftarTabs } from "./DraftFilesPage";
@@ -118,6 +120,7 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
   const location = useLocation();
   const back = `${location.pathname}${location.search}`;
   const columns = useMemo(() => COLUMNS(back), [back]);
+  const columnChoice = useColumnChoice(API_PATH, columns);
 
   const batchValue = list.query.filters.batch;
   const chosen = batchValue && batchValue !== ALL_BATCHES ? batches.find((batch) => batch.id === batchValue) : undefined;
@@ -157,11 +160,11 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
       {/* For who may purge: the drafts that hold files (SAKEM-093). A viewer sees no tabs. */}
       <PendaftarTabs current="applicants" />
 
-      <FilterBar list={bar} search={{ label: "Cari", placeholder: "Awal nama atau email" }} filters={filters} />
+      <FilterBar list={bar} search={{ label: "Cari", placeholder: "Awal nama atau email" }} filters={filters} trailing={<ColumnsMenu choice={columnChoice} />} />
 
       <DataTable<ApplicationListed>
         caption="Daftar pendaftar"
-        columns={columns}
+        columns={columnChoice.shown}
         rows={list.items}
         rowKey={(row) => row.id}
         state={list.status}
@@ -185,7 +188,13 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
         refreshing={list.refreshing}
       />
 
-      <Pagination page={list.page} pageSize={list.pageSize} total={list.total} searchFor={list.searchFor} />
+      <Pagination
+        page={list.page}
+        pageSize={list.pageSize}
+        total={list.total}
+        searchFor={list.searchFor}
+        perPage={{ value: list.query.pageSize, choices: pageSizeChoices(LIST_SPEC), onChange: list.setPageSize }}
+      />
     </div>
   );
 }

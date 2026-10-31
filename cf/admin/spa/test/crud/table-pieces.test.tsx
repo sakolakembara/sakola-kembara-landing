@@ -120,6 +120,97 @@ describe("DataTable", () => {
   });
 });
 
+describe("DataTable: a selection, the phone's sort bar, the sticky header", () => {
+  const selection = (selected: string[] = []) => ({ selected: new Set(selected), toggle: vi.fn(), toggleAll: vi.fn(), label: (row: Row) => row.name });
+
+  test("a checkbox per row named for it, and one for the page first in the header", async () => {
+    const choice = selection(["b2"]);
+    render(table({ selection: choice }));
+    const grid = screen.getByRole("table", { name: /Daftar contoh/ });
+    expect(within(grid).getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["", "Nama", "Kode"]);
+    const boxes = within(grid).getAllByRole("checkbox", { name: /^Pilih (Satu|Dua)$/ }) as HTMLInputElement[];
+    expect(boxes.map((box) => [box.getAttribute("aria-label"), box.checked])).toEqual([["Pilih Satu", false], ["Pilih Dua", true]]);
+    await userEvent.setup().click(boxes[0]!);
+    expect(choice.toggle).toHaveBeenCalledWith("a1");
+    await userEvent.setup().click(within(grid).getByRole("checkbox", { name: "Pilih semua baris di halaman ini" }));
+    expect(choice.toggleAll).toHaveBeenCalledOnce();
+  });
+
+  test("the box of the page is half-ticked for some rows and ticked for all of them", () => {
+    const first = render(table({ selection: selection(["a1"]) }));
+    const page = () => screen.getByRole("checkbox", { name: "Pilih semua baris di halaman ini" }) as HTMLInputElement;
+    expect([page().checked, page().indeterminate]).toEqual([false, true]);
+    first.unmount();
+    render(table({ selection: selection(["a1", "b2"]) }));
+    expect([page().checked, page().indeterminate]).toEqual([true, false]);
+  });
+
+  test("a ticked row is tinted; an empty table's one row spans the checkbox column too", () => {
+    const { container, unmount } = render(table({ selection: selection(["b2"]) }));
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows[0]!.className).not.toContain("bg-primary/5");
+    expect(rows[1]!.className).toContain("bg-primary/5");
+    unmount();
+    const empty = render(table({ rows: [], selection: selection() }));
+    expect(empty.container.querySelector("tbody td")?.getAttribute("colspan")).toBe("3");
+  });
+
+  test("no checkboxes without a selection", () => {
+    render(table());
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  test("a phone gets 'Urutkan' (each sortable column both ways, the sort in force chosen) and 'Pilih semua' above the cards", async () => {
+    const onChange = vi.fn();
+    const sortable: Column<Row>[] = [{ key: "name", header: "Nama", sort: "name", cell: (row) => row.name }, { key: "id", header: "Kode", sort: "code", sortFirst: "desc", cell: (row) => row.id }];
+    const choice = selection();
+    render(table({ columns: sortable, sort: { value: "-code", onChange }, selection: choice }));
+    const select = screen.getByLabelText("Urutkan") as HTMLSelectElement;
+    expect([...select.options].map((option) => [option.value, option.textContent])).toEqual([
+      ["name", "Nama (naik)"],
+      ["-name", "Nama (turun)"],
+      ["-code", "Kode (turun)"],
+      ["code", "Kode (naik)"],
+    ]);
+    expect(select.value).toBe("-code");
+    await userEvent.setup().selectOptions(select, "-name");
+    expect(onChange).toHaveBeenCalledWith("-name");
+    await userEvent.setup().click(screen.getByLabelText("Pilih semua"));
+    expect(choice.toggleAll).toHaveBeenCalledOnce();
+  });
+
+  test("a sort that is not one of the columns is shown as 'Urutan bawaan'; no sortable column, no bar", () => {
+    const sortable: Column<Row>[] = [{ key: "name", header: "Nama", sort: "name", cell: (row) => row.name }];
+    const first = render(table({ columns: sortable, sort: { value: "-updatedAt", onChange: vi.fn() } }));
+    expect((screen.getByLabelText("Urutkan") as HTMLSelectElement).selectedOptions[0]?.textContent).toBe("Urutan bawaan");
+    first.unmount();
+    render(table({ sort: { value: "", onChange: vi.fn() } }));
+    expect(screen.queryByLabelText("Urutkan")).toBeNull();
+  });
+
+  test("from md the header cells stick to the top of the page, and a table that fits does not sit in a box that scrolls", () => {
+    const { container } = render(table());
+    for (const header of container.querySelectorAll("th")) expect(header.className).toContain("md:sticky md:top-0");
+    expect(container.querySelector("th")!.closest("div.overflow-hidden")!.className).toContain("md:overflow-clip");
+    // jsdom has no layout: every width is 0, so the table fits.
+    expect(container.querySelector("table")!.parentElement!.className).toContain("md:overflow-x-clip");
+  });
+
+  test("a table wider than its card keeps the box that scrolls sideways (a clipped box would hide its last columns)", () => {
+    const widths = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(1115);
+    const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(950);
+    try {
+      const { container } = render(table());
+      const box = container.querySelector("table")!.parentElement!;
+      expect(box.className).toContain("overflow-x-auto");
+      expect(box.className).not.toContain("overflow-x-clip");
+    } finally {
+      widths.mockRestore();
+      client.mockRestore();
+    }
+  });
+});
+
 describe("Pagination", () => {
   const searchFor = (page: number) => `?page=${page}`;
 
@@ -173,6 +264,33 @@ describe("Pagination", () => {
     expect(screen.getByTestId("location").textContent).toBe("/?page=1");
   });
 
+  test("'Baris per halaman': a select that follows the address, shows while the list is longer than the smallest size, and says the new size", async () => {
+    const onChange = vi.fn();
+    const perPage = { value: 20, choices: [10, 20, 50, 100], onChange };
+    const first = renderAt(<Pagination page={1} pageSize={20} total={87} searchFor={searchFor} perPage={perPage} />);
+    const select = screen.getByLabelText("Baris per halaman") as HTMLSelectElement;
+    expect(select.value).toBe("20");
+    expect([...select.options].map((option) => option.value)).toEqual(["10", "20", "50", "100"]);
+    await userEvent.setup().selectOptions(select, "50");
+    expect(onChange).toHaveBeenCalledWith(50);
+    first.unmount();
+    // The answer for the old size is still on screen while the new one loads, but the select already shows the choice.
+    const second = renderAt(<Pagination page={1} pageSize={20} total={87} searchFor={searchFor} perPage={{ ...perPage, value: 50 }} />);
+    expect((screen.getByLabelText("Baris per halaman") as HTMLSelectElement).value).toBe("50");
+    second.unmount();
+    // Nothing to choose for a list that fits the smallest size, and nothing without the prop.
+    const short = renderAt(<Pagination page={1} pageSize={20} total={8} searchFor={searchFor} perPage={perPage} />);
+    expect(screen.queryByLabelText("Baris per halaman")).toBeNull();
+    short.unmount();
+    renderAt(<Pagination page={1} pageSize={20} total={87} searchFor={searchFor} />);
+    expect(screen.queryByLabelText("Baris per halaman")).toBeNull();
+  });
+
+  test("the count says how many rows are selected", () => {
+    renderAt(<Pagination page={1} pageSize={20} total={87} searchFor={searchFor} selected={2} />);
+    expect(screen.getByText("Menampilkan 1 sampai 20 dari 87 · 2 dipilih")).toBeTruthy();
+  });
+
   test("numbers use the Indonesian thousands separator", () => {
     renderAt(<Pagination page={1} pageSize={20} total={12345} searchFor={searchFor} />);
     expect(screen.getByText("Menampilkan 1 sampai 20 dari 12.345")).toBeTruthy();
@@ -180,7 +298,7 @@ describe("Pagination", () => {
 });
 
 describe("FilterBar", () => {
-  const query = (overrides: Partial<ListQuery> = {}): ListQuery => ({ page: 1, q: "", sort: "", filters: {}, ...overrides });
+  const query = (overrides: Partial<ListQuery> = {}): ListQuery => ({ page: 1, pageSize: 20, q: "", sort: "", filters: {}, ...overrides });
   const FILTERS = [{ name: "severity", label: "Severity", allLabel: "Semua severity", options: [{ value: "info", label: "Info" }, { value: "urgent", label: "Mendesak" }] }];
 
   function bar(q: ListQuery) {
@@ -268,6 +386,19 @@ describe("FilterBar", () => {
     rerender(query({ q: "halo" }));
     await user.click(screen.getByRole("button", { name: "Hapus filter" }));
     expect(reset).toHaveBeenCalledOnce();
+  });
+
+  test("chips for what is set, only from three controls up: two are easy enough to read back from the controls", () => {
+    const two = bar(query({ filters: { severity: "info" } }));
+    expect(screen.queryByRole("list", { name: "Filter yang aktif" })).toBeNull();
+    two.view.unmount();
+
+    const more = [...FILTERS, { name: "kind", label: "Jenis", allLabel: "Semua jenis", options: [{ value: "a", label: "Jenis A" }] }];
+    const apply = vi.fn();
+    render(<FilterBar list={{ query: query({ q: "halo", filters: { severity: "urgent", kind: "a" } }), apply, reset: vi.fn() }} search={{ placeholder: "Judul" }} filters={more} />);
+    const chips = screen.getByRole("list", { name: "Filter yang aktif" });
+    // The label of the option, not its value; the search first.
+    expect(within(chips).getAllByRole("button").map((chip) => chip.getAttribute("aria-label"))).toEqual(["Hapus filter Cari: halo", "Hapus filter Severity: Mendesak", "Hapus filter Jenis: Jenis A"]);
   });
 
   test("a bar with no search and no filters renders nothing", () => {

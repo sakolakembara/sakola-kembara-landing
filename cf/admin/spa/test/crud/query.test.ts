@@ -1,16 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { cleanSearch, isFiltered, type ListSpec, pageNumbers, parseListQuery, toApiQuery, toSearchParams, totalPages } from "~/lib/crud/query";
+import { cleanSearch, isFiltered, type ListSpec, pageNumbers, pageSizeChoices, parseListQuery, toApiQuery, toSearchParams, totalPages } from "~/lib/crud/query";
 
 const spec: ListSpec = { filters: ["severity", "active"], sorts: ["createdAt", "title"], defaultSort: "-createdAt" };
 const parse = (search: string) => parseListQuery(new URLSearchParams(search), spec);
 
 describe("parseListQuery: the address bar is the state", () => {
   test("an empty address bar is the defaults", () => {
-    expect(parse("")).toEqual({ page: 1, q: "", sort: "-createdAt", filters: {} });
+    expect(parse("")).toEqual({ page: 1, pageSize: 20, q: "", sort: "-createdAt", filters: {} });
   });
 
   test("a good one is read as it is", () => {
-    expect(parse("page=3&q=halo&severity=info&sort=title")).toEqual({ page: 3, q: "halo", sort: "title", filters: { severity: "info" } });
+    expect(parse("page=3&q=halo&severity=info&sort=title")).toEqual({ page: 3, pageSize: 20, q: "halo", sort: "title", filters: { severity: "info" } });
     expect(parse("sort=-title")).toMatchObject({ sort: "-title" });
   });
 
@@ -25,6 +25,17 @@ describe("parseListQuery: the address bar is the state", () => {
     expect(parse("unknown=1&other=2").filters).toEqual({});
     expect(parse("severity=%20info%20&active=").filters).toEqual({ severity: "info" });
     expect(parse(`q=${"x".repeat(200)}`).q).toHaveLength(48);
+  });
+
+  test("pageSize: a size on offer is read; any other number is the screen's own", () => {
+    expect(parse("pageSize=50").pageSize).toBe(50);
+    expect(parse("pageSize=100").pageSize).toBe(100);
+    for (const size of ["0", "-5", "abc", "7", "1000", "20.5", ""]) expect(parse(`pageSize=${size}`).pageSize, size).toBe(20);
+    // A screen's own size (the lists of a few dozen rows ask for 100; Pengaturan for 50) is a size on offer and the default.
+    expect(parseListQuery(new URLSearchParams("pageSize=10"), { pageSize: 100 }).pageSize).toBe(10);
+    expect(parseListQuery(new URLSearchParams(""), { pageSize: 100 }).pageSize).toBe(100);
+    expect(pageSizeChoices({ pageSize: 30 })).toEqual([10, 20, 30, 50, 100]);
+    expect(pageSizeChoices({ pageSize: 50 })).toEqual([10, 20, 50, 100]);
   });
 
   test("a spec without sorts has no sort at all", () => {
@@ -45,8 +56,15 @@ describe("toSearchParams: the defaults are left out", () => {
   });
 
   test("the default sort and page 1 are not written", () => {
-    expect(toSearchParams({ page: 1, q: "", sort: "-createdAt", filters: {} }, spec).toString()).toBe("");
-    expect(toSearchParams({ page: 1, q: "", sort: "title", filters: {} }, spec).toString()).toBe("sort=title");
+    expect(toSearchParams({ page: 1, pageSize: 20, q: "", sort: "-createdAt", filters: {} }, spec).toString()).toBe("");
+    expect(toSearchParams({ page: 1, pageSize: 20, q: "", sort: "title", filters: {} }, spec).toString()).toBe("sort=title");
+  });
+
+  test("a page size other than the screen's own is written (and read back); its own is not", () => {
+    expect(toSearchParams(parse("pageSize=50&page=2"), spec).toString()).toBe("pageSize=50&page=2");
+    expect(parse(toSearchParams(parse("pageSize=50"), spec).toString()).pageSize).toBe(50);
+    expect(toSearchParams(parse("pageSize=20"), spec).toString()).toBe("");
+    expect(toSearchParams(parseListQuery(new URLSearchParams("pageSize=100"), { pageSize: 100 }), { pageSize: 100 }).toString()).toBe("");
   });
 });
 
@@ -54,11 +72,12 @@ describe("toApiQuery: the request says everything it means", () => {
   test("page and pageSize are always sent, with the sort and the filters", () => {
     expect(toApiQuery(parse(""), spec)).toBe("?page=1&pageSize=20&sort=-createdAt");
     expect(toApiQuery(parse("page=2&q=halo%20dunia&severity=info"), spec)).toBe("?page=2&pageSize=20&q=halo+dunia&severity=info&sort=-createdAt");
-    expect(toApiQuery(parse(""), { ...spec, pageSize: 50 })).toContain("pageSize=50");
+    expect(toApiQuery(parseListQuery(new URLSearchParams(), { ...spec, pageSize: 50 }), { ...spec, pageSize: 50 })).toContain("pageSize=50");
+    expect(toApiQuery(parse("pageSize=100"), spec)).toBe("?page=1&pageSize=100&sort=-createdAt");
   });
 
   test("a value that looks like a query string cannot add a parameter", () => {
-    const query = { page: 1, q: "a&sort=-createdBy", sort: "-createdAt", filters: { severity: "x&page=9" } };
+    const query = { page: 1, pageSize: 20, q: "a&sort=-createdBy", sort: "-createdAt", filters: { severity: "x&page=9" } };
     const params = new URLSearchParams(toApiQuery(query, spec));
     expect(params.get("q")).toBe("a&sort=-createdBy");
     expect(params.get("severity")).toBe("x&page=9");

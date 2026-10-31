@@ -35,8 +35,8 @@ export const crudSpaChecks = [
   {
     name: "crud: the Hapus button is shown to a role that cannot write",
     file: "spa/src/components/crud/ListPage.tsx",
-    from: "{canWrite && (",
-    to: "{true && (",
+    from: "{canWrite && (operations.length > 0 ?",
+    to: "{true && (operations.length > 0 ?",
     tests: t(ANNOUNCEMENTS),
   },
   {

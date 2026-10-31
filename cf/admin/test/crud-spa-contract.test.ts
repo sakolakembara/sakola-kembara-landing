@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { api, setTransport } from "../spa/src/lib/api";
 import { describeFailure } from "../spa/src/lib/crud/errors";
 import { ifMatch } from "../spa/src/lib/crud/etag";
-import { type ListSpec, parseListQuery, toApiQuery, toSearchParams } from "../spa/src/lib/crud/query";
+import { type ListSpec, pageSizeChoices, parseListQuery, toApiQuery, toSearchParams } from "../spa/src/lib/crud/query";
 import { acceptFor, checkUploadFile, FILE_TYPES as SPA_FILE_TYPES, normaliseBase, UPLOAD_KINDS, UPLOAD_MESSAGES, uploadUrl } from "../spa/src/lib/crud/upload-kinds";
 import { etagOf } from "../src/api/crud";
 import { KIND_RULES, uploadKinds } from "../src/uploads/kinds";
@@ -47,9 +47,23 @@ describe("the list query the SPA builds is what the Worker's list accepts", () =
     }
   });
 
+  test("every page size 'Baris per halaman' offers comes back as asked (the Worker clamps at 100, so none is cut)", async () => {
+    const cookie = await signedInCookie(uniqueEmail("viewer"), "viewer");
+    over(cookie);
+    for (const size of pageSizeChoices(spec)) {
+      const query = parseListQuery(new URLSearchParams(`pageSize=${size}`), spec);
+      expect(query.pageSize).toBe(size);
+      const result = await api<{ pageSize: number }>(`${LIST}${toApiQuery(query, spec)}`);
+      expect(result.ok, String(size)).toBe(true);
+      if (result.ok) expect(result.data.pageSize, String(size)).toBe(size);
+    }
+  });
+
   test("the address-bar form of a query reads back to the same query (what the URL keeps)", () => {
-    const query = parseListQuery(new URLSearchParams("page=3&q=halo&severity=urgent&sort=title"), spec);
-    expect(parseListQuery(toSearchParams(query, spec), spec)).toEqual(query);
+    for (const search of ["page=3&q=halo&severity=urgent&sort=title", "pageSize=50&page=2"]) {
+      const query = parseListQuery(new URLSearchParams(search), spec);
+      expect(parseListQuery(toSearchParams(query, spec), spec), search).toEqual(query);
+    }
   });
 });
 

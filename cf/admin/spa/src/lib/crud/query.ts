@@ -5,6 +5,8 @@
 // sort. Defaults are left out of the URL (`/announcements`, not `/announcements?page=1`).
 
 export const DEFAULT_PAGE_SIZE = 20;
+/** What "Baris per halaman" offers (the Worker takes anything from 1 to 100; these are the sizes worth choosing). */
+export const PAGE_SIZE_CHOICES = [10, 20, 50, 100] as const;
 export const MAX_PAGE = 10_000;
 /** The Worker cuts `q` here (D1 refuses a LIKE pattern over 50 bytes, src/api/crud/pagination.ts). */
 export const MAX_SEARCH_LENGTH = 48;
@@ -24,12 +26,24 @@ export interface ListSpec {
 export interface ListQuery {
   /** 1-based. */
   page: number;
+  /** Rows per page: one of `pageSizeChoices(spec)`, the screen's own size when the address says nothing else. */
+  pageSize: number;
   /** The free-text search, trimmed. */
   q: string;
   /** `name` or `-name`; "" when the resource has no sorts. */
   sort: string;
   /** Only the filters that have a value. */
   filters: Record<string, string>;
+}
+
+/** The screen's own page size (what the address omits). */
+export function defaultPageSize(spec: ListSpec = {}): number {
+  return spec.pageSize ?? DEFAULT_PAGE_SIZE;
+}
+
+/** The sizes a person can pick on this screen: the usual ones plus the screen's own, smallest first. */
+export function pageSizeChoices(spec: ListSpec = {}): number[] {
+  return [...new Set<number>([...PAGE_SIZE_CHOICES, defaultPageSize(spec)])].sort((a, b) => a - b);
 }
 
 function positiveInt(raw: string | null, max: number): number {
@@ -52,8 +66,11 @@ export function parseListQuery(params: URLSearchParams, spec: ListSpec = {}): Li
     const value = params.get(name)?.trim();
     if (value) filters[name] = value;
   }
+  // Only a size on offer counts: any other number in the address is the screen's own.
+  const askedSize = positiveInt(params.get("pageSize"), Number.MAX_SAFE_INTEGER);
   return {
     page: positiveInt(params.get("page"), MAX_PAGE),
+    pageSize: pageSizeChoices(spec).includes(askedSize) ? askedSize : defaultPageSize(spec),
     q: cleanSearch(params.get("q") ?? ""),
     sort: known && wanted !== "" ? wanted : (spec.defaultSort ?? ""),
     filters,
@@ -69,6 +86,7 @@ export function toSearchParams(query: ListQuery, spec: ListSpec = {}): URLSearch
     if (value) params.set(name, value);
   }
   if (query.sort && query.sort !== (spec.defaultSort ?? "")) params.set("sort", query.sort);
+  if (query.pageSize !== defaultPageSize(spec)) params.set("pageSize", String(query.pageSize));
   if (query.page > 1) params.set("page", String(query.page));
   return params;
 }
@@ -77,7 +95,7 @@ export function toSearchParams(query: ListQuery, spec: ListSpec = {}): URLSearch
 export function toApiQuery(query: ListQuery, spec: ListSpec = {}): string {
   const params = new URLSearchParams();
   params.set("page", String(query.page));
-  params.set("pageSize", String(spec.pageSize ?? DEFAULT_PAGE_SIZE));
+  params.set("pageSize", String(query.pageSize));
   if (query.q) params.set("q", query.q);
   for (const [name, value] of Object.entries(query.filters)) params.set(name, value);
   if (query.sort) params.set("sort", query.sort);

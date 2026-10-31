@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { crudSpaChecks } from "./negative-checks-spa-crud.mjs";
 import { shellSpaChecks } from "./negative-checks-spa-shell.mjs";
 import { listSpaChecks } from "./negative-checks-spa-lists.mjs";
+import { listToolsSpaChecks } from "./negative-checks-spa-listtools.mjs";
 import { sistemSpaChecks } from "./negative-checks-spa-sistem.mjs";
 import { komunikasiSpaChecks } from "./negative-checks-spa-komunikasi.mjs";
 import { kontenMiscSpaChecks } from "./negative-checks-spa-konten-misc.mjs";
@@ -37,6 +38,7 @@ const checks = [
 
   // The lists, stage 3 of the admin polish (SAKEM-115): scripts/negative-checks-spa-lists.mjs.
   ...listSpaChecks,
+  ...listToolsSpaChecks,
 
   // Aktivitas and Pengaturan (SAKEM-082): scripts/negative-checks-spa-sistem.mjs.
   ...sistemSpaChecks,

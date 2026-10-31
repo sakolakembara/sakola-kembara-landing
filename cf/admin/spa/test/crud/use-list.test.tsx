@@ -33,6 +33,7 @@ function Probe() {
       <button onClick={() => list.apply({ q: "cari", filters: { kind: "a" } })}>apply</button>
       <button onClick={() => list.setSort("-name")}>sort</button>
       <button onClick={() => list.setPage(3)}>page3</button>
+      <button onClick={() => list.setPageSize(50)}>size50</button>
       <button onClick={() => list.reset()}>reset</button>
       <button onClick={list.refetch}>refetch</button>
       <p data-testid="next">{list.searchFor(2)}</p>
@@ -86,6 +87,20 @@ describe("useList", () => {
     await waitFor(() => expect(location()).toBe("/things?q=halo&kind=a&sort=-name&page=3"));
     fireEvent.click(screen.getByText("reset"));
     await waitFor(() => expect(location()).toBe("/things?sort=-name"));
+  });
+
+  test("the page size is in the address bar: a new one goes back to page 1, asks for that many, and survives reset", async () => {
+    const api = stubApi({ "GET /api/things": respond(payload(["Satu"], { total: 100 })) });
+    renderAt(<Probe />, "/things?q=halo&page=3");
+    await screen.findByText("Satu");
+
+    fireEvent.click(screen.getByText("size50"));
+    await waitFor(() => expect(location()).toBe("/things?q=halo&sort=name&pageSize=50".replace("&sort=name", "")));
+    expect(api.last("GET /api/things")?.url).toBe("/api/things?page=1&pageSize=50&q=halo&sort=name");
+    expect(screen.getByTestId("next").textContent).toBe("?q=halo&pageSize=50&page=2");
+
+    fireEvent.click(screen.getByText("reset"));
+    await waitFor(() => expect(location()).toBe("/things?pageSize=50"));
   });
 
   test("searchFor gives the query of another page, for links", async () => {

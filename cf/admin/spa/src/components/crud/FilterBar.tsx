@@ -5,13 +5,16 @@ import { Input, Select } from "~/components/ui/field";
 import type { ListState } from "~/lib/crud/useList";
 import { cleanSearch, isFiltered } from "~/lib/crud/query";
 import { useDraftText } from "~/lib/crud/useDraftText";
+import { type FilterChip, FilterChips } from "./FilterChips";
 
 /**
  * The filter row above a list (a port of the legacy Aktivitas filters): a labelled control per filter, the
  * search box, and "Hapus filter" when anything narrows the list. A filter applies the moment it is chosen, with
  * the search as it stands; the search applies after a short pause in typing, and at once on Enter. The result is in
  * the address bar (`list.apply`), which is why a filtered list can be linked to: the dashboard's
- * "Pendaftar pending" tile goes to `/applications?status=pending`.
+ * "Pendaftar pending" tile goes to `/applications?status=pending`. A bar with three controls or more also lists what
+ * is set as chips under them (`FilterChips`), each one a button that drops just that filter. `trailing` is for a
+ * control that belongs with these but is not a filter ("Kolom"); it sits beside "Hapus filter".
  */
 export interface FilterOption {
   value: string;
@@ -34,6 +37,7 @@ export interface FilterBarProps {
   filters?: readonly FilterSpec[];
   /** The `id` prefix, when two bars share a page. */
   idPrefix?: string;
+  trailing?: ReactNode;
 }
 
 /** Quiet time after the last keystroke before the search is asked for. */
@@ -50,7 +54,10 @@ function Labelled({ label, htmlFor, children }: { label: string; htmlFor: string
   );
 }
 
-export function FilterBar({ list, search, filters = [], idPrefix = "filter" }: FilterBarProps) {
+/** The number of controls from which the chips are worth their line. */
+const CHIPS_FROM = 3;
+
+export function FilterBar({ list, search, filters = [], idPrefix = "filter", trailing }: FilterBarProps) {
   const { query } = list;
   // The pause in typing fires later than the render that scheduled it: it applies with the filters as they are by then.
   const latest = useRef(list);
@@ -75,6 +82,24 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter" }: F
   }
 
   if (!search && filters.length === 0) return null;
+
+  const chips: FilterChip[] = [];
+  if (query.q) {
+    chips.push({
+      key: "q",
+      label: search?.label ?? "Cari",
+      value: query.q,
+      clear: () => {
+        searchText.onChange("");
+        list.apply({ q: "", filters: query.filters });
+      },
+    });
+  }
+  for (const filter of filters) {
+    const value = query.filters[filter.name];
+    if (value) chips.push({ key: filter.name, label: filter.label, value: filter.options.find((option) => option.value === value)?.label ?? value, clear: () => choose(filter.name, "") });
+  }
+  const showChips = (search ? 1 : 0) + filters.length >= CHIPS_FROM;
 
   return (
     <form
@@ -116,7 +141,7 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter" }: F
           </Select>
         </Labelled>
       ))}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2 md:col-span-2 lg:col-span-1 lg:justify-end">
         {isFiltered(query) && (
           // A button, not a link: the address bar is rewritten by `reset`, the page does not change.
           <Button
@@ -131,7 +156,9 @@ export function FilterBar({ list, search, filters = [], idPrefix = "filter" }: F
             Hapus filter
           </Button>
         )}
+        {trailing}
       </div>
+      <FilterChips chips={showChips ? chips : []} className="flex flex-wrap gap-2 md:col-span-2 lg:col-span-4" />
     </form>
   );
 }

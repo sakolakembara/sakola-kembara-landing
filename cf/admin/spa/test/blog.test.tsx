@@ -172,12 +172,16 @@ describe("the list", () => {
     expect(screen.getByRole("link", { name: "Lihat Kisah Alumni" }).getAttribute("href")).toBe("/blog/b2/edit");
   });
 
-  test("an editor of Konten, and super_admin, get 'Tulis Artikel Baru' and Edit and Hapus on every row", async () => {
+  test("an editor of Konten, and super_admin, get 'Tulis Artikel Baru', Edit and the row's menu (with Hapus in it) on every row", async () => {
+    const user = userEvent.setup();
     for (const who of [WRITER, ["super_admin", []]] as Who[]) {
       const view = await openList(who);
       expect(screen.getByRole("link", { name: /Tulis Artikel Baru/ }).getAttribute("href")).toBe("/blog/new");
       expect(screen.getByRole("link", { name: "Edit Kisah Alumni" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Hapus Kisah Alumni" }).getAttribute("aria-haspopup")).toBe("dialog");
+      // Hapus is not next to Edit: the articles' row has a menu for what is not the one thing a row is for.
+      expect(screen.queryByRole("button", { name: "Hapus Kisah Alumni" })).toBeNull();
+      await user.click(screen.getByRole("button", { name: "Aksi lainnya untuk Kisah Alumni" }));
+      expect(screen.getByRole("button", { name: "Hapus" })).toBeTruthy();
       view.unmount();
     }
   });
@@ -222,7 +226,8 @@ describe("the list", () => {
   test("delete names the article and goes to the Worker with the row's version", async () => {
     const user = userEvent.setup();
     const { api } = await openList(WRITER, { [`DELETE ${LIST}/b2`]: respond(null, 204) });
-    await user.click(screen.getByRole("button", { name: "Hapus Kisah Alumni" }));
+    await user.click(screen.getByRole("button", { name: "Aksi lainnya untuk Kisah Alumni" }));
+    await user.click(screen.getByRole("button", { name: "Hapus" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Hapus artikel?" });
     expect(dialog.textContent).toContain("Artikel “Kisah Alumni” akan dihapus. Tindakan ini tidak bisa dibatalkan.");
     await user.click(within(dialog).getByRole("button", { name: "Hapus" }));
