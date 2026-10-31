@@ -12,6 +12,7 @@ import { AUDIT_LABEL, RESOURCE_TYPE_LABEL } from "@/lib/audit-labels";
  */
 export const NEW_ACTION_LABEL: Record<string, string> = {
   "upload.create": "Berkas diunggah",
+  "upload.update": "Berkas unggahan diubah",
   "upload.delete": "Berkas unggahan dihapus",
   // An applicant's uploaded file (SAKEM-083): an admin opened one (a row each time, ids only), or purged an application's files by hand.
   "application_file.view": "Berkas pendaftar dibuka",
@@ -96,6 +97,7 @@ export const FILTER_ACTIONS = [
   "team.update",
   "upload.create",
   "upload.delete",
+  "upload.update",
   "user.email_verified",
   "user.password_reset",
 ] as const;

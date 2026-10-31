@@ -109,6 +109,26 @@ export async function findMedia(d1: D1Database, by: { id: string } | { key: stri
   return d1.prepare(`SELECT id, key, purpose FROM media WHERE ${column} = ?`).bind(value).first<MediaRow>();
 }
 
+/** The menus (Blog, Tim, ...) whose registered columns mention `path`, once each; empty when nothing does. */
+export async function menusUsing(d1: D1Database, path: string): Promise<string[]> {
+  const probe = referencingLabelsSql(path);
+  return labelsInRow(probe.labels, await d1.prepare(probe.sql.text).bind(...probe.sql.params).first<Record<string, unknown>>());
+}
+
+/** The audit row of a text alternative's change, written only when the media row is there (the statement before it updated it). Field names only, never the text. */
+const AUDIT_UPDATE_SQL = `INSERT INTO audit_log (id, actor_id, actor_email, action, resource_type, resource_id, metadata)
+SELECT ?, ?, ?, 'upload.update', 'media', ?, ?
+WHERE EXISTS (SELECT 1 FROM media WHERE id = ?)`;
+
+/** Sets (or, with null, clears) the text alternative of a media row. False when there is no such row. One batch: the change and its audit row. */
+export async function updateAltText(env: Storage, actor: Actor, id: string, altText: string | null): Promise<boolean> {
+  const [update] = await env.DB.batch<{ id: string }>([
+    env.DB.prepare("UPDATE media SET alt_text = ? WHERE id = ? RETURNING id").bind(altText, id),
+    env.DB.prepare(AUDIT_UPDATE_SQL).bind(crypto.randomUUID(), actor.id, actor.email.toLowerCase(), id, JSON.stringify({ fields: ["altText"] }), id),
+  ]);
+  return Boolean(update && update.results.length > 0);
+}
+
 /** The audit row of a delete, written only when the media row is gone (the statement before it removed it). */
 const AUDIT_DELETE_SQL = `INSERT INTO audit_log (id, actor_id, actor_email, action, resource_type, resource_id, metadata)
 SELECT ?, ?, ?, 'upload.delete', 'media', ?, ?
@@ -130,8 +150,7 @@ export async function deleteUnusedUpload(env: Storage, actor: Actor, media: Medi
   ]);
 
   if (!removal || removal.results.length === 0) {
-    const probe = referencingLabelsSql(path);
-    const usedBy = labelsInRow(probe.labels, await env.DB.prepare(probe.sql.text).bind(...probe.sql.params).first<Record<string, unknown>>());
+    const usedBy = await menusUsing(env.DB, path);
     // Nothing references it and it was not deleted: it was already gone.
     return usedBy.length > 0 ? { status: "in_use", usedBy } : { status: "not_found" };
   }
