@@ -886,6 +886,37 @@ describe("the form: read-only", () => {
 describe("the preview", () => {
   const PREVIEW = `POST ${PREVIEW_PATH}`;
 
+  test("'Pratinjau' is a button of the top bar, and under the text there is only the count", async () => {
+    await openEdit(WRITER, article());
+    const button = screen.getByRole("button", { name: "Pratinjau" });
+    expect(screen.getByRole("navigation", { name: "Breadcrumb" }).closest("header")!.contains(button)).toBe(true);
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    const footer = document.getElementById("contentMarkdown-count")!.parentElement!;
+    expect(within(footer).queryAllByRole("button")).toHaveLength(0); // no "Sisipkan Gambar" and no "Pratinjau" a long scroll under the text
+    expect(screen.queryByRole("button", { name: "Sisipkan Gambar" })).toBeNull();
+  });
+
+  test("on a phone the button is its icon (the word is only for a screen reader), so four buttons fit in the bar at the bottom", async () => {
+    await openEdit(WRITER, article());
+    const word = screen.getByText("Pratinjau");
+    expect(word.className).toContain("max-md:sr-only");
+    expect(screen.getByRole("button", { name: "Pratinjau" })).toBeTruthy(); // still its name
+  });
+
+  test("'Pratinjau' works from any tab: it brings the person to the text, and the button then says 'Kembali menulis'", async () => {
+    const user = userEvent.setup();
+    await openEdit(WRITER, article(), { [PREVIEW]: respond({ html: "<p>Isi pratinjau.</p>" }) });
+    await openTab(user, "SEO");
+    await user.click(screen.getByRole("button", { name: "Pratinjau" }));
+    await waitFor(() => expect(panel("Konten").hasAttribute("hidden")).toBe(false));
+    expect(panel("SEO").hasAttribute("hidden")).toBe(true);
+    expect(await screen.findByText("Isi pratinjau.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Kembali menulis" }).getAttribute("aria-pressed")).toBe("true");
+    await user.click(screen.getByRole("button", { name: "Kembali menulis" }));
+    expect(await bodyField()).toBeTruthy(); // the text is back
+    expect(screen.getByRole("button", { name: "Pratinjau" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
   test("'Pratinjau' asks the Worker to render the text, shows its HTML, and 'Kembali menulis' brings the text back, edits included", async () => {
     const user = userEvent.setup();
     const { api } = await openEdit(WRITER, article(), { [PREVIEW]: respond({ html: "<h2>Mulai dari jadwal</h2>\n<p>Isi <strong>tebal</strong>.</p>" }) });
@@ -1026,15 +1057,17 @@ describe("inserting an image", () => {
     expect(await markdownOf()).toBe(before);
   });
 
-  test("shows 'Mengupload...' and refuses a second picking while one runs", async () => {
+  test("says which file is going up and refuses a second picking while one runs", async () => {
     const user = userEvent.setup();
     const gate = deferred<ReturnType<typeof uploaded>>();
     setUploader(() => gate.promise);
     await openEdit(WRITER);
     await user.upload(await bodyPicker(), png());
-    expect(await screen.findByRole("button", { name: "Mengupload..." })).toHaveProperty("disabled", true);
+    expect((await screen.findByText("Mengunggah foto-siswa.png...")).getAttribute("role")).toBe("status"); // announced, not only drawn
+    expect((await bodyPicker()).disabled).toBe(true);
     await act(async () => gate.resolve(uploaded({ file: png(), kind: "blog-image" })));
-    expect(await screen.findByRole("button", { name: "Sisipkan Gambar" })).toHaveProperty("disabled", false);
+    await waitFor(() => expect(screen.queryByText("Mengunggah foto-siswa.png...")).toBeNull());
+    expect((await bodyPicker()).disabled).toBe(false);
   });
 });
 

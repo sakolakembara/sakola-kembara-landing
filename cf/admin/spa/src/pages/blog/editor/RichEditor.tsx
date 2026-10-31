@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { acceptFor, storedFilePath, storedFileUrl } from "~/lib/crud/upload-kinds";
 import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
@@ -20,11 +20,6 @@ import { SlashCommand } from "./SlashCommand";
 // It is loaded when the editor is first shown (BodyEditor lazy-loads this file), so the rest of the admin does not
 // carry TipTap.
 
-export interface RichEditorHandle {
-  /** Opens the file picker for a picture. */
-  pickImage: () => void;
-}
-
 export interface RichEditorProps {
   /** The editable element's id: the field name, so the error summary can put the cursor in it. */
   id: string;
@@ -34,8 +29,6 @@ export interface RichEditorProps {
   readOnly: boolean;
   invalid: boolean;
   describedBy: string;
-  /** A picture is being uploaded (the button that picks one waits). */
-  onBusyChange: (busy: boolean) => void;
 }
 
 const PLACEHOLDER = "Ketik / untuk perintah, atau mulai menulis…";
@@ -50,7 +43,7 @@ function whenReady(editor: Editor, run: () => void): (() => void) | undefined {
   return () => void editor.off("create", run);
 }
 
-const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEditor({ id, initialMarkdown, onChange, readOnly, invalid, describedBy, onBusyChange }, ref) {
+export default function RichEditor({ id, initialMarkdown, onChange, readOnly, invalid, describedBy }: RichEditorProps) {
   const base = useUploadsBase();
   // Read when a picture is drawn, so the files domain, which arrives with /api/config, is used as soon as it is known.
   const baseRef = useRef(base);
@@ -67,7 +60,6 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEd
   const [problem, setProblem] = useState<string | null>(null);
   const [linkRequests, setLinkRequests] = useState(0);
 
-  useEffect(() => onBusyChange(busy !== null), [busy, onBusyChange]);
 
   /** Uploads the pictures one after the other and writes each where the cursor is (or at `at`, where it was dropped). */
   const insertPictures = useCallback(async (files: File[], at?: number) => {
@@ -143,8 +135,6 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEd
   });
   editorRef.current = editor;
 
-  useImperativeHandle(ref, () => ({ pickImage: () => picker.current?.click() }), []);
-
   // What a screen reader needs to know about the field, set on the editable element (TipTap draws it).
   useEffect(() => {
     if (!editor) return;
@@ -205,6 +195,4 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEd
       )}
     </div>
   );
-});
-
-export default RichEditor;
+}
