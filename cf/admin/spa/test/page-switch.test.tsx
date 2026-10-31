@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
+import { clearReadCache } from "~/lib/crud/readCache";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
 // Moving from page to page in the admin (SAKEM-115): nothing false is said while a page is on its way, nothing that
@@ -60,9 +61,14 @@ describe("Pesan: the line with the two numbers", () => {
     expect(await screen.findByText("12 total · 3 belum dibaca.")).toBeTruthy();
     first.unmount();
 
-    stubApi({ "GET /api/me": respond(meBody("viewer")), [`GET ${messages}`]: respond(envelope([])), [`GET ${messages}/counts`]: respond({ error: "internal" }, 500) });
+    // From nothing (no kept answer): the line is grey while the request is on its way, and gone once it has failed.
+    clearReadCache();
+    const failing = deferred<Response>();
+    stubApi({ "GET /api/me": respond(meBody("viewer")), [`GET ${messages}`]: respond(envelope([])), [`GET ${messages}/counts`]: () => failing.promise });
     renderApp("/messages");
     const again = await screen.findByRole("heading", { level: 1, name: "Pesan" });
+    expect(hasSkeleton(again.parentElement!)).toBe(true);
+    await act(async () => failing.resolve(respond({ error: "internal" }, 500)));
     await waitFor(() => expect(hasSkeleton(again.parentElement!)).toBe(false));
     expect(screen.queryByText(/belum dibaca\./)).toBeNull();
   });
@@ -103,22 +109,6 @@ describe("Pendaftar while the batches are on their way", () => {
     expect(document.querySelectorAll("tbody tr[aria-hidden=true]")).toHaveLength(5);
     await act(async () => gate.resolve(respond(envelope([batch]))));
     await waitFor(() => expect(screen.getByLabelText("Cari").closest("fieldset")).toBeNull());
-  });
-
-  test("the title is on screen in every state between the first frame and the list: the redirect to the newest batch does not blank the page", async () => {
-    const gate = deferred<Response>();
-    stubApi({ "GET /api/me": respond(meBody(...who)), [`GET ${batches}`]: () => gate.promise, [`GET ${applications}`]: respond(envelope([])) });
-    const view = renderApp("/applications");
-    await screen.findByRole("heading", { level: 1, name: "Pendaftar" });
-    const seen: boolean[] = [];
-    const observer = new MutationObserver(() => seen.push(screen.queryByRole("heading", { level: 1, name: "Pendaftar" }) !== null));
-    observer.observe(view.container, { childList: true, subtree: true });
-    await act(async () => gate.resolve(respond(envelope([batch]))));
-    await waitFor(() => expect(view.router.state.location.search).toBe("?batch=b26"));
-    await waitFor(() => expect(screen.getByLabelText("Cari").closest("fieldset")).toBeNull());
-    observer.disconnect();
-    expect(seen.length).toBeGreaterThan(0);
-    expect(seen.every(Boolean)).toBe(true);
   });
 
   test("coming back, the page does not wait for the batches before asking for the applicants (the last answer is kept)", async () => {

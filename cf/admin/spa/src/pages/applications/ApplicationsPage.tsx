@@ -38,6 +38,9 @@ interface BatchOptions {
   message: string;
 }
 
+/** The search box of the list, and of the loading page that stands in for it. A prefix match on purpose, and the box says so. */
+const SEARCH = { label: "Cari", placeholder: "Awal nama atau email" } as const;
+
 /** The batches' request: a few rows a year, newest first. */
 const BATCHES_PATH = "/api/admin/batches?pageSize=100&sort=-year";
 
@@ -81,7 +84,7 @@ function PendaftarLoading() {
       <fieldset disabled className="contents">
         <FilterBar
           list={{ query: { page: 1, pageSize: 20, q: "", sort: "", filters: {} }, apply: () => undefined, reset: () => undefined }}
-          search={{ label: "Cari", placeholder: "Awal nama atau email" }}
+          search={SEARCH}
           filters={[
             { name: "batch", label: "Batch", allLabel: "Semua batch", options: [] },
             { name: "status", label: "Status", allLabel: "Semua status", options: STATUS_OPTIONS },
@@ -207,7 +210,7 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
       {/* For who may purge: the drafts that hold files (SAKEM-093). A viewer sees no tabs. */}
       <PendaftarTabs current="applicants" />
 
-      <FilterBar list={bar} search={{ label: "Cari", placeholder: "Awal nama atau email" }} filters={filters} trailing={<ColumnsMenu choice={columnChoice} />} />
+      <FilterBar list={bar} search={SEARCH} filters={filters} trailing={<ColumnsMenu choice={columnChoice} />} />
 
       <DataTable<ApplicationListed>
         caption="Daftar pendaftar"

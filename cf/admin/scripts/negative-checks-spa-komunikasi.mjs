@@ -93,8 +93,8 @@ export const komunikasiSpaChecks = [
   {
     name: "komunikasi: the counts' failure shows a made-up number (zero) instead of none",
     file: "spa/src/pages/messages/useMessageCounts.ts",
-    from: ": null);\n    });",
-    to: ": { total: 0, unread: 0 });\n    });",
+    from: "unread: result.data.unread } : null;",
+    to: "unread: result.data.unread } : { total: 0, unread: 0 };",
     tests: t(MESSAGES),
   },
   {

@@ -63,7 +63,7 @@ export const switchSpaChecks = [
     file: APPLICATIONS,
     from: "        <PendaftarLoading />\n        <Navigate",
     to: "        <Navigate",
-    tests: t(SWITCH),
+    tests: t("page-switch-pendaftar.test.tsx"),
   },
   {
     name: "switch: the batches are not kept, so every visit waits for them before the applicants are asked for",
