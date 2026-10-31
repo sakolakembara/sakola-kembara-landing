@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 import { cn } from "@/lib/cn";
 import type { NavCount } from "~/lib/dashboard";
@@ -24,6 +25,25 @@ function CountBadge({ count, what, collapsed }: NavCount & { collapsed: boolean 
         , {count} {what}
       </span>
     </>
+  );
+}
+
+/** The mark and the name at the top of the sidebar (and of the skeleton that stands in for it); `children` is the drawer's close button. */
+export function SidebarBrand({ collapsed = false, children }: { collapsed?: boolean; children?: ReactNode }) {
+  return (
+    <div className={cn("flex items-center gap-2.5 px-4 pb-3.5", collapsed && "justify-center px-0")}>
+      <div
+        aria-hidden="true"
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground"
+      >
+        SK
+      </div>
+      <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
+        <p className="truncate text-[15px] font-semibold leading-tight tracking-tight">Sakola Kembara</p>
+        <p className="text-xs text-white/70">Admin</p>
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -59,17 +79,7 @@ export function SidebarBody({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col py-5">
-      <div className={cn("flex items-center gap-2.5 px-4 pb-3.5", collapsed && "justify-center px-0")}>
-        <div
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground"
-        >
-          SK
-        </div>
-        <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
-          <p className="truncate text-[15px] font-semibold leading-tight tracking-tight">Sakola Kembara</p>
-          <p className="text-xs text-white/70">Admin</p>
-        </div>
+      <SidebarBrand collapsed={collapsed}>
         {onClose && (
           <button
             type="button"
@@ -80,7 +90,7 @@ export function SidebarBody({
             <X size={20} aria-hidden="true" />
           </button>
         )}
-      </div>
+      </SidebarBrand>
 
       {/* A thin scrollbar in the sidebar's own tones: the default light track looks like a hole in the navy. */}
       <nav

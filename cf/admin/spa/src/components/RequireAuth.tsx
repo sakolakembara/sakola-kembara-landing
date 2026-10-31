@@ -1,5 +1,5 @@
-import { LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
@@ -8,7 +8,9 @@ import { accessTo, type Section } from "~/lib/access";
 import { decideGuard } from "~/lib/guard";
 import { useSubmitLock } from "~/lib/hooks";
 import { SessionProvider, useMe, useSession } from "~/lib/session";
+import { prefetchDashboard } from "~/lib/use-dashboard";
 import { ForbiddenPage } from "../pages/Forbidden";
+import { ShellSkeleton } from "./ShellSkeleton";
 
 /**
  * Layout route for everything behind sign-in. It loads the session, and until
@@ -16,6 +18,10 @@ import { ForbiddenPage } from "../pages/Forbidden";
  * signed in goes to `/login` with the page they asked for in `from`.
  */
 export function RequireAuth() {
+  // The shell will want the dashboard (the sidebar's counts): ask for it with the session, not after it.
+  useEffect(() => {
+    prefetchDashboard();
+  }, []);
   return (
     <SessionProvider>
       <AuthGate />
@@ -30,14 +36,7 @@ function AuthGate() {
 
   switch (decision.kind) {
     case "loading":
-      return (
-        <div className="flex min-h-dvh items-center justify-center bg-gray-50">
-          <p role="status" className="flex items-center gap-2 text-sm text-gray-500">
-            <LoaderCircle size={18} aria-hidden="true" className="animate-spin text-primary-blue motion-reduce:animate-none" />
-            Memuat…
-          </p>
-        </div>
-      );
+      return <ShellSkeleton />;
     case "error":
       return (
         <Centered title="Tidak dapat memuat akun">
