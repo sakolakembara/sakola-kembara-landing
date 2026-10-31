@@ -302,7 +302,7 @@ describe("the top bar", () => {
   test("the breadcrumb names the group and the entry, and marks the page", async () => {
     await open("/applications");
     const crumbs = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
-    expect(crumbs.getByText("Pendaftaran")).toBeTruthy();
+    expect(await crumbs.findByText("Pendaftaran")).toBeTruthy();
     expect(crumbs.getByText("Pendaftar").getAttribute("aria-current")).toBe("page");
   });
 

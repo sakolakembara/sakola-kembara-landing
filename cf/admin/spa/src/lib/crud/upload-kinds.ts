@@ -104,6 +104,29 @@ export function uploadUrl(path: string | null, base: string | undefined | null):
   return `${origin}${path}`;
 }
 
+/** A path of the public site, which an upload is not: one slash and then a name (not a second slash), and no whitespace, control character, backslash, `..` segment, `?` or `#`. */
+const SAFE_SITE_PATH = /^(?!.*\/\.\.(?:\/|$))\/(?!uploads\/)[^\s\\?#\u0000-\u001f/][^\s\\?#\u0000-\u001f]*$/;
+
+/**
+ * Where the admin draws a stored file from. An upload comes from the files domain (`uploadUrl`). Any other path of the site
+ * (the pictures the migrated articles point at, "/blog/images/2026/02/a.jpg") comes from the public site, because this host has
+ * no such file: left relative, the browser asks the admin's own address and gets nothing, and the picture collapses. An absolute
+ * address, a path with `..`, or no origin to put in front leaves the path as it is.
+ */
+export function storedFileUrl(path: string, base: string | undefined | null, siteUrl: string | undefined | null): string {
+  if (path.startsWith("/uploads/")) return uploadUrl(path, base);
+  const site = normaliseBase(siteUrl);
+  return site && SAFE_SITE_PATH.test(path) ? `${site}${path}` : path;
+}
+
+/** The inverse of `storedFileUrl`, for what is read back from the page (a picture copied out of it): the path that was stored. */
+export function storedFilePath(src: string, base: string | undefined | null, siteUrl: string | undefined | null): string {
+  const files = normaliseBase(base);
+  if (files && src.startsWith(`${files}/uploads/`)) return src.slice(files.length);
+  const site = normaliseBase(siteUrl);
+  return site && src.startsWith(`${site}/`) && SAFE_SITE_PATH.test(src.slice(site.length)) ? src.slice(site.length) : src;
+}
+
 /** The file name inside a stored path, for a "foto-ibu.png" label: the id before the first "-" is dropped. */
 export function fileNameOf(path: string): string {
   const last = path.split("/").pop() ?? path;

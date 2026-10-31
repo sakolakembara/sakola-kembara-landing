@@ -2,8 +2,9 @@ import { FileText, ImageIcon } from "lucide-react";
 import { type ChangeEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Field } from "~/components/ui/field";
+import { useConfig } from "~/lib/config";
 import { discardUpload, uploadFile, useUploadsBase, type UploadResult } from "~/lib/crud/upload-client";
-import { acceptFor, checkUploadFile, fileNameOf, FILE_TYPES, UPLOAD_KINDS, type UploadKindName, uploadUrl } from "~/lib/crud/upload-kinds";
+import { acceptFor, checkUploadFile, fileNameOf, FILE_TYPES, storedFileUrl, UPLOAD_KINDS, type UploadKindName } from "~/lib/crud/upload-kinds";
 
 /**
  * A file or an image field (docs/cloudflare/admin-crud.md#10-files-upload-references, docs/cloudflare/uploads.md).
@@ -54,6 +55,7 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
   const rule = UPLOAD_KINDS[kind];
   const isImage = rule.types.every((type) => FILE_TYPES[type].mime.startsWith("image/"));
   const base = useUploadsBase();
+  const { siteUrl } = useConfig();
   const input = useRef<HTMLInputElement>(null);
   const controller = useRef<AbortController | null>(null);
 
@@ -133,7 +135,7 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
   }
 
   const mine = value ? own.current.get(value) : undefined;
-  const previewSrc = value ? (mine?.preview ?? uploadUrl(value, base)) : null;
+  const previewSrc = value ? (mine?.preview ?? storedFileUrl(value, base, siteUrl)) : null;
 
   return (
     <Field group label={label} required={required} hint={hint} error={shownError} id={id}>
@@ -151,7 +153,7 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
             ) : (
               <span className="flex min-w-0 items-center gap-2 text-sm text-gray-700">
                 <FileText size={20} aria-hidden="true" className="shrink-0 text-gray-400" />
-                <a href={uploadUrl(value, base)} target="_blank" rel="noopener noreferrer" className="truncate text-primary-blue hover:underline">
+                <a href={storedFileUrl(value, base, siteUrl)} target="_blank" rel="noopener noreferrer" className="truncate text-primary-blue hover:underline">
                   {fileNameOf(value)}
                 </a>
               </span>

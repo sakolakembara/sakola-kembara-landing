@@ -1,7 +1,8 @@
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { acceptFor, uploadUrl } from "~/lib/crud/upload-kinds";
+import { acceptFor, storedFilePath, storedFileUrl } from "~/lib/crud/upload-kinds";
+import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
 import { BubbleToolbar, ImageBubble } from "./BubbleToolbar";
 import { blogExtensions } from "./extensions";
@@ -54,6 +55,10 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEd
   // Read when a picture is drawn, so the files domain, which arrives with /api/config, is used as soon as it is known.
   const baseRef = useRef(base);
   baseRef.current = base;
+  // The same for the public site, which the pictures of the migrated articles ("/blog/images/...") are drawn from.
+  const { siteUrl } = useConfig();
+  const siteRef = useRef(siteUrl);
+  siteRef.current = siteUrl;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const picker = useRef<HTMLInputElement>(null);
@@ -89,11 +94,8 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEd
     () => [
       ...blogExtensions({
         placeholder: PLACEHOLDER,
-        displaySrc: (src) => uploadUrl(src, baseRef.current),
-        storedSrc: (src) => {
-          const origin = baseRef.current.replace(/\/+$/, "");
-          return origin !== "" && src.startsWith(`${origin}/uploads/`) ? src.slice(origin.length) : src;
-        },
+        displaySrc: (src) => storedFileUrl(src, baseRef.current, siteRef.current),
+        storedSrc: (src) => storedFilePath(src, baseRef.current, siteRef.current),
       }),
       SlashCommand.configure({ onPickImage: () => picker.current?.click() }),
     ],
@@ -155,13 +157,13 @@ const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(function RichEd
     });
   }, [editor, invalid, readOnly, describedBy]);
 
-  // The files domain can arrive after the pictures were drawn: point the ones already on the page at it.
+  // The files domain and the site's address can arrive after the pictures were drawn: point the ones already on the page at them.
   useEffect(() => {
     if (!editor) return;
     return whenReady(editor, () => {
-      for (const image of editor.view.dom.querySelectorAll<HTMLImageElement>('img[src^="/uploads/"]')) image.setAttribute("src", uploadUrl(image.getAttribute("src") ?? "", base));
+      for (const image of editor.view.dom.querySelectorAll<HTMLImageElement>('img[src^="/"]')) image.setAttribute("src", storedFileUrl(image.getAttribute("src") ?? "", base, siteUrl));
     });
-  }, [editor, base]);
+  }, [editor, base, siteUrl]);
 
   return (
     <div className="article-editor relative">

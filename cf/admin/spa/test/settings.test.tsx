@@ -539,7 +539,7 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
 
   test("a new admin: the breadcrumb ends with the page, Batal is an action, there is no back button, and the editor's areas are a card in the side column", async () => {
     await openForm("/settings/new");
-    expect(within(crumbs()).getByText("Admin baru")).toBeTruthy();
+    expect(await within(crumbs()).findByText("Admin baru")).toBeTruthy();
     expect(within(crumbs()).getByRole("link", { name: "Pengaturan" }).getAttribute("href")).toBe("/settings");
     expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/settings");
     expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
@@ -553,8 +553,8 @@ describe("the form: one bar and cards (SAKEM-119)", () => {
     const saved = admin({ id: "u1", email: "dewi@contoh.test", name: "Dewi Pengurus", role: "editor", areas: ["komunikasi"], updatedAt: "2026-10-10T00:00:00.000Z" });
     const { unmount } = await openForm("/settings/u1/edit", { [`GET ${LIST}/u1`]: respond({ item: saved }) });
     await waitFor(() => expect((screen.getByLabelText(/Nama/) as HTMLInputElement).value).toBe("Dewi Pengurus"));
-    expect(within(crumbs()).getByText("Dewi Pengurus")).toBeTruthy();
-    expect(within(crumbs().parentElement!).getByText("Aktif")).toBeTruthy();
+    expect(await within(crumbs()).findByText("Dewi Pengurus")).toBeTruthy();
+    expect(await within(crumbs().parentElement!).findByText("Aktif")).toBeTruthy();
     expect(card("Area")).toBeTruthy();
     unmount();
 

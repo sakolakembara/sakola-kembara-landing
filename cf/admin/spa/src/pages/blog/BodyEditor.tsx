@@ -3,8 +3,9 @@ import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from "rea
 import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
-import { uploadUrl } from "~/lib/crud/upload-kinds";
+import { storedFileUrl } from "~/lib/crud/upload-kinds";
 import { EditorBoundary } from "./editor/EditorBoundary";
 import type { RichEditorHandle } from "./editor/RichEditor";
 import { BODY_LIMIT_LABEL, LIMITS } from "./rules";
@@ -39,6 +40,7 @@ export function BodyEditor({ id, header, value, onChange, mode, onModeChange, er
   const previewing = mode === "preview" && !readOnly;
   const preview = usePreview(value, previewing);
   const base = useUploadsBase();
+  const { siteUrl } = useConfig();
   const editor = useRef<RichEditorHandle>(null);
   const [uploading, setUploading] = useState(false);
   // What the editor starts from each time it is shown: the text as it is while the preview is on (the editor is gone
@@ -46,14 +48,14 @@ export function BodyEditor({ id, header, value, onChange, mode, onModeChange, er
   const seed = useRef(value);
   if (previewing) seed.current = value;
 
-  // Uploaded pictures are served from the files domain, not from this host: show them from there.
+  // Uploaded pictures are served from the files domain and the older ones from the public site, not from this host: show them from there.
   const pane = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!previewing || !pane.current) return;
-    for (const image of pane.current.querySelectorAll<HTMLImageElement>('img[src^="/uploads/"]')) {
-      image.setAttribute("src", uploadUrl(image.getAttribute("src") ?? "", base));
+    for (const image of pane.current.querySelectorAll<HTMLImageElement>('img[src^="/"]')) {
+      image.setAttribute("src", storedFileUrl(image.getAttribute("src") ?? "", base, siteUrl));
     }
-  }, [previewing, preview.html, preview.status, base]);
+  }, [previewing, preview.html, preview.status, base, siteUrl]);
 
   const count = value.length;
   const over = count > LIMITS.bodyMax;

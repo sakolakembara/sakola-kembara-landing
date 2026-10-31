@@ -151,7 +151,7 @@ export const blogSpaChecks = [
   {
     name: "blog: pictures of uploads are shown from this host in the preview",
     file: EDITOR,
-    from: '      image.setAttribute("src", uploadUrl(image.getAttribute("src") ?? "", base));',
+    from: '      image.setAttribute("src", storedFileUrl(image.getAttribute("src") ?? "", base, siteUrl));',
     to: "",
     tests: BLOG,
   },
