@@ -309,13 +309,45 @@ describe("FilterBar", () => {
     return { apply, reset, view, rerender: (next: ListQuery) => view.rerender(ui(next)) };
   }
 
-  test("every control has a label, and the form is a search landmark; there is no button to press to apply", () => {
+  test("every control has a name, and the form is a search landmark; there is no button to press to apply", () => {
     bar(query());
     expect(screen.getByRole("search", { name: "Saring daftar" })).toBeTruthy();
     expect(screen.getByLabelText("Cari")).toBeTruthy();
     expect(screen.getByLabelText("Severity")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Terapkan" })).toBeNull();
     expect(screen.getByRole("option", { name: "Semua severity" })).toBeTruthy();
+  });
+
+  test("no title is drawn above a control: the name is the control's aria-label, the placeholder and the 'all' option say what it is", () => {
+    const { view } = bar(query());
+    const form = screen.getByRole("search", { name: "Saring daftar" });
+    expect(form.querySelectorAll("label")).toHaveLength(0);
+    expect(within(form).queryByText("Cari")).toBeNull();
+    expect(within(form).queryByText("Severity")).toBeNull();
+    expect(screen.getByLabelText("Cari").getAttribute("aria-label")).toBe("Cari");
+    expect(screen.getByLabelText("Severity").getAttribute("aria-label")).toBe("Severity");
+    expect(screen.getByPlaceholderText("Judul atau isi")).toBeTruthy();
+    view.unmount();
+
+    // a search with its own name keeps it for a screen reader
+    render(<FilterBar list={{ query: query(), apply: vi.fn(), reset: vi.fn() }} search={{ label: "Cari anggota", placeholder: "Nama" }} />);
+    expect(screen.getByLabelText("Cari anggota").getAttribute("aria-label")).toBe("Cari anggota");
+    expect(screen.queryByText("Cari anggota")).toBeNull();
+  });
+
+  test("'Hapus filter' and the trailing control (Kolom) are together at the right end of the row, whatever the number of controls before them", () => {
+    for (const filters of [[], FILTERS]) {
+      const { unmount } = render(
+        <FilterBar list={{ query: query({ q: "halo" }), apply: vi.fn(), reset: vi.fn() }} search={{ placeholder: "Judul" }} filters={filters} trailing={<button type="button">Kolom</button>} />,
+      );
+      const form = screen.getByRole("search", { name: "Saring daftar" });
+      const group = screen.getByRole("button", { name: "Kolom" }).parentElement!;
+      expect(group.parentElement).toBe(form); // not inside a column of a grid
+      expect(group.className).toContain("ml-auto");
+      expect(within(group).getByRole("button", { name: "Hapus filter" })).toBeTruthy();
+      expect(form.lastElementChild === group || form.lastElementChild?.className.includes("basis-full")).toBe(true); // nothing but the chips line after it
+      unmount();
+    }
   });
 
   test("a filter applies the moment it is chosen, together with the search as it stands", async () => {
