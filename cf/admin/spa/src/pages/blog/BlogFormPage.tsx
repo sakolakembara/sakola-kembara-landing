@@ -1,4 +1,4 @@
-import { Save, Send } from "lucide-react";
+import { Eye, PencilLine, Save, Send } from "lucide-react";
 import { type ChangeEventHandler, useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router";
@@ -171,6 +171,14 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
     return () => document.removeEventListener("click", reveal, true);
   }, []);
 
+  // "Pratinjau" is in the top bar and works from any tab: it brings the person to the text, which is where the preview is.
+  const previewing = canWrite && bodyMode === "preview";
+  function togglePreview() {
+    const next: BodyMode = previewing ? "edit" : "preview";
+    setBodyMode(next);
+    if (next === "preview") setTab("konten");
+  }
+
   const slugLocked = published;
   // Someone who cannot write has nothing to switch between, and a disabled fieldset would disable the tab buttons
   // (they sit inside it): they get all three parts on one page.
@@ -208,6 +216,13 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
         // A draft has two ways to save: keep it a draft, or put it on the site. Everything else has one.
         actions: (formId) => (
           <>
+            {canWrite && (
+              <Button variant="ghost" aria-pressed={previewing} onClick={togglePreview}>
+                {previewing ? <PencilLine aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                {/* On a phone the bar at the bottom has four buttons: the icon stands for the word (still its name). */}
+                <span className="max-md:sr-only">{previewing ? "Kembali menulis" : "Pratinjau"}</span>
+              </Button>
+            )}
             <Button variant="ghost" href={ROUTE}>
               {canWrite ? "Batal" : "Tutup"}
             </Button>
@@ -241,7 +256,6 @@ function BlogForm({ item, author, canWrite, notice, onSaved, onReload }: FormPro
               value={form.values.contentMarkdown}
               onChange={(next) => form.set("contentMarkdown", next)}
               mode={bodyMode}
-              onModeChange={setBodyMode}
               error={fields.contentMarkdown}
               readOnly={!canWrite}
             />

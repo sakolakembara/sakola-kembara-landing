@@ -679,4 +679,27 @@ export const editorSpaChecks = [
     to: "mine?.preview ?? value",
     tests: t(BLOG),
   },
+
+  // ---------------------------------------------- "Pratinjau" in the top bar, nothing but the count under the text
+  {
+    name: "editor: preview: the button of another tab does not bring the person to the text",
+    file: BLOG_FORM,
+    from: '    if (next === "preview") setTab("konten");',
+    to: "",
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: preview: the button does not say whether the preview is on",
+    file: BLOG_FORM,
+    from: "<Button variant=\"ghost\" aria-pressed={previewing} onClick={togglePreview}>",
+    to: "<Button variant=\"ghost\" aria-pressed={false} onClick={togglePreview}>",
+    tests: t(BLOG),
+  },
+  {
+    name: "editor: preview: on a phone the word stays beside the icon and the bar at the bottom runs out of room",
+    file: BLOG_FORM,
+    from: '<span className="max-md:sr-only">{previewing ? "Kembali menulis" : "Pratinjau"}</span>',
+    to: '<span>{previewing ? "Kembali menulis" : "Pratinjau"}</span>',
+    tests: t(BLOG),
+  },
 ];

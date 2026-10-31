@@ -31,10 +31,10 @@ export const blogSpaChecks = [
     tests: BLOG,
   },
   {
-    name: "blog: a read-only role is offered the preview and the image button",
-    file: EDITOR,
-    from: "        {!readOnly && (\n          <div className=\"ml-auto flex items-center gap-1\">",
-    to: "        {(\n          <div className=\"ml-auto flex items-center gap-1\">",
+    name: "blog: a read-only role is offered the preview",
+    file: FORM,
+    from: "            {canWrite && (\n              <Button variant=\"ghost\" aria-pressed={previewing} onClick={togglePreview}>",
+    to: "            {(\n              <Button variant=\"ghost\" aria-pressed={previewing} onClick={togglePreview}>",
     tests: BLOG,
   },
   {
