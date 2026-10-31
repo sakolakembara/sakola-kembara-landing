@@ -136,8 +136,8 @@ export const listSpaChecks = [
   {
     name: "lists: the table's roles are not written out (a table drawn as blocks loses its semantics)",
     file: DATA_TABLE,
-    from: '<Table className="max-md:block" role="table">',
-    to: '<Table className="max-md:block">',
+    from: 'role="table">\n          <caption',
+    to: '>\n          <caption',
     tests: t(TABLE),
   },
   {
