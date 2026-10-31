@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { api, type ApiFailure } from "../api";
-import { DEFAULT_PAGE_SIZE, type ListQuery, type ListSpec, parseListQuery, toApiQuery, toSearchParams, totalPages } from "./query";
+import { type ListQuery, type ListSpec, parseListQuery, toApiQuery, toSearchParams, totalPages } from "./query";
 import { cachedRead, keepRead, readCacheVersion } from "./readCache";
 import type { ListPayload, LoadState } from "./types";
 
@@ -27,6 +27,8 @@ export interface ListState<T> {
   /** Applies a search and filters together and goes back to page 1. Empty values clear. */
   apply(next: { q?: string; filters?: Record<string, string> }): void;
   setSort(sort: string): void;
+  /** Rows per page (one of `pageSizeChoices(spec)`); goes back to page 1. */
+  setPageSize(pageSize: number): void;
   /** The address-bar query of another page (`?page=3`), for links. */
   searchFor(page: number): string;
   setPage(page: number): void;
@@ -76,7 +78,7 @@ export function useList<T>(basePath: string, spec: ListSpec = {}): ListState<T> 
     return () => controller.abort();
   }, [basePath, apiQuery, attempt]);
 
-  const pageSize = loaded.data?.pageSize ?? spec.pageSize ?? DEFAULT_PAGE_SIZE;
+  const pageSize = loaded.data?.pageSize ?? query.pageSize;
   const total = loaded.data?.total ?? 0;
   const pages = totalPages(total, pageSize);
   // Rows from the answer before are on screen while the next one loads (a new page, a new filter, a refetch).
@@ -106,6 +108,7 @@ export function useList<T>(basePath: string, spec: ListSpec = {}): ListState<T> 
     refreshing,
     apply: (next) => go({ ...query, q: next.q ?? query.q, filters: next.filters ?? query.filters, page: 1 }, true),
     setSort: (sort) => go({ ...query, sort, page: 1 }, true),
+    setPageSize: (size) => go({ ...query, pageSize: size, page: 1 }, true),
     searchFor: (page) => {
       const search = toSearchParams({ ...query, page }, spec).toString();
       return search ? `?${search}` : "?";

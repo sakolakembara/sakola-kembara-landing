@@ -1,5 +1,7 @@
+import { useId } from "react";
 import { Link } from "react-router";
 import { cn } from "@/lib/cn";
+import { Select } from "~/components/ui/field";
 import { pageNumbers, totalPages } from "~/lib/crud/query";
 
 /**
@@ -8,13 +10,37 @@ import { pageNumbers, totalPages } from "~/lib/crud/query";
  * work, and the address bar is the state. The current page is `aria-current="page"`; "Sebelumnya" on the
  * first page and "Berikutnya" on the last are plain text, not links that go nowhere.
  *
- * `searchFor(page)` gives the address-bar query of a page (`useList(...).searchFor`).
+ * `searchFor(page)` gives the address-bar query of a page (`useList(...).searchFor`). With `perPage` the line also
+ * has "Baris per halaman" (a select; it shows while the list is longer than the smallest size), and `selected` adds
+ * "· 2 dipilih" to the count.
  */
+export interface PerPage {
+  /** What the address says; the select follows it at once, before the new answer comes. */
+  value: number;
+  choices: readonly number[];
+  onChange(size: number): void;
+}
+
 const LINK =
   "inline-flex min-h-10 items-center gap-1 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 md:min-h-[34px] md:py-1.5";
 const OFF = "inline-flex min-h-10 items-center gap-1 rounded-lg border border-gray-100 px-3 py-2 text-sm font-medium text-gray-300 md:min-h-[34px] md:py-1.5";
 
-export function Pagination({ page, pageSize, total, searchFor }: { page: number; pageSize: number; total: number; searchFor: (page: number) => string }) {
+export function Pagination({
+  page,
+  pageSize,
+  total,
+  searchFor,
+  perPage,
+  selected = 0,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  searchFor: (page: number) => string;
+  perPage?: PerPage;
+  selected?: number;
+}) {
+  const perPageId = useId();
   if (total === 0) return null;
   const pages = totalPages(total, pageSize);
   const first = (page - 1) * pageSize + 1;
@@ -23,9 +49,26 @@ export function Pagination({ page, pageSize, total, searchFor }: { page: number;
 
   return (
     <div className="mt-4 flex flex-col items-center gap-3 md:flex-row md:justify-between">
-      <p className="text-[13px] text-gray-600">
-        {total <= pageSize || first > total ? `${format(total)} data` : `Menampilkan ${format(first)} sampai ${format(last)} dari ${format(total)}`}
-      </p>
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:justify-start">
+        <p className="text-[13px] text-gray-600">
+          {total <= pageSize || first > total ? `${format(total)} data` : `Menampilkan ${format(first)} sampai ${format(last)} dari ${format(total)}`}
+          {selected > 0 && ` · ${format(selected)} dipilih`}
+        </p>
+        {perPage && total > Math.min(...perPage.choices) && (
+          <div className="flex items-center gap-2">
+            <label htmlFor={perPageId} className="text-[13px] text-gray-600">
+              Baris per halaman
+            </label>
+            <Select id={perPageId} size="sm" className="w-auto min-w-20" value={perPage.value} onChange={(event) => perPage.onChange(Number(event.target.value))}>
+              {perPage.choices.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+      </div>
       {pages > 1 && (
         <nav aria-label="Halaman" className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
           {page > 1 ? (

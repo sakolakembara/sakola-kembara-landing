@@ -230,6 +230,23 @@ describe("filters", () => {
     expect(screen.queryByRole("button", { name: "Hapus filter" })).toBeNull();
   });
 
+  test("what is set is also listed as chips, in words; a chip drops just that filter and what was typed in its box", async () => {
+    const user = userEvent.setup();
+    const { api, router } = await openAudit({}, "/audit?action=blog.create&resource=blog&actor=dewi%40contoh.test&from=2026-10-01");
+    const chips = screen.getByRole("list", { name: "Filter yang aktif" });
+    expect(within(chips).getAllByRole("button").map((chip) => chip.getAttribute("aria-label"))).toEqual([
+      `Hapus filter Aksi: ${ACTION_OPTIONS.find((option) => option.value === "blog.create")!.label}`,
+      `Hapus filter Tipe: ${RESOURCE_OPTIONS.find((option) => option.value === "blog")!.label}`,
+      "Hapus filter Aktor: dewi@contoh.test",
+      "Hapus filter Dari: 2026-10-01",
+    ]);
+    await user.click(within(chips).getByRole("button", { name: "Hapus filter Aktor: dewi@contoh.test" }));
+    await waitFor(() => expect(router.state.location.search).not.toContain("actor="));
+    expect((screen.getByLabelText("Aktor (email lengkap)") as HTMLInputElement).value).toBe("");
+    expect(router.state.location.search).toContain("action=blog.create");
+    await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).not.toContain("actor="));
+  });
+
   test("a hand-edited address cannot make the page ask for what it does not offer: the first page, no error", async () => {
     const { api } = await openAudit({}, "/audit?action=nope&resource=nope&from=garbage&to=2026-13&cursor=%25%25%25&actor=");
     expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?pageSize=50`);

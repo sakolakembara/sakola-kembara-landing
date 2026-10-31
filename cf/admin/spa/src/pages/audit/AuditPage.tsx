@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useEffect, useMemo, useRef } from "reac
 import { Link, useSearchParams } from "react-router";
 import { Input, Select } from "~/components/ui/field";
 import { type Column, DataTable } from "~/components/crud/DataTable";
+import { type FilterChip, FilterChips } from "~/components/crud/FilterChips";
 import { PageHeader } from "~/components/PageHeader";
 import { ACTION_OPTIONS, activityHref, activityLabel, RESOURCE_OPTIONS, resourceLabel } from "~/lib/audit";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
@@ -147,6 +148,16 @@ export function AuditPage() {
     to.flush();
   }
 
+  // Five controls are many to read back: what is set is also listed as chips, each one dropping just that filter.
+  const chips: FilterChip[] = [];
+  if (query.action) chips.push({ key: "action", label: "Aksi", value: ACTION_OPTIONS.find((option) => option.value === query.action)?.label ?? query.action, clear: () => change({ action: "" }) });
+  if (query.resource) chips.push({ key: "resource", label: "Tipe", value: RESOURCE_OPTIONS.find((option) => option.value === query.resource)?.label ?? query.resource, clear: () => change({ resource: "" }) });
+  if (query.actor) {
+    chips.push({ key: "actor", label: "Aktor", value: query.actor, clear: () => { actor.onChange(""); change({ actor: "" }); } });
+  }
+  if (query.from) chips.push({ key: "from", label: "Dari", value: query.from, clear: () => { from.onChange(""); change({ from: "" }); } });
+  if (query.to) chips.push({ key: "to", label: "Sampai", value: query.to, clear: () => { to.onChange(""); change({ to: "" }); } });
+
   const emptyText = query.cursor ? "Tidak ada aktivitas yang lebih lama." : filtered ? "Tidak ada aktivitas yang cocok dengan filter." : "Belum ada aktivitas.";
   const showPager = list.status === "ready" && (query.cursor !== "" || list.nextCursor !== null || list.items.length > 0);
 
@@ -221,6 +232,7 @@ export function AuditPage() {
             </button>
           )}
         </div>
+        <FilterChips chips={chips} className="flex flex-wrap gap-2 md:col-span-2 lg:col-span-6" />
       </form>
 
       <DataTable<AuditItem>

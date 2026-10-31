@@ -1,8 +1,12 @@
+import { FileText, Send } from "lucide-react";
 import { Link } from "react-router";
 import { StatusTag } from "~/components/crud/StatusTag";
 import { ListPage } from "~/components/crud/ListPage";
 import type { Column } from "~/components/crud/DataTable";
+import { api } from "~/lib/api";
+import { ifMatch } from "~/lib/crud/etag";
 import { isFiltered } from "~/lib/crud/query";
+import type { RowOperation } from "~/lib/crud/useRowOperations";
 import { API_PATH, type BlogListItem, CATEGORY_OPTIONS, LIST_SPEC, ROUTE, STATUS } from "./model";
 import { formatIsoDay } from "./rules";
 
@@ -27,6 +31,16 @@ const COLUMNS: readonly Column<BlogListItem>[] = [
   { key: "category", header: "Kategori", className: "align-top text-gray-600", cell: (row) => row.category },
   { key: "status", header: "Status", className: "align-top", cell: (row) => <StatusTag map={STATUS} value={row.status} /> },
   { key: "date", header: "Tanggal", className: "align-top whitespace-nowrap text-xs text-gray-500", cell: (row) => (row.date ? formatIsoDay(row.date) : "-") },
+];
+
+// The two verbs the form's bar has, from the list: the Worker changes the status of the saved article and checks the
+// version the row was loaded at (`POST /:id/publish`, `/unpublish`). The bar over the list and each row's "..." menu use them.
+const toStatus = (verb: "publish" | "unpublish") => (row: BlogListItem) =>
+  api(`${API_PATH}/${encodeURIComponent(row.id)}/${verb}`, { method: "POST", ifMatch: ifMatch(row.updatedAt) });
+
+const OPERATIONS: readonly RowOperation<BlogListItem>[] = [
+  { key: "publish", label: "Terbitkan", verb: "diterbitkan", icon: Send, applies: (row) => row.status !== "published", run: toStatus("publish") },
+  { key: "unpublish", label: "Jadikan draf", verb: "dijadikan draf", icon: FileText, applies: (row) => row.status === "published", run: toStatus("unpublish") },
 ];
 
 export function BlogPage() {
@@ -54,6 +68,7 @@ export function BlogPage() {
         },
       ]}
       noun="artikel"
+      operations={OPERATIONS}
       nameOf={(row) => row.title}
       createLabel="Tulis Artikel Baru"
       emptyText={(canWrite) => (canWrite ? "Belum ada artikel. Klik “Tulis Artikel Baru” untuk membuat." : "Belum ada artikel.")}
