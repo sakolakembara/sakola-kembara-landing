@@ -533,6 +533,38 @@ describe("the form: create", () => {
   });
 });
 
+describe("the form: one bar and cards (SAKEM-119)", () => {
+  const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+  const crumbs = () => screen.getByRole("navigation", { name: "Breadcrumb" });
+
+  test("a new admin: the breadcrumb ends with the page, Batal is an action, there is no back button, and the editor's areas are a card in the side column", async () => {
+    await openForm("/settings/new");
+    expect(within(crumbs()).getByText("Admin baru")).toBeTruthy();
+    expect(within(crumbs()).getByRole("link", { name: "Pengaturan" }).getAttribute("href")).toBe("/settings");
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/settings");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
+    expect(card("Identitas").parentElement).toBe(card("Peran").parentElement);
+    expect(card("Area").parentElement).not.toBe(card("Peran").parentElement); // an editor is the first choice, so the card is there
+    expect(card("Area").contains(screen.getByRole("checkbox", { name: /Komunikasi/ }))).toBe(true);
+    expect(within(crumbs().parentElement!).queryByText("Aktif")).toBeNull(); // nothing is saved yet, so there is no status to show
+  });
+
+  test("a saved admin: the breadcrumb ends with the name, the status stands next to it, and a viewer has no Area card", async () => {
+    const saved = admin({ id: "u1", email: "dewi@contoh.test", name: "Dewi Pengurus", role: "editor", areas: ["komunikasi"], updatedAt: "2026-10-10T00:00:00.000Z" });
+    const { unmount } = await openForm("/settings/u1/edit", { [`GET ${LIST}/u1`]: respond({ item: saved }) });
+    await waitFor(() => expect((screen.getByLabelText(/Nama/) as HTMLInputElement).value).toBe("Dewi Pengurus"));
+    expect(within(crumbs()).getByText("Dewi Pengurus")).toBeTruthy();
+    expect(within(crumbs().parentElement!).getByText("Aktif")).toBeTruthy();
+    expect(card("Area")).toBeTruthy();
+    unmount();
+
+    await openForm("/settings/u1/edit", { [`GET ${LIST}/u1`]: respond({ item: { ...saved, role: "viewer", areas: [] } }) });
+    await waitFor(() => expect((screen.getByLabelText(/Nama/) as HTMLInputElement).value).toBe("Dewi Pengurus"));
+    expect(screen.queryByRole("heading", { level: 2, name: "Area" })).toBeNull();
+    expect(card("Identitas").parentElement).toBe(card("Peran").parentElement);
+  });
+});
+
 describe("the form: edit", () => {
   const loaded = admin({ id: "u1", email: "dewi@contoh.test", name: "Dewi Pengurus", role: "editor", areas: ["komunikasi"], updatedAt: "2026-10-10T00:00:00.000Z" });
 

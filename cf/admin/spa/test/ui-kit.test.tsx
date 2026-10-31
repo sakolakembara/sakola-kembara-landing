@@ -128,6 +128,28 @@ describe("Field controls", () => {
     expect(input.getAttribute("aria-describedby")).toBe("judul-error");
   });
 
+  test("a label that would only repeat its card's title is still the control's name, but is not drawn (a field and a group of fields)", () => {
+    render(
+      <>
+        <Field label="Nama" id="nama" hideLabel>
+          <Input />
+        </Field>
+        <Field group hideLabel label="Peran" required>
+          <input type="radio" aria-label="Editor" />
+        </Field>
+        <Field label="Judul" id="judul">
+          <Input />
+        </Field>
+      </>,
+    );
+    expect(screen.getByLabelText("Nama")).toBeTruthy(); // named all the same
+    expect(screen.getByRole("group", { name: /Peran/ })).toBeTruthy();
+    expect(screen.getByText("Nama").className).toContain("sr-only");
+    expect(screen.getByText("Peran", { selector: "legend" }).className).toContain("sr-only");
+    expect(screen.getByText("Judul").className).not.toContain("sr-only"); // the others keep theirs, with the space under it
+    expect(screen.getByText("Judul").className).toContain("mb-1.5");
+  });
+
   test("a phone gets 16 px text (no zoom on focus) and a desktop 14 px", () => {
     render(<Input aria-label="Cari" />);
     const input = screen.getByLabelText("Cari");

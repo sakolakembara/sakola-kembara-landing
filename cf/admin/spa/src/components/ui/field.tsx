@@ -23,6 +23,7 @@ export function Field({
   hint,
   error,
   labelAside,
+  hideLabel,
   className,
   children,
 }: {
@@ -36,6 +37,8 @@ export function Field({
   error?: string;
   /** Set on the label's row, right-aligned, e.g. a "Lupa password?" link. */
   labelAside?: React.ReactNode;
+  /** The label is still the control's name, but not drawn: for a field that would only repeat the title of its card. */
+  hideLabel?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -68,7 +71,7 @@ export function Field({
   if (group) {
     return (
       <fieldset aria-describedby={describedBy} className={cn("min-w-0", className)}>
-        <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+        <legend className={cn("block text-sm font-medium text-gray-700", hideLabel ? "sr-only" : "mb-1.5")}>
           {label}
           {asterisk}
         </legend>
@@ -79,7 +82,7 @@ export function Field({
   }
 
   const labelEl = (
-    <label htmlFor={baseId} className={cn("block text-sm font-medium text-gray-700", !labelAside && "mb-1.5")}>
+    <label htmlFor={baseId} className={cn("block text-sm font-medium text-gray-700", hideLabel ? "sr-only" : !labelAside && "mb-1.5")}>
       {label}
       {asterisk}
     </label>

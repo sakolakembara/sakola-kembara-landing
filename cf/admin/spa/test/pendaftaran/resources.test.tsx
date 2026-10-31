@@ -249,7 +249,18 @@ describe("the form: create", () => {
   test("the legacy sections, fields and hints; a file is the first type and its field says what is accepted", async () => {
     await openForm(editorWho, "/resources/new");
     expect(screen.getByRole("heading", { level: 1, name: "Berkas Baru" })).toBeTruthy();
-    for (const name of ["Metadata", "Tipe Konten", "File", "Catatan Internal"]) expect(screen.getByRole("heading", { level: 2, name }), name).toBeTruthy();
+    for (const name of ["Berkas", "Tipe Konten", "Tampil di situs", "Catatan Internal"]) expect(screen.getByRole("heading", { level: 2, name }), name).toBeTruthy();
+    // One bar and cards: the breadcrumb ends with the page, Batal is an action, the type's field is inside the Tipe Konten card,
+    // and the category, the order and the note are small cards in the side column.
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Berkas baru")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Batal" }).getAttribute("href")).toBe("/resources");
+    expect(screen.queryByRole("link", { name: "Kembali" })).toBeNull();
+    const card = (name: string) => screen.getByRole("heading", { level: 2, name }).closest("[data-slot='card']")!;
+    expect(card("Tipe Konten").contains(fileInput())).toBe(true);
+    expect(card("Berkas").parentElement).toBe(card("Tipe Konten").parentElement);
+    expect(card("Tampil di situs").parentElement).not.toBe(card("Berkas").parentElement);
+    expect(card("Tampil di situs").parentElement).toBe(card("Catatan Internal").parentElement);
+    expect(card("Tampil di situs").contains(screen.getByLabelText(/Kategori/))).toBe(true);
     expect(screen.getByLabelText(/Judul/).getAttribute("placeholder")).toBe("Contoh: Panduan Pendaftaran Sakola Kembara Gen 6");
     expect(screen.getByText("Muncul di bawah judul di /gabung-siswa/docs. Boleh dikosongkan.")).toBeTruthy();
     expect((screen.getByLabelText(/Kategori/) as HTMLSelectElement).value).toBe("berkas-pendaftaran");
@@ -390,6 +401,7 @@ describe("the form: edit", () => {
     expect(screen.getByRole("link", { name: "panduan.pdf" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ganti" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Edit Berkas" })).toBeTruthy();
+    expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Panduan Pendaftaran")).toBeTruthy(); // the breadcrumb ends with the document's title
 
     await user.clear(screen.getByLabelText(/Judul/));
     await user.type(screen.getByLabelText(/Judul/), "Panduan baru");
