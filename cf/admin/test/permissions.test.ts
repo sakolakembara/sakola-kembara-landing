@@ -225,6 +225,7 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
       "komunikasi/messages:Pesan",
       "komunikasi/announcements:Pengumuman",
       "konten/blog:Blog",
+      "konten/media:Media",
       "konten/reports:Laporan",
       "konten/team:Tim",
       "konten/shortlinks:Shortlink",
@@ -244,7 +245,7 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
   test("the menu each role gets: Sistem (Aktivitas and Pengaturan) only for super_admin", () => {
     const keys = (role: string, grants: string[] = []) => visibleMenu(role, grants).map((item) => item.key);
     expect(keys("student")).toEqual([]);
-    expect(keys("viewer")).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "reports", "team", "shortlinks"]);
+    expect(keys("viewer")).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "media", "reports", "team", "shortlinks"]);
     expect(keys("viewer", all)).toEqual(keys("viewer"));
     expect(keys("super_admin")).toHaveLength(menuItems.length);
     for (const grants of subsets) {
@@ -258,9 +259,9 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
     expect(keys([])).toEqual([]);
     expect(keys(["pendaftaran"])).toEqual(["batches", "applications", "resources"]);
     expect(keys(["komunikasi"])).toEqual(["messages", "announcements"]);
-    expect(keys(["konten"])).toEqual(["blog", "reports", "team", "shortlinks"]);
-    expect(keys(["konten", "pendaftaran"])).toEqual(["batches", "applications", "resources", "blog", "reports", "team", "shortlinks"]);
-    expect(keys(all)).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "reports", "team", "shortlinks"]);
+    expect(keys(["konten"])).toEqual(["blog", "media", "reports", "team", "shortlinks"]);
+    expect(keys(["konten", "pendaftaran"])).toEqual(["batches", "applications", "resources", "blog", "media", "reports", "team", "shortlinks"]);
+    expect(keys(all)).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "media", "reports", "team", "shortlinks"]);
     // Every item of the menu an editor gets belongs to an area they hold.
     for (const grants of subsets) for (const item of visibleMenu("editor", grants)) expect(grants).toContain(item.area);
   });

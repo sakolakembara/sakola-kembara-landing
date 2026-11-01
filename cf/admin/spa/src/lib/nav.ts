@@ -14,6 +14,7 @@ export type NavIconName =
   | "messages"
   | "announcements"
   | "blog"
+  | "media"
   | "reports"
   | "team"
   | "shortlinks"
@@ -65,6 +66,7 @@ export const NAV: readonly NavGroup[] = [
     label: "Konten Situs",
     items: [
       { path: "/blog", label: "Blog", icon: "blog", section: "konten" },
+      { path: "/media", label: "Media", icon: "media", section: "konten" },
       { path: "/reports", label: "Laporan", icon: "reports", section: "konten" },
       { path: "/team", label: "Tim", icon: "team", section: "konten" },
       { path: "/shortlinks", label: "Shortlink", icon: "shortlinks", section: "konten" },

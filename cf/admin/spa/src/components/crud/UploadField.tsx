@@ -1,10 +1,14 @@
 import { FileText, ImageIcon } from "lucide-react";
-import { type ChangeEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Field } from "~/components/ui/field";
 import { useConfig } from "~/lib/config";
-import { discardUpload, uploadFile, useUploadsBase, type UploadResult } from "~/lib/crud/upload-client";
+import type { MediaItem } from "~/lib/crud/media";
+import { discardUpload, submitUpload, useUploadsBase, type UploadResult } from "~/lib/crud/upload-client";
 import { acceptFor, checkUploadFile, fileNameOf, FILE_TYPES, storedFileUrl, UPLOAD_KINDS, type UploadKindName } from "~/lib/crud/upload-kinds";
+
+// The picker is only needed once someone asks for it: it stays out of the files every page loads.
+const MediaPicker = lazy(() => import("~/components/media/MediaPicker").then((module) => ({ default: module.MediaPicker })));
 
 /**
  * A file or an image field (docs/cloudflare/admin-crud.md#10-files-upload-references, docs/cloudflare/uploads.md).
@@ -12,8 +16,11 @@ import { acceptFor, checkUploadFile, fileNameOf, FILE_TYPES, storedFileUrl, UPLO
  * right away to `POST /api/admin/uploads` and hands the path to `onChange`; the form saves that path with the
  * rest, and the Worker deletes the old file after the save.
  *
- *  - Client checks first (empty, too big, wrong type) with the Worker's own words, so a 30 MB file is refused
- *    before it is sent. The Worker still reads the bytes and has the last word.
+ *  - Client checks first (empty, wrong type, too big) with the Worker's own words, so a 30 MB file is refused
+ *    before it is sent. A picture is made smaller first (lib/crud/image-resize.ts), so the limit is its size then, not what the
+ *    camera wrote. The Worker still reads the bytes and has the last word.
+ *  - "Pilih dari media" opens the library of this kind (components/media/MediaPicker.tsx) to use a file that is already
+ *    there. A file chosen that way is not "uploaded in this form": replacing it later never deletes it.
  *  - Progress is a `role="progressbar"`; the start and the end are announced (`role="status"`), the percentage
  *    is not, so a screen reader is not read to for the whole upload. "Batal" stops it.
  *  - An image shows a preview (the file just picked from memory; a stored path from the public files domain,
@@ -32,7 +39,8 @@ export interface UploadFieldProps {
   kind: UploadKindName;
   /** The stored path (`/uploads/...`, or a legacy static path), or null. */
   value: string | null;
-  onChange: (path: string | null, result?: UploadResult) => void;
+  /** The path now chosen, or null when emptied; with it the file as the Worker knows it (an upload's answer, or the library's item), for a form that saves its size too. */
+  onChange: (path: string | null, file?: UploadResult) => void;
   hint?: ReactNode;
   /** An error of the form (from the Worker's `fields`); the field's own refusals are shown too. */
   error?: string;
@@ -63,6 +71,9 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
   const [localError, setLocalError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [broken, setBroken] = useState(false);
+  const [picking, setPicking] = useState(false);
+  // Mounted at the first press and kept, so the dialog can give the focus back to the button when it closes.
+  const [pickerUsed, setPickerUsed] = useState(false);
   // Uploaded in this form: path -> media id (to discard it when replaced) and a preview made from the file itself.
   const own = useRef(new Map<string, { id: string; preview: string | null }>());
   const [, rerender] = useState(0);
@@ -94,7 +105,8 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
     event.target.value = ""; // the same file can be picked again after a refusal
     if (!file) return;
     setLocalError(null);
-    const problem = checkUploadFile(file, kind);
+    // The size is checked on what will be sent (a picture is made smaller first), so only the rest is checked here.
+    const problem = checkUploadFile(file, kind, { ignoreSize: true });
     if (problem) {
       setLocalError(problem);
       setAnnouncement(problem);
@@ -105,7 +117,7 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
     controller.current = abort;
     setProgress({ name: file.name, fraction: 0 });
     setAnnouncement(`Mengunggah ${file.name}`);
-    const outcome = await uploadFile({ kind, file, signal: abort.signal, onProgress: (fraction) => setProgress({ name: file.name, fraction }) });
+    const outcome = await submitUpload({ kind, file, signal: abort.signal, onProgress: (fraction) => setProgress({ name: file.name, fraction }) });
     controller.current = null;
     setProgress(null);
 
@@ -124,6 +136,16 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
     onChange(outcome.result.path, outcome.result);
     release(previous);
     rerender((count) => count + 1);
+  }
+
+  function pickFromLibrary(item: MediaItem) {
+    const previous = value;
+    setPicking(false);
+    setLocalError(null);
+    setAnnouncement(`${item.name} dipilih`);
+    onChange(item.path, item);
+    // Choosing the file that is already there must not discard it as an abandoned upload.
+    if (previous !== item.path) release(previous);
   }
 
   function remove() {
@@ -163,6 +185,17 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
 
         {!disabled && (
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="neutral"
+              disabled={uploading}
+              aria-haspopup="dialog"
+              onClick={() => {
+                setPickerUsed(true);
+                setPicking(true);
+              }}
+            >
+              Pilih dari media
+            </Button>
             <Button id={id} variant="neutral" disabled={uploading} onClick={() => input.current?.click()}>
               {value ? "Ganti" : "Pilih file"}
             </Button>
@@ -203,6 +236,18 @@ export function UploadField({ id, label, kind, value, onChange, hint, error, req
       <p role="status" className="sr-only">
         {announcement}
       </p>
+      {pickerUsed && (
+        <Suspense fallback={null}>
+          <MediaPicker
+            open={picking}
+            kind={kind}
+            title={isImage ? "Pilih gambar" : "Pilih file"}
+            description={typeof label === "string" ? `Untuk ${label}.` : undefined}
+            onPick={pickFromLibrary}
+            onClose={() => setPicking(false)}
+          />
+        </Suspense>
+      )}
     </Field>
   );
 }

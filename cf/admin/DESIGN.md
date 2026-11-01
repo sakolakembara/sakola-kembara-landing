@@ -70,6 +70,6 @@ shadcn/ui is a **source of components, copied into the repo**, not a runtime dep
 | `--radius` | `rounded-lg` | `0.5rem` |
 | `--sidebar` / `--sidebar-primary` | `primary-blue-dark` / `secondary-yellow` | `#0D1F52` / `#FAD02B` |
 
-- **Modals stay native.** Root section 6 prescribes `<dialog>` with `showModal()`; the admin keeps `ConfirmDialog` and does not add Radix Dialog.
+- **Modals stay native.** Root section 6 prescribes `<dialog>` with `showModal()`; the admin keeps `ConfirmDialog` (a question) and `Modal` (a window with content: the media picker, a file's panel on a phone) and does not add Radix Dialog. `Modal` is drawn at the end of `<body>`, since it is opened from inside forms.
 - **Radix only where the browser has no answer** (menus, popovers, tooltips, tabs, a styled select). Every PR that adds a dependency states the gzip change that `pnpm check:spa` prints.
 - **Our behavior stays.** `DataTable`, `FilterBar`, `ListPage`, `FormShell`, `useList`, the progress bar and the tests that cover them keep their contracts; a component is restyled or replaced underneath them.

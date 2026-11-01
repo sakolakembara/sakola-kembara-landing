@@ -11,7 +11,7 @@
 
 ## Ringkasan usulan
 
-1. Dua belas menu tetap ada. Sidebar berubah dari daftar datar menjadi **Dashboard + 4 grup**: Pendaftaran, Komunikasi, Konten Situs, Sistem.
+1. Dua belas menu tetap ada (menu ketiga belas, **Media** di Konten Situs, ditambahkan 2026-11-01: SAKEM-117). Sidebar berubah dari daftar datar menjadi **Dashboard + 4 grup**: Pendaftaran, Komunikasi, Konten Situs, Sistem.
 2. **Berkas Pendaftaran** diganti nama menjadi **Pusat Dokumen** (nama yang sudah dipakai halaman publik dan wizard) dan pindah ke grup Pendaftaran, karena memang bagian dari alur pendaftaran.
 3. **Batch** dan **Pendaftar** tetap dua menu, tetapi diikat dengan tautan silang yang sudah dijanjikan dokumen tapi belum ada di kode.
 4. **Dashboard** membuka dengan blok "Perlu perhatian" (pendaftar belum diputuskan, pesan belum dibaca, keadaan batch berjalan), disusul "Tindakan Cepat". Hanya dua blok itu (keputusan 2026-10-12).
@@ -207,6 +207,7 @@ Tidak ada yang hilang. Dua hal berpindah tempat, bukan hilang: data tabel pendaf
 | `/admin/messages`, `/[id]` | Komunikasi › Pesan |
 | `/admin/announcements`, `/new`, `/[id]/edit` | Komunikasi › Pengumuman |
 | `/admin/blog`, `/new`, `/[id]/edit` | Konten Situs › Blog (unggah gambar tetap di editor) |
+| `/admin/media` (di SPA: `/media`) | Konten Situs › Media (pustaka semua unggahan: cari, saring, pilih banyak, panel detail; SAKEM-117) |
 | `/admin/reports`, `/new`, `/[id]/edit` | Konten Situs › Laporan |
 | `/admin/team`, `/new`, `/[id]/edit` | Konten Situs › Tim (unggah foto tetap di editor) |
 | `/admin/shortlinks`, `/new`, `/[id]/edit` | Konten Situs › Shortlink |

@@ -1,12 +1,15 @@
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { acceptFor, storedFilePath, storedFileUrl } from "~/lib/crud/upload-kinds";
+import { MediaPicker } from "~/components/media/MediaPicker";
+import { storedFilePath, storedFileUrl } from "~/lib/crud/upload-kinds";
 import { useConfig } from "~/lib/config";
+import type { MediaItem } from "~/lib/crud/media";
 import { useUploadsBase } from "~/lib/crud/upload-client";
 import { BubbleToolbar, ImageBubble } from "./BubbleToolbar";
 import { blogExtensions } from "./extensions";
-import { picturesIn, uploadPicture } from "./images";
+import { altFromFileName } from "../rules";
+import { uploadPicture } from "./images";
 import { articleMarkdown } from "./serialize";
 import { SlashCommand } from "./SlashCommand";
 
@@ -54,11 +57,11 @@ export default function RichEditor({ id, initialMarkdown, onChange, readOnly, in
   siteRef.current = siteUrl;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  const picker = useRef<HTMLInputElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [linkRequests, setLinkRequests] = useState(0);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
 
   /** Uploads the pictures one after the other and writes each where the cursor is (or at `at`, where it was dropped). */
@@ -82,6 +85,15 @@ export default function RichEditor({ id, initialMarkdown, onChange, readOnly, in
     setBusy(null);
   }, []);
 
+  /** A file chosen in the library (or just uploaded there): written where the cursor was, with the text alternative it already has. */
+  const insertFromLibrary = useCallback((item: MediaItem) => {
+    setLibraryOpen(false);
+    const editor = editorRef.current;
+    if (!editor || editor.isDestroyed) return;
+    const picture = { type: "paragraph", content: [{ type: "image", attrs: { src: item.path, alt: item.altText || altFromFileName(item.name) } }] };
+    editor.chain().focus().insertContent(picture).run();
+  }, []);
+
   const extensions = useMemo(
     () => [
       ...blogExtensions({
@@ -89,7 +101,7 @@ export default function RichEditor({ id, initialMarkdown, onChange, readOnly, in
         displaySrc: (src) => storedFileUrl(src, baseRef.current, siteRef.current),
         storedSrc: (src) => storedFilePath(src, baseRef.current, siteRef.current),
       }),
-      SlashCommand.configure({ onPickImage: () => picker.current?.click() }),
+      SlashCommand.configure({ onPickImage: () => setLibraryOpen(true) }),
     ],
     [],
   );
@@ -170,22 +182,13 @@ export default function RichEditor({ id, initialMarkdown, onChange, readOnly, in
         </>
       )}
       {!readOnly && (
-        <input
-          ref={picker}
-          type="file"
-          tabIndex={-1}
-          aria-hidden="true"
-          accept={acceptFor("blog-image")}
-          disabled={busy !== null}
-          onChange={(event) => {
-            const chosen = Array.from(event.target.files ?? []);
-            event.target.value = ""; // the same file can be picked again
-            // A file the kind does not take is still given to the check, which says so in the Worker's own words.
-            const pictures = picturesIn(chosen);
-            const given = pictures.length > 0 ? pictures : chosen;
-            if (given.length > 0) void insertPictures(given);
-          }}
-          className="sr-only"
+        <MediaPicker
+          open={libraryOpen}
+          kind="blog-image"
+          title="Pilih gambar"
+          description="Untuk isi artikel. Tempel atau tarik gambar langsung ke tulisan juga bisa."
+          onPick={insertFromLibrary}
+          onClose={() => setLibraryOpen(false)}
         />
       )}
       {busy !== null && (

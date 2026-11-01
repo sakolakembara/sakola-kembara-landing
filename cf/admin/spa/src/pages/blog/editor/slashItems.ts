@@ -7,7 +7,7 @@ export interface SlashContext {
   editor: Editor;
   /** The "/" and what was typed after it: it goes before the block is made. */
   range: Range;
-  /** Opens the file picker for a picture (the menu cannot hold a file). */
+  /** Opens the media library for a picture (the menu cannot hold one). */
   pickImage: () => void;
 }
 
@@ -32,7 +32,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     id: "gambar",
     title: "Gambar",
-    hint: "Unggah dari komputer, atau tempel dan tarik",
+    hint: "Dari Media, unggah baru, atau tempel",
     keywords: ["gambar", "foto", "image", "unggah", "upload"],
     run: (c) => {
       start(c).run();

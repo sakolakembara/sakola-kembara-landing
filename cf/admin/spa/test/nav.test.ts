@@ -17,6 +17,7 @@ describe("the menu definition (docs/cloudflare/admin-ia.md, proposal A)", () => 
       "Pesan",
       "Pengumuman",
       "Blog",
+      "Media",
       "Laporan",
       "Tim",
       "Shortlink",
@@ -51,10 +52,10 @@ describe("the menu definition (docs/cloudflare/admin-ia.md, proposal A)", () => 
 });
 
 describe("visibleNav", () => {
-  test("super_admin sees all five groups and all twelve entries", () => {
+  test("super_admin sees all five groups and all thirteen entries", () => {
     const groups = visibleNav(meFor("super_admin"));
     expect(groups.map((group) => group.label)).toEqual([null, "Pendaftaran", "Komunikasi", "Konten Situs", "Sistem"]);
-    expect(labels(groups)).toHaveLength(12);
+    expect(labels(groups)).toHaveLength(13);
     // The dashboard is read-only for everyone; the rest is writable for super_admin.
     const access = groups.flatMap((group) => group.items).map((item) => [item.label, item.access]);
     expect(access.filter(([label]) => label !== "Dashboard").every(([, level]) => level === "write")).toBe(true);
@@ -75,6 +76,7 @@ describe("visibleNav", () => {
     expect(access).toEqual({
       Dashboard: "read",
       Blog: "write",
+      Media: "write",
       Laporan: "write",
       Tim: "write",
       Shortlink: "write",

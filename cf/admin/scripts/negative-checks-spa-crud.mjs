@@ -387,7 +387,7 @@ export const crudSpaChecks = [
   {
     name: "crud: the browser no longer checks the size of a file before sending it",
     file: "spa/src/lib/crud/upload-kinds.ts",
-    from: "if (file.size > rule.maxBytes) return UPLOAD_MESSAGES.tooBig(rule.maxBytes);",
+    from: "if (!options.ignoreSize && file.size > rule.maxBytes) return UPLOAD_MESSAGES.tooBig(rule.maxBytes);",
     to: "",
     tests: t(KINDS, UPLOAD),
   },

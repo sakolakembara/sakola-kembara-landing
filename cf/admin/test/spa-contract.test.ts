@@ -229,7 +229,7 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
 
   test("a viewer: every group but Sistem, nothing writable", async () => {
     const me = await sidebarFor("viewer");
-    expect(labelsOf(me)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman", "Blog", "Laporan", "Tim", "Shortlink"]);
+    expect(labelsOf(me)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman", "Blog", "Media", "Laporan", "Tim", "Shortlink"]);
     expect(me.areas.writable).toEqual([]);
     expect(visibleQuickActions(me)).toEqual([]);
   });
@@ -241,7 +241,7 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
     expect(accessTo(me, "komunikasi")).toBe("none");
     expect(accessTo(me, "pendaftaran")).toBe("none");
     expect(accessTo(me, "sistem")).toBe("none");
-    expect(labelsOf(me)).toEqual(["Dashboard", "Blog", "Laporan", "Tim", "Shortlink"]);
+    expect(labelsOf(me)).toEqual(["Dashboard", "Blog", "Media", "Laporan", "Tim", "Shortlink"]);
     expect(visibleQuickActions(me).map((action) => action.href)).toEqual(["/blog/new", "/reports/new", "/team/new"]);
   });
 
@@ -270,7 +270,7 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
 
   test("super_admin: everything, Sistem included", async () => {
     const me = await sidebarFor("super_admin");
-    expect(labelsOf(me)).toHaveLength(12);
+    expect(labelsOf(me)).toHaveLength(13);
     expect(labelsOf(me)).toContain("Pengaturan");
     expect(visibleQuickActions(me)).toHaveLength(4);
   });

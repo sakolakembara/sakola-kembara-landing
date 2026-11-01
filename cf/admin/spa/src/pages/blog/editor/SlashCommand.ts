@@ -9,7 +9,7 @@ import { filterSlashItems, type SlashItem } from "./slashItems";
 // the editor's own box cannot clip it.
 
 export interface SlashCommandOptions {
-  /** Opens the file picker, for the "Gambar" item. */
+  /** Opens the media library, for the "Gambar" item. */
   onPickImage: () => void;
 }
 

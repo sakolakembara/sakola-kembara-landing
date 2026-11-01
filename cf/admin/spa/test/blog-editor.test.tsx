@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { act, createEvent, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test } from "vitest";
+import { type ImageCodec, setImageCodec } from "~/lib/crud/image-resize";
 import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/upload-client";
 import { API_PATH } from "~/pages/blog/form";
 import { tidyHref } from "~/pages/blog/editor/links";
@@ -356,6 +357,35 @@ describe("pictures", () => {
     expect(articleMarkdown(editor)).toBe(`![foto siswa](${PATH})`);
   });
 
+  test("a photo pasted is made smaller first: the Worker is given the WebP, whose name is the photo's", async () => {
+    const codec: ImageCodec = { decode: async () => ({ width: 6000, height: 4000, close() {} }), encode: async () => new Blob([new Uint8Array(200_000)], { type: "image/webp" }) };
+    setImageCodec(codec);
+    try {
+      const requests = uploader();
+      const { editor, dom } = await open();
+      const photo = new File([new Uint8Array(9_000_000)], "foto-siswa.png", { type: "image/png" });
+      await run(() => void fireEvent.paste(dom, { clipboardData: { files: [photo], types: ["Files"], getData: () => "" } }));
+      await waitFor(() => expect(pictureIn(editor)).toEqual({ alt: "foto siswa", src: PATH }));
+      expect(requests[0]!.file).toMatchObject({ name: "foto-siswa.webp", type: "image/webp", size: 200_000 });
+    } finally {
+      setImageCodec(undefined);
+    }
+  });
+
+  test("a picture pasted goes where the cursor is, not to the end of the text", async () => {
+    uploader();
+    const { editor, dom } = await open();
+    await run(() => {
+      editor.commands.setContent("Satu.\n\nDua.", { contentType: "markdown" });
+      editor.commands.setTextSelection(6); // the end of the first paragraph
+    });
+    await run(() => void fireEvent.paste(dom, { clipboardData: { files: [png()], types: ["Files"], getData: () => "" } }));
+    await waitFor(() => expect(pictureIn(editor)).not.toBeNull());
+    const text = articleMarkdown(editor);
+    expect(text.indexOf("Satu.")).toBeLessThan(text.indexOf("![foto siswa]"));
+    expect(text.indexOf("![foto siswa]")).toBeLessThan(text.indexOf("Dua."));
+  });
+
   test("a clipboard that has words as well as a picture (a copy from a web page or Word) is the text's: nothing is uploaded", async () => {
     const requests = uploader();
     const { dom } = await open();
@@ -464,5 +494,129 @@ describe("pictures", () => {
     expect(articleMarkdown(editor)).toBe(`![x](${PATH})`);
     await run(() => void editor.commands.setContent(`<p><img src="https://files.example.org${PATH}" alt="y"></p>`, { contentType: "html" }));
     expect(articleMarkdown(editor)).toBe(`![y](${PATH})`);
+  });
+});
+
+describe("the library, from the '/' menu", () => {
+  const ITEM = {
+    id: "m1",
+    path: PATH,
+    name: "foto-siswa.png",
+    kind: "blog-image",
+    contentType: "image/png",
+    size: 2000,
+    width: 800,
+    height: 450,
+    altText: null as string | null,
+    uploadedByName: "Tester",
+    createdAt: "2026-10-01T00:00:00.000Z",
+  };
+  const listing = (items: (typeof ITEM)[] = [ITEM]) => ({ items, page: 1, pageSize: 20, total: items.length, totalPages: 1 });
+  const pictureIn = (editor: Editor) => {
+    let found: { alt: string; src: string } | null = null;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === "image") found = { alt: node.attrs.alt, src: node.attrs.src };
+    });
+    return found as { alt: string; src: string } | null;
+  };
+
+  /** Types "/gambar", presses "Gambar", and answers the dialog that opens. */
+  async function openLibrary(routes: Parameters<typeof stubApi>[0] = {}, prepare?: (editor: Editor) => void) {
+    const opened = await open({ "GET /api/admin/uploads": respond(listing()), ...routes });
+    await run(() => {
+      opened.editor.commands.focus("end");
+      prepare?.(opened.editor);
+      typeInto(opened.editor, "/gambar");
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("option", { name: /Gambar/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Pilih gambar" });
+    return { ...opened, user, dialog };
+  }
+  const choose = async (user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) => user.click(await within(dialog).findByRole("button", { name: "foto-siswa.png" }));
+  const use = (user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) => user.click(within(dialog).getByRole("button", { name: "Pakai gambar ini" }));
+
+  test("the library is not asked for until '/gambar' is pressed", async () => {
+    const { api } = await open({ "GET /api/admin/uploads": respond(listing()) });
+    expect(api.count("GET /api/admin/uploads")).toBe(0);
+  });
+
+  test("'/gambar' opens the library of blog images; the file chosen is written where the '/gambar' was, with the text alternative it has", async () => {
+    const { api, editor, user, dialog } = await openLibrary({ "GET /api/admin/uploads": respond(listing([{ ...ITEM, altText: "Siswa belajar di kelas" }])) });
+    expect(api.last("GET /api/admin/uploads")?.url).toContain("kind=blog-image");
+    expect(within(dialog).getByRole("button", { name: "Pakai gambar ini" }).hasAttribute("disabled")).toBe(true); // nothing is chosen yet
+    await choose(user, dialog);
+    await use(user, dialog);
+    await waitFor(() => expect(pictureIn(editor)).toEqual({ alt: "Siswa belajar di kelas", src: PATH }));
+    expect(articleMarkdown(editor)).toBe(`![Siswa belajar di kelas](${PATH})`);
+    expect(dialog.hasAttribute("open")).toBe(false);
+    expect(api.count("PATCH /api/admin/uploads/m1")).toBe(0); // the text was not touched, so nothing is saved
+  });
+
+  test("the file is written where the cursor was, between two paragraphs, not at the end of the text", async () => {
+    const { editor, user, dialog } = await openLibrary({}, (target) => {
+      target.commands.setContent("Satu.\n\nDua.", { contentType: "markdown" });
+      target.chain().focus().setTextSelection(6).splitBlock().run(); // Enter at the end of the first paragraph: an empty one, with the cursor in it
+    });
+    await choose(user, dialog);
+    await use(user, dialog);
+    await waitFor(() => expect(pictureIn(editor)).not.toBeNull());
+    const text = articleMarkdown(editor);
+    expect(text.indexOf("Satu.")).toBeLessThan(text.indexOf("![foto siswa]"));
+    expect(text.indexOf("![foto siswa]")).toBeLessThan(text.indexOf("Dua."));
+    expect(text).not.toContain("/gambar");
+  });
+
+  test("a file with no text alternative gets one made from its name, as a pasted one does", async () => {
+    const { editor, user, dialog } = await openLibrary();
+    await choose(user, dialog);
+    await use(user, dialog);
+    await waitFor(() => expect(pictureIn(editor)).toEqual({ alt: "foto siswa", src: PATH }));
+  });
+
+  test("a text alternative written in the dialog is saved to the file first, and is the one the article gets", async () => {
+    const saved = { ...ITEM, altText: "Anak-anak membaca" };
+    const { api, editor, user, dialog } = await openLibrary({ "PATCH /api/admin/uploads/m1": respond({ item: saved }) });
+    await choose(user, dialog);
+    await user.type(within(dialog).getByLabelText("Teks alternatif"), "  Anak-anak membaca ");
+    await use(user, dialog);
+    await waitFor(() => expect(pictureIn(editor)).toEqual({ alt: "Anak-anak membaca", src: PATH }));
+    expect(api.last("PATCH /api/admin/uploads/m1")?.body).toEqual({ altText: "Anak-anak membaca" }); // trimmed
+  });
+
+  test("a text alternative the Worker refuses keeps the dialog open and says why; nothing is written", async () => {
+    const { editor, user, dialog } = await openLibrary({
+      "PATCH /api/admin/uploads/m1": respond({ error: "invalid", message: "Periksa kembali isian formulir.", fields: { altText: "Teks alternatif maksimal 300 karakter." } }, 400),
+    });
+    await choose(user, dialog);
+    await user.type(within(dialog).getByLabelText("Teks alternatif"), "x");
+    await use(user, dialog);
+    expect(await within(dialog).findByText("Teks alternatif maksimal 300 karakter.")).toBeTruthy();
+    expect(dialog.hasAttribute("open")).toBe(true);
+    expect(pictureIn(editor)).toBeNull();
+  });
+
+  test("'Unggah' sends a new file as a blog image, and that file is then the one chosen", async () => {
+    const requests: UploadRequest[] = [];
+    setUploader(async (request) => {
+      requests.push(request);
+      return { ok: true as const, result: { id: "u1", path: PATH, contentType: "image/png", size: request.file.size, width: 800, height: 450 } };
+    });
+    const { editor, user, dialog } = await openLibrary();
+    await user.click(within(dialog).getByRole("tab", { name: "Unggah" }));
+    await user.upload(dialog.querySelector<HTMLInputElement>("input[type='file']")!, new File([new Uint8Array(2000)], "foto-siswa.png", { type: "image/png" }));
+    // Back in the library with the new file chosen, ready to use.
+    expect(await within(dialog).findByRole("tab", { name: "Pustaka media", selected: true })).toBeTruthy();
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.kind).toBe("blog-image");
+    await use(user, dialog);
+    await waitFor(() => expect(pictureIn(editor)).toEqual({ alt: "foto siswa", src: PATH }));
+  });
+
+  test("'Batal' and Escape close it and write nothing", async () => {
+    const { editor, user, dialog } = await openLibrary();
+    await user.click(within(dialog).getByRole("button", { name: "Batal" }));
+    expect(dialog.hasAttribute("open")).toBe(false);
+    expect(pictureIn(editor)).toBeNull();
   });
 });
