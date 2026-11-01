@@ -108,7 +108,7 @@ describe("the list", () => {
     expect(within(grid).getByRole("link", { name: "2 dalam review" }).getAttribute("href")).toBe("/applications?batch=b3&status=under_review");
     expect(within(grid).getByRole("link", { name: "1 pending" }).getAttribute("href")).toBe("/applications?batch=b4&status=pending");
     expect(within(grid).queryByRole("link", { name: /0 /})).toBeNull();
-    expect(screen.getByText("Pendaftaran siswa dibuka satu batch per tahun. Buat batch baru untuk membuka periode pendaftaran, lalu publikasikan hasil setelah semua keputusan selesai.")).toBeTruthy();
+    expect(screen.queryByText(/dibuka satu batch per tahun/)).toBeNull(); // the title is the whole header
   });
 
   test("the empty list: 'Klik Batch Baru' only for someone who can create", async () => {

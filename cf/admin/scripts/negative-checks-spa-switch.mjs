@@ -1,5 +1,5 @@
-// The SPA's negative checks of moving from page to page (SAKEM-115: no false number while a page is on its way, nothing
-// added later under everything else, no blank frame on Pendaftar, a page that opens at its top), in their own file like
+// The SPA's negative checks of moving from page to page (SAKEM-115: the Pesan numbers kept in memory, no blank
+// frame on Pendaftar, a page that opens at its top), in their own file like
 // negative-checks-spa-boot.mjs: negative-checks-spa.mjs imports and spreads `switchSpaChecks`. Same rules: each check
 // breaks ONE safeguard (the patch must stay valid code), runs the tests that must notice, expects them to FAIL, and
 // the runner restores the file.
@@ -13,40 +13,12 @@ const APPLICATIONS = "spa/src/pages/applications/ApplicationsPage.tsx";
 const COUNTS = "spa/src/pages/messages/useMessageCounts.ts";
 
 export const switchSpaChecks = [
-  // ---------------------------------------------- descriptions that count
-  {
-    name: "switch: a description that counts the list says '0 ...' until the list is there",
-    file: "spa/src/components/crud/ListPage.tsx",
-    from: '(list.status === "loading" ? <DescriptionSkeleton /> : description(list))',
-    to: "description(list)",
-    tests: t(SWITCH),
-  },
-  {
-    name: "switch: the Pesan line with the two numbers is added when they arrive, moving everything under it",
-    file: "spa/src/pages/messages/MessagesPage.tsx",
-    from: "!settled && <DescriptionSkeleton />",
-    to: "null",
-    tests: t(SWITCH),
-  },
-  {
-    name: "switch: the Pesan counts that failed leave a grey line for ever",
-    file: "spa/src/pages/messages/MessagesPage.tsx",
-    from: "!settled && <DescriptionSkeleton />",
-    to: "<DescriptionSkeleton />",
-    tests: t(SWITCH),
-  },
+  // ---------------------------------------------- Pesan
   {
     name: "switch: the Pesan counts are not kept, so every visit starts without them",
     file: COUNTS,
     from: "if (next) keepRead(COUNTS_PATH, next, version);",
     to: "void version;",
-    tests: t(SWITCH),
-  },
-  {
-    name: "switch: the count of Pendaftar says '0 pendaftar' until the applicants are there",
-    file: APPLICATIONS,
-    from: '{list.status === "loading" ? (',
-    to: "{false ? (",
     tests: t(SWITCH),
   },
 

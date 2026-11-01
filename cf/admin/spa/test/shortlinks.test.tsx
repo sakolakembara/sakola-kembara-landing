@@ -110,16 +110,10 @@ describe("the list: what a row shows", () => {
     expect(within(grid).getByRole("link", { name: "/bio" }).getAttribute("href")).toBe("/shortlinks/s2/edit");
   });
 
-  test("the sentence above the table counts the links and, when it can, the active ones", async () => {
+  test("nothing under the title: no sentence counts the links or explains the short address", async () => {
     await openList(["viewer", []], { [`GET ${LIST}`]: respond(envelope([link(), link({ id: "s2", slug: "dua", active: false })])) });
-    expect(screen.getByText(/2 shortlink, 1 aktif\. Alamat pendek di/)).toBeTruthy();
-    expect(screen.getByText("https://sakolakembara.org/slug")).toBeTruthy();
-  });
-
-  test("when the page holds only some of the links the active count is left out (it would be wrong)", async () => {
-    await openList(["viewer", []], { [`GET ${LIST}`]: respond(envelope([link()], { total: 150 })) });
-    expect(screen.getByText(/150 shortlink\. Alamat pendek di/)).toBeTruthy();
-    expect(screen.queryByText(/aktif\. Alamat/)).toBeNull();
+    expect(screen.queryByText(/shortlink, 1 aktif/)).toBeNull();
+    expect(screen.queryByText("https://sakolakembara.org/slug")).toBeNull();
   });
 
   test("the Worker is asked for every link the page can hold, newest first, and the filter asks with its names", async () => {

@@ -5,7 +5,6 @@ import { ListPage } from "~/components/crud/ListPage";
 import type { Column } from "~/components/crud/DataTable";
 import { api } from "~/lib/api";
 import { ifMatch } from "~/lib/crud/etag";
-import { isFiltered } from "~/lib/crud/query";
 import type { RowOperation } from "~/lib/crud/useRowOperations";
 import { API_PATH, type BlogListItem, CATEGORY_OPTIONS, LIST_SPEC, ROUTE, STATUS } from "./model";
 import { formatIsoDay } from "./rules";
@@ -47,7 +46,6 @@ export function BlogPage() {
   return (
     <ListPage<BlogListItem>
       title="Blog"
-      description={(list) => <p>{isFiltered(list.query) ? `${list.total.toLocaleString("id-ID")} artikel ditampilkan` : `${list.total.toLocaleString("id-ID")} total artikel`}</p>}
       apiPath={API_PATH}
       routePath={ROUTE}
       area="konten"

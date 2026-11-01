@@ -149,8 +149,8 @@ describe("the list: what a row shows", () => {
     expect(within(grid).getAllByText(/Okt 2026/).length).toBeGreaterThan(0);
     expect(within(grid).getAllByText("Ringkasan dampak program.")).toHaveLength(2); // rows 1 and 3; row 2 has none
     expect(within(grid).getByText("/reports/2025/yearly/lama.pdf")).toBeTruthy();
-    expect(screen.getByText(/3 total laporan\. Tampil di publik di/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "/laporan" }).getAttribute("href")).toBe("https://sakolakembara.org/laporan");
+    expect(screen.queryByText(/total laporan/)).toBeNull(); // the title is the whole header
+    expect(screen.queryByRole("link", { name: "/laporan" })).toBeNull();
   });
 
   test("'Lihat' opens the PDF in a new tab, from the public files domain; a legacy static path is a file of the public site", async () => {

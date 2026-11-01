@@ -6,7 +6,6 @@ import { StatusTag } from "~/components/crud/StatusTag";
 import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
 import { storedFileUrl } from "~/lib/crud/upload-kinds";
-import { SITE_URL } from "~/lib/site";
 import { API_PATH, CATEGORY_LABEL, CATEGORY_ORDER, CATEGORY_STATUS, LIST_SPEC, ROUTE, type TeamListItem } from "./model";
 
 // The list of the team, built with `ListPage` (docs/cloudflare/admin-crud.md). The columns, the wording and the
@@ -47,15 +46,6 @@ export function TeamPage() {
   return (
     <ListPage<TeamListItem>
       title="Tim"
-      description={(list) => (
-        <p>
-          {list.total.toLocaleString("id-ID")} anggota tampil di{" "}
-          <a href={`${SITE_URL}/tim`} target="_blank" rel="noopener noreferrer" className="text-primary-blue hover:underline">
-            /tim
-          </a>{" "}
-          (dikelompokkan per kategori, lalu diurutkan berdasarkan urutan tampil).
-        </p>
-      )}
       apiPath={API_PATH}
       routePath={ROUTE}
       area="konten"

@@ -73,7 +73,7 @@ describe("the list", () => {
     const { api } = await openList();
     expect(within(grid()).getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Email", "Nama", "Peran", "Status", "Sesi Aktif", "Aksi"]);
     expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=50&sort=email`);
-    expect(screen.getByText("Kelola admin yang dapat mengakses dashboard.")).toBeTruthy();
+    expect(screen.queryByText("Kelola admin yang dapat mengakses dashboard.")).toBeNull(); // the title is the whole header
     expect(screen.getByRole("link", { name: /Tambah Admin/ }).getAttribute("href")).toBe("/settings/new");
   });
 

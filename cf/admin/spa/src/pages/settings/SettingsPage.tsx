@@ -179,9 +179,7 @@ export function SettingsPage() {
             </Button>
           ) : undefined
         }
-      >
-        <p className="text-gray-600">Kelola admin yang dapat mengakses dashboard.</p>
-      </PageHeader>
+      />
 
       <Flash flash={notice.flash} dismiss={notice.dismiss} />
 

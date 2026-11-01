@@ -51,12 +51,6 @@ export function BatchesPage() {
   return (
     <ListPage<BatchListed>
       title="Batch Pendaftaran"
-      description={
-        <p>
-          Pendaftaran siswa dibuka satu batch per tahun. Buat batch baru untuk membuka periode pendaftaran, lalu publikasikan hasil setelah semua keputusan
-          selesai.
-        </p>
-      }
       apiPath={API_PATH}
       routePath={ROUTE}
       area="pendaftaran"

@@ -39,9 +39,7 @@ export function DashboardPage() {
             </div>
           )
         }
-      >
-        <p className="text-gray-600">Ringkasan aktivitas Sakola Kembara hari ini.</p>
-      </PageHeader>
+      />
 
       {state.status === "loading" && <LoadingBlocks tiles={expectedTiles} />}
 

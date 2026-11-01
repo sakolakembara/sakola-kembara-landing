@@ -202,13 +202,6 @@ export const kontenMiscSpaChecks = [
     to: "active: item?.active ?? false,",
     tests: t(SHORTLINKS),
   },
-  {
-    name: "konten: the active count is told when the page holds only some of the links",
-    file: "spa/src/pages/shortlinks/ShortlinksPage.tsx",
-    from: 'const everyLink = list.status === "ready" && list.total === list.items.length;',
-    to: 'const everyLink = list.status === "ready";',
-    tests: t(SHORTLINKS),
-  },
   // ---------------------------------------------- files that predate the admin (a path of the public site)
   {
     name: "konten: the team list draws a legacy photo ('/images/team/...') from the admin's own host, where it collapses",

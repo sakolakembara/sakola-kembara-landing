@@ -2,7 +2,7 @@ import { Edit, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "~/components/ui/button";
-import { DescriptionSkeleton, PageHeader } from "~/components/PageHeader";
+import { PageHeader } from "~/components/PageHeader";
 import { type Access, accessTo, type Section } from "~/lib/access";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
 import { useFlash } from "~/lib/crud/flash";
@@ -10,7 +10,7 @@ import { isFiltered, type ListSpec, pageSizeChoices } from "~/lib/crud/query";
 import type { Versioned } from "~/lib/crud/types";
 import { useColumnChoice } from "~/lib/crud/useColumnChoice";
 import { useDeleteAction } from "~/lib/crud/useDeleteAction";
-import { useList, type ListState } from "~/lib/crud/useList";
+import { useList } from "~/lib/crud/useList";
 import { type RowOperation, useRowOperations } from "~/lib/crud/useRowOperations";
 import { useSelection } from "~/lib/crud/useSelection";
 import { useMe } from "~/lib/session";
@@ -42,8 +42,6 @@ import { RowMenu, type RowMenuItem } from "./RowMenu";
  */
 export interface ListPageProps<T extends Versioned> {
   title: string;
-  /** Under the title; a function sees the loaded list (for "12 total pengumuman"). */
-  description?: ReactNode | ((list: ListState<T>) => ReactNode);
   /** The API collection: `/api/admin/announcements`. */
   apiPath: string;
   /** The SPA route of the menu: `/announcements`; `/new` and `/<id>/edit` live below it. */
@@ -76,7 +74,7 @@ const idOf = (row: Versioned) => row.id;
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 export function ListPage<T extends Versioned>(props: ListPageProps<T>) {
-  const { title, description, apiPath, routePath, area, spec, columns, caption, search, filters, noun, nameOf, createLabel, emptyText, emptyFilteredText, deleteNote, rowActions, operations = [] } = props;
+  const { title, apiPath, routePath, area, spec, columns, caption, search, filters, noun, nameOf, createLabel, emptyText, emptyFilteredText, deleteNote, rowActions, operations = [] } = props;
   const me = useMe();
   const access = accessTo(me, area);
   const canWrite = access === "write";
@@ -174,12 +172,7 @@ export function ListPage<T extends Versioned>(props: ListPageProps<T>) {
             </Button>
           ) : undefined
         }
-      >
-        {description && (
-          // A description that counts the list has nothing true to say until the list is there.
-          <div className="text-gray-600">{typeof description === "function" ? (list.status === "loading" ? <DescriptionSkeleton /> : description(list)) : description}</div>
-        )}
-      </PageHeader>
+      />
 
       <Flash flash={notice.flash} dismiss={notice.dismiss} />
 

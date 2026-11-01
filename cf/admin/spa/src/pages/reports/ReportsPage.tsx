@@ -7,7 +7,6 @@ import { useConfig } from "~/lib/config";
 import { useUploadsBase } from "~/lib/crud/upload-client";
 import { storedFileUrl } from "~/lib/crud/upload-kinds";
 import { formatDate } from "~/lib/format";
-import { SITE_URL } from "~/lib/site";
 import { API_PATH, CATEGORIES, CATEGORY_LABEL, CATEGORY_STATUS, formatBytes, LIST_SPEC, type ReportItem, ROUTE, yearKind } from "./model";
 
 // The list of reports, built with `ListPage` (docs/cloudflare/admin-crud.md). The columns, the wording and the
@@ -65,15 +64,6 @@ export function ReportsPage() {
   return (
     <ListPage<ReportItem>
       title="Laporan"
-      description={(list) => (
-        <p>
-          {list.total.toLocaleString("id-ID")} total laporan. Tampil di publik di{" "}
-          <a href={`${SITE_URL}/laporan`} target="_blank" rel="noopener noreferrer" className="text-primary-blue hover:underline">
-            /laporan
-          </a>
-          .
-        </p>
-      )}
       apiPath={API_PATH}
       routePath={ROUTE}
       area="konten"

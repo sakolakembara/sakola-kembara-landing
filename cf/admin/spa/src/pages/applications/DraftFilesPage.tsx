@@ -16,7 +16,7 @@ import { useMutation } from "~/lib/crud/useMutation";
 import { useMe } from "~/lib/session";
 import { ForbiddenPage } from "../Forbidden";
 import { formatBytes } from "./answers";
-import { DRAFT_FILES_PATH, DRAFT_PURGE_MIN_DAYS, type DraftFilesRow, DRAFTS_LIST_SPEC, DRAFTS_ROUTE, draftPurgePath, ROUTE, shortDraftId } from "./model";
+import { DRAFT_FILES_PATH, type DraftFilesRow, DRAFTS_LIST_SPEC, DRAFTS_ROUTE, draftPurgePath, ROUTE, shortDraftId } from "./model";
 
 // "Draf dengan berkas" (SAKEM-093, decided by Dzul on 2026-10-15): the drafts that were never submitted and still hold files
 // in the private bucket. A draft is not in the Pendaftar list (that list is submitted applications), so without this nobody
@@ -87,10 +87,7 @@ function DraftFilesList() {
 
   return (
     <div className="p-6 md:p-10">
-      <PageHeader title="Draf dengan berkas">
-        <p className="text-gray-600">Siswa yang sudah mengunggah berkas tetapi belum mengirim pendaftaran. Nama dan isian mereka tidak ditampilkan.</p>
-        <p className="mt-1 text-sm text-gray-600">Berkas draf baru bisa dihapus setelah {DRAFT_PURGE_MIN_DAYS} hari tanpa perubahan. Berkas tidak dihapus otomatis.</p>
-      </PageHeader>
+      <PageHeader title="Draf dengan berkas" />
 
       <PendaftarTabs current="drafts" />
       <Flash flash={notice.flash} dismiss={notice.dismiss} />
