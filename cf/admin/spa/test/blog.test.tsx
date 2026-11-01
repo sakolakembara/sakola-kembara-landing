@@ -3,7 +3,7 @@ import { articleMarkdown } from "~/pages/blog/editor/serialize";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/upload-client";
+import { resetUploadsBase, setUploader } from "~/lib/crud/upload-client";
 import { API_PATH, PREVIEW_PATH, toBody, toValues } from "~/pages/blog/form";
 import { describeCount } from "~/pages/blog/MetaDescriptionField";
 import { describeSeoTitleCount } from "~/pages/blog/SeoTitleField";
@@ -1007,69 +1007,6 @@ describe("the preview", () => {
 
 
 // ------------------------------------------------------------------------------------------------- images
-
-describe("inserting an image", () => {
-  const png = (name = "foto-siswa.png", size = 2000) => new File([new Uint8Array(size)], name, { type: "image/png" });
-  const bodyPicker = async () => {
-    await bodyField(); // the picker is part of the editor, which loads when it is first shown
-    return document.querySelector<HTMLInputElement>("#panel-konten input[type='file']")!;
-  };
-  const uploaded = (request: UploadRequest) => ({
-    ok: true as const,
-    result: { id: "u1", path: "/uploads/blog-image/2026/0a1b2c3d-1111-4222-8333-444455556666-foto-siswa.png", contentType: "image/png", size: request.file.size, width: 800, height: 450 },
-  });
-
-  test("uploads the file as a blog image and writes it into the text at the cursor, with alt text made from its name", async () => {
-    const user = userEvent.setup();
-    const requests: UploadRequest[] = [];
-    setUploader(async (request) => {
-      requests.push(request);
-      return uploaded(request);
-    });
-    const first = "Paragraf pertama yang cukup panjang untuk contoh.";
-    await openEdit(WRITER, article({ contentMarkdown: `${first}\n\nParagraf kedua yang juga cukup panjang.` }));
-    const editor = await editorOf();
-    await act(async () => void editor.chain().focus().setTextSelection(1 + first.length).run());
-    await user.upload(await bodyPicker(), png());
-
-    const path = "/uploads/blog-image/2026/0a1b2c3d-1111-4222-8333-444455556666-foto-siswa.png";
-    await waitFor(async () => expect(await markdownOf()).toContain(`![foto siswa](${path})`));
-    expect(requests).toHaveLength(1);
-    expect(requests[0]!.kind).toBe("blog-image");
-    const text = await markdownOf();
-    expect(text.startsWith(first)).toBe(true);
-    expect(text.indexOf("![foto siswa]")).toBeGreaterThan(first.length - 1); // after the first paragraph, where the cursor was
-    expect(text.indexOf("![foto siswa]")).toBeLessThan(text.indexOf("Paragraf kedua"));
-    expect(text.endsWith("Paragraf kedua yang juga cukup panjang.")).toBe(true);
-    expect((await bodyField()).querySelector('img[alt="foto siswa"]')?.getAttribute("src")).toBe(path); // drawn in the page
-  });
-
-  test("a refusal (a file the kind does not take, a failed upload) is a sentence above the text, and the text is untouched", async () => {
-    // Without `applyAccept`, user-event hands over a file the `accept` list does not name (a picker would not let one through).
-    const user = userEvent.setup({ applyAccept: false });
-    setUploader(async () => ({ ok: false, status: 413, message: "Ukuran file maksimal 5 MB." }));
-    await openEdit(WRITER);
-    const before = await markdownOf();
-    await user.upload(await bodyPicker(), new File(["x"], "dokumen.pdf", { type: "application/pdf" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP, GIF.");
-    await user.upload(await bodyPicker(), png("besar.png"));
-    expect((await screen.findByText("Ukuran file maksimal 5 MB.")).closest("[role='alert']")).toBeTruthy();
-    expect(await markdownOf()).toBe(before);
-  });
-
-  test("says which file is going up and refuses a second picking while one runs", async () => {
-    const user = userEvent.setup();
-    const gate = deferred<ReturnType<typeof uploaded>>();
-    setUploader(() => gate.promise);
-    await openEdit(WRITER);
-    await user.upload(await bodyPicker(), png());
-    expect((await screen.findByText("Mengunggah foto-siswa.png...")).getAttribute("role")).toBe("status"); // announced, not only drawn
-    expect((await bodyPicker()).disabled).toBe(true);
-    await act(async () => gate.resolve(uploaded({ file: png(), kind: "blog-image" })));
-    await waitFor(() => expect(screen.queryByText("Mengunggah foto-siswa.png...")).toBeNull());
-    expect((await bodyPicker()).disabled).toBe(false);
-  });
-});
 
 // ------------------------------------------------------------------------------------------------- the hero
 

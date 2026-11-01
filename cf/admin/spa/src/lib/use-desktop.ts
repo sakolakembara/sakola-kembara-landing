@@ -5,17 +5,29 @@ import { useSyncExternalStore } from "react";
 // because CSS alone would leave two copies of every button in the page. Without `matchMedia` (jsdom) the answer is yes,
 // so a test sees the desktop frame unless it stubs the query.
 
-const QUERY = "(min-width: 768px)";
-
-function subscribe(notify: () => void) {
-  if (typeof window.matchMedia !== "function") return () => {};
-  const query = window.matchMedia(QUERY);
-  query.addEventListener("change", notify);
-  return () => query.removeEventListener("change", notify);
+function matches(query: string): boolean {
+  return typeof window.matchMedia !== "function" || window.matchMedia(query).matches;
 }
 
-const read = () => typeof window.matchMedia !== "function" || window.matchMedia(QUERY).matches;
+function useMatches(query: string): boolean {
+  const subscribe = (notify: () => void) => {
+    if (typeof window.matchMedia !== "function") return () => {};
+    const list = window.matchMedia(query);
+    list.addEventListener("change", notify);
+    return () => list.removeEventListener("change", notify);
+  };
+  return useSyncExternalStore(
+    subscribe,
+    () => matches(query),
+    () => true,
+  );
+}
 
 export function useIsDesktop(): boolean {
-  return useSyncExternalStore(subscribe, read, () => true);
+  return useMatches("(min-width: 768px)");
+}
+
+/** At least `lg` (1024 px): where a page has room for a column beside its list (the Media page's panel); below it the same content opens in a window. */
+export function useIsWide(): boolean {
+  return useMatches("(min-width: 1024px)");
 }

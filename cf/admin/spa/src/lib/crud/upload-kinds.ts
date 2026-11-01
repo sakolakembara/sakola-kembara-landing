@@ -56,11 +56,13 @@ export interface FileLike {
 /**
  * The message to show when `file` cannot be uploaded as `kind`, or null when it may be tried: not empty, not
  * over the kind's limit, and a type of the kind's list by the browser's guess or, with none, by the extension.
+ * `ignoreSize` leaves the limit out: a picture is made smaller before it is sent (`prepareUpload`), so the limit is
+ * the size it has then, not the size of what the camera wrote.
  */
-export function checkUploadFile(file: FileLike, kind: UploadKindName): string | null {
+export function checkUploadFile(file: FileLike, kind: UploadKindName, options: { ignoreSize?: boolean } = {}): string | null {
   const rule = UPLOAD_KINDS[kind];
   if (file.size === 0) return UPLOAD_MESSAGES.empty;
-  if (file.size > rule.maxBytes) return UPLOAD_MESSAGES.tooBig(rule.maxBytes);
+  if (!options.ignoreSize && file.size > rule.maxBytes) return UPLOAD_MESSAGES.tooBig(rule.maxBytes);
 
   const claimed = file.type.trim().toLowerCase();
   const extension = file.name.includes(".") ? `.${file.name.split(".").pop()!.toLowerCase()}` : "";

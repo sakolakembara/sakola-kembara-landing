@@ -2,7 +2,8 @@ import { sendXhr } from "../../../../shared/spa/xhr";
 import { api } from "../api";
 import { resetConfig, useConfig } from "../config";
 import { describeFailure, MESSAGES } from "./errors";
-import type { UploadKindName } from "./upload-kinds";
+import { shrinkImage } from "./image-resize";
+import { checkUploadFile, UPLOAD_KINDS, type UploadKindName } from "./upload-kinds";
 
 // The browser side of `POST /api/admin/uploads` (docs/cloudflare/uploads.md). A file upload cannot go through
 // `api()`: only XMLHttpRequest reports progress, so this has its own request (shared/spa/xhr.ts, which the student
@@ -88,6 +89,29 @@ export function setUploader(next: Uploader | null): void {
 
 export function uploadFile(request: UploadRequest): Promise<UploadOutcome> {
   return uploader(request);
+}
+
+export type Prepared = { ok: true; file: File } | { ok: false; message: string };
+
+/**
+ * The file to send for `file`, or the Worker's own sentence for why it cannot be sent. A picture is made smaller first
+ * (lib/crud/image-resize.ts), so the size limit is checked on what will be sent, not on what the camera wrote; the
+ * empty and type checks come before, so a wrong file is refused without being decoded. A kind that does not take WebP
+ * gets its picture as it is.
+ */
+export async function prepareUpload(file: File, kind: UploadKindName): Promise<Prepared> {
+  const problem = checkUploadFile(file, kind, { ignoreSize: true });
+  if (problem) return { ok: false, message: problem };
+  const prepared = UPLOAD_KINDS[kind].types.includes("webp") ? await shrinkImage(file) : file;
+  const tooBig = checkUploadFile(prepared, kind);
+  return tooBig ? { ok: false, message: tooBig } : { ok: true, file: prepared };
+}
+
+/** `prepareUpload`, then the upload: what every screen that takes a file from a person calls. A refusal comes back as an outcome, like the Worker's. */
+export async function submitUpload(request: UploadRequest): Promise<UploadOutcome> {
+  const prepared = await prepareUpload(request.file, request.kind);
+  if (!prepared.ok) return { ok: false, status: 0, message: prepared.message, code: "refused_here" };
+  return uploadFile({ ...request, file: prepared.file });
 }
 
 /**

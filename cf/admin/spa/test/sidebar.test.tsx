@@ -27,6 +27,7 @@ describe("sidebar", () => {
       "Pesan",
       "Pengumuman",
       "Blog",
+      "Media",
       "Laporan",
       "Tim",
       "Shortlink",
@@ -37,7 +38,7 @@ describe("sidebar", () => {
     for (const [group, items] of [
       ["Pendaftaran", ["Batch", "Pendaftar", "Pusat Dokumen"]],
       ["Komunikasi", ["Pesan", "Pengumuman"]],
-      ["Konten Situs", ["Blog", "Laporan", "Tim", "Shortlink"]],
+      ["Konten Situs", ["Blog", "Media", "Laporan", "Tim", "Shortlink"]],
       ["Sistem", ["Aktivitas", "Pengaturan"]],
     ] as const) {
       const list = within(nav).getByRole("list", { name: group });
@@ -47,14 +48,14 @@ describe("sidebar", () => {
 
   test("a viewer has no Sistem group", async () => {
     const { nav } = await openAs("viewer");
-    expect(names(nav)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman", "Blog", "Laporan", "Tim", "Shortlink"]);
+    expect(names(nav)).toEqual(["Dashboard", "Batch", "Pendaftar", "Pusat Dokumen", "Pesan", "Pengumuman", "Blog", "Media", "Laporan", "Tim", "Shortlink"]);
     expect(within(nav).queryByText("Sistem")).toBeNull();
     expect(screen.getAllByText("Hanya baca").length).toBeGreaterThan(0);
   });
 
   test("an editor sees the dashboard and the menus of the areas granted to them, not the others", async () => {
     const { nav } = await openAs("editor", ["konten"]);
-    expect(names(nav)).toEqual(["Dashboard", "Blog", "Laporan", "Tim", "Shortlink"]);
+    expect(names(nav)).toEqual(["Dashboard", "Blog", "Media", "Laporan", "Tim", "Shortlink"]);
     expect(within(nav).queryByText("Pendaftaran")).toBeNull();
     expect(within(nav).queryByText("Komunikasi")).toBeNull();
     expect(within(nav).queryByText("Sistem")).toBeNull();

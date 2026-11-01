@@ -162,14 +162,14 @@ export const blogSpaChecks = [
     file: "spa/src/pages/blog/editor/RichEditor.tsx",
     from: "if (position === undefined) editor.chain().focus().insertContent(picture).run();",
     to: 'if (position === undefined) editor.chain().focus("end").insertContent(picture).run();',
-    tests: BLOG,
+    tests: t("blog-editor.test.tsx"),
   },
   {
     name: "blog: a file the kind does not take is sent to the Worker without a check",
-    file: "spa/src/pages/blog/editor/images.ts",
-    from: '  const problem = checkUploadFile(file, "blog-image");',
-    to: "  const problem: string | null = null;",
-    tests: BLOG,
+    file: "spa/src/lib/crud/upload-client.ts",
+    from: "const problem = checkUploadFile(file, kind, { ignoreSize: true });",
+    to: "const problem: string | null = null;",
+    tests: t("crud/image-resize.test.ts", "blog-editor.test.tsx"),
   },
 
   // ------------------------------------------------------------------ the mock behaves like the Worker

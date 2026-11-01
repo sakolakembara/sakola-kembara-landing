@@ -2,8 +2,9 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import type { GrantableArea } from "../src/auth/permissions";
 import type { UserRole } from "../src/auth/roles";
-import { uploadKinds, type UploadKind } from "../src/uploads/kinds";
+import { KIND_RULES, uploadKinds, type UploadKind } from "../src/uploads/kinds";
 import { nameOfKey } from "../src/uploads/key";
+import { ALT_TEXT_MAX, kindForFile, MEDIA_RANGES, mediaListPath, type MediaItem, type MediaQuery } from "../spa/src/lib/crud/media";
 import { updateAltText } from "../src/uploads/store";
 import { call, signedInCookie, uniqueEmail } from "./helpers";
 import { auditRows, clearBucket, mediaRows, pdf, png, upload, type Uploaded } from "./uploads-helpers";
@@ -344,5 +345,61 @@ describe("PATCH /api/admin/uploads/:id: the text alternative", () => {
     const actor = (await env.DB.prepare("SELECT id, email FROM users WHERE email = ?").bind(email).first<{ id: string; email: string }>())!;
     expect(await updateAltText(env, actor, crypto.randomUUID(), "Tidak ada")).toBe(false);
     expect(await auditRows()).toEqual([]);
+  });
+});
+
+// The SPA's side of the contract (spa/src/lib/crud/media.ts): the library's screens are written against these, so the Worker's own
+// answers are held to them. A change to the item, to a limit or to a filter that is not made on both sides fails here.
+describe("what the SPA relies on", () => {
+  // Every key of the SPA's item, and no other (the sample is typed: a key added to or dropped from `MediaItem` does not compile).
+  const SAMPLE: MediaItem = { id: "", path: "", name: "", kind: null, contentType: "", size: 0, width: null, height: null, altText: null, uploadedByName: null, createdAt: "" };
+
+  test("the item of the list, of the detail and of a save has exactly the keys of the SPA's MediaItem", async () => {
+    const cookie = await editor();
+    const uploaded = await ok(await upload({ kind: "blog-image", cookie, bytes: png(5, 5) }));
+    const keys = Object.keys(SAMPLE).sort();
+    const listed = (await list("", cookie)).body.items[0]!;
+    expect(Object.keys(listed).sort()).toEqual(keys);
+    const detail = (await (await call(`/api/admin/uploads/${uploaded.id}`, { cookie })).json()) as { item: Item; usedBy: string[] };
+    expect(Object.keys(detail.item).sort()).toEqual(keys);
+    expect(Object.keys(detail).sort()).toEqual(["item", "usedBy"]);
+    const saved = (await (await call(`/api/admin/uploads/${uploaded.id}`, { method: "PATCH", cookie, json: { altText: "x" } })).json()) as { item: Item };
+    expect(Object.keys(saved.item).sort()).toEqual(keys);
+    expect(Object.keys(saved).sort()).toEqual(["item"]);
+  });
+
+  test("the list's envelope is the SPA's MediaListPayload", async () => {
+    const cookie = await editor();
+    const { body } = await list("?pageSize=5", cookie);
+    expect(Object.keys(body).sort()).toEqual(["items", "page", "pageSize", "total", "totalPages"]);
+  });
+
+  test("every address the SPA can build is one the Worker answers with a list, never a refusal", async () => {
+    const cookie = await editor();
+    await ok(await upload({ kind: "blog-image", cookie, bytes: png(5, 5) }));
+    const queries: Partial<MediaQuery>[] = [{}, { kind: "blog-image" }, { kind: "team-photo", q: "hero kelas" }, { kind: "report", type: "pdf" }, { kind: "resource", type: "image", q: "a" }, { type: "image" }, { type: "pdf", page: 2 }];
+    for (const range of MEDIA_RANGES) queries.push({ range: range.value }, { range: range.value, type: "image", q: "foto", page: 3 });
+    for (const change of queries) {
+      const path = mediaListPath({ kind: null, q: "", type: "", range: "", page: 1, pageSize: 40, ...change });
+      const response = await call(path, { cookie });
+      expect(response.status, path).toBe(200);
+    }
+  });
+
+  test("the text alternative's limit is the Worker's: the limit itself is saved, one more is refused", async () => {
+    const cookie = await editor();
+    const uploaded = await ok(await upload({ kind: "blog-image", cookie, bytes: png(5, 5) }));
+    const save = (altText: string) => call(`/api/admin/uploads/${uploaded.id}`, { method: "PATCH", cookie, json: { altText } });
+    expect((await save("a".repeat(ALT_TEXT_MAX))).status).toBe(200);
+    expect((await save("a".repeat(ALT_TEXT_MAX + 1))).status).toBe(400);
+  });
+
+  test("a file dropped on the Media page is stored as a kind of the area the page belongs to, with the limits the zone promises", () => {
+    const picture = kindForFile({ name: "foto.png", type: "image/png" });
+    const document = kindForFile({ name: "laporan.pdf", type: "application/pdf" });
+    expect([picture, document]).toEqual(["blog-image", "report"]);
+    expect(KIND_RULES[picture]).toMatchObject({ area: "konten", maxBytes: 5_000_000 }); // "Hingga 5 MB per gambar"
+    expect(KIND_RULES[document]).toMatchObject({ area: "konten", maxBytes: 20_000_000 }); // "20 MB per PDF"
+    expect(KIND_RULES[picture].types).toContain("webp"); // what the browser writes a picture as
   });
 });

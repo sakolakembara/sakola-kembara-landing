@@ -21,6 +21,12 @@ describe("checkUploadFile", () => {
     expect(checkUploadFile(file("animasi.svg", 10, "image/svg+xml"), "blog-image")).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP, GIF.");
   });
 
+  test("`ignoreSize` leaves the limit out and nothing else: a picture is made smaller before the limit applies to it", () => {
+    expect(checkUploadFile(file("a.png", 12_000_000, "image/png"), "team-photo", { ignoreSize: true })).toBeNull();
+    expect(checkUploadFile(file("a.png", 0, "image/png"), "team-photo", { ignoreSize: true })).toBe("File kosong.");
+    expect(checkUploadFile(file("a.svg", 10, "image/svg+xml"), "team-photo", { ignoreSize: true })).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP.");
+  });
+
   test("an empty file", () => {
     expect(checkUploadFile(file("foto.png", 0, "image/png"), "team-photo")).toBe("File kosong.");
   });

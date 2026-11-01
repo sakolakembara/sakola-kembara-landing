@@ -41,8 +41,8 @@ export const sistemSpaChecks = [
   {
     name: "sistem: the action filter offers fewer actions than the Worker declares",
     file: "spa/src/lib/audit.ts",
-    from: '  "upload.delete",\n  "user.email_verified",',
-    to: '  "user.email_verified",',
+    from: '  "upload.delete",\n  "upload.update",',
+    to: '  "upload.update",',
     tests: t(LABELS),
   },
 

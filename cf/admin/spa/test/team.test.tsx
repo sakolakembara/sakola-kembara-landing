@@ -546,6 +546,7 @@ describe("the form: edit", () => {
     expect(panel("Riwayat").hasAttribute("hidden")).toBe(false);
     expect(screen.queryByRole("button", { name: "Simpan Perubahan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pilih file" })).toBeNull(); // no way to change the photo either
+    expect(screen.queryByRole("button", { name: "Pilih dari media" })).toBeNull(); // nor to take one from the library
     expect(screen.getByRole("link", { name: "Tutup" })).toBeTruthy();
   });
 

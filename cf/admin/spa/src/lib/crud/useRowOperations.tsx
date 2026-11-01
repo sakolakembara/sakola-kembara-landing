@@ -5,7 +5,6 @@ import { api, type ApiResult } from "../api";
 import { describeBulk, runEach } from "./bulk";
 import { ifMatch } from "./etag";
 import type { FlashMessage } from "./flash";
-import type { Versioned } from "./types";
 
 // What can be done to one row or to the ticked rows of a list besides edit (docs/cloudflare/admin-crud.md#15-the-spa-kit):
 // the resource's own operations (a blog post can be published and taken back to a draft) and delete. The row's
@@ -14,6 +13,12 @@ import type { Versioned } from "./types";
 //
 //   const rows = useRowOperations<Post>({ apiPath, noun: "artikel", nameOf, notify: notice.show, onChanged });
 //   rows.run(publish, selection.rows)   rows.askDelete(selection.rows)   <ConfirmDialog {...rows.dialogProps} />
+
+/** What a row needs to be operated on: its id, and the version its `If-Match` is made from when it has one (a media file has none). */
+interface Row {
+  id: string;
+  updatedAt?: string;
+}
 
 export interface RowOperation<T> {
   key: string;
@@ -53,7 +58,7 @@ export interface RowOperations<T> {
 /** How many names the delete question lists before "dan N lainnya". */
 const NAMED = 5;
 
-export function useRowOperations<T extends Versioned>(options: RowOperationsOptions<T>): RowOperations<T> {
+export function useRowOperations<T extends Row>(options: RowOperationsOptions<T>): RowOperations<T> {
   const { apiPath, noun, nameOf, deleteNote, notify, onChanged } = options;
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);

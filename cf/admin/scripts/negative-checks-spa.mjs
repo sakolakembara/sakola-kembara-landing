@@ -29,6 +29,7 @@ import { portalFilesSpaChecks } from "./negative-checks-portal-files.mjs";
 import { portalWizardSpaChecks } from "./negative-checks-spa-portal-wizard.mjs";
 import { blogMetaSpaChecks } from "./negative-checks-blog-meta.mjs";
 import { blogSeoSpaChecks } from "./negative-checks-blog-seo.mjs";
+import { mediaSpaChecks } from "./negative-checks-spa-media.mjs";
 
 const t = (...names) => names.map((name) => `spa/test/${name}`).join(" ");
 
@@ -58,6 +59,9 @@ const checks = [
 
   // Laporan, Tim and Shortlink (SAKEM-082): scripts/negative-checks-spa-konten-misc.mjs.
   ...kontenMiscSpaChecks,
+
+  // The Media library, the picker and the making-smaller of pictures (SAKEM-117): scripts/negative-checks-spa-media.mjs.
+  ...mediaSpaChecks,
   // Pendaftaran: Batch, Pendaftar, Pusat Dokumen (SAKEM-082): scripts/negative-checks-spa-pendaftaran.mjs.
   ...pendaftaranSpaChecks,
 

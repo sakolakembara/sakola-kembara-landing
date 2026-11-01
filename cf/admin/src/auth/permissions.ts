@@ -107,6 +107,7 @@ export const menuItems = [
   { key: "messages", label: "Pesan", area: "komunikasi" },
   { key: "announcements", label: "Pengumuman", area: "komunikasi" },
   { key: "blog", label: "Blog", area: "konten" },
+  { key: "media", label: "Media", area: "konten" },
   { key: "reports", label: "Laporan", area: "konten" },
   { key: "team", label: "Tim", area: "konten" },
   { key: "shortlinks", label: "Shortlink", area: "konten" },

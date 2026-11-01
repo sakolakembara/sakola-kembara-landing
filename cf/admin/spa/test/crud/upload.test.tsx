@@ -4,6 +4,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { UploadField } from "~/components/crud/UploadField";
 import { discardUpload, resetUploadsBase, setUploader, type UploadOutcome, type UploadRequest, uploadFile, useUploadsBase, xhrUploader } from "~/lib/crud/upload-client";
+import { type ImageCodec, setImageCodec } from "~/lib/crud/image-resize";
 import type { UploadKindName } from "~/lib/crud/upload-kinds";
 import { deferred, respond, stubApi } from "../helpers";
 
@@ -272,6 +273,8 @@ describe("UploadField", () => {
     const user = userEvent.setup();
     const { container } = render(<Field />);
     const click = vi.spyOn(input(container), "click");
+    await user.tab(); // "Pilih dari media" comes first, then the button that chooses a file from the computer
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Pilih dari media" }));
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Pilih file" }));
     await user.keyboard("{Enter}");
@@ -296,6 +299,9 @@ describe("UploadField", () => {
     expect(screen.getByRole("status").textContent).toBe("Ukuran file maksimal 5 MB.");
 
     fireEvent.change(input(container), { target: { files: [new File([new Uint8Array(10)], "laporan.pdf", { type: "application/pdf" })] } });
+    // A wrong type is said at once, before any bar is drawn: it is known from the name and the type, and needs no look at the picture.
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(shown()).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP.");
     await waitFor(() => expect(shown()).toBe("Tipe file tidak didukung. Gunakan: PNG, JPEG, WebP."));
 
     fireEvent.change(input(container), { target: { files: [new File([], "kosong.png", { type: "image/png" })] } });
@@ -392,8 +398,10 @@ describe("UploadField", () => {
     const { container } = render(<Field />);
 
     fireEvent.change(input(container), { target: { files: [pngFile("a.png")] } });
+    await waitFor(() => expect(gates).toHaveLength(1)); // the picture is prepared before it is sent
     await act(async () => gates[0]!.resolve({ ok: true, result: { ...RESULT, id: "first-id", path: "/uploads/team-photo/2026/first-id-a.png" } }));
     fireEvent.change(input(container), { target: { files: [pngFile("b.png")] } });
+    await waitFor(() => expect(gates).toHaveLength(2));
     await act(async () => gates[1]!.resolve({ ok: true, result: { ...RESULT, id: "second-id", path: "/uploads/team-photo/2026/second-id-b.png" } }));
     await waitFor(() => expect(api.count("DELETE /api/admin/uploads/first-id")).toBe(1)); // a replaced, never-saved file
     expect(api.calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
@@ -404,10 +412,45 @@ describe("UploadField", () => {
     const gates = stubUploader();
     const { container } = render(<Field initial="/uploads/team-photo/2026/saved-id-lama.png" />);
     fireEvent.change(input(container), { target: { files: [pngFile("baru.png")] } });
+    await waitFor(() => expect(gates).toHaveLength(1));
     await act(async () => gates[0]!.resolve({ ok: true, result: { ...RESULT, id: "new-id", path: "/uploads/team-photo/2026/new-id-baru.png" } }));
     fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
     await waitFor(() => expect(api.calls.filter((call) => call.method === "DELETE")).toHaveLength(1)); // only the new one, removed again
     expect(api.calls.find((call) => call.method === "DELETE")!.url).toBe("/api/admin/uploads/new-id");
+  });
+
+  test("a photo from a camera is made smaller before it is sent: the Worker is given the WebP, and the 5 MB limit is on that", async () => {
+    stubApi({ "GET /api/config": respond({}) });
+    const codec: ImageCodec = {
+      decode: async () => ({ width: 4000, height: 3000, close() {} }),
+      encode: async () => new Blob([new Uint8Array(300_000)], { type: "image/webp" }),
+    };
+    setImageCodec(codec);
+    try {
+      const gates = stubUploader();
+      const { container } = render(<Field />);
+      const photo = new File([new Uint8Array(12_000_000)], "IMG_0001.JPG", { type: "image/jpeg" });
+      fireEvent.change(input(container), { target: { files: [photo] } });
+      await waitFor(() => expect(gates).toHaveLength(1)); // not refused for its 12 MB: it is 300 KB when sent
+      expect(gates[0]!.request.file).toMatchObject({ name: "IMG_0001.webp", type: "image/webp", size: 300_000 });
+      await act(async () => gates[0]!.resolve({ ok: true, result: RESULT }));
+    } finally {
+      setImageCodec(undefined);
+    }
+  });
+
+  test("a photo that cannot be made smaller and is over the limit is refused in the Worker's words, before anything is sent", async () => {
+    stubApi({ "GET /api/config": respond({}) });
+    setImageCodec(null); // a browser that cannot do it
+    try {
+      const gates = stubUploader();
+      const { container } = render(<Field />);
+      fireEvent.change(input(container), { target: { files: [new File([new Uint8Array(6_000_000)], "besar.jpg", { type: "image/jpeg" })] } });
+      expect((await screen.findAllByText("Ukuran file maksimal 5 MB."))[0]).toBeTruthy();
+      expect(gates).toHaveLength(0);
+    } finally {
+      setImageCodec(undefined);
+    }
   });
 
   test("'Hapus' empties the field", async () => {
@@ -467,6 +510,7 @@ describe("UploadField", () => {
     const gates = stubUploader();
     const { container } = render(<Field />);
     fireEvent.change(input(container), { target: { files: [pngFile("a.png")] } });
+    await waitFor(() => expect(gates).toHaveLength(1));
     await act(async () => gates[0]!.resolve({ ok: true, result: { ...RESULT, id: "id-a", path: "/uploads/team-photo/2026/id-a-a.png" } }));
     expect(screen.getByRole("img", { name: "Pratinjau Foto" }).getAttribute("src")).toBe("blob:preview-1");
     fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
