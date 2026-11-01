@@ -19,11 +19,10 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { accessTo } from "~/lib/access";
 import { describeFailure, MESSAGES } from "~/lib/crud/errors";
 import { useFlash } from "~/lib/crud/flash";
-import { formatSize, kindForFile, MEDIA_PATH, type MediaItem, mediaItemFromUpload, typeLabel, useMediaList } from "~/lib/crud/media";
+import { formatSize, kindForFile, MEDIA_PATH, type MediaItem, typeLabel, useMediaList } from "~/lib/crud/media";
 import { useSelection } from "~/lib/crud/useSelection";
 import { useRowOperations } from "~/lib/crud/useRowOperations";
 import { formatDate } from "~/lib/format";
-import { useIsWide } from "~/lib/use-desktop";
 import { useMe } from "~/lib/session";
 import { ACCEPT, isFiltered, mediaSearchParams, PAGE_SIZE, parseMediaParams, type MediaPageQuery, type MediaView } from "./model";
 
@@ -32,7 +31,8 @@ import { ACCEPT, isFiltered, mediaSearchParams, PAGE_SIZE, parseMediaParams, typ
 // (the address to copy, the text alternative, where it is used, delete). The state is in the address bar like every list's, so a
 // reload and a link keep the page, the search and the view. A person who can only read sees it all and none of the buttons that change it.
 //
-// The panel is a column beside the files from `lg` up; below it, the same panel opens in a window, since a phone has no room for both.
+// The page is the whole width. The detail of a file is a window (`Modal`) opened by a click on it, at every width; a drop of new files
+// never opens one, since several go up one after the other.
 
 const idOf = (item: MediaItem) => item.id;
 
@@ -70,7 +70,6 @@ const COLUMNS = (open: (item: MediaItem) => void, active: MediaItem | null): rea
 export function MediaPage() {
   const me = useMe();
   const canWrite = accessTo(me, "konten") === "write";
-  const wide = useIsWide();
   const notice = useFlash();
   const chooser = useRef<HTMLInputElement>(null);
 
@@ -86,7 +85,7 @@ export function MediaPage() {
   const list = useMediaList({ kind: null, q: query.q, type: query.type, range: query.range, page: query.page, pageSize: PAGE_SIZE });
   const filtered = isFiltered(query);
 
-  // The file whose panel is open. It follows the list's fresh copy of itself (a text alternative saved, an upload that just landed).
+  // The file whose window is open. It follows the list's fresh copy of itself (a text alternative saved, an upload that just landed).
   const [active, setActive] = useState<MediaItem | null>(null);
   useEffect(() => {
     setActive((current) => (current ? (list.items.find((item) => item.id === current.id) ?? current) : current));
@@ -161,129 +160,116 @@ export function MediaPage() {
       />
       <Flash flash={notice.flash} dismiss={notice.dismiss} />
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <MediaFilters idPrefix="media" query={query} withType onChange={(patch) => go({ ...query, ...patch, page: 1 })} />
-            <div role="group" aria-label="Tampilan" className="flex rounded-lg border border-input bg-card p-0.5">
-              {VIEWS.map(({ view, label, icon: Icon }) => (
-                <Button
-                  key={view}
-                  size="sm"
-                  variant={query.view === view ? "subtle" : "ghost"}
-                  aria-label={label}
-                  aria-pressed={query.view === view}
-                  onClick={() => go({ ...query, view })}
-                >
-                  <Icon aria-hidden="true" />
-                </Button>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <MediaFilters idPrefix="media" query={query} withType onChange={(patch) => go({ ...query, ...patch, page: 1 })} />
+          <div role="group" aria-label="Tampilan" className="flex rounded-lg border border-input bg-card p-0.5">
+            {VIEWS.map(({ view, label, icon: Icon }) => (
+              <Button
+                key={view}
+                size="sm"
+                variant={query.view === view ? "subtle" : "ghost"}
+                aria-label={label}
+                aria-pressed={query.view === view}
+                onClick={() => go({ ...query, view })}
+              >
+                <Icon aria-hidden="true" />
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {canWrite && (
+          <MediaDropzone
+            accept={ACCEPT}
+            multiple
+            chooserRef={chooser}
+            kindFor={kindForFile}
+            // Not opened: several files go up one after the other, and a window over them would be in the way.
+            onUploaded={() => list.refetch()}
+          >
+            Gambar diperkecil otomatis (maks 1920 px). Hingga 5 MB per gambar, 20 MB per PDF.
+          </MediaDropzone>
+        )}
+
+        {query.view === "list" ? (
+          <DataTable<MediaItem>
+            caption="Daftar media"
+            columns={COLUMNS(setActive, active)}
+            rows={list.items}
+            rowKey={idOf}
+            state={list.status}
+            errorMessage={errorText}
+            onRetry={list.refetch}
+            emptyText={emptyText}
+            emptyFiltered={filtered}
+            emptyAction={resetButton}
+            refreshing={list.refreshing}
+            selection={canWrite ? { selected: selection.ids, toggle: selection.toggle, toggleAll: selection.toggleAll, label: (item) => item.name } : undefined}
+          />
+        ) : list.status === "error" ? (
+          <Alert tone="danger">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>{errorText}</span>
+              <Button size="sm" variant="neutral" onClick={list.refetch}>
+                Coba lagi
+              </Button>
+            </div>
+          </Alert>
+        ) : list.status === "loading" ? (
+          <div role="status" aria-label="Memuat media">
+            <div aria-hidden="true" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+              {Array.from({ length: 10 }, (_, index) => (
+                <Skeleton key={index} className="aspect-[4/3] w-full rounded-lg" />
               ))}
             </div>
           </div>
+        ) : empty ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-12 text-center text-sm text-gray-600">
+            <p>{emptyText}</p>
+            {resetButton && <div className="mt-3">{resetButton}</div>}
+          </div>
+        ) : (
+          <ul
+            aria-label="Daftar media"
+            aria-busy={list.refreshing}
+            className={cn("grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5", list.refreshing && "opacity-60")}
+          >
+            {list.items.map((item) => (
+              <MediaTile
+                key={item.id}
+                item={item}
+                active={active?.id === item.id}
+                ticked={canWrite ? selection.ids.has(item.id) : undefined}
+                onOpen={() => setActive(item)}
+                onTick={canWrite ? () => selection.toggle(item.id) : undefined}
+              />
+            ))}
+          </ul>
+        )}
 
-          {canWrite && (
-            <MediaDropzone
-              accept={ACCEPT}
-              multiple
-              chooserRef={chooser}
-              kindFor={kindForFile}
-              onUploaded={(result, file) => {
-                setActive(mediaItemFromUpload(result, kindForFile(file), me.name));
-                list.refetch();
-              }}
+        <Pagination page={query.page} pageSize={PAGE_SIZE} total={list.total} searchFor={searchFor} selected={selection.rows.length} />
+
+        {canWrite && (
+          <BulkBar count={selection.rows.length} noun="berkas" onClear={selection.clear}>
+            <Button
+              variant="neutral"
+              size="sm"
+              disabled={rows.busy}
+              onClick={() => rows.askDelete(selection.rows)}
+              aria-haspopup="dialog"
+              className="text-red-700 hover:bg-danger-bg hover:text-red-800"
             >
-              Gambar diperkecil otomatis (maks 1920 px). Hingga 5 MB per gambar, 20 MB per PDF.
-            </MediaDropzone>
-          )}
-
-          {query.view === "list" ? (
-            <DataTable<MediaItem>
-              caption="Daftar media"
-              columns={COLUMNS(setActive, active)}
-              rows={list.items}
-              rowKey={idOf}
-              state={list.status}
-              errorMessage={errorText}
-              onRetry={list.refetch}
-              emptyText={emptyText}
-              emptyFiltered={filtered}
-              emptyAction={resetButton}
-              refreshing={list.refreshing}
-              selection={canWrite ? { selected: selection.ids, toggle: selection.toggle, toggleAll: selection.toggleAll, label: (item) => item.name } : undefined}
-            />
-          ) : list.status === "error" ? (
-            <Alert tone="danger">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span>{errorText}</span>
-                <Button size="sm" variant="neutral" onClick={list.refetch}>
-                  Coba lagi
-                </Button>
-              </div>
-            </Alert>
-          ) : list.status === "loading" ? (
-            <div role="status" aria-label="Memuat media">
-              <div aria-hidden="true" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-                {Array.from({ length: 10 }, (_, index) => (
-                  <Skeleton key={index} className="aspect-[4/3] w-full rounded-lg" />
-                ))}
-              </div>
-            </div>
-          ) : empty ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-12 text-center text-sm text-gray-600">
-              <p>{emptyText}</p>
-              {resetButton && <div className="mt-3">{resetButton}</div>}
-            </div>
-          ) : (
-            <ul
-              aria-label="Daftar media"
-              aria-busy={list.refreshing}
-              className={cn("grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5", wide && active && "xl:grid-cols-4", list.refreshing && "opacity-60")}
-            >
-              {list.items.map((item) => (
-                <MediaTile
-                  key={item.id}
-                  item={item}
-                  active={active?.id === item.id}
-                  ticked={canWrite ? selection.ids.has(item.id) : undefined}
-                  onOpen={() => setActive(item)}
-                  onTick={canWrite ? () => selection.toggle(item.id) : undefined}
-                />
-              ))}
-            </ul>
-          )}
-
-          <Pagination page={query.page} pageSize={PAGE_SIZE} total={list.total} searchFor={searchFor} selected={selection.rows.length} />
-
-          {canWrite && (
-            <BulkBar count={selection.rows.length} noun="berkas" onClear={selection.clear}>
-              <Button
-                variant="neutral"
-                size="sm"
-                disabled={rows.busy}
-                onClick={() => rows.askDelete(selection.rows)}
-                aria-haspopup="dialog"
-                className="text-red-700 hover:bg-danger-bg hover:text-red-800"
-              >
-                <Trash2 aria-hidden="true" />
-                Hapus
-              </Button>
-            </BulkBar>
-          )}
-        </div>
-
-        {wide && (
-          // Taller than the screen on a short one: it scrolls inside itself, or its Hapus would be out of reach until the grid ends.
-          <aside aria-label="Detail media" className="sticky top-6 max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xs">
-            {detail ?? <p className="text-sm text-gray-600">Pilih satu file untuk melihat tautan, teks alternatif, dan tempat pemakaiannya.</p>}
-          </aside>
+              <Trash2 aria-hidden="true" />
+              Hapus
+            </Button>
+          </BulkBar>
         )}
       </div>
 
-      {!wide && (
-        <Modal open={active !== null} title="Detail media" onClose={() => setActive(null)}>
-          <ModalBody className="p-5 md:p-6">{detail}</ModalBody>
-        </Modal>
-      )}
+      <Modal open={active !== null} title="Detail media" onClose={() => setActive(null)}>
+        <ModalBody className="p-5 md:p-6">{detail}</ModalBody>
+      </Modal>
       <ConfirmDialog {...rows.dialogProps} />
     </div>
   );
