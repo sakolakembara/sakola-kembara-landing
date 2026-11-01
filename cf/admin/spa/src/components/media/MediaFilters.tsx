@@ -18,12 +18,15 @@ export interface MediaFiltersProps {
   idPrefix: string;
 }
 
+/** The search and both selects are one width and no wider (Dzul, 2026-11-01); a full row each on a phone. */
+const CONTROL = "min-w-0 max-w-full max-sm:basis-full sm:w-64";
+
 /** The search, the type and the date window above a library's files: the page's and the picker's. */
 export function MediaFilters({ query, onChange, withType, withRange = true, idPrefix }: MediaFiltersProps) {
   const search = useDraftText(query.q, (q) => onChange({ q }), { delay: SEARCH_DELAY_MS, clean: cleanSearch });
   return (
     <div role="search" aria-label="Saring media" className="flex flex-wrap items-center gap-3">
-      <div className="relative min-w-0 max-sm:basis-full sm:w-64">
+      <div className={`relative ${CONTROL}`}>
         <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
           id={`${idPrefix}-q`}
@@ -51,7 +54,7 @@ export function MediaFilters({ query, onChange, withType, withRange = true, idPr
           aria-label="Jenis file"
           value={query.type}
           onChange={(event) => onChange({ type: event.target.value as MediaTypeFilter, q: search.take() })}
-          className="min-w-0 max-sm:basis-full sm:w-40"
+          className={CONTROL}
         >
           <option value="">Semua jenis</option>
           <option value="image">Gambar</option>
@@ -65,7 +68,7 @@ export function MediaFilters({ query, onChange, withType, withRange = true, idPr
           aria-label="Tanggal unggah"
           value={query.range}
           onChange={(event) => onChange({ range: event.target.value as MediaRange, q: search.take() })}
-          className="min-w-0 max-sm:basis-full sm:w-44"
+          className={CONTROL}
         >
           <option value="">Semua tanggal</option>
           {MEDIA_RANGES.map((range) => (

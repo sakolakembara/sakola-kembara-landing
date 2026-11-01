@@ -26,6 +26,7 @@ const PICKER_FILE = "spa/src/components/media/MediaPicker.tsx";
 const MODAL = "spa/src/components/crud/Modal.tsx";
 const DETAIL = "spa/src/components/media/MediaDetail.tsx";
 const PAGE_FILE = "spa/src/pages/media/MediaPage.tsx";
+const FILTERS_FILE = "spa/src/components/media/MediaFilters.tsx";
 const QUEUE = "spa/src/lib/crud/useUploadQueue.ts";
 const MOCK_FILE = "spa/src/mock/handlers/media.ts";
 
@@ -254,8 +255,29 @@ export const mediaSpaChecks = [
   {
     name: "media: the list is not asked for again after an upload",
     file: PAGE_FILE,
-    from: "setActive(mediaItemFromUpload(result, kindForFile(file), me.name));\n                list.refetch();",
-    to: "setActive(mediaItemFromUpload(result, kindForFile(file), me.name));",
+    from: "onUploaded={() => list.refetch()}",
+    to: "onUploaded={() => undefined}",
+    tests: t(PAGE),
+  },
+  {
+    name: "media: a drop opens a file's window over the files that are still going up",
+    file: PAGE_FILE,
+    from: "onUploaded={() => list.refetch()}",
+    to: "onUploaded={() => {\n                setActive(list.items[0] ?? null);\n                list.refetch();\n              }}",
+    tests: t(PAGE),
+  },
+  {
+    name: "media: the search is wider than the two selects, which is what the page had",
+    file: FILTERS_FILE,
+    from: "className={`relative ${CONTROL}`}",
+    to: 'className="relative min-w-0 max-w-full max-sm:basis-full sm:w-72"',
+    tests: t(PAGE),
+  },
+  {
+    name: "media: the search and the selects have no maximum width",
+    file: FILTERS_FILE,
+    from: 'const CONTROL = "min-w-0 max-w-full max-sm:basis-full sm:w-64";',
+    to: 'const CONTROL = "min-w-0 max-sm:basis-full sm:w-64";',
     tests: t(PAGE),
   },
   {

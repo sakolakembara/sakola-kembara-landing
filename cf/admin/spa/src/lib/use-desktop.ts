@@ -27,7 +27,3 @@ export function useIsDesktop(): boolean {
   return useMatches("(min-width: 768px)");
 }
 
-/** At least `lg` (1024 px): where a page has room for a column beside its list (the Media page's panel); below it the same content opens in a window. */
-export function useIsWide(): boolean {
-  return useMatches("(min-width: 1024px)");
-}

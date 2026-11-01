@@ -5,7 +5,7 @@ import { resetUploadsBase, setUploader, type UploadRequest } from "~/lib/crud/up
 import type { MediaItem } from "~/lib/crud/media";
 import { deferred, meBody, renderApp, respond, stubApi } from "./helpers";
 
-// The Media library page (SAKEM-117): the files as a grid or a list, the search and the filters in the address bar, the panel
+// The Media library page (SAKEM-117): the files as a grid or a list, the search and the filters in the address bar, the window
 // of one file (address, text alternative, where it is used, delete), ticking several, dropping new files. Through the whole
 // app, as a person sees it; the API is a stand-in (the Worker's own tests are test/media-library.test.ts).
 
@@ -50,7 +50,12 @@ async function open(routes: Parameters<typeof stubApi>[0] = {}, me: Parameters<t
 }
 
 const tile = (name: string) => screen.findByRole("button", { name });
-const panel = () => screen.getByRole("complementary", { name: "Detail media" });
+const panel = () => screen.getByRole("dialog", { name: "Detail media" });
+// A file's window covers the page, so a second file is opened after the first is closed.
+async function closePanel(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(within(panel()).getByRole("button", { name: "Tutup" }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Detail media" })).toBeNull());
+}
 
 beforeEach(() => resetUploadsBase());
 afterEach(() => {
@@ -59,6 +64,15 @@ afterEach(() => {
 });
 
 describe("the files", () => {
+  test("the search and the two selects are one width, and no wider", async () => {
+    await open();
+    const search = screen.getByRole("searchbox").parentElement!; // the box that holds the icon and the input
+    for (const control of [search, screen.getByLabelText("Jenis file"), screen.getByLabelText("Tanggal unggah")]) {
+      expect(control.className).toContain("sm:w-64");
+      expect(control.className).toContain("max-w-full");
+    }
+  });
+
   test("every file the person may read, newest first as the Worker sends them, in a grid named for what it is; the page has a title and no description", async () => {
     const { api } = await open();
     const grid = await screen.findByRole("list", { name: "Daftar media" });
@@ -163,10 +177,11 @@ describe("search and filters, kept in the address", () => {
   });
 });
 
-describe("the panel of one file", () => {
-  test("opens beside the files: what it is, the address to copy, the text alternative, and where it is used (each a link to its menu)", async () => {
+describe("the window of one file", () => {
+  test("opens on a click, over the files, and no column is kept for it: what it is, the address to copy, the text alternative, and where it is used (each a link to its menu)", async () => {
     const { api, user } = await open();
-    expect(within(panel()).getByText(/Pilih satu file/)).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Detail media" })).toBeNull(); // nothing is open until a file is clicked
+    expect(screen.queryByRole("complementary", { name: "Detail media" })).toBeNull(); // and no column waits beside the files
     await user.click(await tile("hero-kelas.webp"));
     const side = panel();
     expect(within(side).getByRole("heading", { name: "hero-kelas.webp" })).toBeTruthy();
@@ -184,13 +199,14 @@ describe("the panel of one file", () => {
     const { user } = await open();
     await user.click(await tile("wisuda-2026.webp"));
     expect(await within(panel()).findByText("Belum dipakai di mana pun.")).toBeTruthy();
+    await closePanel(user);
     await user.click(await tile("laporan-2025.pdf"));
     expect(within(panel()).queryByLabelText("Teks alternatif")).toBeNull();
     expect(await within(panel()).findByRole("link", { name: "Laporan" })).toBeTruthy();
     expect(within(panel()).getByText("PDF · 2,4 MB · diunggah 12 Okt 2026 oleh Dewi Pengurus")).toBeTruthy();
   });
 
-  test("when the use cannot be checked, the panel says that instead of saying nothing uses the file", async () => {
+  test("when the use cannot be checked, the window says that instead of saying nothing uses the file", async () => {
     const { user } = await open({ [`GET ${LIST}/wisuda-2026`]: respond({ error: "server_error" }, 500) });
     await user.click(await tile("wisuda-2026.webp"));
     expect(await within(panel()).findByText("Tidak bisa memeriksa pemakaian file ini.")).toBeTruthy();
@@ -225,17 +241,18 @@ describe("the panel of one file", () => {
     expect((within(panel()).getByLabelText("Teks alternatif") as HTMLTextAreaElement).maxLength).toBe(300);
   });
 
-  test("another file's panel starts from that file's text, not from what was being typed", async () => {
+  test("another file's window starts from that file's text, not from what was being typed", async () => {
     const { user } = await open();
     await user.click(await tile("wisuda-2026.webp"));
     await user.type(within(panel()).getByLabelText("Teks alternatif"), "belum disimpan");
+    await closePanel(user);
     await user.click(await tile("hero-kelas.webp"));
     expect((within(panel()).getByLabelText("Teks alternatif") as HTMLTextAreaElement).value).toBe("Siswa belajar di kelas");
   });
 });
 
 describe("deleting", () => {
-  test("Hapus asks, names the file, deletes it, says so, and the panel closes and the list is asked for again", async () => {
+  test("Hapus asks, names the file, deletes it, says so, and the window closes and the list is asked for again", async () => {
     const { api, user } = await open({ [`DELETE ${LIST}/wisuda-2026`]: respond(null, 204) });
     await user.click(await tile("wisuda-2026.webp"));
     await user.click(within(panel()).getByRole("button", { name: "Hapus" }));
@@ -245,7 +262,7 @@ describe("deleting", () => {
     expect(await screen.findByText("Berkas “wisuda-2026.webp” berhasil dihapus.")).toBeTruthy();
     expect(api.count(`DELETE ${LIST}/wisuda-2026`)).toBe(1);
     expect(api.last(`DELETE ${LIST}/wisuda-2026`)?.headers["if-match"]).toBeUndefined(); // a media row has no version
-    expect(within(panel()).getByText(/Pilih satu file/)).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Detail media" })).toBeNull();
     expect(api.count(`GET ${LIST}`)).toBe(2);
   });
 
@@ -263,7 +280,7 @@ describe("deleting", () => {
     expect(within(panel()).getByRole("heading", { name: "hero-kelas.webp" })).toBeTruthy(); // still open, still there
   });
 
-  test("the panel says plainly that what is used cannot be deleted", async () => {
+  test("the window says plainly that what is used cannot be deleted", async () => {
     const { user } = await open();
     await user.click(await tile("hero-kelas.webp"));
     expect(within(panel()).getByText("Media yang masih dipakai tidak bisa dihapus.")).toBeTruthy();
@@ -305,7 +322,7 @@ describe("uploading", () => {
   const PDF = "/uploads/report/2026/0a1b2c3d-1111-4222-8333-777788889999-laporan.pdf";
   const fileInput = () => document.querySelector<HTMLInputElement>("main input[type='file']")!;
 
-  test("a picture is sent as a blog image and a PDF as a report; the new file is open in the panel and the list is asked for again", async () => {
+  test("a picture is sent as a blog image and a PDF as a report; no window opens over the next files, and the list is asked for again", async () => {
     const requests: UploadRequest[] = [];
     setUploader(async (request) => {
       requests.push(request);
@@ -318,7 +335,7 @@ describe("uploading", () => {
     expect(requests.map((request) => request.kind)).toEqual(["blog-image", "report"]); // one after the other, by type
     expect(await screen.findByText("2 file diunggah.")).toBeTruthy();
     expect(api.count(`GET ${LIST}`)).toBeGreaterThanOrEqual(2);
-    expect(within(panel()).getByRole("heading", { name: "laporan.pdf" })).toBeTruthy(); // the last one is open
+    expect(screen.queryByRole("dialog", { name: "Detail media" })).toBeNull(); // a window over the files still going up would be in the way
   });
 
   test("the header's Unggah opens the same file chooser as the zone", async () => {
@@ -398,7 +415,7 @@ describe("uploading", () => {
 });
 
 describe("a person who can only read", () => {
-  test("sees every file and its panel, and none of what changes anything: no Unggah, no zone, no ticks, no Hapus, no way to edit the text", async () => {
+  test("sees every file and its window, and none of what changes anything: no Unggah, no zone, no ticks, no Hapus, no way to edit the text", async () => {
     const { user } = await open({}, VIEWER);
     await user.click(await tile("hero-kelas.webp"));
     expect(screen.queryByRole("button", { name: "Unggah" })).toBeNull();
@@ -412,16 +429,15 @@ describe("a person who can only read", () => {
   });
 });
 
-describe("a screen too narrow for a column", () => {
-  test("the same panel opens in a window, and closing it leaves the files as they were", async () => {
-    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }));
+describe("the window of a file", () => {
+  test("closing it leaves the files as they were, and the focus goes back to the file", async () => {
     const { user } = await open();
-    expect(screen.queryByRole("complementary", { name: "Detail media" })).toBeNull();
     await user.click(await tile("hero-kelas.webp"));
     const dialog = await screen.findByRole("dialog", { name: "Detail media" });
     expect(within(dialog).getByRole("heading", { name: "hero-kelas.webp" })).toBeTruthy();
     await user.click(within(dialog).getByRole("button", { name: "Tutup" }));
     await waitFor(() => expect(dialog.hasAttribute("open")).toBe(false));
     expect(await tile("hero-kelas.webp")).toBeTruthy();
+    expect(document.activeElement).toBe(await tile("hero-kelas.webp"));
   });
 });
