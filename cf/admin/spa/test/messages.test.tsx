@@ -46,9 +46,9 @@ async function openList(who: Who, routes: Parameters<typeof stubApi>[0] = {}, pa
 }
 
 describe("the list", () => {
-  test("the legacy inbox: the two numbers, three pills with counts, a row per message with its unread dot, sender, subject, a line of text and the time", async () => {
+  test("the legacy inbox: three pills with counts, a row per message with its unread dot, sender, subject, a line of text and the time", async () => {
     await openList(["viewer", []]);
-    expect(screen.getByText("12 total · 3 belum dibaca.")).toBeTruthy();
+    expect(screen.queryByText(/total · 3 belum dibaca/)).toBeNull(); // the numbers are in the pills only, not under the title
     const pills = within(screen.getByRole("navigation", { name: "Saring pesan" })).getAllByRole("link");
     expect(pills.map((pill) => pill.textContent)).toEqual(["Semua (12)", "Belum dibaca (3)", "Sudah dibaca (9)"]);
     expect(pills.map((pill) => pill.getAttribute("href"))).toEqual(["/messages", "/messages?filter=unread", "/messages?filter=read"]);
@@ -127,7 +127,6 @@ describe("the list", () => {
       stubApi({ "GET /api/me": respond(meBody("viewer")), ...empty });
       const view = renderApp(path);
       expect(await screen.findByText(text), path).toBeTruthy();
-      expect(screen.getByText("0 total · 0 belum dibaca.")).toBeTruthy();
       view.unmount();
     }
   });

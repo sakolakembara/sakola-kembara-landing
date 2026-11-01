@@ -161,7 +161,7 @@ describe("the list", () => {
     expect(within(published).getByText("21 Mei 2026")).toBeTruthy();
     expect(within(published).getByText("Featured")).toBeTruthy();
     expect(within(published).getByText("Career")).toBeTruthy();
-    expect(screen.getByText("2 total artikel")).toBeTruthy();
+    expect(screen.queryByText(/total artikel/)).toBeNull(); // the title is the whole header
   });
 
   test("a viewer reads the list and is offered nothing to change: no create button, no Edit, no Hapus, 'Lihat' instead", async () => {
@@ -208,7 +208,7 @@ describe("the list", () => {
     await user.selectOptions(screen.getByLabelText("Status"), "published");
     await waitFor(() => expect(api.last(`GET ${LIST}`)?.url).toBe(`${LIST}?page=1&pageSize=20&q=kisah&status=published&category=Career&sort=-updatedAt`));
     await waitFor(() => expect(location()).toBe("/blog?q=kisah&status=published&category=Career"));
-    expect(await screen.findByText(/artikel ditampilkan/)).toBeTruthy();
+    expect(screen.queryByText(/artikel ditampilkan/)).toBeNull();
   });
 
   test("the empty states: an invitation for someone who can write, the legacy sentence when a filter matches nothing", async () => {

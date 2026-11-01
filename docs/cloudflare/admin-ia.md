@@ -139,7 +139,7 @@ Halaman awal sama untuk ketiganya (Dashboard) karena Dashboard tidak punya area:
 Keduanya di **Sistem**, di bawah semua pekerjaan harian, karena menjawab "siapa dan apa yang terjadi" tentang admin itu sendiri.
 
 - **Aktivitas:** hanya baca. **Diputuskan 2026-10-12: hanya `super_admin`** (usulan awal: semua peran, pertanyaan 5; log memuat catatan tinjau dan nama serta email pengirim pesan). Satu nama dipakai di mana-mana, deskripsinya dikoreksi menjadi catatan aksi admin **dan** kejadian sistem (pendaftaran siswa, pesan masuk, verifikasi email, reset kata sandi). Rujukan `audit_log` di teks panel tinjau diganti kata biasa. Ringkasan aktivitas tidak tampil di Dashboard.
-- **Pengaturan:** hanya `super_admin`; disembunyikan dari peran lain (hari ini mereka melihat daftar read-only; pertanyaan 4). Nama menu tetap, subjudul tetap "Kelola admin yang dapat mengakses dashboard".
+- **Pengaturan:** hanya `super_admin`; disembunyikan dari peran lain (hari ini mereka melihat daftar read-only; pertanyaan 4). Nama menu tetap; tanpa subjudul (semua halaman admin hanya memakai judul, 2026-11-01).
 
 ### 3.6 Alternatif (B): contoh di tiket, apa adanya
 

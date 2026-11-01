@@ -48,11 +48,6 @@ export function AnnouncementsPage() {
   return (
     <ListPage<AnnouncementListItem>
       title="Pengumuman"
-      description={(list) => (
-        <p>
-          {list.total.toLocaleString("id-ID")} total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal. Bila ada beberapa, yang terakhir dibuat yang tampil.
-        </p>
-      )}
       apiPath={API_PATH}
       routePath={ROUTE}
       area="komunikasi"

@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import type { Column } from "~/components/crud/DataTable";
 import { ListPage } from "~/components/crud/ListPage";
 import { formatDateTime } from "~/lib/format";
-import { SITE_URL } from "~/lib/site";
 import { CopyButton } from "~/components/crud/CopyButton";
 import { API_PATH, LIST_SPEC, ROUTE, type ShortlinkItem, shortUrl } from "./model";
 
@@ -68,16 +67,6 @@ export function ShortlinksPage() {
   return (
     <ListPage<ShortlinkItem>
       title="Shortlink"
-      description={(list) => {
-        // "N aktif" counts the rows on screen, so it is only told when they are all of them.
-        const everyLink = list.status === "ready" && list.total === list.items.length;
-        return (
-          <p>
-            {list.total.toLocaleString("id-ID")} shortlink{everyLink ? `, ${list.items.filter((row) => row.active).length.toLocaleString("id-ID")} aktif` : ""}. Alamat pendek di <span className="font-mono text-sm">{SITE_URL}/slug</span> yang mengarahkan
-            pengunjung ke tujuan mana pun.
-          </p>
-        );
-      }}
       apiPath={API_PATH}
       routePath={ROUTE}
       area="konten"

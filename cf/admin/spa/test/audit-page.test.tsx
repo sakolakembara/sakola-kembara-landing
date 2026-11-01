@@ -130,9 +130,10 @@ describe("the table", () => {
     }
   });
 
-  test("the description says what the log holds now: admin actions and system events", async () => {
+  test("nothing under the title: the title is the whole header", async () => {
     await openAudit();
-    expect(screen.getByText(/Catatan aksi admin dan kejadian sistem/)).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Aktivitas" })).toBeTruthy();
+    expect(screen.queryByText(/Catatan aksi admin dan kejadian sistem/)).toBeNull();
     expect(screen.queryByText(/Total/)).toBeNull(); // nothing is counted any more
   });
 });

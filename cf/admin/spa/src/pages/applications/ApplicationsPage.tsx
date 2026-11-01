@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router";
 import { Button } from "~/components/ui/button";
-import { DescriptionSkeleton, PageHeader } from "~/components/PageHeader";
+import { PageHeader } from "~/components/PageHeader";
 import { type Column, DataTable } from "~/components/crud/DataTable";
 import { ColumnsMenu } from "~/components/crud/ColumnsMenu";
 import { FilterBar, type FilterSpec } from "~/components/crud/FilterBar";
@@ -77,9 +77,7 @@ function useBatches(): BatchOptions {
 function PendaftarLoading() {
   return (
     <div className="p-6 md:p-10">
-      <PageHeader title="Pendaftar">
-        <DescriptionSkeleton />
-      </PageHeader>
+      <PageHeader title="Pendaftar" />
       <PendaftarTabs current="applicants" />
       <fieldset disabled className="contents">
         <FilterBar
@@ -168,7 +166,6 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
   const columnChoice = useColumnChoice(API_PATH, columns);
 
   const batchValue = list.query.filters.batch;
-  const chosen = batchValue && batchValue !== ALL_BATCHES ? batches.find((batch) => batch.id === batchValue) : undefined;
 
   // The filter bar has one "no filter" option per select (the empty value, which it leaves out of the address).
   // For the batch that would mean "choose nothing, so open the newest": here it means every batch, which the
@@ -188,24 +185,7 @@ function ApplicantList({ batches }: { batches: BatchItem[] }) {
 
   return (
     <div className="p-6 md:p-10">
-      <PageHeader title="Pendaftar">
-        {list.status === "loading" ? (
-          // The count is not known until the list is there: a "0 pendaftar" that changes a moment later would be false.
-          <DescriptionSkeleton />
-        ) : (
-          <p className="text-gray-600">
-            {chosen ? (
-              <>
-                Batch <b>{chosen.name}</b>. {list.total.toLocaleString("id-ID")} pendaftar.
-              </>
-            ) : (
-              <>
-                Daftar pendaftar siswa Sakola Kembara. {list.total.toLocaleString("id-ID")} pendaftar{isFiltered({ ...list.query, filters: otherFilters }) ? " (filter aktif)" : ""}.
-              </>
-            )}
-          </p>
-        )}
-      </PageHeader>
+      <PageHeader title="Pendaftar" />
 
       {/* For who may purge: the drafts that hold files (SAKEM-093). A viewer sees no tabs. */}
       <PendaftarTabs current="applicants" />

@@ -163,9 +163,7 @@ export function AuditPage() {
 
   return (
     <div className="p-6 md:p-10">
-      <PageHeader title="Aktivitas">
-        <p className="text-gray-600">Catatan aksi admin dan kejadian sistem, seperti pendaftaran siswa, pesan masuk, verifikasi email, dan reset password. Yang terbaru di atas.</p>
-      </PageHeader>
+      <PageHeader title="Aktivitas" />
 
       <form
         onSubmit={submit}

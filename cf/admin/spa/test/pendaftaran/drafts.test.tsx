@@ -107,10 +107,11 @@ describe("who may open the page", () => {
 });
 
 describe("the list", () => {
-  test("it says what it is, what it does not show, and the rule", async () => {
+  test("nothing under the title; the rule is in each row (\"Bisa dihapus mulai\"), and the days are the Worker's", async () => {
     await openDrafts(editorWho);
-    expect(screen.getByText("Siswa yang sudah mengunggah berkas tetapi belum mengirim pendaftaran. Nama dan isian mereka tidak ditampilkan.")).toBeTruthy();
-    expect(screen.getByText(`Berkas draf baru bisa dihapus setelah ${DRAFT_PURGE_MIN_DAYS} hari tanpa perubahan. Berkas tidak dihapus otomatis.`)).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Draf dengan berkas" })).toBeTruthy();
+    expect(screen.queryByText(/Nama dan isian mereka tidak ditampilkan/)).toBeNull();
+    expect(screen.queryByText(/Berkas tidak dihapus otomatis/)).toBeNull();
     expect(DRAFT_PURGE_MIN_DAYS).toBe(30);
   });
 

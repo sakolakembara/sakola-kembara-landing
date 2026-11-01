@@ -61,7 +61,6 @@ describe("the list opens on the newest batch", () => {
     expect(api.calls.filter((call) => call.path === LIST).every((call) => call.url.includes("batch=b26"))).toBe(true);
     expect(api.last(`GET ${BATCHES}`)?.url).toBe(`${BATCHES}?pageSize=100&sort=-year`);
     expect(screen.getByLabelText("Batch")).toHaveProperty("value", "b26");
-    expect(screen.getByText(/Gen 7 — 2026\/2027/, { selector: "b" })).toBeTruthy();
   });
 
   test("a link that names a status and no batch (the dashboard's tiles count every batch) is left alone: every batch", async () => {
@@ -69,7 +68,7 @@ describe("the list opens on the newest batch", () => {
     expect(location()).toBe("/applications?status=pending");
     expect(lastList(api)).toBe(`${LIST}?page=1&pageSize=20&status=pending&sort=-submittedAt`);
     expect(screen.getByLabelText("Batch")).toHaveProperty("value", "");
-    expect(screen.getByText(/Daftar pendaftar siswa Sakola Kembara\. 2 pendaftar \(filter aktif\)\./)).toBeTruthy();
+    expect(screen.queryByText(/Daftar pendaftar siswa Sakola Kembara/)).toBeNull(); // the title is the whole header
   });
 
   test("a search with no batch is every batch as well, and `batch=all` is asked for as such", async () => {
@@ -198,7 +197,6 @@ describe("the list: the filter bar writes the address, and the search says what 
     await waitFor(() => expect(location()).toBe("/applications?batch=all"));
     await waitFor(() => expect(lastList(api)).toBe(`${LIST}?page=1&pageSize=20&batch=all&sort=-submittedAt`));
     expect(screen.getByLabelText("Batch")).toHaveProperty("value", "");
-    expect(screen.getByText(/Daftar pendaftar siswa Sakola Kembara\. 2 pendaftar\./)).toBeTruthy();
   });
 
   test("'Hapus filter' goes back to where the page opens: the newest batch", async () => {

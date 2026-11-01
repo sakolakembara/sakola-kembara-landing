@@ -5,9 +5,8 @@ import { PageHeader } from "~/components/PageHeader";
 export function NotFoundPage() {
   return (
     <div className="p-6 md:p-10">
-      <PageHeader title="Halaman tidak ditemukan">
-        <p className="text-gray-600">Halaman yang dicari tidak ada atau sudah dipindahkan.</p>
-      </PageHeader>
+      <PageHeader title="Halaman tidak ditemukan" className="mb-2" />
+      <p className="mb-6 text-gray-600">Halaman yang dicari tidak ada atau sudah dipindahkan.</p>
       <Button href="/" variant="neutral">
         Kembali ke Dashboard
       </Button>

@@ -134,7 +134,6 @@ export function ResourcesPage() {
     <div className="p-6 md:p-10">
       <PageHeader
         title="Pusat Dokumen"
-        className="md:items-start"
         actions={
           canWrite ? (
             <Button href={`${ROUTE}/new`} className="whitespace-nowrap">
@@ -142,15 +141,7 @@ export function ResourcesPage() {
             </Button>
           ) : undefined
         }
-      >
-        <p className="max-w-[720px] text-gray-600">
-          Kelola file, link, dan teks yang muncul di{" "}
-          <a href="/gabung-siswa/docs" target="_blank" rel="noopener noreferrer" className="text-primary-blue hover:underline">
-            /gabung-siswa/docs
-          </a>
-          . Formulir pendaftaran menautkan ke kategori di halaman ini secara otomatis.
-        </p>
-      </PageHeader>
+      />
 
       <Flash flash={notice.flash} dismiss={notice.dismiss} />
 

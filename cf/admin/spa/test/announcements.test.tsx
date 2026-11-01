@@ -104,7 +104,7 @@ describe("the list: loading, errors, rows", () => {
     expect(within(grid).getByText("Aktif, di luar jadwal")).toBeTruthy();
     expect(within(grid).getByText("Tidak aktif")).toBeTruthy();
     expect(within(grid).getByText("Aktif, tertutup yang lebih baru")).toBeTruthy();
-    expect(screen.getByText("4 total pengumuman. Strip pengumuman tampil di seluruh halaman publik saat ada satu yang aktif dan dalam jendela jadwal. Bila ada beberapa, yang terakhir dibuat yang tampil.")).toBeTruthy();
+    expect(screen.queryByText(/total pengumuman/)).toBeNull(); // the title is the whole header
   });
 
   // Negative test (scripts/negative-checks-spa-komunikasi.mjs): work the status out from the dates again, in the

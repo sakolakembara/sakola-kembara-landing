@@ -122,9 +122,11 @@ describe("the list: grouped by the five categories of the public page", () => {
     expect(screen.queryByRole("link", { name: "Buka Caption Instagram" })).toBeNull();
   });
 
-  test("the page's description links to the public page", async () => {
+  test("nothing under the title: no sentence and no link to the public page", async () => {
     await openList(["viewer", []]);
-    expect(screen.getByRole("link", { name: "/gabung-siswa/docs" }).getAttribute("href")).toBe("/gabung-siswa/docs");
+    expect(screen.getByRole("heading", { level: 1, name: "Pusat Dokumen" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "/gabung-siswa/docs" })).toBeNull();
+    expect(screen.queryByText(/Kelola file, link, dan teks/)).toBeNull();
   });
 });
 

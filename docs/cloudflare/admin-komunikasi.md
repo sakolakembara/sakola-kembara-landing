@@ -105,7 +105,7 @@ Registered in `spa/src/pages/screens/komunikasi.ts`; the menu entries are in `li
 
 | SPA route | Screen | Notes |
 | --- | --- | --- |
-| `/messages` | `MessagesPage` | header "N total · M belum dibaca.", the pills Semua / Belum dibaca / Sudah dibaca with counts (links `/messages`, `?filter=unread`, `?filter=read`), a row per message (unread dot, sender, address, subject tag, a line of text, time), pages of 20 |
+| `/messages` | `MessagesPage` | header with the title only (the numbers are in the pills, 2026-11-01), the pills Semua / Belum dibaca / Sudah dibaca with counts (links `/messages`, `?filter=unread`, `?filter=read`), a row per message (unread dot, sender, address, subject tag, a line of text, time), pages of 20 |
 | `/messages/:id` | `MessageDetailPage` | the detail frame (`DetailShell`): the sender ends the breadcrumb, the subject tag is next to it, the address is the line under the bar, "Dikirim ..." and the text as typed (line breaks kept) are the card; the bar holds Hapus, Tandai belum dibaca and Balas lewat email (on a phone Hapus and the toggle are icons). The tab's title stays "Detail Pesan" |
 | `/announcements`, `/new`, `/:id/edit` | `AnnouncementsPage`, `AnnouncementFormPage` | the reference list and form of the kit; the list's Status column is the server's `status` |
 
@@ -123,7 +123,7 @@ Mock (`pnpm dev:spa:mock` in `cf/admin`, `?mock=viewer`, `?mock=editor:komunikas
 | "Tandai belum dibaca" toggled, and the page, drawn again, marked the message read again. | `POST /unread` and `/read` are explicit and idempotent; unread stays unread until the message is opened again. New label "Tandai sudah dibaca" for the opposite state. | A toggle depends on the state the page last saw; an explicit verb says what it means. |
 | The inbox read the whole table. | Pages of 20, newest first. | The Worker's CPU and the D1 read budget. |
 | The list sent each message's whole text and CSS cut one line. | `preview`, the first 200 characters. | A message can be 5,000 characters; the list needs a line. |
-| "N total · M belum dibaca" and the pills computed from the whole table. | `GET /counts`. | Pages mean the list no longer holds them all. |
+| The numbers of the pills ("Semua (N)", "Belum dibaca (M)", "Sudah dibaca") computed from the whole table. | `GET /counts`. | Pages mean the list no longer holds them all. |
 | The delete audit row held `fullName`, `email` and `subject`. | Action and id only, `metadata = null`. | Personal data of a visitor does not belong in a trail that more roles can read than the inbox (and SAKEM-082's rule for people-resources). The trail still says which id was deleted, by whom, when. |
 | Delete asked with the browser's `confirm()`. | The kit's dialog (`Hapus pesan?`, `Pesan "<name>" akan dihapus. Tindakan ini tidak bisa dibatalkan.`). | `admin-crud.md` (the one shared dialog). |
 | Every announcement inside its window was tagged "Tampil" by the browser's clock, though the strip shows one. | The server says which one is shown ("Tampil sekarang") and which live ones are covered. | The tag must say what the strip does; "the Tampil tag computed on the server" is in `admin-crud.md` section 19. |

@@ -100,8 +100,8 @@ describe("the list: what a row shows", () => {
     expect(within(grid).getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Foto", "Nama", "Peran", "Kategori", "Urutan", "Aksi"]);
     for (const tag of ["Pengurus", "Dewan Pembina", "Dewan Pengawas"]) expect(within(grid).getByText(tag)).toBeTruthy();
     expect(within(grid).getByText("5")).toBeTruthy();
-    expect(screen.getByText(/3 anggota tampil di/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "/tim" }).getAttribute("href")).toBe("https://sakolakembara.org/tim");
+    expect(screen.queryByText(/anggota tampil di/)).toBeNull(); // the title is the whole header
+    expect(screen.queryByRole("link", { name: "/tim" })).toBeNull();
   });
 
   // A member that predates the admin keeps a path of the public site ("/images/team/..."): this host has no such file, so asked
