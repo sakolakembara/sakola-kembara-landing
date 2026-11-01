@@ -41,6 +41,7 @@ describe("every declared action has a label", () => {
   test("what the new Worker added, in the legacy style", () => {
     expect(activityLabel("upload.create")).toBe("Berkas diunggah");
     expect(activityLabel("upload.delete")).toBe("Berkas unggahan dihapus");
+    expect(activityLabel("upload.update")).toBe("Berkas unggahan diubah");
     expect(activityLabel("admin.deactivate")).toBe("Admin dinonaktifkan");
     expect(activityLabel("admin.reactivate")).toBe("Admin diaktifkan kembali");
     expect(activityLabel("admin.invite_resend")).toBe("Undangan admin dikirim ulang");
@@ -98,5 +99,6 @@ describe("where a row links to", () => {
     expect(activityHref("upload.create", "media", "m1")).toBeNull();
     expect(activityHref("user.password_reset", "user", "u1")).toBeNull();
     expect(activityHref("upload.delete", "media", "m1")).toBeNull();
+    expect(activityHref("upload.update", "media", "m1")).toBeNull();
   });
 });

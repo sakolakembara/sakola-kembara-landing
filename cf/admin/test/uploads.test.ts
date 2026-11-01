@@ -420,7 +420,7 @@ describe("rate limit", () => {
 });
 
 describe("listing for pickers", () => {
-  test("newest first, one kind at a time, paginated, without the uploader or the key", async () => {
+  test("newest first, one kind at a time, paginated, without the key or the uploader's id", async () => {
     const cookie = await editor();
     const paths: string[] = [];
     for (let i = 0; i < 5; i++) {
@@ -436,7 +436,8 @@ describe("listing for pickers", () => {
     const page1 = (await first.json()) as { items: Record<string, unknown>[]; page: number; pageSize: number; total: number; totalPages: number };
     expect(page1).toMatchObject({ page: 1, pageSize: 2, total: 5, totalPages: 3 });
     expect(page1.items.map((item) => item.path)).toEqual([paths[4], paths[3]]);
-    expect(Object.keys(page1.items[0]!).sort()).toEqual(["contentType", "createdAt", "height", "id", "path", "size", "width"]);
+    // The shape of the Media library's items too (test/media-library.test.ts): the uploader is a name, never an id or an address.
+    expect(Object.keys(page1.items[0]!).sort()).toEqual(["altText", "contentType", "createdAt", "height", "id", "kind", "name", "path", "size", "uploadedByName", "width"]);
     expect(page1.items[0]).toMatchObject({ contentType: "image/png", width: 14, height: 20 });
     expect(new Date(page1.items[0]!.createdAt as string).toISOString()).toBe(page1.items[0]!.createdAt);
 
@@ -459,7 +460,8 @@ describe("listing for pickers", () => {
     expect(big).toMatchObject({ page: 1, pageSize: 50 });
     const junk = (await (await call("/api/admin/uploads?kind=blog-image&pageSize=abc&page=x", { cookie })).json()) as { page: number; pageSize: number };
     expect(junk).toMatchObject({ page: 1, pageSize: 20 });
-    for (const query of ["", "?kind=", "?kind=avatar", "?kind=uploads/", "?kind=%25"]) expect((await call(`/api/admin/uploads${query}`, { cookie })).status, query).toBe(400);
+    // No `kind` at all is the Media library (test/media-library.test.ts); a `kind` that is empty or unknown is still a 400.
+    for (const query of ["?kind=", "?kind=avatar", "?kind=uploads/", "?kind=%25"]) expect((await call(`/api/admin/uploads${query}`, { cookie })).status, query).toBe(400);
   });
 
   test("who may list: not students; viewers, super_admin and an editor of the owning area may", async () => {

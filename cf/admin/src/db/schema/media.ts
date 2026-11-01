@@ -32,6 +32,8 @@ export const media = sqliteTable(
     /** Pixels; set for images, null for PDFs and other files. Both or neither. */
     width: integer("width"),
     height: integer("height"),
+    /** The text alternative of an image, written in the Media library (SAKEM-117); null until someone writes one. Up to 300 characters. */
+    altText: text("alt_text"),
     uploadedBy: text("uploaded_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },

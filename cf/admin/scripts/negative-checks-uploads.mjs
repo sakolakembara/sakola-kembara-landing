@@ -10,6 +10,7 @@
 const UPLOADS = "test/uploads.test.ts";
 const SNIFF = "test/uploads-sniff.test.ts";
 const REFERENCES = "test/uploads-references.test.ts";
+const LIBRARY = "test/media-library.test.ts";
 
 export const uploadChecks = [
   // ------------------------------------------------ what a file really is
@@ -164,5 +165,133 @@ export const uploadChecks = [
     from: "WHERE NOT EXISTS (SELECT 1 FROM media WHERE id = ?)`;",
     to: "WHERE ? IS NOT NULL`;",
     tests: UPLOADS,
+  },
+
+  // ------------------------------------------ the Media library (SAKEM-117): the list, the detail, the text alternative
+  {
+    name: "upload: the library lists every purpose, whatever areas the caller may read",
+    file: "src/api/uploads.ts",
+    from: 'const purposes = schema.mediaPurpose.filter((purpose) => can(access.user.role, access.grantedAreas, areaOfPurpose(purpose), "read"));',
+    to: "const purposes = [...schema.mediaPurpose];",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: someone who may read no area is not refused by the library (empty list, or an error, instead of 403)",
+    file: "src/api/uploads.ts",
+    from: "if (purposes.length === 0) return c.json({ error: \"forbidden\" }, 403);",
+    to: "if (purposes.length === -1) return c.json({ error: \"forbidden\" }, 403);",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the search looks at the whole key, so a folder name (\"blog\") finds every file in it",
+    file: "src/api/uploads.ts",
+    from: "sql`instr(lower(${fileNameSql}), ${needle}) > 0`",
+    to: "sql`instr(lower(${schema.media.key}), ${needle}) > 0`",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the search is a LIKE pattern, so a % finds everything",
+    file: "src/api/uploads.ts",
+    from: "sql`instr(lower(${fileNameSql}), ${needle}) > 0`",
+    to: "sql`lower(${fileNameSql}) like ${`%${needle}%`}`",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the search does not look at the text alternative",
+    file: "src/api/uploads.ts",
+    from: "sql`instr(lower(coalesce(${schema.media.altText}, '')), ${needle}) > 0`",
+    to: "sql`0 = 1`",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the search text has no length limit",
+    file: "src/api/uploads.ts",
+    from: 'if (q.length > MAX_SEARCH_LENGTH) return { ok: false, param: "q" };',
+    to: 'if (q.length > 100_000) return { ok: false, param: "q" };',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the image filter takes what is not an image",
+    file: "src/api/uploads.ts",
+    from: "conditions.push(sql`${schema.media.contentType} like 'image/%'`)",
+    to: "conditions.push(sql`${schema.media.contentType} not like 'image/%'`)",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: an unknown type filter is ignored instead of refused",
+    file: "src/api/uploads.ts",
+    from: 'else return { ok: false, param: "type" };',
+    to: "else conditions.push(sql`1 = 1`);",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: `to` includes the instant it names",
+    file: "src/api/uploads.ts",
+    from: '["to", (at: Date) => lt(schema.media.createdAt, at)]',
+    to: '["to", (at: Date) => lt(schema.media.createdAt, new Date(at.getTime() + 1))]',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: `from` leaves out the instant it names",
+    file: "src/api/uploads.ts",
+    from: '["from", (at: Date) => gte(schema.media.createdAt, at)]',
+    to: '["from", (at: Date) => gte(schema.media.createdAt, new Date(at.getTime() + 1))]',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: any text JavaScript can read is a date (a bare 1 is a year)",
+    file: "src/api/uploads.ts",
+    from: "const at = INSTANT.test(raw) ? new Date(raw) : null;",
+    to: "const at = new Date(raw);",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the detail of a file is read by someone outside its area",
+    file: "src/api/uploads.ts",
+    from: 'if (!can(access.user.role, access.grantedAreas, areaOfPurpose(row.purpose), "read")) return c.json({ error: "forbidden" }, 403);',
+    to: 'if (false) return c.json({ error: "forbidden" }, 403);',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the detail says nothing about where the file is used",
+    file: "src/api/uploads.ts",
+    from: "usedBy: await menusUsing(c.env.DB, `/${row.key}`)",
+    to: "usedBy: []",
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the text alternative is written by someone outside the file's area (a viewer, an editor of another area)",
+    file: "src/api/uploads.ts",
+    from: 'if (!can(access.user.role, access.grantedAreas, areaOfPurpose(found.purpose), "write")) return c.json({ error: "forbidden" }, 403);',
+    to: 'if (false) return c.json({ error: "forbidden" }, 403);',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the text alternative is saved with the spaces around it",
+    file: "src/api/uploads.ts",
+    from: '    .trim()\n    .max(300, "Teks alternatif maksimal 300 karakter.")',
+    to: '    .max(300, "Teks alternatif maksimal 300 karakter.")',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the text alternative may be ten times as long",
+    file: "src/api/uploads.ts",
+    from: '.max(300, "Teks alternatif maksimal 300 karakter.")',
+    to: '.max(3000, "Teks alternatif maksimal 300 karakter.")',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the audit row of a text change carries the text",
+    file: "src/uploads/store.ts",
+    from: 'JSON.stringify({ fields: ["altText"] })',
+    to: 'JSON.stringify({ fields: ["altText"], altText })',
+    tests: LIBRARY,
+  },
+  {
+    name: "upload: the audit row of a text change is written even when there was no row to change",
+    file: "src/uploads/store.ts",
+    from: "SELECT ?, ?, ?, 'upload.update', 'media', ?, ?\nWHERE EXISTS (SELECT 1 FROM media WHERE id = ?)`;",
+    to: "SELECT ?, ?, ?, 'upload.update', 'media', ?, ?\nWHERE ? IS NOT NULL`;",
+    tests: LIBRARY,
   },
 ];

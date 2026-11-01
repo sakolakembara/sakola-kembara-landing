@@ -9,6 +9,7 @@ const CRUD_ACTIONS = CRUD_NAMES.flatMap((name) => (["create", "update", "delete"
 export const DECLARED_ACTIONS = [
   // Uploads to R2.
   "upload.create",
+  "upload.update",
   "upload.delete",
   // The CRUD kit's three verbs for every resource the legacy admin had.
   ...CRUD_ACTIONS,

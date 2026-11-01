@@ -101,9 +101,25 @@ Every refusal is `{ "error": "<code>", "message": "<Indonesian, ready to show>",
 
 The object is stored first, then the `media` row and the `upload.create` audit row go in one D1 batch; if the batch fails the object is removed again.
 
-### `GET /api/admin/uploads?kind=&page=&pageSize=`
+### `GET /api/admin/uploads?kind=&q=&type=&from=&to=&page=&pageSize=`
 
-What a picker lists: one kind, newest first, `pageSize` 1 to 50 (default 20), `page` from 1. Needs **read** access to the kind's area: a viewer or a super_admin lists every kind, an editor only the kinds of the areas granted to them (an editor has no read-only level, see the permission model in [`d1-schema.md`](d1-schema.md#permission-model)), so an editor of `konten` listing `resource` or `registration-document` gets `403 forbidden` with no items and no count. `{ items: [{ id, path, contentType, size, width, height, createdAt }], page, pageSize, total, totalPages }`; the uploader and the key are not part of it. One D1 round trip (the page and the total).
+What a picker and the Media library list: newest first, `pageSize` 1 to 50 (default 20), `page` from 1.
+
+- **With `kind`** one kind (a picker for a field that takes only that kind: the blog's hero takes only `blog-image`). Needs **read** access to the kind's area: a viewer or a super_admin lists every kind, an editor only the kinds of the areas granted to them (an editor has no read-only level, see the permission model in [`d1-schema.md`](d1-schema.md#permission-model)), so an editor of `konten` listing `resource` or `registration-document` gets `403 forbidden` with no items and no count. A `kind` that is empty or unknown is `400 invalid_kind`.
+- **Without `kind`** the library (SAKEM-117): every file whose area the caller may read (the purposes `blog`, `team` and `report` belong to `konten`, `resource` to `pendaftaran`); a caller who may read no area gets the same `403 { error: "forbidden" }`.
+- **`q`**: plain text matched, without case, against the file's **name** (the slug and extension, never the folders of the key, so "blog" does not find every blog image) and its **text alternative**. It is `instr`, not `LIKE`: a `%` or `_` matches only itself. Blank is no search; more than 100 characters is `400 invalid_query` (`param: "q"`). SQLite folds the case of ASCII only, which is what file names and Indonesian text are made of.
+- **`type`**: `image` or `pdf`; anything else is `400 invalid_query` (`param: "type"`).
+- **`from`, `to`**: `[from, to)` on the upload time. `2026-10-01` (the start of that day, UTC) or a full instant with its zone (`2026-10-01T00:00:00+07:00`); anything looser is `400 invalid_query` with the name of the parameter (a bare `1` would be a year for `Date.parse`).
+
+`{ items: [{ id, path, name, kind, contentType, size, width, height, altText, uploadedByName, createdAt }], page, pageSize, total, totalPages }`: `name` is the slug and extension without the media id, `kind` is the kind folder of the key, `uploadedByName` is the name staff know the uploader by (null once that account is gone). The key, the uploader's id and e-mail address are not part of the answer; the count follows the search and the filters.
+
+### `GET /api/admin/uploads/:id`
+
+One file, `{ item, usedBy }`: the same item as the list and the menus whose registered columns point at the path (`usedBy: ["Blog", "Laporan"]`, once each, from the same registry as the delete). Needs read access to the area of the file's purpose (`403`); `404` for an id that is not one or not there.
+
+### `PATCH /api/admin/uploads/:id`
+
+`{ "altText": "..." }`: the text alternative of an image, the only thing that can change (the file itself never does). Trimmed; an empty text or `null` clears it; up to 300 characters (`400 invalid` with `fields.altText`). Needs **write** access to the area the file was uploaded for (`403`, from the row, as a delete does), `404` for an unknown id, `415` when the body is not JSON. There is no `If-Match`: a media row has no version, and two people writing a sentence for the same picture is not worth a conflict (the last one wins). The `upload.update` audit row is written in the same batch only if the row is there, with `{ fields: ["altText"] }` and never the text. Column `media.alt_text`, migration `0015` (deploy order: the migration before the admin Worker).
 
 ### `DELETE /api/admin/uploads/:id`
 

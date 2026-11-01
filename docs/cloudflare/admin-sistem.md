@@ -113,7 +113,7 @@ limit :pageSize + 1                             -- one more: is there a next pag
 
 | Action or type | Label |
 | --- | --- |
-| `upload.create`, `upload.delete` | Berkas diunggah, Berkas unggahan dihapus |
+| `upload.create`, `upload.update`, `upload.delete` | Berkas diunggah, Berkas unggahan diubah, Berkas unggahan dihapus |
 | `admin.deactivate`, `admin.reactivate`, `admin.invite_resend` | Admin dinonaktifkan, Admin diaktifkan kembali, Undangan admin dikirim ulang |
 | `batch.delete`, `contact_message.create`, `contact_message.update` | Batch dihapus, Pesan dibuat, Pesan diubah (declared by the kit's three verbs; the first two never happen today) |
 | resource type `media` | Berkas unggahan |
