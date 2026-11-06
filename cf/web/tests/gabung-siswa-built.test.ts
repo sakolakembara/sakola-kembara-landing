@@ -120,7 +120,7 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
       .map((tag) => attr(tag, 'href'))
       .filter((href) => href.startsWith('/') && !href.startsWith('//'));
     expect(internal.length).toBeGreaterThan(5);
-    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/blog', '/kontak', '/daftar', '/donasi-sekarang']); // /daftar: the registration shortlink; /donasi-sekarang: the donation shortlink (SAKEM-120); /laporan is no page since SAKEM-105 (the footer says /donasi#laporan)
+    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak', '/daftar', '/donasi-sekarang']); // /daftar: the registration shortlink; /donasi-sekarang: the donation shortlink (SAKEM-120); /donasi: a redirect to it, kept for the footer (SAKEM-121); /laporan: the page with the reports again
     for (const href of internal) {
       const p = href.split(/[?#]/)[0];
       expect(known.has(p) || isLegacyPath(p) || isPortalOwnedPath(p), href).toBe(true);
@@ -145,9 +145,9 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('the sitemap still lists /gabung-siswa (and, like the Next sitemap, not the documents page) and no longer /laporan (a redirect since SAKEM-105); it is rendered by the Worker now, so its output is checked in scripts/e2e.mjs', () => {
+  it('the sitemap still lists /gabung-siswa (and, like the Next sitemap, not the documents page) and no longer /donasi (a redirect since SAKEM-121); it is rendered by the Worker now, so its output is checked in scripts/e2e.mjs', () => {
     const paths = STATIC_ROUTES.map((r) => r.path);
-    expect(paths).not.toContain('/laporan');
+    expect(paths).not.toContain('/donasi');
     expect(paths).toContain('/gabung-siswa');
     expect(paths).not.toContain('/gabung-siswa/docs');
     expect(existsSync(path.join(client, 'sitemap.xml'))).toBe(false);

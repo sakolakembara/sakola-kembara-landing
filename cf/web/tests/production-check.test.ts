@@ -277,15 +277,13 @@ describe('what each failure looks like', () => {
     expect(one(slash.results, 'T-19', 'FAIL')[0]!.text).toContain('status 307, expected 308');
   });
 
-  it('SAKEM-105 (T-37): /laporan and /laporan/ must each be ONE 308 to /donasi#laporan: a page, another status, another target, a lost fragment or a chain through the slashless address all fail', async () => {
+  it('SAKEM-121 (T-37): /donasi and /donasi/ must each be ONE 307 to /donasi-sekarang: a page, another status, another target or a chain through the slashless address all fail', async () => {
     for (const [url, over, why] of [
-      [`${SITE}/laporan`, { status: 200, headers: {}, body: '<html lang="id-ID"></html>' }, 'status 200, expected 308'],
-      [`${SITE}/laporan`, { status: 307, headers: { location: '/donasi#laporan' } }, 'status 307, expected 308'],
-      [`${SITE}/laporan`, { status: 301, headers: { location: '/donasi#laporan' } }, 'status 301, expected 308'],
-      [`${SITE}/laporan`, { status: 308, headers: { location: '/donasi' } }, 'location https://sakolakembara.org/donasi, expected https://sakolakembara.org/donasi#laporan'],
-      [`${SITE}/laporan`, { status: 308, headers: { location: '/laporan/' } }, 'expected https://sakolakembara.org/donasi#laporan'],
-      [`${SITE}/laporan/`, { status: 308, headers: { location: '/laporan' } }, 'location https://sakolakembara.org/laporan, expected'],
-      [`${SITE}/laporan/`, { status: 404, headers: {} }, 'status 404, expected 308'],
+      [`${SITE}/donasi`, { status: 200, headers: {}, body: '<html lang="id-ID"></html>' }, 'status 200, expected 307'],
+      [`${SITE}/donasi`, { status: 308, headers: { location: '/donasi-sekarang' } }, 'status 308, expected 307'],
+      [`${SITE}/donasi`, { status: 307, headers: { location: '/laporan' } }, 'location https://sakolakembara.org/laporan, expected https://sakolakembara.org/donasi-sekarang'],
+      [`${SITE}/donasi/`, { status: 308, headers: { location: '/donasi' } }, 'status 308, expected 307'],
+      [`${SITE}/donasi/`, { status: 404, headers: {} }, 'status 404, expected 307'],
     ] as [string, Recorded, string][]) {
       const { results } = await run((site) => site.set(url, over));
       const found = one(results, 'T-37', 'FAIL');
@@ -295,14 +293,14 @@ describe('what each failure looks like', () => {
     // the healthy site: both are one hop (the checker never follows a redirect, so a chain would show as the first hop's target)
     const healthy = await run();
     expect(one(healthy.results, 'T-37', 'PASS').map((r) => r.text)).toEqual([
-      expect.stringContaining('/laporan and /laporan/ are each ONE 308 to /donasi#laporan'),
-      expect.stringContaining('/donasi: 200 html with the Laporan section'),
+      expect.stringContaining('/donasi and /donasi/ are each ONE 307 to /donasi-sekarang'),
+      expect.stringContaining('/laporan: 200 html with the Laporan section'),
     ]);
   });
 
-  it('SAKEM-105 (T-37): /donasi must be the 200 with the Laporan section, a healthy reports source and the footer link, and nothing may link to /laporan (the menu lost the item)', async () => {
-    const page = (extra: string, head = '<link rel="canonical" href="https://sakolakembara.org/donasi">') =>
-      `<!doctype html><html lang="id-ID"><head>${head}</head><body><main>${extra}</main><footer><a href="/donasi#laporan">Laporan</a></footer></body></html>`;
+  it('SAKEM-121 (T-37): /laporan must be the 200 with the Laporan section, a healthy reports source and the footer link', async () => {
+    const page = (extra: string, head = '<link rel="canonical" href="https://sakolakembara.org/laporan">') =>
+      `<!doctype html><html lang="id-ID"><head>${head}</head><body><main>${extra}</main><footer><a href="/laporan#laporan">Laporan</a></footer></body></html>`;
     const section = '<section id="laporan"><h2>Laporan</h2></section>';
     const cases: [string, Partial<Recorded> & { headers?: Record<string, string>; drop?: string[] }, RegExp][] = [
       ['a 503', { status: 503 }, /status 503/],
@@ -311,27 +309,25 @@ describe('what each failure looks like', () => {
       ['the stale copy', { headers: { 'x-reports-source': 'stale' } }, /x-reports-source is stale/],
       ['the failure panel (the API cannot answer, nothing cached)', { headers: { 'x-reports-source': 'empty' }, body: page(`${section}<p>Laporan belum dapat ditampilkan</p>`) }, /x-reports-source is empty[\s\S]*the Laporan section shows its failure panel/],
       ['no header at all (is the Worker answering?)', { drop: ['x-reports-source'] }, /x-reports-source is missing/],
-      ['the old menu item', { body: page(`${section}<nav><a href="/laporan">Laporan</a></nav>`) }, /a link to \/laporan/],
-      ['the old menu item with a slash', { body: page(`${section}<a href='/laporan/'>Laporan</a>`) }, /a link to \/laporan/],
-      ['no footer link', { body: `<!doctype html><html lang="id-ID"><head><link rel="canonical" href="https://sakolakembara.org/donasi"></head><body>${section}</body></html>` }, /no link to \/donasi#laporan/],
-      ['a canonical of another page', { body: page(section, '<link rel="canonical" href="https://sakolakembara.org/laporan">') }, /canonical https:\/\/sakolakembara\.org\/laporan/],
+      ['no footer link', { body: `<!doctype html><html lang="id-ID"><head><link rel="canonical" href="https://sakolakembara.org/laporan"></head><body>${section}</body></html>` }, /no link to \/laporan#laporan/],
+      ['a canonical of another page', { body: page(section, '<link rel="canonical" href="https://sakolakembara.org/donasi">') }, /canonical https:\/\/sakolakembara\.org\/donasi/],
     ];
     for (const [name, over, why] of cases) {
-      const { results } = await run((site) => patch(site, `${SITE}/donasi`, over));
+      const { results } = await run((site) => patch(site, `${SITE}/laporan`, over));
       const found = one(results, 'T-37', 'FAIL');
       expect(found.length, name).toBe(1);
       expect(found[0]!.text, name).toMatch(why);
     }
     // a healthy answer from the data cache is fine too
-    const cached = await run((site) => patch(site, `${SITE}/donasi`, { headers: { 'x-reports-source': 'cache' } }));
+    const cached = await run((site) => patch(site, `${SITE}/laporan`, { headers: { 'x-reports-source': 'cache' } }));
     expect(one(cached.results, 'T-37', 'FAIL')).toEqual([]);
   });
 
-  it('SAKEM-105 (T-05): the sitemap lists /donasi and no longer /laporan, which is a redirect', async () => {
-    const withLaporan = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('</urlset>', '<url><loc>https://sakolakembara.org/laporan</loc></url></urlset>') }));
-    expect(one(withLaporan.results, 'T-05', 'FAIL')[0]!.text).toContain('lists /laporan, which is a redirect since SAKEM-105');
-    const withoutDonasi = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('<url><loc>https://sakolakembara.org/donasi</loc></url>', '') }));
-    expect(one(withoutDonasi.results, 'T-05', 'FAIL')[0]!.text).toContain('does not list /donasi');
+  it('SAKEM-121 (T-05): the sitemap lists /laporan and no longer /donasi, which is a redirect', async () => {
+    const withDonasi = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('</urlset>', '<url><loc>https://sakolakembara.org/donasi</loc></url></urlset>') }));
+    expect(one(withDonasi.results, 'T-05', 'FAIL')[0]!.text).toContain('lists /donasi, which is a redirect since SAKEM-121');
+    const withoutLaporan = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('<url><loc>https://sakolakembara.org/laporan</loc></url>', '') }));
+    expect(one(withoutLaporan.results, 'T-05', 'FAIL')[0]!.text).toContain('does not list /laporan');
   });
 
   it('a static asset without the immutable cache-control, or with a cookie (T-20); a missing asset reference is a warning, not a guess', async () => {

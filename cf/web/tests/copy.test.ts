@@ -128,8 +128,9 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     ],
   },
   {
-    name: '/donasi',
-    web: 'src/pages/donasi.astro',
+    // SAKEM-121: the page of the legacy /donasi lives at /laporan now (/donasi is a redirect to the donation form).
+    name: '/donasi (served at /laporan)',
+    web: 'src/pages/laporan.astro',
     root: ['app/(public)/donasi/page.tsx', 'app/(public)/donasi/layout.tsx'],
     phrases: [
       'Dukung Perjalanan Mereka',
@@ -168,7 +169,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     // SAKEM-105: the page /laporan is the Laporan section of /donasi. Every string it had is in the section, the old hero's title and
     // lead as the section's own; the page's <title> and meta description left with the page (the section is not a page), and the
     // text of the failure panel was never in the legacy app (it is a Worker-side state), so it is pinned in tests/public-pages.test.ts.
-    name: 'the Laporan section of /donasi (was /laporan)',
+    name: 'the Laporan section of /laporan (on /donasi from SAKEM-105 to SAKEM-121)',
     web: 'src/components/ReportsSection.astro',
     root: ['app/(public)/laporan/_laporan-content.tsx'],
     phrases: [
@@ -316,7 +317,7 @@ describe('data copied from lib/data.ts and lib/team-types.ts', () => {
     expect(footerLinks.map((l) => l.label)).toEqual(['Team', 'Siswa', 'Donasi', 'Laporan', 'Blog', 'Kontak']);
   });
 
-  it('SAKEM-105: the menu has five items (Laporan left it) and the footer is written out, with "Laporan" where it was but pointing at the section of /donasi', () => {
+  it('SAKEM-105/121: the menu has five items (Laporan left it) and the footer is written out, with "Laporan" where it was, pointing at the section of /laporan', () => {
     expect(navLinks.map((l) => [l.href, l.label])).toEqual([
       ['/', 'Home'],
       ['/tim', 'Team'],
@@ -328,15 +329,13 @@ describe('data copied from lib/data.ts and lib/team-types.ts', () => {
       ['/tim', 'Team'],
       ['/gabung-siswa', 'Siswa'],
       ['/donasi', 'Donasi'],
-      ['/donasi#laporan', 'Laporan'],
+      ['/laporan#laporan', 'Laporan'],
       ['/blog', 'Blog'],
       ['/kontak', 'Kontak'],
     ]);
     // the footer repeats the menu's destinations (but the home page, whose logo links there) and adds Laporan and Kontak: nothing else
     const menu = navLinks.filter((l) => l.href !== '/').map((l) => l.href);
-    expect(footerLinks.filter((l) => !['/donasi#laporan', '/kontak'].includes(l.href)).map((l) => l.href)).toEqual(menu);
-    // no link of the site points at the page that is gone
-    for (const l of [...navLinks, ...footerLinks]) expect(l.href, l.label).not.toMatch(/^\/laporan/);
+    expect(footerLinks.filter((l) => !['/laporan#laporan', '/kontak'].includes(l.href)).map((l) => l.href)).toEqual(menu);
   });
 
   it('the three program cards: title, tag and every bullet', () => {

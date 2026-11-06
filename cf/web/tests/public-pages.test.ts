@@ -2,11 +2,11 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REDIRECTS } from '../redirects.config.mjs';
 import { absoluteUrl, buildSeo } from '~/lib/seo';
-import { REPORTS_SECTION_PATH, footerLinks, navLinks } from '~/lib/site';
+import { DONATION_PATH, REPORTS_SECTION_PATH, footerLinks, navLinks } from '~/lib/site';
 import { importRoot, liveTitle, readRoot, readWeb, webRoot } from './helpers';
 
 // Source-level checks for the pages of SAKEM-080 part D: /gabung-siswa and /gabung-siswa/docs, and
-// the Laporan section of /donasi, which took the place of the page /laporan (SAKEM-105). What they render is
+// the Laporan section of /laporan (SAKEM-105; the page was /donasi until SAKEM-121). What they render is
 // checked in tests/gabung-siswa-built.test.ts (the prerendered page) and in scripts/e2e.mjs (the SSR
 // ones, as the Worker serves them); the copy is compared with the legacy source in tests/copy.test.ts.
 
@@ -74,8 +74,8 @@ describe('the SSR pages that read a list degrade, each in its own way', () => {
     expect(src).not.toMatch(/https?:\/\/(?!sakolakembara\.org)[a-z0-9.-]+\.[a-z]{2,}/i); // no host baked in
   });
 
-  it('/donasi only CARRIES the reports (SAKEM-105): the loader is lib/reports.ts loadReportsSection, the runtime is contentRuntime, and the status and cache headers come from contentSectionHeaders, a 200 whatever the source', () => {
-    const src = readWeb('src/pages/donasi.astro');
+  it('/laporan only CARRIES the reports (SAKEM-105, the page was /donasi until SAKEM-121): the loader is lib/reports.ts loadReportsSection, the runtime is contentRuntime, and the status and cache headers come from contentSectionHeaders, a 200 whatever the source', () => {
+    const src = readWeb('src/pages/laporan.astro');
     expect(src).toContain('export const prerender = false;');
     expect(src).toContain('loadReportsSection(() => ({');
     expect(src).toContain('...contentRuntime(env, Astro.locals.cfContext),');
@@ -165,12 +165,12 @@ describe('/gabung-siswa/docs', () => {
   });
 });
 
-describe('SAKEM-105: the reports have one address, /donasi#laporan, and every place that names it agrees', () => {
+describe('SAKEM-105/121: the reports have one address, /laporan#laporan, and every place that names it agrees', () => {
   const [address, fragment] = REPORTS_SECTION_PATH.split('#');
   const section = readWeb('src/components/ReportsSection.astro');
 
-  it('the address is the page /donasi and the fragment `laporan`', () => {
-    expect(address).toBe('/donasi');
+  it('the address is the page /laporan and the fragment `laporan`', () => {
+    expect(address).toBe('/laporan');
     expect(fragment).toBe('laporan');
   });
 
@@ -182,22 +182,24 @@ describe('SAKEM-105: the reports have one address, /donasi#laporan, and every pl
     expect(readWeb('src/pages/gabung-siswa/docs.astro')).toContain('class="scroll-mt-24"');
   });
 
-  it('/donasi mounts the section once, and the page is rendered by the Worker (a static file could not carry the reports)', () => {
-    const donasi = readWeb('src/pages/donasi.astro');
+  it('/laporan mounts the section once, and the page is rendered by the Worker (a static file could not carry the reports)', () => {
+    const donasi = readWeb('src/pages/laporan.astro');
     expect(donasi.match(/<ReportsSection\b/g)).toHaveLength(1);
     expect(donasi).toContain('export const prerender = false;');
     expect(donasi).not.toContain('export const prerender = true;');
   });
 
-  it('the redirect table sends /laporan and the older /impact-reports to it with a 308, one hop (never to /laporan, never without the fragment)', () => {
-    for (const source of ['/laporan', '/impact-reports', '/impact-reports/[...path]']) {
+  it('the redirect table sends the older /impact-reports to it with a 308, one hop (never without the fragment); /laporan is the page, no rule, and /donasi goes to the donation shortlink', () => {
+    for (const source of ['/impact-reports', '/impact-reports/[...path]']) {
       expect(REDIRECTS[source], source).toEqual({ status: 308, destination: REPORTS_SECTION_PATH });
     }
+    expect(REDIRECTS['/laporan']).toBeUndefined();
+    expect(REDIRECTS['/donasi']).toEqual({ status: 307, destination: DONATION_PATH });
   });
 
-  it('the footer\'s "Laporan" goes to it, the menu has no Laporan, and the page /laporan is gone', () => {
+  it('the footer\'s "Laporan" goes to it, the menu has no Laporan, and the page /donasi is gone (SAKEM-121)', () => {
     expect(footerLinks.filter((l) => l.label === 'Laporan').map((l) => l.href)).toEqual([REPORTS_SECTION_PATH]);
     expect(navLinks.map((l) => l.label)).not.toContain('Laporan');
-    for (const rel of ['src/pages/laporan.astro', 'src/pages/laporan/index.astro']) expect(existsSync(`${webRoot}${rel}`), rel).toBe(false);
+    for (const rel of ['src/pages/donasi.astro', 'src/pages/donasi/index.astro']) expect(existsSync(`${webRoot}${rel}`), rel).toBe(false);
   });
 });

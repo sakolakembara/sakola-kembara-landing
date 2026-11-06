@@ -68,9 +68,11 @@ export const REDIRECTS = {
   // older `/impact-reports` go straight to that section, one hop each. The fragment is part of the destination: the
   // assets layer accepts it in `_redirects` and puts the query before it (checked locally by scripts/e2e.mjs; on a
   // real zone by the runbook's T-37).
-  '/impact-reports': to('/donasi#laporan'),
-  '/impact-reports/[...path]': to('/donasi#laporan'),
-  '/laporan': to('/donasi#laporan'),
+  // SAKEM-121 (Dzul, 2026-11-06): the page moved back to /laporan, so these two point there, and /donasi itself goes to the
+  // donation shortlink (src/lib/site.ts, DONATION_PATH), a 307 because the target of a donation may change.
+  '/impact-reports': to('/laporan#laporan'),
+  '/impact-reports/[...path]': to('/laporan#laporan'),
+  '/donasi': to('/donasi-sekarang', TEMPORARY),
   // WordPress paginated archives (/blog/page/3/) → /blog?page=3.
   '/blog/page/[page]': to('/blog?page=[page]'),
   // Common WordPress entry points that should not 404 at cutover.
@@ -99,13 +101,14 @@ export const REDIRECTS = {
   '/who-we-are': to('/tim'),
   '/our-partners': to('/tim'),
   '/contact-us': to('/kontak'),
-  '/donate': to('/donasi'),
-  '/donation-confirmation': to('/donasi'),
-  '/donation-confirmation-2': to('/donasi'),
-  '/donation-failed': to('/donasi'),
-  '/donation-failed-2': to('/donasi'),
-  '/donor-dashboard': to('/donasi'),
-  '/donor-dashboard-2': to('/donasi'),
+  // SAKEM-121: the WordPress donation pages go straight to the donation shortlink (src/lib/site.ts, DONATION_PATH), one hop.
+  '/donate': to('/donasi-sekarang'),
+  '/donation-confirmation': to('/donasi-sekarang'),
+  '/donation-confirmation-2': to('/donasi-sekarang'),
+  '/donation-failed': to('/donasi-sekarang'),
+  '/donation-failed-2': to('/donasi-sekarang'),
+  '/donor-dashboard': to('/donasi-sekarang'),
+  '/donor-dashboard-2': to('/donasi-sekarang'),
   '/work-with-us': to('/gabung-siswa'),
   // The 7 category archives and 77 tag archives of the live sitemap, and anything below them (/category/news/feed/,
   // /tag/x/page/2/): the blog index is the only listing the new site has. A splat, so a tag added later is covered too.
