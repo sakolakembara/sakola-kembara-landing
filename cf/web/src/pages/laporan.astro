@@ -54,9 +54,11 @@ Astro.response.headers.set('x-reports-source', reports.source);
 <Base
   seo={{
     kind: 'page',
-    title: 'Donasi',
+    // SAKEM-125 (approved by Dzul, 2026-11-06): the page carries the donation details AND the reports since SAKEM-121, so its head
+    // says both. The rest of the page is the legacy copy, unchanged.
+    title: 'Donasi & Laporan',
     description:
-      'Dukung pendidikan setara untuk anak Indonesia. Donasi via QRIS atau transfer bank ke Sakola Kembara. Setiap kontribusi membuka pintu perguruan tinggi bagi siswa dari keluarga kurang mampu.',
+      'Dukung pendidikan setara untuk anak Indonesia lewat QRIS atau transfer bank, lalu unduh laporan tahunan, keuangan, dampak, dan donasi Sakola Kembara.',
     path: '/laporan',
   }}
 >

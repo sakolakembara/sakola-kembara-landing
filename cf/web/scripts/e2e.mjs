@@ -1034,7 +1034,6 @@ await check('program', 'the sitemap lists the three program URLs and /laporan', 
 // /laporan is rendered by the Worker since SAKEM-105 (it carries the Laporan section, so it reads the API); it used to be a static file of the
 // assets layer, and tests/program-pages.test.ts read that file. What that test checked is checked here, on the Worker's answer.
 const LEGACY_DONASI = readFileSync(path.join(webRoot, '../../app/(public)/donasi/page.tsx'), 'utf8');
-const LEGACY_DONASI_LAYOUT = readFileSync(path.join(webRoot, '../../app/(public)/donasi/layout.tsx'), 'utf8');
 await check('donasi', '/laporan: 200 html rendered by the Worker, one h1, the legacy head data (title, description, canonical, Open Graph, share image), the site graph only, an empty navbar slot', async () => {
   clearStub();
   const res = await get('/laporan');
@@ -1044,11 +1043,12 @@ await check('donasi', '/laporan: 200 html rendered by the Worker, one h1, the le
   assert.equal(stubHits().length, 0, 'must not reach the origin');
   const html = await text(res);
   assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
-  const description = LEGACY_DONASI_LAYOUT.match(/description:\s*"([^"]+)"/)[1];
-  assert.match(html, /<title>Donasi - Yayasan Sakola Kembara Indonesia<\/title>/);
-  assert.equal(tag(html, /<meta name="description" content="([^"]*)"/), description, 'the description is the legacy one, unchanged');
+  // SAKEM-125: the approved head of /laporan (the legacy one said only Donasi)
+  const description = 'Dukung pendidikan setara untuk anak Indonesia lewat QRIS atau transfer bank, lalu unduh laporan tahunan, keuangan, dampak, dan donasi Sakola Kembara.';
+  assert.match(html, /<title>Donasi &amp; Laporan - Yayasan Sakola Kembara Indonesia<\/title>/);
+  assert.equal(tag(html, /<meta name="description" content="([^"]*)"/), description);
   assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/laporan');
-  assert.equal(tag(html, /<meta property="og:title" content="([^"]*)"/), 'Donasi');
+  assert.equal(tag(html, /<meta property="og:title" content="([^"]*)"/), 'Donasi &amp; Laporan');
   assert.equal(tag(html, /<meta property="og:description" content="([^"]*)"/), description);
   assert.equal(tag(html, /<meta property="og:url" content="([^"]*)"/), 'https://sakolakembara.org/laporan');
   assert.equal(tag(html, /<meta property="og:image" content="([^"]*)"/), 'https://sakolakembara.org/og-default.jpg');
@@ -1460,7 +1460,7 @@ await check('gabung-siswa', 'the Worker logged no error while serving /laporan, 
       assert.ok(html.includes('id="site-nav"') && html.includes('<footer'), 'shell is there');
       assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
       assert.match(html, /<link rel="canonical" href="https:\/\/sakolakembara\.org\/laporan"/);
-      assert.match(html, /<title>Donasi - Yayasan Sakola Kembara Indonesia<\/title>/);
+      assert.match(html, /<title>Donasi &amp; Laporan - Yayasan Sakola Kembara Indonesia<\/title>/);
     });
     for (const l of lists.filter((x) => !x.carries)) {
       await check('degraded', `${l.path}: API failing and nothing cached -> 503 with the page shell and a clear notice, never cached, Retry-After`, async () => {
@@ -1590,7 +1590,7 @@ const SEO_PAGES = [
   { path: '/', title: 'Sakola Kembara, Pendidikan Untuk Semua', exact: true, canonical: 'https://sakolakembara.org/', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage'] },
   { path: '/blog', title: 'Blog &amp; Cerita - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/blog', graph: ['NGO+EducationalOrganization', 'WebSite', 'CollectionPage', 'BreadcrumbList'] },
   { path: '/tim', title: 'Tim Kami - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/tim', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
-  { path: '/laporan', title: 'Donasi - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/laporan', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
+  { path: '/laporan', title: 'Donasi &amp; Laporan - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/laporan', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
   { path: '/gabung-siswa', title: 'Daftar Siswa - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/gabung-siswa', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
   { path: '/gabung-siswa/docs', title: 'Pusat Dokumen &amp; Berkas - Yayasan Sakola Kembara Indonesia', canonical: 'https://sakolakembara.org/gabung-siswa/docs', graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList'] },
   { path: `/blog/${slugs[0]}`, title: ` - Yayasan Sakola Kembara Indonesia`, canonical: `https://sakolakembara.org/blog/${slugs[0]}`, graph: ['NGO+EducationalOrganization', 'WebSite', 'WebPage', 'BreadcrumbList', 'BlogPosting', 'Person'] },
