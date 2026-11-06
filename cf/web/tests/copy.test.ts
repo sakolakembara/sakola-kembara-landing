@@ -162,7 +162,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu.',
       'Hubungi Kami',
       '/kontak',
-      'Dukung pendidikan setara untuk anak Indonesia. Donasi via QRIS atau transfer bank ke Sakola Kembara. Setiap kontribusi membuka pintu perguruan tinggi bagi siswa dari keluarga kurang mampu.',
+      // the legacy <meta description> was replaced by the approved SAKEM-125 one (pinned below)
     ],
   },
   {
@@ -371,5 +371,13 @@ describe('footer branches (SAKEM-111)', () => {
     expect(footer).toContain('href={`https://instagram.com/${branch.instagram}`}');
     expect(footer).toContain('rel="noopener noreferrer"');
     expect(footer).toContain('>{branch.name}</span>');
+  });
+});
+
+describe('SAKEM-125: the head of /laporan (copy approved by Dzul, 2026-11-06)', () => {
+  it('title "Donasi & Laporan" and the approved description, nothing else', () => {
+    const page = readWeb('src/pages/laporan.astro');
+    expect(page).toContain("title: 'Donasi & Laporan',");
+    expect(page).toContain("'Dukung pendidikan setara untuk anak Indonesia lewat QRIS atau transfer bank, lalu unduh laporan tahunan, keuangan, dampak, dan donasi Sakola Kembara.'");
   });
 });
