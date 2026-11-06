@@ -86,11 +86,11 @@ describe.skipIf(!built)('home page build output', () => {
       expect(hero).toContain('<source src="/images/home/hero-loop.mp4" type="video/mp4">');
       expect(hero).not.toMatch(/<button[\s>]/);
     });
-    it('the two actions: the program section and the donation page', () => {
+    it('the two actions: the program section and the donation shortlink (SAKEM-120)', () => {
       const links = all(hero, /<a href="[^"]+"[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
         ['#activities', 'Lihat Program Kami'],
-        ['/donasi', 'Dukung Misi Kami'],
+        ['/donasi-sekarang', 'Dukung Misi Kami'],
       ]);
     });
   });
@@ -187,7 +187,7 @@ describe.skipIf(!built)('home page build output', () => {
       const links = all(cta, /<a href="[^"]+" class="group[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
         ['/daftar', 'Menjadi Siswa Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink
-        ['/donasi', 'Menjadi Donatur Donasi Sekarang'],
+        ['/donasi-sekarang', 'Menjadi Donatur Donasi Sekarang'],
         ['/kontak', 'Menjadi Relawan Gabung Tim'],
         ['/kontak', 'Menjadi Partner Hubungi Kami'],
       ]);

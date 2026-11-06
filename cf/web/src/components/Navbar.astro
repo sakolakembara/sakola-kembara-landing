@@ -3,7 +3,7 @@ import { env } from 'cloudflare:workers';
 import logoLightUrl from '@root/public/images/logo-sakola-kembara-light.png?url';
 import logoUrl from '@root/public/images/logo-sakola-kembara.png?url';
 import { BUILD_PORTAL_ENABLED, portalEnabled } from '~/lib/portal-enabled';
-import { navLinks } from '~/lib/site';
+import { DONATION_PATH, navLinks } from '~/lib/site';
 import { buttonClasses } from '~/lib/ui';
 import Icon from './Icon.astro';
 import NavbarSession from './NavbarSession.astro';
@@ -50,8 +50,9 @@ interface Props {
 }
 const { overlay = false } = Astro.props;
 // The menu's one button (SAKEM-111): Donasi, last, in sunglow. The other destinations stay text links.
+// Since SAKEM-120 the button goes to the donation shortlink, not the page /donasi.
 const menuLinks = navLinks.filter((link) => link.href !== '/donasi');
-const donate = navLinks.find((link) => link.href === '/donasi')!;
+const donate = { ...navLinks.find((link) => link.href === '/donasi')!, href: DONATION_PATH };
 const donateClass = buttonClasses({ variant: 'yellow-on-navy', size: 'sm', className: 'font-bold text-primary-blue-dark' });
 const barClass = 'flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr]';
 const portalOn = portalEnabled({ prerendered: Astro.isPrerendered, build: BUILD_PORTAL_ENABLED, runtime: env.PORTAL_ENABLED });

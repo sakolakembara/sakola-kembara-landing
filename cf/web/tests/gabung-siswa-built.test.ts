@@ -115,12 +115,12 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('every internal link of the page leads somewhere the Worker, the registration shortlink or the origin answers', () => {
+  it('every internal link of the page leads somewhere the Worker, the registration or donation shortlink or the origin answers', () => {
     const internal = links(html)
       .map((tag) => attr(tag, 'href'))
       .filter((href) => href.startsWith('/') && !href.startsWith('//'));
     expect(internal.length).toBeGreaterThan(5);
-    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/blog', '/kontak', '/daftar']); // /daftar: the registration shortlink; /laporan is no page since SAKEM-105 (the footer says /donasi#laporan)
+    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/blog', '/kontak', '/daftar', '/donasi-sekarang']); // /daftar: the registration shortlink; /donasi-sekarang: the donation shortlink (SAKEM-120); /laporan is no page since SAKEM-105 (the footer says /donasi#laporan)
     for (const href of internal) {
       const p = href.split(/[?#]/)[0];
       expect(known.has(p) || isLegacyPath(p) || isPortalOwnedPath(p), href).toBe(true);

@@ -1,6 +1,6 @@
 ---
 import Img from '~/components/Img.astro';
-import { REGISTRATION_PATH } from '~/lib/site';
+import { DONATION_PATH, REGISTRATION_PATH } from '~/lib/site';
 
 /**
  * Homepage "Mari Menjadi Bagian Perubahan" (SAKEM-111, the poster Dzul chose on 2026-10-27; title reworded by Dzul the
@@ -26,7 +26,8 @@ const ctaOptions = [
     photo: '/images/home/hero-poster.jpg',
     title: 'Menjadi Donatur',
     buttonText: 'Donasi Sekarang',
-    href: '/donasi',
+    // SAKEM-120: to the donation shortlink (it was /donasi).
+    href: DONATION_PATH,
   },
   {
     id: 'relawan',

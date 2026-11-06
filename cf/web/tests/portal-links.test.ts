@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { adminOrigin, adminRedirectTarget } from '~/lib/admin-redirect';
-import { REGISTRATION_PATH, REGISTRATION_SLUG, VOLUNTEER_PATH } from '~/lib/site';
+import { DONATION_PATH, REGISTRATION_PATH, REGISTRATION_SLUG, VOLUNTEER_PATH } from '~/lib/site';
 import { readWeb } from './helpers';
 
 // The student portal is a Worker of its own at the path /portal of this host (M4, SAKEM-083) and is NOT live in Phase A of the cutover
@@ -101,6 +101,16 @@ describe('the volunteer link (SAKEM-107)', () => {
     expect(VOLUNTEER_PATH).toBe('/apply');
     expect(readWeb('src/pages/tim.astro')).toContain('<Button href={VOLUNTEER_PATH} size="lg">Bergabung Menjadi Relawan</Button>');
     for (const file of ['src/lib/site.ts', 'src/pages/tim.astro', 'redirects.config.mjs']) {
+      expect(readWeb(file), file).not.toMatch(/s\.id|forms\.gle|docs\.google\.com|bit\.ly|linktr\.ee/);
+    }
+  });
+});
+
+describe('the donation link (SAKEM-120)', () => {
+  it('the donate buttons (navbar, hero, homepage CTA) use DONATION_PATH, /donasi-sekarang, a shortlink name: the address of the donation form is in no file of this repository', () => {
+    expect(DONATION_PATH).toBe('/donasi-sekarang');
+    for (const file of ['src/components/Navbar.astro', 'src/components/sections/HeroSection.astro', 'src/components/sections/CTASection.astro']) {
+      expect(readWeb(file), file).toContain('DONATION_PATH');
       expect(readWeb(file), file).not.toMatch(/s\.id|forms\.gle|docs\.google\.com|bit\.ly|linktr\.ee/);
     }
   });

@@ -21,6 +21,15 @@ export const REGISTRATION_SLUG = 'daftar';
 export const VOLUNTEER_PATH = '/apply';
 
 /**
+ * Where the site's donate buttons go (SAKEM-120, Dzul 2026-11-06): `/donasi-sekarang`, an admin shortlink (D1) that answers a 307
+ * to the donation form, for the navbar's "Donasi", the hero's "Dukung Misi Kami" and the homepage's "Menjadi Donatur". Like the
+ * volunteer form, the form's address is NOT in this repository. Without a shortlink the visitor gets the generic 404, so the
+ * shortlink is created before the site that links to it goes live. The page /donasi stays (QRIS, bank transfer, confirmation,
+ * reports) and is still linked from the footer and the redirects; `navLinks` keeps `/donasi` because it is the verbatim port.
+ */
+export const DONATION_PATH = '/donasi-sekarang';
+
+/**
  * Where the reports are (SAKEM-105, variant A): the "Laporan" section of /donasi, `id="laporan"`
  * (src/components/ReportsSection.astro). The page /laporan is gone: it is a 308 to this address
  * (redirects.config.mjs), and the footer's "Laporan" link points here.

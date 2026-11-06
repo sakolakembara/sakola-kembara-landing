@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PORTAL_ENABLED_VARIABLE, parsePortalEnabled } from '../portal-enabled.config.mjs';
-import { navLinks } from '~/lib/site';
+import { DONATION_PATH, navLinks } from '~/lib/site';
 import { webRoot } from './helpers';
 
 // The student portal switch in the PRERENDERED pages of the build in dist/ (SAKEM-103, Phase A of the cutover). They need `pnpm build`
@@ -48,8 +48,8 @@ describe.skipIf(!built)('the portal switch in the prerendered pages of dist/', (
         const html = readFileSync(file, 'utf8');
         const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
         const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
-        // the text links, then Donasi as the one button (SAKEM-111), in the bar and again in the menu
-        const menu = [...navLinks.filter((l) => l.href !== '/donasi'), ...navLinks.filter((l) => l.href === '/donasi')].map((l) => l.href);
+        // the text links, then Donasi as the one button (SAKEM-111) to the donation shortlink (SAKEM-120), in the bar and again in the menu
+        const menu = [...navLinks.filter((l) => l.href !== '/donasi').map((l) => l.href), DONATION_PATH];
         expect(hrefs, rel(file)).toEqual(['/', ...menu, ...menu]);
         expect(nav, rel(file)).not.toContain('Daftar Sekarang');
         expect(nav, rel(file)).not.toContain('/daftar');
