@@ -10,6 +10,7 @@ import { kindOfKey, keyRange, nameOfKey } from "../uploads/key";
 import { areaOfPurpose, isUploadKind, KIND_RULES, MAX_UPLOAD_BYTES, megabytes, MULTIPART_OVERHEAD_BYTES, uploadAreas, type UploadKind } from "../uploads/kinds";
 import { FILE_TYPES, MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE, SNIFF_WINDOW, sniff, type FileType } from "../uploads/sniff";
 import { deleteUnusedUpload, findMedia, menusUsing, storeUpload, updateAltText } from "../uploads/store";
+import { UnreadableUploadError } from "../uploads/strip-metadata";
 import { getDb } from "../db/client";
 import { invalidQuery, notFound, parseBody } from "./crud";
 
@@ -131,8 +132,15 @@ uploadRoutes.post("/", uploadWriter, async (c) => {
   }
 
   const db = getDb(c.env.DB);
-  const upload = await storeUpload(c.env, db, access.user, { kind, file, type: found.type, width: found.width, height: found.height });
-  return c.json(upload, 201);
+  try {
+    const upload = await storeUpload(c.env, db, access.user, { kind, file, type: found.type, width: found.width, height: found.height });
+    return c.json(upload, 201);
+  } catch (error) {
+    // The header looked right but the image cannot be walked to its end (a JPEG with a broken segment, a PNG with no IEND,
+    // a cut-off file): the same answer as any other broken image. Nothing was stored (SAKEM-101).
+    if (error instanceof UnreadableUploadError) return refuse(c, 422, "invalid_file", MESSAGES.corrupt);
+    throw error;
+  }
 });
 
 const MAX_PAGE_SIZE = 50;
