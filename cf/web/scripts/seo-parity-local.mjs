@@ -44,8 +44,8 @@ let stub;
 let exitCode = 1;
 try {
   // The live stub is made of the candidate's own content, so the baseline is "the same words in WordPress clothes".
-  // (/laporan is not one of them since SAKEM-105: it is a 308 to /donasi#laporan, listed by the tool with the other redirects)
-  const pagePaths = ['/', '/blog', '/tim', '/kontak', '/donasi', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
+  // (/donasi is not one of them since SAKEM-121: it is a 307 to the donation shortlink, listed by the tool with the other redirects)
+  const pagePaths = ['/', '/blog', '/tim', '/kontak', '/laporan', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
   const pages = [];
   for (const p of pagePaths) {
     const res = await fetch(`${stack.base}${p}`, { redirect: 'manual' });
@@ -87,13 +87,10 @@ try {
       assert.deepEqual(r.candidate.chain.map((h) => h.status), [308]);
     }
   });
-  check('SAKEM-105: /laporan/, a page that moved into /donasi, is ONE 308 to a 200 on the candidate: INFO only (no blocker, no chain, not "missing"), the tool reads it as a redirect to a page that exists', () => {
-    const r = byPath.get('/laporan/');
-    assert.ok(r, 'the tool lists /laporan/ (a static source of the redirect table)');
-    assert.deepEqual(r.candidate.chain.map((h) => h.status), [308]);
-    assert.equal(r.candidate.final.path, '/donasi');
-    assert.equal(r.findings.filter((f) => f.severity === 'BLOCKER').length, 0, codes('/laporan/').join(', '));
-    assert.ok(!codes('/laporan/').some((c) => ['url-missing', 'redirect-chain', 'redirect-temporary', 'canonical-other-url'].includes(c)), codes('/laporan/').join(', '));
+  check('SAKEM-121: /donasi/ is listed (a static source of the redirect table) and its first hop on the candidate is the 307 to the donation shortlink (which this stack does not have, so nothing is asserted beyond that hop)', () => {
+    const r = byPath.get('/donasi/');
+    assert.ok(r, 'the tool lists /donasi/');
+    assert.equal(r.candidate.chain[0]?.status, 307);
   });
   check('planted: the pages only the live site has are BLOCKERs (url-missing)', () => {
     for (const p of PLANTED.missingOnCandidate) assert.ok(codes(p).includes('url-missing'), `${p}: ${codes(p).join(', ')}`);
