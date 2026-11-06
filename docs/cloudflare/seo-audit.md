@@ -42,7 +42,7 @@ pnpm seo:parity -- --live-dir ~/private/seo-live/live --candidate-base https://p
 
 ### Where the URL list comes from
 
-1. The main pages and the legacy entry points (`MAIN_PATHS`: `/`, `/blog/`, `/tim/`, `/kontak/`, `/donasi/`, `/gabung-siswa/`, the three program pages, and the static sources of `redirects.config.mjs`, `/laporan/` among them since SAKEM-105: it is a redirect now, not a page of its own), in WordPress spelling (trailing slash).
+1. The main pages and the legacy entry points (`MAIN_PATHS`: `/`, `/blog/`, `/tim/`, `/kontak/`, `/laporan/`, `/gabung-siswa/`, the three program pages, and the static sources of `redirects.config.mjs`, `/donasi/` among them since SAKEM-121: it is a redirect to the donation form now, not a page of its own), in WordPress spelling (trailing slash).
 2. The **86 WordPress article URLs** (`sourceUrl` of `lib/blog-posts.json`) and their **86 `/?p=<wpId>` shortlinks** (WordPress answers those with a redirect to the post; `--no-wp-ids` leaves them out).
 3. Your own list: `--extra FILE` (one path or URL per line, `#` comments).
 4. **The live sitemap(s)**: the `Sitemap:` lines of the live robots.txt, else `/sitemap_index.xml`, `/wp-sitemap.xml`, `/sitemap.xml` (the first that works), following an index into its children (at most 50 files, two levels). `--sitemap PATH` (repeatable) overrides. Sitemap URLs are re-based onto the live base, so a stand-in works.
@@ -158,14 +158,14 @@ Ticket SAKEM-090. The tool was run once against the **real** site on 2026-10-13 
 - Titles are `<page> - Yayasan Sakola Kembara Indonesia` on every page and on 33 of the 86 articles; the other 53 articles have no suffix (a per-post SEO setting). The home title is `Sakola Kembara, Pendidikan Untuk Semua`.
 - JSON-LD is one `@graph`: on an article BlogPosting, BreadcrumbList, Organization, Person, WebPage, WebSite; on archives CollectionPage; a BreadcrumbList on **every** page, the home page included. Robots meta is only `max-image-preview:large`.
 - The 13 pages are **Elementor templates and WordPress defaults** ("Home", "What We Do", "Donate", "Sample Page", Lorem ipsum text): nothing to preserve but the address.
-- `/donasi/`, `/daftar/` and `/apply/` are **301s to external forms** (Google Forms, s.id) on the live site. The new site has its own `/donasi`: decided before, not a parity gap (the tool reports them as `live-unreachable`, info). **Since SAKEM-103 (Phase A, 2026-10-15) `/daftar` is no longer sent to `/gabung-siswa`: it is an admin shortlink, a 307 to the same external form the live `/daftar/` redirects to**, so the address keeps doing what it did (the live one is a 301; the new one is temporary on purpose: each cohort changes the target). **Since SAKEM-107 (2026-10-18) `/apply` is no longer sent to `/gabung-siswa` either: it is an admin shortlink too, a 307 to the volunteer form that the "Bergabung Menjadi Relawan" button of `/tim` uses**, so, like `/daftar`, it keeps doing what the live address does.
+- `/donasi/`, `/daftar/` and `/apply/` are **301s to external forms** (Google Forms, s.id) on the live site. The new site had its own `/donasi` page until SAKEM-121 (2026-11-06); **since then `/donasi` is a 307 to the admin shortlink `/donasi-sekarang`, which is a 307 to the donation form**, so the address does again what the live one did (the tool reports them as `live-unreachable`, info). **Since SAKEM-103 (Phase A, 2026-10-15) `/daftar` is no longer sent to `/gabung-siswa`: it is an admin shortlink, a 307 to the same external form the live `/daftar/` redirects to**, so the address keeps doing what it did (the live one is a 301; the new one is temporary on purpose: each cohort changes the target). **Since SAKEM-107 (2026-10-18) `/apply` is no longer sent to `/gabung-siswa` either: it is an admin shortlink too, a 307 to the volunteer form that the "Bergabung Menjadi Relawan" button of `/tim` uses**, so, like `/daftar`, it keeps doing what the live address does.
 - **Four articles were edited on WordPress after the migration snapshot**: their live `dateModified` is later than ours, and one live headline differs ("Jasa Ahdan Mewujudkan..." against our "Tanpa Jasa Ahdan Mewujudkan..."); they were re-imported on 2026-10-15 ([below](#re-import-of-the-4-articles-edited-on-wordpress-2026-10-15-sakem-096)). One live meta description carries an unresolved SEO-plugin variable (`#post_excerpt` glued to the text), and two live titles are garbage (a title repeated four times, an author name appended).
 
 ### What was changed
 
 | Finding | Change | Where |
 | --- | --- | --- |
-| 13 WordPress pages, 7 category and 77 tag archives answered 404 | **Permanent (308) redirects, one hop**, in the one redirect table: pages to `/`, `/tim`, `/kontak`, `/donasi`, `/gabung-siswa` (`/who-we-are/` and `/our-partners/` go straight to `/tim`: the approved wording says `/tentang-kami`, which is itself a 308 to `/tim`, so pointing at it would be a chain), `/category/*` and `/tag/*` (splats) to `/blog`. The names are reserved for shortlinks in `cf/admin` | `redirects.config.mjs`, `cf/admin/src/shortlinks/reserved.ts` |
+| 13 WordPress pages, 7 category and 77 tag archives answered 404 | **Permanent (308) redirects, one hop**, in the one redirect table: pages to `/`, `/tim`, `/kontak`, `/gabung-siswa` and the donation shortlink `/donasi-sekarang` (the donation pages, since SAKEM-121; `/donasi` before) (`/who-we-are/` and `/our-partners/` go straight to `/tim`: the approved wording says `/tentang-kami`, which is itself a 308 to `/tim`, so pointing at it would be a chain), `/category/*` and `/tag/*` (splats) to `/blog`. The names are reserved for shortlinks in `cf/admin` | `redirects.config.mjs`, `cf/admin/src/shortlinks/reserved.ts` |
 | An old slug that 8 article bodies link to is not an article | `/blog/perjalanan-seorang-founder-rommy-mendirikan-...` redirects to `/blog/perjalanan-seorang-founder` (found by a test that reads every internal link of every article; the bodies were not edited) | `redirects.config.mjs`, `tests/redirects.test.ts` |
 | 6 live articles had no page | **Imported** (below); their old addresses were already covered by the category rules | `content/blog`, `public/blog/images`, `lib/blog-posts.json` |
 | `lang` | `id-ID` for `<html lang>` and JSON-LD, `id_ID` for Open Graph | `src/lib/seo.ts`, `src/layouts/Base.astro` |
@@ -232,9 +232,20 @@ Dzul decided on 2026-10-15 to take the **latest live version** of the four artic
 
 The cause: for a prerendered page (`dist/client/donasi.html`) the Workers assets layer redirects `/donasi/` to `/donasi` itself with a **307**, and `assets.html_handling` has no setting for the status. The fix is **config only**: a static `_redirects` rule per page. Cloudflare documents `_redirects` as applied to static asset responses and does not say which of the two redirects wins, so it was tried in the local emulation (`wrangler dev`, local mode): **`/donasi/` answers 308**, the query string is kept, the origin is not asked, and `/donasi/` + `?utm_source=...` redirects once. A request with a doubled slash (`/donasi//`) still gets the layer's 307; nothing links to it. The rules are generated from the `.html` files of the build, so a page prerendered later is covered, and a test fails if one is not. **Whether the same wins on a real zone is T-19 of the runbook**: until it is checked there, the old warning (`redirect-temporary`) is the thing to look for. (Since SAKEM-105 `/donasi` is a page the Worker renders, so it folds its own slash and is no longer one of these pages: four are left, and T-19 asks `/gabung-siswa/`.)
 
-### The reports moved into /donasi (SAKEM-105)
+### /donasi goes to the donation form, the reports page is /laporan (SAKEM-121)
 
-Decided by Dzul on 2026-10-16: `/laporan` is no longer a page, its content is the Laporan section of `/donasi` ([`web-skeleton.md`](web-skeleton.md#the-laporan-section-of-donasi-sakem-105)). What it means for search:
+Decided by Dzul on 2026-11-06 ([`web-skeleton.md`](web-skeleton.md#donasi-goes-to-the-donation-form-sakem-121)). What it means for search:
+
+- **`/donasi` and `/donasi/` are a temporary hop (307) to `/donasi-sekarang`**, an admin shortlink that is a 307 to the Google Form; a search engine keeps the old URL for a 307 rather than the form. The WordPress donation pages are one 308 to `/donasi-sekarang`.
+- **The page is `/laporan`**: canonical `https://sakolakembara.org/laporan`, still the Donasi `<title>` and description (copy is fixed), the reports section `id="laporan"`. `/impact-reports` is one 308 to `/laporan#laporan`.
+- **The sitemap lists `/laporan` (0.85, the Next priority) and no longer `/donasi`.** The parity tool writes `/laporan/` out in `MAIN_PATHS` and reads `/donasi/` as a static source of the redirect table.
+
+### The reports moved into /donasi (SAKEM-105, reversed in part by SAKEM-121)
+
+Historical record: since SAKEM-121 the page is `/laporan` again and `/donasi` is a redirect (above).
+
+
+Decided by Dzul on 2026-10-16: `/laporan` is no longer a page, its content is the Laporan section of `/donasi` ([`web-skeleton.md`](web-skeleton.md#the-laporan-section-of-donasi-sakem-105-the-page-moved-to-laporan-in-sakem-121)). What it means for search:
 
 - **`/laporan` and `/laporan/` are one permanent hop (308) to `/donasi#laporan`**, answered by the assets layer; `/impact-reports` and below it go to the same place in one hop (they went to `/laporan`, which would have been two). A search engine that has `/laporan` indexed follows the 308 and keeps `/donasi`; the fragment is not sent to a server, so Google sees `/donasi`.
 - **The page's `<title>`, description and JSON-LD (the site graph and its Laporan breadcrumb) went with it.** `/donasi` keeps its own, unchanged: title "Donasi", the same description, canonical `https://sakolakembara.org/donasi`, the site graph and the Donasi breadcrumb. The description does not mention reports; a text that does would be new copy and is Dzul's to approve (a proposal is in the pull request of SAKEM-105). Nothing was changed.
@@ -276,7 +287,7 @@ node scripts/seo-parity.mjs --live-dir ~/seo-reports-sakola-kembara/2026-10-13/r
 
 | Item | Plan |
 | --- | --- |
-| URLs | home `/`; `/blog`; one long article; one short article; `/tim`; `/kontak`; `/gabung-siswa`; `/donasi`; `/laporan` (a page then; since SAKEM-105 a redirect to `/donasi#laporan`, so measure `/donasi`, which carries the reports); one program page (10 URLs, the same paths on the live site and on the candidate) |
+| URLs | home `/`; `/blog`; one long article; one short article; `/tim`; `/kontak`; `/gabung-siswa`; `/donasi`; `/laporan` (a page then, a redirect to `/donasi#laporan` from SAKEM-105, and the page with the reports again since SAKEM-121); one program page (10 URLs, the same paths on the live site and on the candidate) |
 | Strategies | mobile and desktop |
 | Budget | 10 URLs x 2 strategies = 20 combinations per site and occasion, three runs each for a median = 60 requests; three occasions (the live site before the cutover, staging, production the week after) and the live site again for comparison at staging time = about 240 requests in all, a small fraction of the free daily allowance of the API; no key is committed, no key in a ticket, results are summarised in SAKEM-084 as numbers |
 | Method | the PageSpeed Insights page or API with the URL; three runs per URL and the median, since a single lab run varies; record LCP, INP (field only), CLS, TBT, Speed Index, the performance score |

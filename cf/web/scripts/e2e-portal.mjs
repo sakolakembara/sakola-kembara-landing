@@ -33,9 +33,9 @@ if (existsSync(devVars)) {
   process.exit(2);
 }
 
-// /donasi is a rendered page since SAKEM-105 (it carries the Laporan section, so the Worker renders it): it takes the Worker variable, not the build's.
+// /laporan is a rendered page (it carries the Laporan section, so the Worker renders it; it was /donasi from SAKEM-105 to SAKEM-121): it takes the Worker variable, not the build's.
 const PRERENDERED = ['/', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
-const RENDERED = ['/blog', '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
+const RENDERED = ['/blog', '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
 const INVALID = 'yes-please-0123';
 
 const navOf = (html) => html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
@@ -52,7 +52,7 @@ const scriptsOf = (html) => [...html.matchAll(/<script type="module">([\s\S]*?)<
 function stateOf(html) {
   const nav = navOf(html);
   const masuk = (nav.match(/<a href="\/portal\/login" data-auth-link/g) ?? []).length;
-  const menu = ['/', '/tim', '/gabung-siswa', '/blog', '/donasi']; // five items since SAKEM-105; Donasi last, the one button, since SAKEM-111
+  const menu = ['/', '/tim', '/gabung-siswa', '/blog', '/donasi-sekarang']; // five items since SAKEM-105; Donasi last, the one button, since SAKEM-111; to the donation shortlink since SAKEM-120
   const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
   const empty = JSON.stringify(hrefs) === JSON.stringify(['/', ...menu, ...menu]) && !/Masuk|Daftar Sekarang|\/daftar|\/portal|data-auth-link|justify-self-end|mt-6/.test(nav) && (nav.match(/<button\b/g) ?? []).length === 1;
   const sessions = scriptsOf(html).filter((code) => code.includes('get-session')).length;

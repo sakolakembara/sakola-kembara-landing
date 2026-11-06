@@ -5,7 +5,7 @@
 //   pnpm build && pnpm test:e2e:uploads         (E2E_PORT_OFFSET=1700 for a second stack on one machine)
 //
 // Two runs of the same pages:
-//   1. UPLOADS_BASE_URL set    upload paths get the base in front on /tim, /donasi (its Laporan section), /gabung-siswa/docs,
+//   1. UPLOADS_BASE_URL set    upload paths get the base in front on /tim, /laporan (its Laporan section), /gabung-siswa/docs,
 //                              /blog and /blog/<slug> (cover, og:image, JSON-LD, the images and links inside
 //                              the article); legacy static paths, data- attributes and text in code blocks do not
 //   2. UPLOADS_BASE_URL unset  every path is exactly what the API sent, and the base appears nowhere
@@ -114,7 +114,7 @@ async function render({ ports, vars }) {
     };
     return {
       tim: await get('/tim'),
-      donasi: await get('/donasi'),
+      donasi: await get('/laporan'),
       docs: await get('/gabung-siswa/docs'),
       blog: await get('/blog'),
       article: await get(`/blog/${slug}`),
@@ -136,7 +136,7 @@ check('with a base: /tim leaves a legacy static photo path alone', () => {
   assert.ok(withBase.tim.includes('src="/images/team/contoh.jpg"'));
   assert.ok(!withBase.tim.includes(`${BASE}/images/team/`));
 });
-check('with a base: /donasi links the uploaded PDF on the files domain and keeps the legacy links', () => {
+check('with a base: /laporan links the uploaded PDF on the files domain and keeps the legacy links', () => {
   assert.equal(count(withBase.donasi, `href="${BASE}${PATHS.report}"`), 1);
   assert.ok(withBase.donasi.includes('href="/reports/2025-2026/financial/laporan-keuangan-semester-1-contoh.pdf"'));
 });

@@ -34,9 +34,9 @@ if (existsSync(devVars)) {
   process.exit(2);
 }
 
-// /donasi is a rendered page since SAKEM-105 (it carries the Laporan section): it takes the Worker variable, not the build's.
+// /laporan is a rendered page (it carries the Laporan section; it was /donasi from SAKEM-105 to SAKEM-121): it takes the Worker variable, not the build's.
 const PRERENDERED = ['/', '/gabung-siswa', '/program/prapembinaan', '/program/pembinaan', '/program/pasca-pembinaan'];
-const RENDERED = ['/blog', '/tim', '/donasi', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
+const RENDERED = ['/blog', '/tim', '/laporan', '/gabung-siswa/docs', '/kontak', '/no-such-page'];
 const ANYWHERE = /cloudflareinsights|data-cf-beacon|beacon\.min\.js/i;
 const tagsOf = (html) => [...html.matchAll(/<script\b[^>]*>/g)].map((m) => m[0]).filter((t) => ANYWHERE.test(t));
 const decode = (t) => t.replace(/&quot;/g, '"').replace(/&amp;/g, '&');

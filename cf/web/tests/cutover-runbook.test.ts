@@ -231,11 +231,11 @@ describe('section 14 says what the code does', () => {
     expect(row('T-35')).toContain('get-session');
     expect(row('T-35')).toContain('href="/portal/login"');
     expect(row('T-35')).toContain('justify-self-end');
-    // T-37 (SAKEM-105): the reports are a section of Donasi, and /laporan is one hop to it
-    expect(row('T-37')).toContain('`/donasi#laporan`');
-    expect(row('T-37')).toContain('**one 308**');
+    // T-37 (SAKEM-121, SAKEM-105 before it): /donasi is one hop to the donation shortlink, the reports are on /laporan
+    expect(row('T-37')).toContain('**one 307** to `/donasi-sekarang`');
+    expect(row('T-37')).toContain('**one 308** to `/laporan#laporan`');
     expect(row('T-37')).toContain('id=\"laporan\"');
-    expect(row('T-37')).toContain('never a chain through `/laporan`');
+    expect(row('T-37')).toContain('the shortlink is missing or inactive');
     // T-16 and T-17: Phase A
     expect(row('T-16')).toContain('`/login` reaches **WordPress** (a 302 to `/wp-login.php`');
     expect(row('T-16')).toContain("`/register` and `/forgot-password` are the site's **404 page**");
