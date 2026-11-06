@@ -22,6 +22,7 @@ import type { UploadKind } from "./kinds";
 import { KIND_RULES } from "./kinds";
 import { isReferencedSql, labelsInRow, referencingLabelsSql } from "./references";
 import { FILE_TYPES, type FileType } from "./sniff";
+import { prepareUploadBody } from "./strip-metadata";
 
 /** Names are unique per upload (the id is in them), so a file never changes: browsers and the CDN may keep it for good. */
 export const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -47,15 +48,24 @@ export interface UploadInput {
 type Actor = Pick<AuthUser, "id" | "email">;
 type Storage = Pick<Bindings, "UPLOADS" | "DB">;
 
+/**
+ * Stores one upload. The bucket is PUBLIC, so this is the one place every image passes on its way in, and the
+ * place its metadata is taken off (src/uploads/strip-metadata.ts, SAKEM-101): what lands in R2 is the file
+ * WITHOUT its Exif/GPS, XMP and IPTC, and `size` (the media row, the audit row, the answer) is the size of what
+ * was stored, not of what was received. Throws UnreadableUploadError, before anything is written, for an image
+ * whose structure cannot be walked to its end; the route answers it like any other broken image.
+ */
 export async function storeUpload(env: Storage, db: Db, actor: Actor, input: UploadInput, now: Date = new Date()): Promise<UploadRecord> {
   const { kind, file, type, width, height } = input;
   const { contentType, ext } = FILE_TYPES[type];
   const id = crypto.randomUUID();
   const key = buildKey({ kind, now, id, slug: slugFromFilename(file.name), ext });
+  const { body, size } = await prepareUploadBody(file, type);
 
-  // The Blob goes to R2 as it is: no copy through JavaScript. `onlyIf` makes the put refuse an existing key
-  // (it cannot exist, the id is new; this is the belt to the braces of the unique id).
-  const stored = await env.UPLOADS.put(key, file, {
+  // A file with nothing to strip (and every PDF and GIF) is the received Blob, which goes to R2 as it is: no copy
+  // through JavaScript. `onlyIf` makes the put refuse an existing key (it cannot exist, the id is new; this is the
+  // belt to the braces of the unique id).
+  const stored = await env.UPLOADS.put(key, body, {
     httpMetadata: { contentType, cacheControl: IMMUTABLE_CACHE_CONTROL },
     onlyIf: { etagDoesNotMatch: "*" },
   });
@@ -68,7 +78,7 @@ export async function storeUpload(env: Storage, db: Db, actor: Actor, input: Upl
         key,
         purpose: KIND_RULES[kind].purpose,
         contentType,
-        size: file.size,
+        size,
         width,
         height,
         uploadedBy: actor.id,
@@ -77,7 +87,7 @@ export async function storeUpload(env: Storage, db: Db, actor: Actor, input: Upl
         action: "upload.create",
         resourceType: "media",
         resourceId: id,
-        metadata: { kind, path: pathForKey(key), contentType, size: file.size, width, height },
+        metadata: { kind, path: pathForKey(key), contentType, size, width, height },
       }),
     ]);
   } catch (error) {
@@ -86,7 +96,7 @@ export async function storeUpload(env: Storage, db: Db, actor: Actor, input: Upl
     throw error;
   }
 
-  return { id, path: pathForKey(key), contentType, size: file.size, width, height };
+  return { id, path: pathForKey(key), contentType, size, width, height };
 }
 
 export type DeleteOutcome =
