@@ -57,7 +57,7 @@ Astro.response.headers.set('x-reports-source', reports.source);
     title: 'Donasi',
     description:
       'Dukung pendidikan setara untuk anak Indonesia. Donasi via QRIS atau transfer bank ke Sakola Kembara. Setiap kontribusi membuka pintu perguruan tinggi bagi siswa dari keluarga kurang mampu.',
-    path: '/donasi',
+    path: '/laporan',
   }}
 >
   <main class="min-h-screen bg-[#FBFBF5] text-primary-blue-dark">
@@ -169,7 +169,7 @@ Astro.response.headers.set('x-reports-source', reports.source);
       </div>
     </section>
 
-    {/* Laporan (SAKEM-105): the reports, where /laporan used to be. Anchor: /donasi#laporan. */}
+    {/* Laporan (SAKEM-105): the reports, where /laporan used to be. Anchor: /laporan#laporan (SAKEM-121: the page itself moved from /donasi to /laporan). */}
     <ReportsSection section={reports} uploadsBase={env.UPLOADS_BASE_URL} />
   </main>
 </Base>

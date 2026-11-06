@@ -93,15 +93,14 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
     ['/gabung-siswa/form', '?utm_source=ig', 308, '/daftar?utm_source=ig'],
     ['/tentang-kami', '', 308, '/tim'],
     ['/about', '', 308, '/tim'],
-    // SAKEM-105: the reports are a section of /donasi; the old page and the older name both go straight to it (one hop), and a
-    // query is kept BEFORE the fragment
-    ['/impact-reports', '', 308, '/donasi#laporan'],
-    ['/impact-reports/2025/q1', '', 308, '/donasi#laporan'],
-    ['/impact-reports/', '?utm_source=a', 308, '/donasi?utm_source=a#laporan'],
-    ['/laporan', '', 308, '/donasi#laporan'],
-    ['/laporan/', '', 308, '/donasi#laporan'],
-    ['/laporan', '?utm_source=a', 308, '/donasi?utm_source=a#laporan'],
-    ['/laporan/', '?a=1&b=2', 308, '/donasi?a=1&b=2#laporan'],
+    // SAKEM-121: the page with the reports is /laporan again; the older name goes straight to its section (one hop), and a
+    // query is kept BEFORE the fragment. /donasi is a 307 to the donation shortlink.
+    ['/impact-reports', '', 308, '/laporan#laporan'],
+    ['/impact-reports/2025/q1', '', 308, '/laporan#laporan'],
+    ['/impact-reports/', '?utm_source=a', 308, '/laporan?utm_source=a#laporan'],
+    ['/donasi', '', 307, '/donasi-sekarang'],
+    ['/donasi/', '', 307, '/donasi-sekarang'],
+    ['/donasi', '?utm_source=a', 307, '/donasi-sekarang?utm_source=a'],
     ['/blog/page/3', '', 308, '/blog?page=3'],
     ['/blog/page/3/', '', 308, '/blog?page=3'],
     ['/feed', '', 308, '/blog'],
@@ -137,7 +136,7 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
  * 13 pages + 2 archive splats + 1 renamed article slug = 16 rules.
  */
 const SAKEM_090_RULES = 16;
-/** SAKEM-105: `/laporan` (the page that became a section of /donasi). */
+/** SAKEM-105 added `/laporan`; SAKEM-121 swapped it for `/donasi` (to the donation shortlink): still one rule. */
 const SAKEM_105_RULES = 1;
 
 /** [WordPress path as the live sitemap lists it (trailing slash), destination]. */
@@ -149,13 +148,13 @@ const WORDPRESS_PAGES: [string, string][] = [
   ['/who-we-are/', '/tim'],
   ['/our-partners/', '/tim'],
   ['/contact-us/', '/kontak'],
-  ['/donate/', '/donasi'],
-  ['/donation-confirmation/', '/donasi'],
-  ['/donation-confirmation-2/', '/donasi'],
-  ['/donation-failed/', '/donasi'],
-  ['/donation-failed-2/', '/donasi'],
-  ['/donor-dashboard/', '/donasi'],
-  ['/donor-dashboard-2/', '/donasi'],
+  ['/donate/', '/donasi-sekarang'],
+  ['/donation-confirmation/', '/donasi-sekarang'],
+  ['/donation-confirmation-2/', '/donasi-sekarang'],
+  ['/donation-failed/', '/donasi-sekarang'],
+  ['/donation-failed-2/', '/donasi-sekarang'],
+  ['/donor-dashboard/', '/donasi-sekarang'],
+  ['/donor-dashboard-2/', '/donasi-sekarang'],
   ['/work-with-us/', '/gabung-siswa'],
 ];
 
@@ -171,6 +170,7 @@ describe('SAKEM-090: the WordPress pages of the live sitemap', () => {
 
   it('the destination of every one is a real page of this site (a file of src/pages), so none of them ends in a 404', () => {
     for (const [, destination] of WORDPRESS_PAGES) {
+      if (destination === '/donasi-sekarang') continue; // SAKEM-121: the donation shortlink (D1), like /daftar; see tests/portal-links.test.ts
       const rel = destination === '/' ? 'index' : destination.slice(1);
       const candidates = [`src/pages/${rel}.astro`, `src/pages/${rel}/index.astro`];
       expect(
@@ -180,8 +180,8 @@ describe('SAKEM-090: the WordPress pages of the live sitemap', () => {
     }
   });
 
-  it('the pages the approved mapping names are real pages, not redirects: /kontak, /donasi, /gabung-siswa (and /tim, where /tentang-kami ends)', () => {
-    for (const path of ['/kontak', '/donasi', '/gabung-siswa', '/tim', '/blog', '/']) {
+  it('the pages the approved mapping names are real pages, not redirects: /kontak, /gabung-siswa (and /tim, where /tentang-kami ends); /donasi is a redirect since SAKEM-121, its page is /laporan', () => {
+    for (const path of ['/kontak', '/laporan', '/gabung-siswa', '/tim', '/blog', '/']) {
       expect(matchRedirect(path), path).toBeNull();
       expect(evalUnderscoreRedirects(file, path), path).toBeNull();
     }
@@ -189,8 +189,8 @@ describe('SAKEM-090: the WordPress pages of the live sitemap', () => {
   });
 
   it('the query string is carried (a campaign link such as /donate/?utm_source=ig keeps it)', () => {
-    expect(matchRedirect('/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi?utm_source=ig' });
-    expect(evalUnderscoreRedirects(file, '/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi?utm_source=ig' });
+    expect(matchRedirect('/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi-sekarang?utm_source=ig' });
+    expect(evalUnderscoreRedirects(file, '/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi-sekarang?utm_source=ig' });
   });
 });
 
@@ -306,15 +306,15 @@ describe('the trailing-slash fold of the prerendered pages (F-03 of the cutover 
     expect(slashFoldPaths(['x/index.html'])).toEqual([]); // a folder index is served WITH a slash: nothing to fold
   });
 
-  const folded = toUnderscoreRedirects(REDIRECTS, { slashFolds: ['/donasi', '/program/pembinaan'] });
+  const folded = toUnderscoreRedirects(REDIRECTS, { slashFolds: ['/kontak', '/program/pembinaan'] });
 
   it('writes `/<page>/  /<page>  308` for each, before every other rule', () => {
     const lines = folded.trim().split('\n');
-    expect(lines.slice(0, 2)).toEqual(['/donasi/  /donasi  308', '/program/pembinaan/  /program/pembinaan  308']);
-    expect(evalUnderscoreRedirects(folded, '/donasi/')).toEqual({ status: 308, location: '/donasi' });
-    expect(evalUnderscoreRedirects(folded, '/donasi/', '?utm_source=x')).toEqual({ status: 308, location: '/donasi?utm_source=x' });
+    expect(lines.slice(0, 2)).toEqual(['/kontak/  /kontak  308', '/program/pembinaan/  /program/pembinaan  308']);
+    expect(evalUnderscoreRedirects(folded, '/kontak/')).toEqual({ status: 308, location: '/kontak' });
+    expect(evalUnderscoreRedirects(folded, '/kontak/', '?utm_source=x')).toEqual({ status: 308, location: '/kontak?utm_source=x' });
     // the page itself is never redirected (that would be a loop)
-    expect(evalUnderscoreRedirects(folded, '/donasi')).toBeNull();
+    expect(evalUnderscoreRedirects(folded, '/kontak')).toBeNull();
     expect(evalUnderscoreRedirects(folded, '/program/pembinaan')).toBeNull();
   });
 
@@ -344,7 +344,7 @@ describe('parity with the root next.config.ts', () => {
     for (const [, source, destination, permanent] of rules) {
       if (source === '/daftar' || source === '/gabung-siswa/form') continue; // SAKEM-103: see the test below
       if (source === '/apply') continue; // SAKEM-107: a shortlink now, like /daftar, see the test below
-      if (source === '/impact-reports' || source === '/impact-reports/:path*') continue; // SAKEM-105: now straight to /donasi#laporan, see the test below
+      if (source === '/impact-reports' || source === '/impact-reports/:path*') continue; // SAKEM-105/121: straight to /laporan#laporan, see the test below
       const entry = REDIRECTS[toAstro(source)];
       expect(entry, `missing rule for ${source}`).toBeDefined();
       expect(entry.destination).toBe(toAstro(destination));
@@ -352,7 +352,7 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103) and /apply (SAKEM-107), + /program + 2 x 7 category rules + the SAKEM-090 additions + /laporan (SAKEM-105)', () => {
+  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103) and /apply (SAKEM-107), + /program + 2 x 7 category rules + the SAKEM-090 additions + /donasi (SAKEM-121, was /laporan of SAKEM-105)', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
     // next.config.ts: 11 literal rules; the 14 category rules are generated from the list. Gone since SAKEM-075 and M4: the splat over
     // /wp-content/uploads (a rule per mirrored file is written at build time now) and the five auth pages (Phase A, SAKEM-103). /daftar and
@@ -373,11 +373,12 @@ describe('parity with the root next.config.ts', () => {
     expect(next).toContain('destination: "/portal/daftar"');
   });
 
-  it('SAKEM-105: the two /impact-reports rules of next.config.ts went to /laporan, a page of the Next app; here /laporan is no page, so they end on its section of /donasi, and /laporan is a rule of its own', () => {
+  it('SAKEM-121: the two /impact-reports rules of next.config.ts went to /laporan; here they end on its reports section, /laporan is a page again, and /donasi is a 307 to the donation shortlink', () => {
     expect(next).toContain('source: "/impact-reports", destination: "/laporan"');
-    expect(REDIRECTS['/impact-reports']).toEqual({ status: 308, destination: '/donasi#laporan' });
-    expect(REDIRECTS['/impact-reports/[...path]']).toEqual({ status: 308, destination: '/donasi#laporan' });
-    expect(REDIRECTS['/laporan']).toEqual({ status: 308, destination: '/donasi#laporan' });
+    expect(REDIRECTS['/impact-reports']).toEqual({ status: 308, destination: '/laporan#laporan' });
+    expect(REDIRECTS['/impact-reports/[...path]']).toEqual({ status: 308, destination: '/laporan#laporan' });
+    expect(REDIRECTS['/laporan']).toBeUndefined();
+    expect(REDIRECTS['/donasi']).toEqual({ status: 307, destination: '/donasi-sekarang' });
     expect(next).not.toContain('source: "/laporan"');
   });
 });

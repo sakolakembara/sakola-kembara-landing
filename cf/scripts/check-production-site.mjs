@@ -39,7 +39,7 @@ export const EXPECT = {
   securityHeaders: { 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY' },
   /** The names the Worker's `x-blog-source` header may carry on a healthy answer. */
   healthyBlogSources: ['network', 'cache'],
-  /** The same for `x-reports-source` on /donasi (SAKEM-105): `stale` and `empty` mean the Laporan section is showing a copy or its failure panel. */
+  /** The same for `x-reports-source` on /laporan (SAKEM-105; the page was /donasi until SAKEM-121): `stale` and `empty` mean the Laporan section is showing a copy or its failure panel. */
   healthyReportsSources: ['network', 'cache'],
 };
 
@@ -280,8 +280,8 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
         if (!EXPECT.healthyBlogSources.includes(source)) problems.push(`x-blog-source is ${source ?? 'missing'}, expected ${EXPECT.healthyBlogSources.join(' or ')}`);
         const locs = [...sitemap.body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]);
         if (locs.length < minSitemapUrls) problems.push(`${locs.length} URLs, expected at least ${minSitemapUrls}`);
-        if (locs.includes(site('/laporan'))) problems.push('lists /laporan, which is a redirect since SAKEM-105 (a redirect is not a sitemap URL)');
-        if (!locs.includes(site('/donasi'))) problems.push('does not list /donasi');
+        if (locs.includes(site('/donasi'))) problems.push('lists /donasi, which is a redirect since SAKEM-121 (a redirect is not a sitemap URL)');
+        if (!locs.includes(site('/laporan'))) problems.push('does not list /laporan');
         const stray = locs.filter((loc) => !loc.startsWith(`${site('')}/`) && loc !== site(''));
         if (stray.length > 0) problems.push(`${stray.length} URL(s) not on ${HOSTS.site} (for example ${new URL(stray[0]).host})`);
         articlePaths = locs.filter((loc) => loc.startsWith(site('/blog/'))).map((loc) => new URL(loc).pathname);
@@ -406,33 +406,32 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       verdict('T-19', '/gabung-siswa/ (a static page) is a 308 to /gabung-siswa (not the assets layer\'s 307)', problems);
     }
 
-    // ---- the reports are a section of /donasi since SAKEM-105: the old page is ONE permanent hop to it, and the page has the section (T-37)
-    const laporan = await client.get(site('/laporan'));
-    const laporanSlash = await client.get(site('/laporan/'));
+    // ---- SAKEM-121: /donasi is ONE temporary hop to the donation shortlink, and the page with the reports is /laporan again (T-37)
     const donasi = await client.get(site('/donasi'));
-    examine(laporan);
-    examine(laporanSlash);
+    const donasiSlash = await client.get(site('/donasi/'));
+    const laporan = await client.get(site('/laporan'));
     examine(donasi);
+    examine(donasiSlash);
+    examine(laporan);
     {
       const problems = [];
-      expectRedirect(laporan, [308], site('/donasi#laporan'), problems);
-      expectRedirect(laporanSlash, [308], site('/donasi#laporan'), problems);
-      verdict('T-37', '/laporan and /laporan/ are each ONE 308 to /donasi#laporan (the reports are a section of Donasi; no chain, no page of its own)', problems);
+      expectRedirect(donasi, [307], site('/donasi-sekarang'), problems);
+      expectRedirect(donasiSlash, [307], site('/donasi-sekarang'), problems);
+      verdict('T-37', '/donasi and /donasi/ are each ONE 307 to /donasi-sekarang (the donation shortlink; no chain, no page of its own)', problems);
     }
     {
       const problems = [];
-      if (ok(donasi, problems)) {
-        if (donasi.status !== 200) problems.push(`status ${donasi.status}`);
-        if (!/html/i.test(donasi.headers['content-type'] ?? '')) problems.push(`content-type ${donasi.headers['content-type'] ?? 'missing'}`);
-        if (canonicalOf(donasi.body) !== site('/donasi')) problems.push(`canonical ${canonicalOf(donasi.body) ?? 'missing'}`);
-        if (!/<section\b[^>]*\bid=["']laporan["']/i.test(donasi.body)) problems.push('no section with id="laporan"');
-        const source = donasi.headers['x-reports-source'];
+      if (ok(laporan, problems)) {
+        if (laporan.status !== 200) problems.push(`status ${laporan.status}`);
+        if (!/html/i.test(laporan.headers['content-type'] ?? '')) problems.push(`content-type ${laporan.headers['content-type'] ?? 'missing'}`);
+        if (canonicalOf(laporan.body) !== site('/laporan')) problems.push(`canonical ${canonicalOf(laporan.body) ?? 'missing'}`);
+        if (!/<section\b[^>]*\bid=["']laporan["']/i.test(laporan.body)) problems.push('no section with id="laporan"');
+        const source = laporan.headers['x-reports-source'];
         if (!EXPECT.healthyReportsSources.includes(source)) problems.push(`x-reports-source is ${source ?? 'missing'}, expected ${EXPECT.healthyReportsSources.join(' or ')} (is the Worker answering, and does it reach the API?)`);
-        if (/Laporan belum dapat ditampilkan/.test(donasi.body)) problems.push('the Laporan section shows its failure panel');
-        if (/href=["']\/laporan\/?["']/i.test(donasi.body)) problems.push('a link to /laporan (the menu has no Laporan item since SAKEM-105, and the footer goes to /donasi#laporan)');
-        if (!/<a\b[^>]*\bhref=["']\/donasi#laporan["']/i.test(donasi.body)) problems.push('no link to /donasi#laporan (the footer\'s "Laporan")');
+        if (/Laporan belum dapat ditampilkan/.test(laporan.body)) problems.push('the Laporan section shows its failure panel');
+        if (!/<a\b[^>]*\bhref=["']\/laporan#laporan["']/i.test(laporan.body)) problems.push('no link to /laporan#laporan (the footer\'s "Laporan")');
       }
-      verdict('T-37', '/donasi: 200 html with the Laporan section (id="laporan", the list from the API, not its failure panel), the footer links to /donasi#laporan and nothing links to /laporan', problems);
+      verdict('T-37', '/laporan: 200 html with the Laporan section (id="laporan", the list from the API, not its failure panel), and the footer links to /laporan#laporan', problems);
     }
 
     // ---- static assets found in the home page: immutable, no cookie, the same security headers (T-20, T-21), cache status noted

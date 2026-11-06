@@ -41,9 +41,9 @@ describe.skipIf(!built)('/program/<id> build output', async () => {
     expect(readdirSync(path.join(client, 'program')).sort()).toEqual(programs.map((p) => `${p.id}.html`).sort());
   });
 
-  it('the sitemap still lists the three program URLs and /donasi (the sitemap is rendered by the Worker now: its output is checked in scripts/e2e.mjs)', () => {
+  it('the sitemap still lists the three program URLs and /laporan (SAKEM-121; the sitemap is rendered by the Worker now: its output is checked in scripts/e2e.mjs)', () => {
     expect(PROGRAM_IDS).toEqual(programs.map((p) => p.id));
-    expect(STATIC_ROUTES.map((r) => r.path)).toContain('/donasi');
+    expect(STATIC_ROUTES.map((r) => r.path)).toContain('/laporan');
     expect(existsSync(path.join(client, 'sitemap.xml'))).toBe(false);
   });
 

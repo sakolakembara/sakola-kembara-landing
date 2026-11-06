@@ -51,14 +51,14 @@ describe.skipIf(!built)('build output', () => {
     expect(articles.length).toBe(ARTICLE_COUNT);
   });
 
-  it('_redirects sends /laporan (with and without the slash) and the older /impact-reports to /donasi#laporan, one hop, with a 308; the fragment is in the destination (SAKEM-105)', () => {
+  it('_redirects sends the older /impact-reports to /laporan#laporan, one hop, with a 308 (the fragment is in the destination), and /donasi (with and without the slash) to the donation shortlink with a 307 (SAKEM-105, SAKEM-121)', () => {
     const lines = read('client/_redirects').split('\n').map((l) => l.trim().split(/\s+/).join(' '));
-    for (const source of ['/laporan', '/laporan/', '/impact-reports', '/impact-reports/', '/impact-reports/*']) {
-      expect(lines, source).toContain(`${source} /donasi#laporan 308`);
+    for (const source of ['/impact-reports', '/impact-reports/', '/impact-reports/*']) {
+      expect(lines, source).toContain(`${source} /laporan#laporan 308`);
     }
-    // not a rule that points at /laporan (two hops), and nothing folds /donasi/ (the Worker's own fold answers a rendered page)
-    expect(lines.filter((l) => l.split(' ')[1] === '/laporan')).toEqual([]);
-    expect(lines.filter((l) => l.split(' ')[0] === '/donasi/')).toEqual([]);
+    for (const source of ['/donasi', '/donasi/']) expect(lines, source).toContain(`${source} /donasi-sekarang 307`);
+    // /laporan is a page rendered by the Worker: no rule takes it, and nothing folds /laporan/ (the Worker's own fold answers it)
+    expect(lines.filter((l) => ['/laporan', '/laporan/'].includes(l.split(' ')[0]))).toEqual([]);
   });
 
   it('home page: the site graph with the Organization, one h1, the hero image is eager with fetchpriority high and every <img> has width and height', () => {

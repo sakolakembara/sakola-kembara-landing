@@ -49,12 +49,12 @@ describe('pageCacheKey: only the pages that depend on the API data, and only the
     expect(key(`/blog/${'a'.repeat(201)}`)).toBeNull();
   });
 
-  test('the other list pages and the sitemap; /donasi since SAKEM-105 (it carries the reports), and /laporan no more (it is a redirect)', () => {
-    for (const path of ['/tim', '/donasi', '/gabung-siswa/docs', '/sitemap.xml']) expect(key(`${path}?x=1`)).toBe(path);
-    expect(key('/laporan')).toBeNull();
+  test('the other list pages and the sitemap; /laporan (it carries the reports; it was /donasi from SAKEM-105 to SAKEM-121), and /donasi no more (it is a redirect)', () => {
+    for (const path of ['/tim', '/laporan', '/gabung-siswa/docs', '/sitemap.xml']) expect(key(`${path}?x=1`)).toBe(path);
+    expect(key('/donasi')).toBeNull();
   });
 
-  test.each(['/', '/kontak', '/laporan', '/donasi/', '/donasi/x', '/gabung-siswa', '/program/bimbel', '/some-shortlink', '/api/anything', '/admin', '/portal/login', '/tim/extra', '/blog2'])(
+  test.each(['/', '/kontak', '/donasi', '/laporan/', '/laporan/x', '/gabung-siswa', '/program/bimbel', '/some-shortlink', '/api/anything', '/admin', '/portal/login', '/tim/extra', '/blog2'])(
     '%s is never copied (a form, a redirect, a shortlink, a prerendered page or someone else’s)',
     (path) => {
       expect(key(path)).toBeNull();
@@ -88,7 +88,7 @@ describe('cachedForSeconds: a fresh 200 for at most the page’s own s-maxage; n
     expect(cachedForSeconds(page(200, FRESH, { 'set-cookie': 'a=b' }), 30)).toBe(0);
   });
 
-  test('/donasi (SAKEM-105): its answers by the source of the reports are exactly the ones copied: fresh yes, stale and degraded never (a degraded page is a 200 that says no-store)', () => {
+  test('/laporan (SAKEM-105, at /donasi until SAKEM-121): its answers by the source of the reports are exactly the ones copied: fresh yes, stale and degraded never (a degraded page is a 200 that says no-store)', () => {
     const answer = (source: ContentSource) => {
       const { status, headers } = contentSectionHeaders(source);
       return page(status, headers['cache-control'], source === 'empty' ? {} : {});
