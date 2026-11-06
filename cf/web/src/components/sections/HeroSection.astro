@@ -1,4 +1,5 @@
 ---
+import { DONATION_PATH } from '~/lib/site';
 import { buttonClasses } from '~/lib/ui';
 import Img from '~/components/Img.astro';
 
@@ -60,7 +61,7 @@ import Img from '~/components/Img.astro';
         <a href="#activities" class={buttonClasses({ variant: 'white-on-navy', size: 'lg', className: 'px-6 text-primary-blue-dark' })}>
           Lihat Program Kami
         </a>
-        <a href="/donasi" class={buttonClasses({ variant: 'outline-on-navy', size: 'lg', className: 'px-6 border-white/75' })}>
+        <a href={DONATION_PATH} class={buttonClasses({ variant: 'outline-on-navy', size: 'lg', className: 'px-6 border-white/75' })}>
           Dukung Misi Kami
         </a>
       </div>
