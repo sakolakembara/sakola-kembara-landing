@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -13,6 +13,7 @@ import {
   PRODUCTION_ORIGINS,
   SPECS,
   WORKERS,
+  ACCOUNT_PIN,
   buildCommand,
   buildLine,
   builtBeaconProblems,
@@ -24,6 +25,7 @@ import {
   validateVars,
 } from '../../scripts/production-deploy-command.mjs';
 import { TARGETS, checkProductionDryRun, productionDryRunEnv } from '../../scripts/production-dry-run.mjs';
+import { ORG_ACCOUNT_NAME, parseWhoami, pickOrgAccount } from '../../scripts/org-account-id.mjs';
 import { parseBeaconId } from '../web-analytics.config.mjs';
 import { parsePortalEnabled } from '../portal-enabled.config.mjs';
 import { readRoot, repoRoot, webRoot } from './helpers';
@@ -94,7 +96,7 @@ describe('production-deploy-command: what it accepts', () => {
       expect(missingRequired(worker, entries), worker).toEqual([]);
       // every required name, and PORTAL_ENABLED=false in the site's example (optional: Phase A may also leave it out)
       expect(entries.map((e) => e.name).sort()).toEqual([...SPECS[worker].filter((s) => s.required).map((s) => s.name), ...(worker === 'web' ? ['PORTAL_ENABLED'] : [])].sort());
-      expect(buildCommand(worker, entries)).toMatch(/^pnpm exec wrangler deploy /);
+      expect(buildCommand(worker, entries).startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy `)).toBe(true);
     }
   });
 
@@ -308,14 +310,14 @@ describe('production-deploy-command: the lists', () => {
 describe('production-deploy-command: the printed command', () => {
   it('admin: deploys the top level with --env="" (which beats a CLOUDFLARE_ENV left in the shell) and passes every value as one quoted --var', () => {
     expect(buildCommand('admin', parseVarsFile(`${GOOD.admin}\nEMAIL_FROM=Sakola Kembara <no-reply@sakolakembara.org>`))).toBe(
-      `pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org' --var 'EMAIL_FROM:Sakola Kembara <no-reply@sakolakembara.org>'`,
+      `${ACCOUNT_PIN} pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org' --var 'EMAIL_FROM:Sakola Kembara <no-reply@sakolakembara.org>'`,
     );
   });
 
   it('web: deploys the config the production build wrote, and the build line carries the beacon id that the --var carries', () => {
     const entries = parseVarsFile(GOOD.web);
     const command = buildCommand('web', entries);
-    expect(command.startsWith('pnpm exec wrangler deploy -c dist/server/wrangler.json --var ')).toBe(true);
+    expect(command.startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy -c dist/server/wrangler.json --var `)).toBe(true);
     expect(command).toContain(`--var 'WEB_ANALYTICS_BEACON_ID:${BEACON}'`);
     expect(command).toContain(`--var 'GTM_CONTAINER_ID:${GTM}'`);
     expect(buildLine('web', entries)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
@@ -330,7 +332,7 @@ describe('production-deploy-command: the printed command', () => {
   it('never prints a command that is not a deploy of a production Worker', () => {
     for (const worker of WORKER_NAMES) {
       const command = buildCommand(worker, parseVarsFile(GOOD[worker]));
-      expect(command).toMatch(/^pnpm exec wrangler deploy /);
+      expect(command.startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy `)).toBe(true);
       expect(command).not.toContain('--dry-run');
       expect(command).not.toMatch(/staging|workers\.dev|r2\.dev|--remote|login|secret|delete|tail|--keep-vars/);
     }
@@ -338,10 +340,10 @@ describe('production-deploy-command: the printed command', () => {
     expect(WORKERS.web.deploy).toContain('dist/server/wrangler.json');
   });
 
-  it('prints, never runs: no process is started, no request is made, the only environment variables read are CLOUDFLARE_ENV (refused when set) and whether the account is pinned', () => {
+  it('prints, never runs: no process is started, no request is made, the only environment variable read is CLOUDFLARE_ENV (refused when set); the account is pinned by the printed command (SAKEM-123)', () => {
     const source = readFileSync(path.join(repoRoot, 'cf/scripts/production-deploy-command.mjs'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
     expect(source).not.toMatch(/child_process|spawn|execFile|execSync|\bfetch\(|node:http|node:net/);
-    expect([...new Set(source.match(/process\.env[.\w]*/g))].sort()).toEqual(['process.env.CLOUDFLARE_ACCOUNT_ID', 'process.env.CLOUDFLARE_ENV']);
+    expect([...new Set(source.match(/process\.env[.\w]*/g))].sort()).toEqual(['process.env.CLOUDFLARE_ENV']);
   });
 });
 
@@ -382,21 +384,21 @@ describe('production-deploy-command: the program', () => {
     const dir = fresh();
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.admin}\n`);
     const { stdout, stderr } = await exec(dir, ['admin'], { CLOUDFLARE_ACCOUNT_ID: 'pinned' });
-    expect(stdout.trim()).toBe(`pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org'`);
+    expect(stdout.trim()).toBe(`${ACCOUNT_PIN} pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org'`);
     expect(stderr).toContain('sakem-admin (PRODUCTION');
-    expect(stderr).toContain('CLOUDFLARE_ACCOUNT_ID is set');
+    expect(stderr).toContain('the command pins the ORGANISATION account itself, by name');
     expect(stderr).not.toContain('pinned');
     expect(stderr).toContain('pnpm build:spa');
     expect(stderr).toContain('BETTER_AUTH_SECRET, TURNSTILE_SECRET_KEY, RESEND_API_KEY');
     expect(stderr).toContain('not set in .production.vars (optional): EMAIL_FROM');
   });
 
-  it('an account that is not pinned is said loudly, and the Worker names the resources it expects (read from wrangler.jsonc)', async () => {
+  it('the Worker names the resources it expects (read from wrangler.jsonc), and the account is pinned by the command whatever the shell has (SAKEM-123)', async () => {
     const dir = fresh();
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.admin}\n`);
     copyFileSync(path.join(repoRoot, 'cf/admin/wrangler.jsonc'), path.join(dir, 'wrangler.jsonc'));
     const { stderr } = await exec(dir, ['admin']);
-    expect(stderr).toContain('CLOUDFLARE_ACCOUNT_ID is NOT set: do not run anything yet');
+    expect(stderr).not.toContain('CLOUDFLARE_ACCOUNT_ID is NOT set');
     for (const line of ['Worker         sakem-admin', 'D1 database    sakem-admin  (binding DB)', 'R2 bucket      sakem-files  (binding UPLOADS; public, through https://files.sakolakembara.org', 'R2 bucket      sakem-private  (binding PRIVATE_FILES; PRIVATE: must exist', 'Custom Domain  admin.sakolakembara.org', 'workers.dev    off']) {
       expect(stderr, line).toContain(line);
     }
@@ -446,7 +448,7 @@ describe('production-deploy-command: the program', () => {
     const dir = fresh();
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\n`);
     const notBuilt = await exec(dir, ['web']);
-    expect(notBuilt.stdout.trim().startsWith('pnpm exec wrangler deploy -c dist/server/wrangler.json --var ')).toBe(true);
+    expect(notBuilt.stdout.trim().startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy -c dist/server/wrangler.json --var `)).toBe(true);
     expect(notBuilt.stderr).toContain('dist/ is not built yet');
     expect(notBuilt.stderr).toContain(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
     writeDist(dir);
@@ -722,5 +724,29 @@ describe('package scripts and the ignore file', () => {
     expect(WORKERS.admin.file).toBe('.production.vars');
     expect(WORKERS.web.file).toBe('.production.vars');
     expect(webRoot).toContain('cf/web');
+  });
+});
+
+describe('org-account-id (SAKEM-123): the organisation account is picked by name, never by position', () => {
+  const org = { name: ORG_ACCOUNT_NAME, id: 'org-id' };
+  const personal = { name: "Someone@gmail.com's Account", id: 'personal-id' };
+  it('the account named like the organisation one, wherever it is in the list', () => {
+    expect(pickOrgAccount({ accounts: [personal, org] })).toBe('org-id');
+    expect(pickOrgAccount({ accounts: [org, personal] })).toBe('org-id');
+  });
+  it('nothing when the login cannot see it, when two accounts share the name, or when the output is not what wrangler prints', () => {
+    expect(pickOrgAccount({ accounts: [personal] })).toBeNull();
+    expect(pickOrgAccount({ accounts: [org, { ...org, id: 'other' }] })).toBeNull();
+    expect(pickOrgAccount({ accounts: [{ name: ORG_ACCOUNT_NAME, id: '' }] })).toBeNull();
+    expect(pickOrgAccount(null)).toBeNull();
+    expect(pickOrgAccount({})).toBeNull();
+  });
+  it('reads the JSON out of a banner around it', () => {
+    expect(parseWhoami(`banner\n{"accounts":[{"name":"${ORG_ACCOUNT_NAME}","id":"x"}]}\nmore`)).toEqual({ accounts: [{ name: ORG_ACCOUNT_NAME, id: 'x' }] });
+    expect(parseWhoami('no json here')).toBeNull();
+  });
+  it('the printed pin runs it and deploys only if it succeeded (&&), and never carries an id', () => {
+    expect(ACCOUNT_PIN).toBe('ACCOUNT="$(node ../scripts/org-account-id.mjs)" && CLOUDFLARE_ACCOUNT_ID="$ACCOUNT"');
+    expect(existsSync(path.join(repoRoot, 'cf/scripts/org-account-id.mjs'))).toBe(true);
   });
 });

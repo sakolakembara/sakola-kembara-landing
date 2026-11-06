@@ -19,3 +19,11 @@ Statuses, tags, ticket shape, and the definition of done live in the "Cara kerja
 - **No secrets or personal data** in tickets, commits, PRs, or docs: no passwords, tokens, `.env` contents, or student/applicant data. Name the variable, never its value.
 - **Database changes** need a migration under `drizzle/` and a note on risk and deploy order in the ticket. See `docs/roadmap/data-model.md` and `docs/runbook/`.
 - **Commands** (dev server, build, test, lint) come from the `package.json` scripts — don't guess them.
+
+## Local setup (this Mac)
+
+- **One working worktree for the Cloudflare code:** `../sakem-cf`, on a branch cut from `origin/cloudflare`. Switch branches inside it instead of adding a worktree per task (each one costs about 2 GB with `node_modules` and builds). A short-lived extra worktree is removed once its PR is merged (`git worktree remove`, then delete the merged branch).
+- **Production vars live outside worktrees:** `~/.config/sakem/web.production.vars` and `admin.production.vars` (public per-deploy values, mode 600), symlinked as `cf/web/.production.vars` and `cf/admin/.production.vars`. If they are missing, rebuild them from the live version's plain-text bindings (`wrangler versions view <id> --name <worker> --json`).
+- **Deploy only with the printed command** (`pnpm deploy:prod:command` in `cf/web` or `cf/admin`): it pins the organisation account (SAKEM-123). Never answer wrangler's "Select an account" prompt.
+- **After a local e2e run**, delete wrangler logs older than 7 days (`~/Library/Preferences/.wrangler/logs`); they pile up by the thousand.
+- `gh` default repo is `sakolakembara/sakola-kembara-landing` (`gh repo set-default`).
