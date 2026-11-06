@@ -219,9 +219,16 @@ export function missingRequired(worker, entries) {
   return SPECS[worker].filter((spec) => spec.required && !entries.some((e) => e.name === spec.name)).map((spec) => spec.name);
 }
 
-/** The command as one string: the deploy words, then one `--var 'NAME:value'` per entry (in the file's order). */
+/**
+ * The account pin in front of every printed deploy (SAKEM-123): the organisation account's id, looked up BY NAME at run time by
+ * org-account-id.mjs (never printed), and the deploy only if the lookup succeeded. Without it `wrangler deploy` asks "Select an
+ * account" and caches the answer for the folder, which sent two deploys to a personal account on 2026-11-06.
+ */
+export const ACCOUNT_PIN = 'ACCOUNT="$(node ../scripts/org-account-id.mjs)" && CLOUDFLARE_ACCOUNT_ID="$ACCOUNT"';
+
+/** The command as one string: the account pin, the deploy words, then one `--var 'NAME:value'` per entry (in the file's order). */
 export function buildCommand(worker, entries) {
-  return [...WORKERS[worker].deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
+  return [ACCOUNT_PIN, ...WORKERS[worker].deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
 }
 
 /**
@@ -413,7 +420,7 @@ function main(argv) {
   process.stderr.write(
     [
       `# ${config.name} (PRODUCTION, the real domain): this prints the command, it does not run it.`,
-      `# 1. pin the ORGANISATION account in this shell first (value not printed): ${process.env.CLOUDFLARE_ACCOUNT_ID ? 'CLOUDFLARE_ACCOUNT_ID is set' : 'CLOUDFLARE_ACCOUNT_ID is NOT set: do not run anything yet'}`,
+      '# 1. the command pins the ORGANISATION account itself, by name (../scripts/org-account-id.mjs; the id is not printed), and stops if the login cannot see it.',
       `# 2. ${buildLine(worker, entries)}`,
       ...(worker === 'web'
         ? [
