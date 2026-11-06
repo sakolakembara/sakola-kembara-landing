@@ -10,6 +10,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, createWriteStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { startStubOrigin } from '../stub-origin.mjs';
 import { startFixtureApi } from '../fixture-api.mjs';
@@ -21,6 +22,20 @@ export const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
  * runs on one machine do not collide: `E2E_PORT_OFFSET=1000 pnpm test:e2e`. Default 0.
  */
 export const PORT_OFFSET = Number(process.env.E2E_PORT_OFFSET ?? 0);
+
+/**
+ * Refuses a port another program already listens on, with the way out. Without it wrangler dev just exits during startup
+ * ("exited early", no reason given): on 2026-11-06 Chrome's remote-debugging port 9333 was the inspector port of one stack (SAKEM-124).
+ */
+export async function assertPortFree(port, what) {
+  const free = await new Promise((resolve) => {
+    const server = createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => server.close(() => resolve(true)));
+    server.listen(port, '127.0.0.1');
+  });
+  if (!free) throw new Error(`port ${port} (${what}) is already in use by another program: rerun with E2E_PORT_OFFSET=1000 (or another offset)`);
+}
 export const distServer = path.join(webRoot, 'dist/server');
 
 /**
@@ -57,6 +72,8 @@ export async function startStack(opts = {}) {
   const fixturePort = (opts.fixturePort ?? 4391) + PORT_OFFSET;
   const inspectorPort = (opts.inspectorPort ?? 9331) + PORT_OFFSET;
 
+  await assertPortFree(port, 'wrangler dev');
+  await assertPortFree(inspectorPort, 'the wrangler inspector');
   const stub = await startStubOrigin({ port: stubPort });
   const fixture = await startFixtureApi({ port: fixturePort });
   const persist = mkdtempSync(path.join(tmpdir(), 'sakem-wrangler-'));
