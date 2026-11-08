@@ -145,11 +145,11 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
     }
   });
 
-  it('the sitemap still lists /gabung-siswa (and, like the Next sitemap, not the documents page) and no longer /donasi (a redirect since SAKEM-121); it is rendered by the Worker now, so its output is checked in scripts/e2e.mjs', () => {
+  it('the sitemap lists /gabung-siswa and its documents page (SAKEM-066; the Next sitemap left it out) and no longer /donasi (a redirect since SAKEM-121); it is rendered by the Worker now, so its output is checked in scripts/e2e.mjs', () => {
     const paths = STATIC_ROUTES.map((r) => r.path);
     expect(paths).not.toContain('/donasi');
     expect(paths).toContain('/gabung-siswa');
-    expect(paths).not.toContain('/gabung-siswa/docs');
+    expect(paths).toContain('/gabung-siswa/docs');
     expect(existsSync(path.join(client, 'sitemap.xml'))).toBe(false);
   });
 });

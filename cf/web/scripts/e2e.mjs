@@ -1025,10 +1025,11 @@ await check('program', '/program redirects (307) to stage 1, and that page is a 
   assert.equal((await get(res.headers.get('location'))).status, 200);
   assert.equal(stubHits().length, 0);
 });
-await check('program', 'the sitemap lists the three program URLs and /laporan', async () => {
+await check('program', 'the sitemap lists the three program URLs, /laporan and /gabung-siswa/docs (SAKEM-066)', async () => {
   const xml = await text(await get('/sitemap.xml'));
   for (const id of PROGRAM_IDS) assert.ok(xml.includes(`<loc>https://sakolakembara.org/program/${id}</loc>`), id);
   assert.ok(xml.includes('<loc>https://sakolakembara.org/laporan</loc>'));
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa/docs</loc>'));
 });
 
 // /laporan is rendered by the Worker since SAKEM-105 (it carries the Laporan section, so it reads the API); it used to be a static file of the
@@ -1414,12 +1415,12 @@ await check('gabung-siswa', 'trailing slashes: /gabung-siswa/ (assets layer) and
   }
   assert.equal(stubHits().length, 0);
 });
-await check('gabung-siswa', 'the sitemap lists /gabung-siswa (not /gabung-siswa/docs, like the Next sitemap) and no longer /donasi, which is a redirect since SAKEM-121', async () => {
+await check('gabung-siswa', 'the sitemap lists /gabung-siswa and /gabung-siswa/docs (SAKEM-066) and no longer /donasi, which is a redirect since SAKEM-121', async () => {
   const xml = await text(await get('/sitemap.xml'));
   assert.ok(!xml.includes('<loc>https://sakolakembara.org/donasi</loc>'));
   assert.ok(xml.includes('<loc>https://sakolakembara.org/laporan</loc>'));
   assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa</loc>'));
-  assert.ok(!xml.includes('/gabung-siswa/docs'));
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa/docs</loc>'));
 });
 await check('gabung-siswa', 'the Worker logged no error while serving /laporan, /gabung-siswa and /gabung-siswa/docs', async () => {
   assert.doesNotMatch(stack.output().slice(listLogStart), /\[ERROR\]|✘|Uncaught|TypeError|ReferenceError/);
@@ -1662,13 +1663,13 @@ await check('seo', 'sitemap.xml: every article with real lastmod, static routes 
   assert.match(res.headers.get('content-type'), /xml/);
   const xml = await text(res);
   const urls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
-  // six static routes (SAKEM-105 dropped /laporan, SAKEM-121 swapped /donasi for it), three programs; the fixture's one article hidden from Google is left out (SAKEM-109)
-  assert.equal(urls.length, 6 + 3 + ARTICLE_COUNT - 1);
+  // seven static routes (SAKEM-105 dropped /laporan, SAKEM-121 swapped /donasi for it, SAKEM-066 added /gabung-siswa/docs), three programs; the fixture's one article hidden from Google is left out (SAKEM-109)
+  assert.equal(urls.length, 7 + 3 + ARTICLE_COUNT - 1);
   const blogUrls = urls.filter((u) => /<loc>https:\/\/sakolakembara\.org\/blog\/[^<]+<\/loc>/.test(u));
   assert.equal(blogUrls.length, ARTICLE_COUNT - 1);
   for (const u of blogUrls) assert.match(u, /<lastmod>\d{4}-\d{2}-\d{2}/);
   const staticUrls = urls.filter((u) => !/\/blog\/[^<]+<\/loc>/.test(u));
-  assert.equal(staticUrls.length, 9);
+  assert.equal(staticUrls.length, 10);
   for (const u of staticUrls) assert.doesNotMatch(u, /<lastmod>/);
 });
 

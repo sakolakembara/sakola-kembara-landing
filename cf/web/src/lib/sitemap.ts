@@ -14,12 +14,16 @@ export interface SitemapEntry {
   path?: string;
 }
 
-/** Static routes of the sitemap, same list, priorities and frequencies as the root app/sitemap.ts. */
+/**
+ * Static routes of the sitemap: the root app/sitemap.ts list without /donasi (a redirect since SAKEM-121), plus the documents
+ * page /gabung-siswa/docs, which the old sitemap left out (SAKEM-066).
+ */
 export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: SitemapEntry['changeFrequency'] }[] = [
   { path: '/', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/blog', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },
   { path: '/gabung-siswa', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/gabung-siswa/docs', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tim', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/kontak', priority: 0.7, changeFrequency: 'yearly' },
 ];
