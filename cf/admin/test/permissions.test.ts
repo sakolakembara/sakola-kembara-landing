@@ -229,6 +229,7 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
       "konten/reports:Laporan",
       "konten/team:Tim",
       "konten/shortlinks:Shortlink",
+      "sistem/donations:Donasi",
       "sistem/audit:Aktivitas",
       "sistem/settings:Pengaturan",
     ]);
@@ -242,7 +243,7 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
     expect(new Set(menuItems.map((item) => item.key)).size).toBe(menuItems.length);
   });
 
-  test("the menu each role gets: Sistem (Aktivitas and Pengaturan) only for super_admin", () => {
+  test("the menu each role gets: Sistem (Donasi, Aktivitas and Pengaturan) only for super_admin", () => {
     const keys = (role: string, grants: string[] = []) => visibleMenu(role, grants).map((item) => item.key);
     expect(keys("student")).toEqual([]);
     expect(keys("viewer")).toEqual(["batches", "applications", "resources", "messages", "announcements", "blog", "media", "reports", "team", "shortlinks"]);
@@ -251,7 +252,10 @@ describe("menu to area map (docs/cloudflare/admin-ia.md section 3.1)", () => {
     for (const grants of subsets) {
       expect(keys("editor", grants)).not.toContain("audit");
       expect(keys("editor", grants)).not.toContain("settings");
+      // Donors' names, numbers and receipts (SAKEM-128): never an editor's, whatever they were granted.
+      expect(keys("editor", grants)).not.toContain("donations");
     }
+    expect(keys("viewer")).not.toContain("donations");
   });
 
   test("an editor gets the menus of the areas granted to them and no others", () => {

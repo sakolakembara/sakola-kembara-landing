@@ -18,6 +18,7 @@ export type NavIconName =
   | "reports"
   | "team"
   | "shortlinks"
+  | "donations"
   | "activity"
   | "settings";
 
@@ -76,6 +77,8 @@ export const NAV: readonly NavGroup[] = [
     id: "sistem",
     label: "Sistem",
     items: [
+      // The /donasi confirmations (SAKEM-128): the super admin only, so the Sistem section.
+      { path: "/donations", label: "Donasi", icon: "donations", section: "sistem" },
       { path: "/audit", label: "Aktivitas", icon: "activity", section: "sistem" },
       { path: "/settings", label: "Pengaturan", icon: "settings", section: "sistem" },
     ],

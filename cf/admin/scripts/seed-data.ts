@@ -134,6 +134,7 @@ export async function seed(d1: D1Database, options: SeedOptions = {}): Promise<S
   // Children first, so no foreign key is ever violated while emptying.
   for (const table of [
     schema.auditLog,
+    schema.donations,
     schema.adminAreaGrants,
     // The portal's tables (SAKEM-083). Drafts reference a batch with RESTRICT, so they go before the batches. The seed
     // writes none of them: a draft is made through the portal, and a file row would point at an object that the dev
@@ -284,6 +285,13 @@ export async function seed(d1: D1Database, options: SeedOptions = {}): Promise<S
       endsAt: new Date(now - 60 * DAY),
       createdBy: admin,
     },
+  ]);
+  // Donation confirmations of the /donasi form (SAKEM-128): one waiting for its receipt, a monthly pledge, one checked.
+  // No receipt: a row with one would point at an object the dev bucket does not have. The token hashes open nothing.
+  put(schema.donations, [
+    { id: uuid(0xd, 1), kind: "once", name: "Contoh Donatur", whatsapp: "6281200000001", amount: 250_000, status: "awaiting_transfer", tokenHash: "d".repeat(64), createdAt: new Date(now - DAY) },
+    { id: uuid(0xd, 2), kind: "monthly", name: "Contoh Donatur Bulanan", whatsapp: "6281200000002", amount: 100_000, startMonth: "2026-01", remindDay: 25, source: "instagram", status: "new", tokenHash: "e".repeat(64), createdAt: new Date(now - 2 * DAY) },
+    { id: uuid(0xd, 3), kind: "once", name: "C.D.", whatsapp: "6281200000003", amount: 50_000, status: "checked", note: "Sudah masuk di mutasi.", tokenHash: "f".repeat(64), checkedAt: new Date(now - DAY), createdAt: new Date(now - 4 * DAY) },
   ]);
   const subjects = ["partnership", "donation", "other", "other"] as const;
   put(

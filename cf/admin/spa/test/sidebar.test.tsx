@@ -31,6 +31,7 @@ describe("sidebar", () => {
       "Laporan",
       "Tim",
       "Shortlink",
+      "Donasi",
       "Aktivitas",
       "Pengaturan",
     ]);
@@ -39,7 +40,7 @@ describe("sidebar", () => {
       ["Pendaftaran", ["Batch", "Pendaftar", "Pusat Dokumen"]],
       ["Komunikasi", ["Pesan", "Pengumuman"]],
       ["Konten Situs", ["Blog", "Media", "Laporan", "Tim", "Shortlink"]],
-      ["Sistem", ["Aktivitas", "Pengaturan"]],
+      ["Sistem", ["Donasi", "Aktivitas", "Pengaturan"]],
     ] as const) {
       const list = within(nav).getByRole("list", { name: group });
       expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(items);

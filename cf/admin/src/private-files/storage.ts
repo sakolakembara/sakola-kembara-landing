@@ -58,11 +58,18 @@ export function releaseLiveStatement(db: D1Database, condition: string, params: 
   return db.prepare(releaseLiveSql(condition, params.length)).bind(...params, now);
 }
 
-/** The counter as the file rows say it is: the LIVE files. A marked row is already out of it (it was released when it was marked). */
+/**
+ * The counter as the rows say it is: the LIVE applicant files (a marked row is already out of it: it was released when it
+ * was marked) plus the donation receipts (SAKEM-128, src/donations/proof.ts), which share the bucket and the budget.
+ */
 export function reconcileStorageStatement(db: D1Database, now: number): D1PreparedStatement {
   return db
     .prepare(
-      "UPDATE private_storage SET bytes = (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE deleted_at IS NULL), files = (SELECT COUNT(*) FROM application_files WHERE deleted_at IS NULL), updated_at = ?1 WHERE id = ?2",
+      `UPDATE private_storage SET
+         bytes = (SELECT COALESCE(SUM(size), 0) FROM application_files WHERE deleted_at IS NULL) + (SELECT COALESCE(SUM(proof_size), 0) FROM donations WHERE proof_key IS NOT NULL),
+         files = (SELECT COUNT(*) FROM application_files WHERE deleted_at IS NULL) + (SELECT COUNT(*) FROM donations WHERE proof_key IS NOT NULL),
+         updated_at = ?1
+       WHERE id = ?2`,
     )
     .bind(now, ROW);
 }

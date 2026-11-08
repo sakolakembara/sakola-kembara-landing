@@ -81,7 +81,7 @@ describe("the filters offer exactly what the Worker declares", () => {
   test("the options carry the labels, in the legacy order: the keys in order for the actions", () => {
     expect(ACTION_OPTIONS.map((option) => option.value)).toEqual([...DECLARED_ACTIONS].sort());
     expect(ACTION_OPTIONS.every((option) => option.label === activityLabel(option.value))).toBe(true);
-    expect(RESOURCE_OPTIONS.map((option) => option.label)).toEqual(["Pendaftar", "Batch", "Pengumuman", "Laporan", "Blog", "Anggota tim", "Pesan", "Admin", "Akun", "Berkas Pendaftaran", "Shortlink", "Berkas unggahan", "Berkas pendaftar", "Draf pendaftaran"]);
+    expect(RESOURCE_OPTIONS.map((option) => option.label)).toEqual(["Pendaftar", "Batch", "Pengumuman", "Laporan", "Blog", "Anggota tim", "Pesan", "Admin", "Akun", "Berkas Pendaftaran", "Shortlink", "Berkas unggahan", "Berkas pendaftar", "Draf pendaftaran", "Konfirmasi donasi"]);
   });
 });
 

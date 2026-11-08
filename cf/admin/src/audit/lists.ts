@@ -28,6 +28,13 @@ export const DECLARED_ACTIONS = [
   "contact_message.submit",
   "contact_message.read",
   "contact_message.unread",
+  // Donation confirmations (SAKEM-128).
+  "donation.check",
+  "donation.uncheck",
+  "donation.note",
+  "donation.delete",
+  "donation.export",
+  "donation_proof.view",
   // The blog's states (new in D1: the legacy blog had no draft).
   "blog.publish",
   "blog.unpublish",
@@ -58,4 +65,5 @@ export const DECLARED_RESOURCE_TYPES = [
   "contact_message",
   "site_resource",
   "shortlink",
+  "donation",
 ] as const;
