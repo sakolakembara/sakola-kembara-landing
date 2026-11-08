@@ -9,7 +9,7 @@ Every section and table row below carries one of two marks.
 - **[L] from the legacy app.** The shape or rule exists in the Next app today (`lib/team.ts`, `lib/reports.ts`, `lib/site-resources.ts`, `lib/announcements.ts`, `lib/blog.ts` and `lib/blog-types.ts`, `app/(public)/kontak/`). It was read from that code, then built and tested once as a read-only seam in the legacy app (reference branch `feat/public-content-api`, commits `f53121a` to `44b131f`; its PR was closed without merging, the branch stays as a reference). Where this page says "verified", that seam's tests and a run of its built server are the evidence.
 - **[N] new.** A design decision for the Worker API with no legacy counterpart, or a deliberate change from the legacy behaviour. These are the parts most open to revision; the open ones are collected in [Decisions](#decisions).
 
-The legacy plan was an interim JSON seam in the old app during a "public first" phase. The migration is now a single cutover on branch `cloudflare`, so that seam is not shipped. The contract is what survives it.
+The legacy plan was an interim JSON seam in the old app during a "public first" phase. The migration is now a single cutover on branch `cloudflare` (now `main`, SAKEM-126), so that seam is not shipped. The contract is what survives it.
 
 ## How the callers reach the API
 

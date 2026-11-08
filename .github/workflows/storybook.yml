@@ -6,7 +6,7 @@ name: Storybook
 
 on:
   push:
-    branches: [development]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

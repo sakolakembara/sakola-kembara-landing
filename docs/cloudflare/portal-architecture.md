@@ -13,7 +13,7 @@ How the student portal of the new stack is built, where it lives, how it is rout
 From the epic and its milestones (Saung SAKEM-074, 081, 082, 083; the PM's briefing of 2026-10-13):
 
 - **$0 on Workers Free.** 10 ms CPU per request, 100,000 requests a day per account, D1 Free (5,000,000 rows read and 100,000 rows written a day), R2 Free (10 GB-month, 1 million Class A and 10 million Class B operations a month; a card is on file only because R2 requires it), Resend Free (100 emails a day, 3,000 a month).
-- All work lives on the long-lived branch `cloudflare`; the old Next app (`app/(portal)/**`, `app/(auth)/**`, `lib/application-status.ts`, `lib/admission*.ts`, `lib/db/schema/{student-applications,users}.ts`) is the reference for every rule and message. Visual style and Indonesian copy are fixed (`DESIGN.md`, `docs/context/tone-of-voice.md`). Production holds dummy data only, so no data is migrated.
+- All work lives on `main` (the long-lived branch `cloudflare` until 2026-11-08, SAKEM-126); the old Next app (`app/(portal)/**`, `app/(auth)/**`, `lib/application-status.ts`, `lib/admission*.ts`, `lib/db/schema/{student-applications,users}.ts`) is the reference for every rule and message. Visual style and Indonesian copy are fixed (`DESIGN.md`, `docs/context/tone-of-voice.md`). Production holds dummy data only, so no data is migrated.
 - **The portal lives at the path `/portal` of the apex** (`sakolakembara.org/portal/...`, Dzul: "pake path aja"); the admin lives on its own subdomain of the same domain (`admin.<domain>` below). The student session and the admin session are separate, host-only `__Host-` cookies (PR #49, [`auth.md`](auth.md#cookies-and-csrf)).
 - Students register themselves (`POST /api/auth/register`, Turnstile, no enumeration), **verify their email before the first sign-in**, can sign in with password or Google, reset their password. Admins never verify (SAKEM-089) and do not matter here.
 - The portal's login, register, forgot, reset and verify pages follow the admin login layout: one narrow column, no card, one heading ([`shared/spa/AuthShell.tsx`](../../cf/admin/shared/spa/AuthShell.tsx), moved there from `spa/src/pages/auth/` by P2); the Indonesian copy is the legacy copy.
@@ -617,7 +617,7 @@ Where the Free limits bind, in order of risk: **(1)** the 100 emails a day; **(2
 
 ### 11.1 The four tasks
 
-One worker per task, each with its own files. P1 is delivered as two pull requests (P1a first). All branch from `cloudflare` after this document is merged and target `cloudflare`; the PM merges.
+One worker per task, each with its own files. P1 is delivered as two pull requests (P1a first). All branch from `cloudflare` after this document is merged and target `cloudflare` (today: `main`, SAKEM-126); the PM merges.
 
 | Task | Scope | Owns (creates or edits) | Starts after | Cannot touch |
 | --- | --- | --- | --- | --- |

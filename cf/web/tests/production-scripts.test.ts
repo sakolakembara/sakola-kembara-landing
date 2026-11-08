@@ -14,6 +14,7 @@ import {
   SPECS,
   WORKERS,
   ACCOUNT_PIN,
+  MAIN_PIN,
   buildCommand,
   buildLine,
   builtBeaconProblems,
@@ -26,6 +27,7 @@ import {
 } from '../../scripts/production-deploy-command.mjs';
 import { TARGETS, checkProductionDryRun, productionDryRunEnv } from '../../scripts/production-dry-run.mjs';
 import { ORG_ACCOUNT_NAME, parseWhoami, pickOrgAccount } from '../../scripts/org-account-id.mjs';
+import { LIVE_BRANCH, mainProblems } from '../../scripts/on-main.mjs';
 import { parseBeaconId } from '../web-analytics.config.mjs';
 import { parsePortalEnabled } from '../portal-enabled.config.mjs';
 import { readRoot, repoRoot, webRoot } from './helpers';
@@ -96,7 +98,7 @@ describe('production-deploy-command: what it accepts', () => {
       expect(missingRequired(worker, entries), worker).toEqual([]);
       // every required name, and PORTAL_ENABLED=false in the site's example (optional: Phase A may also leave it out)
       expect(entries.map((e) => e.name).sort()).toEqual([...SPECS[worker].filter((s) => s.required).map((s) => s.name), ...(worker === 'web' ? ['PORTAL_ENABLED'] : [])].sort());
-      expect(buildCommand(worker, entries).startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy `)).toBe(true);
+      expect(buildCommand(worker, entries).startsWith(`${MAIN_PIN} && ${ACCOUNT_PIN} pnpm exec wrangler deploy `)).toBe(true);
     }
   });
 
@@ -310,14 +312,14 @@ describe('production-deploy-command: the lists', () => {
 describe('production-deploy-command: the printed command', () => {
   it('admin: deploys the top level with --env="" (which beats a CLOUDFLARE_ENV left in the shell) and passes every value as one quoted --var', () => {
     expect(buildCommand('admin', parseVarsFile(`${GOOD.admin}\nEMAIL_FROM=Sakola Kembara <no-reply@sakolakembara.org>`))).toBe(
-      `${ACCOUNT_PIN} pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org' --var 'EMAIL_FROM:Sakola Kembara <no-reply@sakolakembara.org>'`,
+      `${MAIN_PIN} && ${ACCOUNT_PIN} pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org' --var 'EMAIL_FROM:Sakola Kembara <no-reply@sakolakembara.org>'`,
     );
   });
 
   it('web: deploys the config the production build wrote, and the build line carries the beacon id that the --var carries', () => {
     const entries = parseVarsFile(GOOD.web);
     const command = buildCommand('web', entries);
-    expect(command.startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy -c dist/server/wrangler.json --var `)).toBe(true);
+    expect(command.startsWith(`${MAIN_PIN} && ${ACCOUNT_PIN} pnpm exec wrangler deploy -c dist/server/wrangler.json --var `)).toBe(true);
     expect(command).toContain(`--var 'WEB_ANALYTICS_BEACON_ID:${BEACON}'`);
     expect(command).toContain(`--var 'GTM_CONTAINER_ID:${GTM}'`);
     expect(buildLine('web', entries)).toBe(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
@@ -332,7 +334,7 @@ describe('production-deploy-command: the printed command', () => {
   it('never prints a command that is not a deploy of a production Worker', () => {
     for (const worker of WORKER_NAMES) {
       const command = buildCommand(worker, parseVarsFile(GOOD[worker]));
-      expect(command.startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy `)).toBe(true);
+      expect(command.startsWith(`${MAIN_PIN} && ${ACCOUNT_PIN} pnpm exec wrangler deploy `)).toBe(true);
       expect(command).not.toContain('--dry-run');
       expect(command).not.toMatch(/staging|workers\.dev|r2\.dev|--remote|login|secret|delete|tail|--keep-vars/);
     }
@@ -384,7 +386,7 @@ describe('production-deploy-command: the program', () => {
     const dir = fresh();
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.admin}\n`);
     const { stdout, stderr } = await exec(dir, ['admin'], { CLOUDFLARE_ACCOUNT_ID: 'pinned' });
-    expect(stdout.trim()).toBe(`${ACCOUNT_PIN} pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org'`);
+    expect(stdout.trim()).toBe(`${MAIN_PIN} && ${ACCOUNT_PIN} pnpm exec wrangler deploy --env="" --var 'TURNSTILE_SITE_KEY:${KEY}' --var 'UPLOADS_BASE_URL:https://files.sakolakembara.org' --var 'SITE_URL:https://sakolakembara.org'`);
     expect(stderr).toContain('sakem-admin (PRODUCTION');
     expect(stderr).toContain('the command pins the ORGANISATION account itself, by name');
     expect(stderr).not.toContain('pinned');
@@ -448,7 +450,7 @@ describe('production-deploy-command: the program', () => {
     const dir = fresh();
     writeFileSync(path.join(dir, '.production.vars'), `${GOOD.web}\n`);
     const notBuilt = await exec(dir, ['web']);
-    expect(notBuilt.stdout.trim().startsWith(`${ACCOUNT_PIN} pnpm exec wrangler deploy -c dist/server/wrangler.json --var `)).toBe(true);
+    expect(notBuilt.stdout.trim().startsWith(`${MAIN_PIN} && ${ACCOUNT_PIN} pnpm exec wrangler deploy -c dist/server/wrangler.json --var `)).toBe(true);
     expect(notBuilt.stderr).toContain('dist/ is not built yet');
     expect(notBuilt.stderr).toContain(`WEB_ANALYTICS_BEACON_ID=${BEACON} GTM_CONTAINER_ID=${GTM} pnpm build:prod`);
     writeDist(dir);
@@ -748,5 +750,32 @@ describe('org-account-id (SAKEM-123): the organisation account is picked by name
   it('the printed pin runs it and deploys only if it succeeded (&&), and never carries an id', () => {
     expect(ACCOUNT_PIN).toBe('ACCOUNT="$(node ../scripts/org-account-id.mjs)" && CLOUDFLARE_ACCOUNT_ID="$ACCOUNT"');
     expect(existsSync(path.join(repoRoot, 'cf/scripts/org-account-id.mjs'))).toBe(true);
+  });
+});
+
+describe('on-main (SAKEM-126): production is deployed only from a clean checkout of origin/main', () => {
+  const MAIN = 'a'.repeat(40);
+  it('lets a clean checkout of origin/main through', () => {
+    expect(LIVE_BRANCH).toBe('main');
+    expect(mainProblems({ head: MAIN, main: MAIN, status: '' })).toEqual([]);
+  });
+  it('stops a checkout that is not origin/main (a feature branch, an unmerged commit, behind main)', () => {
+    const problems = mainProblems({ head: 'b'.repeat(40), main: MAIN, status: '' });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('bbbbbbb');
+    expect(problems[0]).toContain('origin/main is aaaaaaa');
+  });
+  it('stops when origin/main could not be read', () => {
+    expect(mainProblems({ head: MAIN, main: null, status: '' })).toEqual(['origin/main could not be read (fetch failed?)']);
+  });
+  it('stops a working tree with changes that are not committed, even on origin/main', () => {
+    const problems = mainProblems({ head: MAIN, main: MAIN, status: ' M cf/web/src/pages/index.astro\n?? cf/web/src/new.ts\n' });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('cf/web/src/new.ts');
+  });
+  it('the printed command runs it first and deploys only if it succeeded (&&)', () => {
+    expect(MAIN_PIN).toBe('node ../scripts/on-main.mjs');
+    expect(existsSync(path.join(repoRoot, 'cf/scripts/on-main.mjs'))).toBe(true);
+    for (const worker of WORKER_NAMES) expect(buildCommand(worker, []).startsWith(`${MAIN_PIN} && ${ACCOUNT_PIN} `)).toBe(true);
   });
 });
