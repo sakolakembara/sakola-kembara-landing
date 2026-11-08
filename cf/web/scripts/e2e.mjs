@@ -2131,8 +2131,10 @@ await check('contact', 'GET /kontak: 200 html from the Worker, one h1, SEO tags,
   }
   assert.match(html, /<input id="website" type="text" name="website" tabindex="-1" autocomplete="off"/);
   for (const t of ['Kerjasama/Partnership', 'Seputar Donasi', 'Lainnya', 'Pilih subjek', 'Kirim Pesan']) assert.ok(html.includes(t), t);
-  assert.match(html, /hello@sakolakembara\.org/);
-  assert.match(html, /\+62 812 3456 7890/);
+  // SAKEM-055: the real email and WhatsApp, both links (WhatsApp in a new tab); the legacy placeholders are gone
+  assert.match(html, /<a href="mailto:contact@sakolakembara\.org"[^>]*>\s*contact@sakolakembara\.org\s*<\/a>/);
+  assert.match(html, /<a href="https:\/\/wa\.me\/6287750124281"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>\s*\+62 877 5012 4281\s*<\/a>/);
+  assert.ok(!html.includes('hello@sakolakembara.org') && !html.includes('3456 7890'));
   assert.match(html, /Bandung, Jawa Barat, Indonesia/);
   assert.match(html, /aria-label="Instagram"/);
   assert.ok(!html.includes('Pesan Terkirim'));

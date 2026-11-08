@@ -41,12 +41,18 @@ export const FIELD_MESSAGES = {
   messageMax: 'Maksimal 5000 karakter',
 } as const;
 
-// SAKEM-055 decides the real contact details. The legacy page shows these three, and the
-// WhatsApp number in particular looks like a placeholder; they are ported as they are, and
-// they differ from the footer's (contact@sakolakembara.org). Do not "fix" them here.
-export const contactInfo = [
-  { title: 'Email', value: 'hello@sakolakembara.org' },
-  { title: 'WhatsApp', value: '+62 812 3456 7890' },
+/**
+ * The organisation's public contact details (SAKEM-055, given by Dzul on 2026-11-08): one email for the whole site (the
+ * footer and the organisation JSON-LD in seo.ts carry the same address; tests/contact.test.ts keeps the three equal) and
+ * the WhatsApp number. The legacy page showed hello@ and a placeholder number.
+ */
+export const CONTACT_EMAIL = 'contact@sakolakembara.org';
+export const CONTACT_WHATSAPP = { display: '+62 877 5012 4281', waMe: '6287750124281' } as const;
+
+/** The rows of "Informasi Kontak" on /kontak; a row with `href` is a link (email, WhatsApp in a new tab). */
+export const contactInfo: { title: string; value: string; href?: string }[] = [
+  { title: 'Email', value: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}` },
+  { title: 'WhatsApp', value: CONTACT_WHATSAPP.display, href: `https://wa.me/${CONTACT_WHATSAPP.waMe}` },
   { title: 'Lokasi', value: 'Bandung, Jawa Barat, Indonesia' },
 ];
 

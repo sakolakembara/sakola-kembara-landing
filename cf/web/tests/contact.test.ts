@@ -4,6 +4,8 @@ import {
   CONTACT_MESSAGES,
   CONTACT_SUBJECT_OPTIONS,
   FIELD_MESSAGES,
+  CONTACT_EMAIL,
+  CONTACT_WHATSAPP,
   contactInfo,
   parseContactForm,
   type ContactFieldErrors,
@@ -20,7 +22,7 @@ import {
   type ContactDeps,
   type ContactOutcome,
 } from '~/lib/contact-submit';
-import { importRoot, readRoot } from './helpers';
+import { readRoot } from './helpers';
 
 // ---------------------------------------------------------------------------------------------------
 // The rules and the words of the form are the legacy action's (app/(public)/kontak/actions.ts). Its
@@ -64,10 +66,24 @@ describe('the words are the legacy ones, verbatim', () => {
     expect(CONTACT_SUBJECT_OPTIONS.map((o) => o.value)).toEqual(['partnership', 'donation', 'other']);
   });
 
-  it('the contact details are the legacy data, unchanged (SAKEM-055 decides the real ones)', async () => {
-    const root = await importRoot<{ contactInfo: { title: string; value: string }[] }>('lib/data.ts');
-    expect(contactInfo).toEqual(root.contactInfo);
-    expect(readRoot('cf/web/src/lib/contact.ts')).toContain('SAKEM-055');
+  it('SAKEM-055: the real contact details (Dzul, 2026-11-08), email and WhatsApp as links; the legacy placeholders are gone', () => {
+    expect(contactInfo).toEqual([
+      { title: 'Email', value: 'contact@sakolakembara.org', href: 'mailto:contact@sakolakembara.org' },
+      { title: 'WhatsApp', value: '+62 877 5012 4281', href: 'https://wa.me/6287750124281' },
+      { title: 'Lokasi', value: 'Bandung, Jawa Barat, Indonesia' },
+    ]);
+    expect(CONTACT_WHATSAPP.display.replace(/\D/g, '')).toBe(CONTACT_WHATSAPP.waMe);
+    const all = JSON.stringify(contactInfo);
+    expect(all).not.toContain('hello@');
+    expect(all).not.toContain('3456');
+  });
+
+  it('SAKEM-055: one email for the site: the footer and the organisation JSON-LD carry CONTACT_EMAIL', () => {
+    const footer = readRoot('cf/web/src/components/Footer.astro');
+    expect(footer).toContain(`href="mailto:${CONTACT_EMAIL}"`);
+    expect(footer).toContain(`${CONTACT_EMAIL}\n`);
+    expect(readRoot('cf/web/src/lib/seo.ts')).toContain(`email: '${CONTACT_EMAIL}',`);
+    for (const file of ['cf/web/src/components/Footer.astro', 'cf/web/src/lib/seo.ts', 'cf/web/src/pages/kontak.astro']) expect(readRoot(file), file).not.toContain('hello@');
   });
 });
 
