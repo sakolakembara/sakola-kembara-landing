@@ -124,7 +124,19 @@ const turnstileKey = sent ? null : turnstileSiteKey(env);
               contactInfo.map((contact, index) => (
                 <div class="flex flex-col gap-1.5 border-t border-primary-blue-dark/15 py-5 last:border-b">
                   <dt class="text-sm text-gray-600">{contact.title}</dt>
-                  <dd class="text-xl font-medium md:text-[22px]">{contact.value}</dd>
+                  <dd class="text-xl font-medium md:text-[22px]">
+                    {contact.href ? (
+                      <a
+                        href={contact.href}
+                        class="underline-offset-4 hover:underline"
+                        {...(contact.href.startsWith('https://') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      >
+                        {contact.value}
+                      </a>
+                    ) : (
+                      contact.value
+                    )}
+                  </dd>
                   {/* The third row is the location: the branches of the footer, as chips under it. */}
                   {index === 2 && (
                     <dd class="mt-2 flex flex-wrap gap-2">
