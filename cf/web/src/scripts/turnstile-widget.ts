@@ -25,7 +25,8 @@ declare global {
   }
 }
 
-const slot = document.querySelector<HTMLElement>('#kontak-form [data-turnstile]');
+// The one form of the page that has a slot: /kontak's, or /donasi's step 1 (SAKEM-128).
+const slot = document.querySelector<HTMLElement>('form [data-turnstile]');
 let widgetId: string | undefined;
 
 /** Renders the widget once, as soon as Cloudflare's script has defined `window.turnstile`. */

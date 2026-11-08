@@ -68,11 +68,10 @@ export const REDIRECTS = {
   // older `/impact-reports` go straight to that section, one hop each. The fragment is part of the destination: the
   // assets layer accepts it in `_redirects` and puts the query before it (checked locally by scripts/e2e.mjs; on a
   // real zone by the runbook's T-37).
-  // SAKEM-121 (Dzul, 2026-11-06): the page moved back to /laporan, so these two point there, and /donasi itself goes to the
-  // donation shortlink (src/lib/site.ts, DONATION_PATH), a 307 because the target of a donation may change.
+  // SAKEM-121 (Dzul, 2026-11-06): the page moved back to /laporan, so these two point there. /donasi was a redirect to the
+  // donation shortlink until SAKEM-128 (2026-11-08): it is now the site's own donation form (src/pages/donasi/).
   '/impact-reports': to('/laporan#laporan'),
   '/impact-reports/[...path]': to('/laporan#laporan'),
-  '/donasi': to('/donasi-sekarang', TEMPORARY),
   // WordPress paginated archives (/blog/page/3/) → /blog?page=3.
   '/blog/page/[page]': to('/blog?page=[page]'),
   // Common WordPress entry points that should not 404 at cutover.

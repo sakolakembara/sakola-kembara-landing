@@ -1,0 +1,67 @@
+---
+import { env } from 'cloudflare:workers';
+import DonationLayout from '~/components/donation/DonationLayout.astro';
+import { SOURCES, isSameOrigin, loadDonation, readForm, saveSource } from '~/lib/donation';
+
+// /donasi/terima-kasih, the end of the donation form (SAKEM-128): thanks, the link to the reports, and one optional
+// question, "how did you hear of us", moved here from step 1 so it never stands between a donor and the transfer.
+//
+//   GET                  the thanks (and the question, when the cookie's donation has no answer yet)
+//   POST source=...      the answer saved -> 303 back here with ?tersimpan=1
+export const prerender = false;
+
+const noStore = { 'cache-control': 'no-store' };
+const method = Astro.request.method;
+if (method !== 'GET' && method !== 'HEAD' && method !== 'POST') {
+  return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD, POST', ...noStore } });
+}
+Astro.response.headers.set('cache-control', 'no-store');
+
+if (method === 'POST') {
+  if (!isSameOrigin(Astro.request)) return new Response('Forbidden', { status: 403, headers: noStore });
+  const form = await readForm(Astro.request);
+  const saved = form ? await saveSource(Astro.request, String(form.source ?? ''), env) : false;
+  return new Response(null, { status: 303, headers: { location: saved ? '/donasi/terima-kasih?tersimpan=1' : '/donasi/terima-kasih', ...noStore } });
+}
+
+const { summary } = await loadDonation(Astro.request, env);
+const answered = Astro.url.searchParams.get('tersimpan') === '1';
+const ask = !answered && summary !== null && summary.source === null;
+const monthly = summary?.kind === 'monthly';
+const choice =
+  'flex h-12 cursor-pointer items-center justify-center rounded-[14px] border-[1.5px] border-[#D5DBE8] bg-white px-3 text-[15px] hover:border-primary-blue-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue-dark';
+---
+
+<DonationLayout
+  title="Terima Kasih atas Donasi Anda."
+  muted={monthly ? 'Pendaftaran donasi bulanan sudah kami terima.' : 'Konfirmasi sudah kami terima.'}
+  lead={monthly
+    ? `Kami akan mengingatkan Anda melalui WhatsApp setiap tanggal ${summary?.remindDay}.`
+    : 'Tim kami akan mencocokkannya dengan mutasi rekening dan menghubungi Anda melalui WhatsApp bila ada yang perlu dipastikan.'}
+  seoTitle="Terima Kasih"
+  description="Terima kasih atas donasi Anda untuk Sakola Kembara."
+  path="/donasi/terima-kasih"
+  noindex
+>
+  <div class="flex flex-col gap-6" role="status">
+    {
+      ask ? (
+        <form method="post" action="/donasi/terima-kasih" class="flex flex-col gap-3">
+          <h2 class="text-base font-semibold">
+            Dari mana Anda mengenal Sakola Kembara? <span class="font-normal text-[#6B7693]">(opsional)</span>
+          </h2>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {SOURCES.map((source) => (
+              <button type="submit" name="source" value={source.value} class={choice}>
+                {source.label}
+              </button>
+            ))}
+          </div>
+        </form>
+      ) : answered ? (
+        <p class="text-[15px] text-success-fg">Terima kasih, jawaban Anda tersimpan.</p>
+      ) : null
+    }
+    <a href="/laporan" class="self-start py-2 text-base font-semibold underline underline-offset-4">Lihat Laporan Donasi</a>
+  </div>
+</DonationLayout>

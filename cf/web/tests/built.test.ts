@@ -51,12 +51,12 @@ describe.skipIf(!built)('build output', () => {
     expect(articles.length).toBe(ARTICLE_COUNT);
   });
 
-  it('_redirects sends the older /impact-reports to /laporan#laporan, one hop, with a 308 (the fragment is in the destination), and /donasi (with and without the slash) to the donation shortlink with a 307 (SAKEM-105, SAKEM-121)', () => {
+  it('_redirects sends the older /impact-reports to /laporan#laporan, one hop, with a 308 (the fragment is in the destination); /donasi is the donation form (SAKEM-128), no rule takes it', () => {
     const lines = read('client/_redirects').split('\n').map((l) => l.trim().split(/\s+/).join(' '));
     for (const source of ['/impact-reports', '/impact-reports/', '/impact-reports/*']) {
       expect(lines, source).toContain(`${source} /laporan#laporan 308`);
     }
-    for (const source of ['/donasi', '/donasi/']) expect(lines, source).toContain(`${source} /donasi-sekarang 307`);
+    expect(lines.filter((l) => ['/donasi', '/donasi/'].includes(l.split(' ')[0]))).toEqual([]);
     // /laporan is a page rendered by the Worker: no rule takes it, and nothing folds /laporan/ (the Worker's own fold answers it)
     expect(lines.filter((l) => ['/laporan', '/laporan/'].includes(l.split(' ')[0]))).toEqual([]);
   });

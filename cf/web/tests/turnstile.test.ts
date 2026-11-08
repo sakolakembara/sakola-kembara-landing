@@ -233,11 +233,15 @@ describe('the widget markup and the no-JavaScript notice (source level; the serv
   it('Cloudflare\'s script is a tag of the form component: explicit rendering, async, defer, only when there is a form and a key', () => {
     expect(TURNSTILE_SCRIPT_URL).toBe('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit');
     expect(component).toContain('!sent && turnstileSiteKey && <script is:inline src={TURNSTILE_SCRIPT_URL} async defer data-turnstile-api />');
-    expect(component).toContain("import '~/scripts/turnstile-widget';");
+    // the widget's renderer is one shared script entry (the form component and /donasi render it)
+    expect(component).toContain('<TurnstileScript />');
+    expect(readWeb('src/components/scripts/TurnstileScript.astro')).toContain("import '~/scripts/turnstile-widget';");
   });
 
-  it('the script is on /kontak and nowhere else: no layout, other page or component names the URL or the widget', () => {
-    const others = sourceFiles().filter((f) => !/(lib\/turnstile\.ts|scripts\/turnstile-widget\.ts|components\/contact\/ContactForm\.astro)$/.test(f));
+  it('the script is on /kontak and /donasi (SAKEM-128) and nowhere else: no layout, other page or component names the URL or the widget', () => {
+    const others = sourceFiles().filter(
+      (f) => !/(lib\/turnstile\.ts|scripts\/turnstile-widget\.ts|components\/contact\/ContactForm\.astro|components\/scripts\/TurnstileScript\.astro|pages\/donasi\/index\.astro)$/.test(f),
+    );
     for (const file of others) {
       const text = readFileSync(file, 'utf8');
       expect(text, path.relative(webRoot, file)).not.toContain('challenges.cloudflare.com');

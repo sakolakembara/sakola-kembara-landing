@@ -1,0 +1,9 @@
+---
+// The widget's renderer (src/scripts/turnstile-widget.ts) as ONE script entry for every form that has a slot (/kontak,
+// /donasi): imported from a single component, the module stays in one entry and is inlined like the site's other
+// scripts (tests/built.test.ts), instead of becoming a shared chunk file.
+---
+
+<script>
+  import '~/scripts/turnstile-widget';
+</script>

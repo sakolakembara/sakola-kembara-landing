@@ -1,0 +1,40 @@
+---
+import Base from '~/layouts/Base.astro';
+
+/**
+ * The frame of the three /donasi screens (SAKEM-128, wireframe v5 approved by Dzul on 2026-11-08): on a wide screen the
+ * heading of the step on the left and the step's card on the right; on a phone the heading above the card. The
+ * heading is two tones: what to do, then (muted) how. `aside` takes what belongs under the heading (the summary of
+ * step 2).
+ */
+interface Props {
+  title: string;
+  /** The muted second half of the heading. */
+  muted: string;
+  lead?: string;
+  seoTitle: string;
+  description: string;
+  path: string;
+  noindex?: boolean;
+}
+const { title, muted, lead, seoTitle, description, path, noindex = false } = Astro.props;
+---
+
+<Base seo={{ kind: 'page', title: seoTitle, description, path, noindex }}>
+  <main class="min-h-screen bg-[#EEF1F6] text-primary-blue-dark">
+    <div
+      class="mx-auto grid max-w-[1200px] items-start gap-8 px-4 pb-20 pt-[calc(var(--hero-top,8rem)_+_1.5rem)] md:px-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-20 lg:pt-[calc(var(--hero-top,8rem)_+_3rem)]"
+    >
+      <div class="flex flex-col gap-5 lg:pt-2">
+        <h1 class="text-balance text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] md:text-[52px]">
+          {title} <span class="text-[#7D88A3]">{muted}</span>
+        </h1>
+        {lead && <p class="max-w-[30em] text-[15px] leading-[1.6] text-[#4A5878] md:text-[17px]">{lead}</p>}
+        <slot name="aside" />
+      </div>
+      <div class="rounded-[24px] bg-white p-5 md:rounded-[28px] md:p-10">
+        <slot />
+      </div>
+    </div>
+  </main>
+</Base>

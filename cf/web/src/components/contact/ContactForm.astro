@@ -1,6 +1,7 @@
 ---
 import Button from '~/components/Button.astro';
 import Icon from '~/components/Icon.astro';
+import TurnstileScript from '~/components/scripts/TurnstileScript.astro';
 import { CONTACT_SUBJECT_OPTIONS, type ContactFieldErrors, type ContactValues } from '~/lib/contact';
 import { TURNSTILE_ACTION, TURNSTILE_MESSAGES, TURNSTILE_SCRIPT_URL } from '~/lib/turnstile';
 
@@ -208,10 +209,8 @@ const aria = (field: keyof ContactFieldErrors) =>
   !sent && turnstileSiteKey && <script is:inline src={TURNSTILE_SCRIPT_URL} async defer data-turnstile-api />
 }
 
-<script>
-  // Renders the widget when Cloudflare's script is there (a no-op without the slot).
-  import '~/scripts/turnstile-widget';
-</script>
+{/* Renders the widget when Cloudflare's script is there (a no-op without the slot). */}
+<TurnstileScript />
 
 <script>
   // The form's own script, and optional: the form posts without it. While the post is in

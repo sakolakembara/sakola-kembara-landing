@@ -32,8 +32,8 @@ const bankDetails = [
 ];
 
 const ACCOUNT_NUMBER = '1010141940';
-const CONFIRMATION_FORM_URL =
-  'https://docs.google.com/forms/d/e/1FAIpQLSe0wQUmreIspbu75JpHYpuHHYbgVi4FaROcfNTiTvgchCywdQ/viewform';
+// The site's own donation form since SAKEM-128 (it replaced the Google Form "Form Donasi Sakola Kembara").
+const CONFIRMATION_FORM_URL = '/donasi';
 
 // The QR is imported, so its URL is content-hashed (swapping the file busts every cache)
 // and a missing file fails the build. That is why the legacy "file is missing" placeholder

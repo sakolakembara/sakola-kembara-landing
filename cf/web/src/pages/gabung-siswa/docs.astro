@@ -14,6 +14,7 @@ import {
   loadResources,
 } from '~/lib/resources';
 import { uploadUrl } from '~/lib/uploads';
+import CopyButtonScript from '~/components/scripts/CopyButtonScript.astro';
 
 // SSR: the catalog comes from the content API at request time (see lib/content-api.ts for the
 // timeout, the 60 s cache and stale-if-error). Ported from app/(public)/gabung-siswa/docs/.
@@ -148,6 +149,4 @@ const hasAnything = groups.length > 0;
 </Base>
 
 {/* The copy buttons' script (974 B, inlined); it does nothing on a page without a text snippet. */}
-<script>
-  import '~/scripts/copy-button';
-</script>
+<CopyButtonScript />

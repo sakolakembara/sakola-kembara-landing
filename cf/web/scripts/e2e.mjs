@@ -205,10 +205,9 @@ const other = [
   ['/tentang-kami', 308, '/tim'], ['/about', 308, '/tim'],
   // SAKEM-121: the reports are the section of /laporan; the older name goes straight to it, one hop, with the fragment in the destination
   // (the assets layer accepts it in `_redirects` and puts a query BEFORE it; the middleware does the same for the same table).
-  // /donasi is a 307 to the donation shortlink (not resolved here: the e2e API has no such shortlink).
+  // /donasi is no rule since SAKEM-128 (the donation form; group `donation-form`).
   ['/impact-reports', 308, '/laporan#laporan'], ['/impact-reports/2025/foo', 308, '/laporan#laporan'],
   ['/impact-reports/?utm_source=ig', 308, '/laporan?utm_source=ig#laporan'],
-  ['/donasi', 307, '/donasi-sekarang'], ['/donasi/', 307, '/donasi-sekarang'], ['/donasi?utm_source=ig', 307, '/donasi-sekarang?utm_source=ig'],
   ['/blog/page/3', 308, '/blog?page=3'], ['/blog/page/3/', 308, '/blog?page=3'],
   ['/feed', 308, '/blog'], ['/feed/atom', 308, '/blog'],
   ['/index.php', 308, '/'],
@@ -1238,9 +1237,9 @@ await check('donasi', '/laporan with the section: the payment cards, the QRIS ca
   assert.ok(html.includes(`data-copy-account="${number}"`));
   assert.match(html, /<span data-copy-idle[^>]*>[\s\S]*?Salin No Rekening/);
   assert.match(html, /<span data-copy-done hidden[^>]*>[\s\S]*?Tersalin!/);
-  const form = LEGACY_DONASI.match(/CONFIRMATION_FORM_URL =\s*"([^"]+)"/)[1];
-  const link = anchorTags(html).find((a) => attrOf(a, 'href') === form);
-  assert.ok(link && link.includes('target="_blank"') && link.includes('rel="noopener noreferrer"'), 'the confirmation form opens in a new tab');
+  // the confirmation is the site's own form since SAKEM-128 (the legacy page linked a Google Form in a new tab): same tab
+  const link = anchorTags(html).find((a) => attrOf(a, 'href') === '/donasi');
+  assert.ok(link && !link.includes('target='), 'the confirmation form opens in the same tab');
   assert.ok(t.includes('Terima Kasih atas Donasi Anda Setelah berdonasi, mohon konfirmasikan melalui formulir berikut agar donasi Anda dapat kami catat dengan baik. Konfirmasi Donasi'));
   assert.ok(t.includes('Kontak Kami Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu. Hubungi Kami'));
   assert.ok(anchorTags(html).some((a) => attrOf(a, 'href') === '/kontak' && a.includes('border-primary-blue-dark')));
@@ -1415,9 +1414,9 @@ await check('gabung-siswa', 'trailing slashes: /gabung-siswa/ (assets layer) and
   }
   assert.equal(stubHits().length, 0);
 });
-await check('gabung-siswa', 'the sitemap lists /gabung-siswa and /gabung-siswa/docs (SAKEM-066) and no longer /donasi, which is a redirect since SAKEM-121', async () => {
+await check('gabung-siswa', 'the sitemap lists /gabung-siswa and /gabung-siswa/docs (SAKEM-066) and /donasi again (the donation form, SAKEM-128)', async () => {
   const xml = await text(await get('/sitemap.xml'));
-  assert.ok(!xml.includes('<loc>https://sakolakembara.org/donasi</loc>'));
+  assert.ok(xml.includes('<loc>https://sakolakembara.org/donasi</loc>'));
   assert.ok(xml.includes('<loc>https://sakolakembara.org/laporan</loc>'));
   assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa</loc>'));
   assert.ok(xml.includes('<loc>https://sakolakembara.org/gabung-siswa/docs</loc>'));
@@ -1663,13 +1662,13 @@ await check('seo', 'sitemap.xml: every article with real lastmod, static routes 
   assert.match(res.headers.get('content-type'), /xml/);
   const xml = await text(res);
   const urls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
-  // seven static routes (SAKEM-105 dropped /laporan, SAKEM-121 swapped /donasi for it, SAKEM-066 added /gabung-siswa/docs), three programs; the fixture's one article hidden from Google is left out (SAKEM-109)
-  assert.equal(urls.length, 7 + 3 + ARTICLE_COUNT - 1);
+  // eight static routes (SAKEM-105 dropped /laporan, SAKEM-121 swapped /donasi for it, SAKEM-066 added /gabung-siswa/docs, SAKEM-128 brought /donasi back as the form), three programs; the fixture's one article hidden from Google is left out (SAKEM-109)
+  assert.equal(urls.length, 8 + 3 + ARTICLE_COUNT - 1);
   const blogUrls = urls.filter((u) => /<loc>https:\/\/sakolakembara\.org\/blog\/[^<]+<\/loc>/.test(u));
   assert.equal(blogUrls.length, ARTICLE_COUNT - 1);
   for (const u of blogUrls) assert.match(u, /<lastmod>\d{4}-\d{2}-\d{2}/);
   const staticUrls = urls.filter((u) => !/\/blog\/[^<]+<\/loc>/.test(u));
-  assert.equal(staticUrls.length, 10);
+  assert.equal(staticUrls.length, 11);
   for (const u of staticUrls) assert.doesNotMatch(u, /<lastmod>/);
 });
 
@@ -2394,6 +2393,168 @@ await check('contact', 'with a rate-limit binding (CONTACT_LIMITER) the binding 
     assert.deepEqual(statuses, [303, 303, 429]);
   } finally {
     await s.stop();
+  }
+});
+
+// ---------------------------------------------------------------- the donation form /donasi (SAKEM-128)
+// The API side is the fixture's in-memory stand-in (scripts/fixture-api.mjs); the real rules are tested in cf/admin.
+const donationApi = { log: async () => (await fetch(`${fixtureBase}/__donation-log`)).json() };
+const DONATION_ONCE = { kind: 'once', name: 'Rina Marker', whatsapp: '0812 3456 7890', amount: '100000', amountOther: '' };
+const cookieOf = (res) => (res.headers.get('set-cookie') ?? '').split(';')[0];
+async function donationStep1(fields, headers = {}) {
+  return postForm(fields, { path: '/donasi', headers });
+}
+
+await check('donation-form', 'GET /donasi: 200 html, one h1, never cached, the plain form (both kinds, five amounts and "Nominal lain", the monthly fields), the bot check slot, no script file', async () => {
+  clearStub();
+  const res = await get('/donasi');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  const html = await text(res);
+  assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
+  assert.equal(tag(html, /<link rel="canonical" href="([^"]*)"/), 'https://sakolakembara.org/donasi');
+  assert.match(html, /<form id="donasi-form" method="post" action="\/donasi"/);
+  for (const t of ['Donasi Sekali', 'Donasi Bulanan', 'Rp50.000', 'Rp100.000', 'Rp200.000', 'Rp300.000', 'Rp500.000', 'Nominal lain', 'Mulai berdonasi', 'Ingatkan setiap tanggal', 'Lanjut ke Pembayaran']) assert.ok(html.includes(t), t);
+  assert.match(html, /data-turnstile data-sitekey="[^"]+" data-action="donation"/);
+  assert.equal([...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc="(?!https:\/\/challenges\.cloudflare\.com)/g)].length, 0, 'no script file but Cloudflare\'s');
+  assert.equal(stubHits().length, 0);
+});
+
+await check('donation-form', 'step 2 and the receipt need the cookie: /donasi/bayar 303 to /donasi, PUT /donasi/bukti 404 JSON; other methods 405', async () => {
+  const bayar = await get('/donasi/bayar');
+  assert.equal(bayar.status, 303);
+  assert.equal(bayar.headers.get('location'), '/donasi');
+  const proof = await get('/donasi/bukti', { method: 'PUT', headers: { origin: base, 'content-type': 'application/octet-stream' }, body: 'x' });
+  assert.equal(proof.status, 404);
+  assert.equal((await proof.json()).error, 'not_found');
+  assert.equal((await get('/donasi/bukti')).status, 405);
+  assert.equal((await get('/donasi/bayar', { method: 'POST', headers: { origin: base } })).status, 405);
+});
+
+await check('donation-form', 'a cross-site post is refused before the API: POST /donasi, PUT /donasi/bukti, POST /donasi/terima-kasih answer 403', async () => {
+  const before = (await donationApi.log()).length;
+  assert.equal((await donationStep1(DONATION_ONCE, { origin: 'https://evil.example' })).status, 403);
+  assert.equal((await get('/donasi/bukti', { method: 'PUT', headers: { origin: 'https://evil.example' }, body: 'x' })).status, 403);
+  assert.equal((await get('/donasi/terima-kasih', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/x-www-form-urlencoded' }, body: 'source=other' })).status, 403);
+  assert.equal((await donationApi.log()).length, before);
+});
+
+await check('donation-form', 'invalid step 1 (no JavaScript): 400, the API\'s messages under the fields, the typed values kept, aria wired, no cookie', async () => {
+  const res = await donationStep1({ ...DONATION_ONCE, name: '', whatsapp: '123' });
+  assert.equal(res.status, 400);
+  assert.equal(res.headers.get('set-cookie'), null);
+  const html = await text(res);
+  assert.match(html, /role="alert"[^>]*>\s*Silakan periksa kembali isian formulir\./);
+  assert.match(html, /<p id="name-error"[^>]*>Tulis nama Anda\.<\/p>/);
+  assert.match(html, /<p id="whatsapp-error"[^>]*>Nomor WhatsApp belum benar\.<\/p>/);
+  assert.match(html, /id="whatsapp"[^>]*value="123"[^>]*aria-describedby="whatsapp-error" aria-invalid="true"/);
+  assert.match(html, /name="amount" value="100000" checked/);
+});
+
+let onceCookie = '';
+await check('donation-form', 'a one-off donation: 303 to /donasi/bayar with the HttpOnly cookie under /donasi; the API got the values, the visitor address and the bot-check token', async () => {
+  const before = (await donationApi.log()).length;
+  const res = await donationStep1({ ...DONATION_ONCE, 'cf-turnstile-response': 'XXXX.DUMMY.TOKEN.XXXX' }, { 'cf-connecting-ip': '203.0.113.150' });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('location'), '/donasi/bayar');
+  const cookie = res.headers.get('set-cookie') ?? '';
+  assert.match(cookie, /^sakem_donasi=[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}; Path=\/donasi; HttpOnly; Secure; SameSite=Lax; Max-Age=604800$/);
+  onceCookie = cookieOf(res);
+  const [entry] = (await donationApi.log()).slice(before);
+  assert.equal(entry.method, 'POST');
+  assert.equal(entry.clientIp, '203.0.113.150');
+  assert.equal(entry.turnstileToken, 'XXXX.DUMMY.TOKEN.XXXX');
+  assert.deepEqual(entry.body, { kind: 'once', name: 'Rina Marker', whatsapp: '0812 3456 7890', amount: '100000' });
+});
+
+await check('donation-form', '/donasi/bayar (one-off): noindex, the amount and the account with Salin, the QRIS image and its download, the receipt upload and "Konfirmasi Donasi"; nothing of it cached', async () => {
+  const res = await get('/donasi/bayar', { headers: { cookie: onceCookie } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  const html = await text(res);
+  assert.match(html, /<meta name="robots" content="noindex/);
+  assert.match(html, /Transfer ke rekening berikut/);
+  assert.match(html, /Rp100\.000/);
+  assert.match(html, /<span id="donasi-amount" hidden>100000<\/span>/);
+  assert.match(html, /<span id="donasi-account">1010141940<\/span>/);
+  assert.equal((html.match(/data-copy-text="donasi-(amount|account)"/g) ?? []).length, 2);
+  assert.match(html, /download="qris-sakola-kembara\.png"/);
+  assert.match(html, /<input id="proof" name="proof" type="file" accept="image\/jpeg,image\/png,image\/webp,application\/pdf"/);
+  assert.ok(html.includes('Konfirmasi Donasi') && html.includes('Rina Marker'));
+  assert.equal([...html.matchAll(/<script(?![^>]*MotionLoader)[^>]*\ssrc=/g)].length, 0, 'no script file');
+});
+
+await check('donation-form', '"Ubah data": /donasi?ubah=1 fills the form from the cookie and posts a change (no bot check), the same cookie stays', async () => {
+  const html = await text(await get('/donasi?ubah=1', { headers: { cookie: onceCookie } }));
+  assert.match(html, /id="name"[^>]*value="Rina Marker"/);
+  assert.match(html, /<input type="hidden" name="update" value="1">/);
+  assert.ok(!html.includes('data-turnstile data-sitekey'), 'no widget for a change');
+  const before = (await donationApi.log()).length;
+  const res = await donationStep1({ ...DONATION_ONCE, amount: 'other', amountOther: 'Rp150.000', update: '1' }, { cookie: onceCookie });
+  assert.equal(res.status, 303);
+  assert.equal(cookieOf(res), onceCookie);
+  const [entry] = (await donationApi.log()).slice(before);
+  assert.equal(entry.body.id, onceCookie.split('=')[1].split('.')[0]);
+  assert.ok(entry.token, 'the change carries the token');
+  assert.match(await text(await get('/donasi/bayar', { headers: { cookie: onceCookie } })), /Rp150\.000/);
+});
+
+await check('donation-form', 'the receipt: PUT /donasi/bukti streams the bytes to the API (200 JSON), then step 2 sends the visitor on to the thanks', async () => {
+  const before = (await donationApi.log()).length;
+  const bytes = new Uint8Array(2048).fill(7);
+  const res = await get('/donasi/bukti', { method: 'PUT', headers: { origin: base, cookie: onceCookie, 'content-type': 'application/octet-stream' }, body: bytes });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+  const [entry] = (await donationApi.log()).slice(before);
+  assert.equal(entry.method, 'PUT');
+  assert.equal(entry.bytes, 2048);
+  const bayar = await get('/donasi/bayar', { headers: { cookie: onceCookie } });
+  assert.equal(bayar.status, 303);
+  assert.equal(bayar.headers.get('location'), '/donasi/terima-kasih');
+});
+
+await check('donation-form', '/donasi/terima-kasih: noindex, the optional source question as buttons; an answer is saved once (303 ?tersimpan=1) and the question is gone', async () => {
+  const html = await text(await get('/donasi/terima-kasih', { headers: { cookie: onceCookie } }));
+  assert.match(html, /<meta name="robots" content="noindex/);
+  assert.match(html, /Terima Kasih atas Donasi Anda\./);
+  assert.match(html, /Dari mana Anda mengenal Sakola Kembara\?/);
+  assert.equal((html.match(/<button type="submit" name="source" value="/g) ?? []).length, 6);
+  const res = await get('/donasi/terima-kasih', { method: 'POST', headers: { origin: base, cookie: onceCookie, 'content-type': 'application/x-www-form-urlencoded' }, body: 'source=instagram' });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('location'), '/donasi/terima-kasih?tersimpan=1');
+  const after = await text(await get('/donasi/terima-kasih?tersimpan=1', { headers: { cookie: onceCookie } }));
+  assert.match(after, /jawaban Anda tersimpan/);
+  assert.ok(!after.includes('Dari mana Anda mengenal'));
+  assert.ok(!(await text(await get('/donasi/terima-kasih', { headers: { cookie: onceCookie } }))).includes('Dari mana Anda mengenal'));
+});
+
+await check('donation-form', 'a monthly donation: step 2 is the account to keep, the reminder day and "Selesai", no receipt upload', async () => {
+  const month = new Date().toISOString().slice(0, 7);
+  const res = await donationStep1({ ...DONATION_ONCE, kind: 'monthly', name: 'Budi Marker', startMonth: month, remindDay: '5' });
+  assert.equal(res.status, 303);
+  const html = await text(await get('/donasi/bayar', { headers: { cookie: cookieOf(res) } }));
+  assert.match(html, /Rekening untuk donasi bulanan Anda/);
+  assert.match(html, /Rp100\.000 per bulan, mulai /);
+  assert.match(html, /setiap tanggal 5\./);
+  assert.match(html, /<a href="\/donasi\/terima-kasih"[^>]*>\s*Selesai\s*<\/a>/);
+  assert.ok(!html.includes('id="proof"'));
+  assert.ok(!html.includes('donasi-amount'));
+});
+
+await check('donation-form', 'the API down: step 1 keeps the typed values with a 503 message, step 2 says so with a 503, never a crash', async () => {
+  await setFixtureMode(fixtureBase, 'donation', '500');
+  try {
+    const res = await donationStep1(DONATION_ONCE);
+    assert.equal(res.status, 503);
+    const html = await text(res);
+    assert.match(html, /Data belum dapat dikirim saat ini\./);
+    assert.match(html, /id="name"[^>]*value="Rina Marker"/);
+    const bayar = await get('/donasi/bayar', { headers: { cookie: onceCookie } });
+    assert.equal(bayar.status, 503);
+    assert.match(await text(bayar), /Data donasi belum dapat dimuat saat ini\./);
+  } finally {
+    await setFixtureMode(fixtureBase, 'donation', 'ok');
   }
 });
 

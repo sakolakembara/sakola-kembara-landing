@@ -61,11 +61,11 @@ Both sides are required; the run refuses to start otherwise.
 
 /**
  * Paths of the new site and the legacy entry points: the main pages every run checks, in WordPress spelling (trailing slash).
- * `/donasi/` is not written out here any more (SAKEM-121): it is a static source of the redirect table (a 307 to the donation
- * shortlink) and comes in with the other redirects below; its page moved back to `/laporan/`, which is written out again.
+ * `/donasi/` is the site's donation form since SAKEM-128 (it was a redirect to the donation shortlink from SAKEM-121), so it is
+ * written out again; the reports' page is `/laporan/`.
  */
 export const MAIN_PATHS = [
-  '/', '/blog/', '/tim/', '/kontak/', '/laporan/', '/gabung-siswa/', '/gabung-siswa/docs/',
+  '/', '/blog/', '/tim/', '/kontak/', '/laporan/', '/donasi/', '/gabung-siswa/', '/gabung-siswa/docs/',
   '/program/prapembinaan/', '/program/pembinaan/', '/program/pasca-pembinaan/',
   ...Object.keys(REDIRECTS).filter((p) => !p.includes('[') && !['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/gabung-siswa/form'].includes(p)).map((p) => (/\.[a-z]+$/i.test(p) ? p : `${p}/`)),
   '/blog/page/2/', '/feed/atom/',

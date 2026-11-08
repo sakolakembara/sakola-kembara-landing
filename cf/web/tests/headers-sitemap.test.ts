@@ -80,7 +80,7 @@ describe('robots.txt', () => {
 });
 
 describe('sitemap', () => {
-  it('static routes, priorities and frequencies equal the root app/sitemap.ts, except /donasi (a redirect to the donation shortlink since SAKEM-121, and a redirect is not a sitemap URL) and plus /gabung-siswa/docs (SAKEM-066: the old sitemap left the documents page out)', () => {
+  it('static routes, priorities and frequencies equal the root app/sitemap.ts, /donasi included again (the donation form since SAKEM-128; a redirect from SAKEM-121), plus /gabung-siswa/docs (SAKEM-066: the old sitemap left the documents page out)', () => {
     const src = readRoot('app/sitemap.ts');
     const rootRoutes = [...src.matchAll(/\{ path: "([^"]+)", priority: ([\d.]+), changeFrequency: "(\w+)" as const \}/g)].map((m) => ({
       path: m[1],
@@ -90,10 +90,10 @@ describe('sitemap', () => {
     expect(rootRoutes).toHaveLength(7);
     expect(rootRoutes.map((r) => r.path)).toContain('/donasi');
     const docs = { path: '/gabung-siswa/docs', priority: 0.6, changeFrequency: 'monthly' };
-    expect(STATIC_ROUTES.filter((r) => r.path !== docs.path)).toEqual(rootRoutes.filter((r) => r.path !== '/donasi'));
+    expect(STATIC_ROUTES.filter((r) => r.path !== docs.path)).toEqual(rootRoutes);
     expect(STATIC_ROUTES).toContainEqual(docs);
     expect(STATIC_ROUTES.map((r) => r.path).indexOf(docs.path)).toBe(STATIC_ROUTES.map((r) => r.path).indexOf('/gabung-siswa') + 1);
-    expect(STATIC_ROUTES.map((r) => r.path)).not.toContain('/donasi');
+    expect(STATIC_ROUTES.map((r) => r.path)).toContain('/donasi');
     expect(STATIC_ROUTES.map((r) => r.path)).toContain('/laporan');
   });
 

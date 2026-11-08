@@ -1,0 +1,186 @@
+---
+import qrisImage from '@root/public/images/qris-sakola-kembara.png';
+import { env } from 'cloudflare:workers';
+import DonationLayout from '~/components/donation/DonationLayout.astro';
+import CopyButtonScript from '~/components/scripts/CopyButtonScript.astro';
+import { contactInfo } from '~/lib/contact';
+import { BANK, MAX_PROOF_BYTES, loadDonation, monthLabel, rupiah } from '~/lib/donation';
+
+// /donasi/bayar, step 2 (SAKEM-128): the transfer details for the amount just chosen, and, for a one-off donation, the
+// receipt. Reached with the cookie step 1 set; without it (or with a stale one) it goes back to step 1. The receipt
+// upload needs JavaScript (the file is sent as it is, or a photo made smaller first, to /donasi/bukti); without it the
+// page says how to send it on WhatsApp.
+export const prerender = false;
+
+const noStore = { 'cache-control': 'no-store' };
+if (Astro.request.method !== 'GET' && Astro.request.method !== 'HEAD') {
+  return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD', ...noStore } });
+}
+Astro.response.headers.set('cache-control', 'no-store');
+
+const loaded = await loadDonation(Astro.request, env);
+if (!loaded.summary && !loaded.unavailable) return new Response(null, { status: 303, headers: { location: '/donasi', ...noStore } });
+const donation = loaded.summary;
+if (donation && donation.kind === 'once' && donation.hasProof) {
+  return new Response(null, { status: 303, headers: { location: '/donasi/terima-kasih', ...noStore } });
+}
+if (!donation) Astro.response.status = 503;
+
+const QRIS_IMAGE = qrisImage.src;
+const whatsappRow = contactInfo.find((row) => row.title === 'WhatsApp');
+const once = donation?.kind === 'once';
+const summaryAmount = donation ? (once ? `${rupiah(donation.amount)}, sekali` : `${rupiah(donation.amount)} per bulan, mulai ${monthLabel(donation.startMonth)}`) : '';
+const linkButton = 'h-11 shrink-0 px-1 text-[15px] font-semibold underline underline-offset-4';
+---
+
+<DonationLayout
+  title="Satu langkah lagi."
+  muted={once ? 'Transfer, lalu unggah buktinya.' : 'Simpan rekening ini.'}
+  seoTitle="Pembayaran Donasi"
+  description="Rekening dan QRIS donasi Sakola Kembara."
+  path="/donasi/bayar"
+  noindex
+>
+  {
+    donation && (
+      <div slot="aside" class="flex max-w-[440px] flex-col gap-3">
+        <dl class="flex flex-col border-t border-[#C9D1E2] text-[15px]">
+          <div class="flex justify-between gap-4 border-b border-[#C9D1E2] py-3.5">
+            <dt class="text-[#6B7693]">Nama</dt>
+            <dd class="text-right font-semibold">{donation.name}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-[#C9D1E2] py-3.5">
+            <dt class="text-[#6B7693]">Donasi</dt>
+            <dd class="text-right font-semibold">{summaryAmount}</dd>
+          </div>
+        </dl>
+        {donation.status !== 'checked' && (
+          <a href="/donasi?ubah=1" class="self-start py-2.5 text-[15px] font-semibold underline underline-offset-4">
+            Ubah data
+          </a>
+        )}
+      </div>
+    )
+  }
+
+  {
+    !donation ? (
+      <div role="alert" class="flex flex-col gap-4">
+        <p class="text-[15px] leading-relaxed">Data donasi belum dapat dimuat saat ini. Silakan muat ulang halaman ini beberapa saat lagi.</p>
+        <a href="/donasi/bayar" class="self-start font-semibold underline underline-offset-4">Muat ulang</a>
+      </div>
+    ) : (
+      <div class="flex flex-col gap-6">
+        <h2 class="text-[24px] font-semibold leading-tight md:text-[28px]">{once ? 'Transfer ke rekening berikut' : 'Rekening untuk donasi bulanan Anda'}</h2>
+
+        <div class="flex flex-col border-t border-[#E1E6F0]">
+          {once && (
+            <div class="flex items-center justify-between gap-3 border-b border-[#E1E6F0] py-4">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-sm text-[#6B7693]">Nominal</span>
+                <span class="text-[22px] font-semibold md:text-2xl">{rupiah(donation.amount)}</span>
+                {/* What "Salin" copies: the digits a banking app takes, without "Rp" and the dots. */}
+                <span id="donasi-amount" hidden>{donation.amount}</span>
+              </div>
+              <button type="button" data-copy-text="donasi-amount" hidden class={linkButton}>
+                <span data-copy-idle>Salin</span>
+                <span data-copy-done hidden>Tersalin</span>
+              </button>
+              <span data-copy-status class="sr-only" aria-live="polite" />
+            </div>
+          )}
+          <div class="flex items-center justify-between gap-3 border-b border-[#E1E6F0] py-4">
+            <div class="flex flex-col gap-0.5">
+              <span class="text-sm text-[#6B7693]">
+                {BANK.name} (kode {BANK.code}) a.n. {BANK.holder}
+              </span>
+              <span class="text-[22px] font-semibold tracking-[0.02em] md:text-2xl" aria-label={BANK.accountShown}>
+                <span id="donasi-account">{BANK.account}</span>
+              </span>
+            </div>
+            <button type="button" data-copy-text="donasi-account" hidden class={linkButton}>
+              <span data-copy-idle>Salin</span>
+              <span data-copy-done hidden>Tersalin</span>
+            </button>
+            <span data-copy-status class="sr-only" aria-live="polite" />
+          </div>
+          <div class="flex items-center gap-4 border-b border-[#E1E6F0] py-4 md:gap-6 md:py-5">
+            <img
+              src={QRIS_IMAGE}
+              alt="Kode QRIS Sakola Kembara"
+              width="140"
+              height="140"
+              class="h-16 w-16 shrink-0 rounded-lg border border-[#E1E6F0] bg-white p-1.5 md:h-[140px] md:w-[140px] md:rounded-xl md:p-3"
+            />
+            <div class="flex flex-col gap-1.5">
+              <span class="text-[15px] font-semibold md:text-base">Atau bayar dengan QRIS</span>
+              <span class="text-[13px] leading-snug text-[#4A5878] md:text-sm">
+                <span class="md:hidden">Simpan gambarnya, lalu unggah di aplikasi e-wallet atau m-banking.</span>
+                <span class="hidden md:inline">Pindai melalui GoPay, OVO, DANA, ShopeePay, atau m-banking.</span>
+              </span>
+              <a href={QRIS_IMAGE} download="qris-sakola-kembara.png" class="hidden text-[15px] font-semibold underline underline-offset-4 md:inline">
+                Download QR
+              </a>
+            </div>
+          </div>
+          <a
+            href={QRIS_IMAGE}
+            download="qris-sakola-kembara.png"
+            class="mt-4 flex h-12 items-center justify-center rounded-full border-[1.5px] border-primary-blue-dark text-[15px] font-semibold md:hidden"
+          >
+            Simpan Gambar QRIS
+          </a>
+        </div>
+
+        {once ? (
+          <form id="donasi-bukti" class="flex flex-col gap-4" data-max={MAX_PROOF_BYTES} novalidate>
+            <div>
+              <label for="proof" class="mb-2 block text-sm font-semibold">
+                Bukti transfer
+              </label>
+              <label
+                for="proof"
+                class="flex min-h-14 cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] border-dashed border-[#B9C2D6] px-4 py-3 text-[15px] has-focus-visible:outline-2 has-focus-visible:outline-primary-blue-dark"
+              >
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 16V4" />
+                  <path d="m7 9 5-5 5 5" />
+                  <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+                </svg>
+                <span data-file-name class="min-w-0 truncate">
+                  Unggah tangkapan layar atau PDF setelah transfer
+                </span>
+                <input id="proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only" required />
+              </label>
+              <p data-proof-error role="alert" hidden class="mt-1.5 text-[13px] text-danger-fg" />
+            </div>
+            <noscript>
+              <p class="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 text-sm leading-relaxed text-warning-fg">
+                Unggah bukti transfer memerlukan JavaScript. Anda juga dapat mengirim bukti transfer melalui WhatsApp ke {whatsappRow?.value}.
+              </p>
+            </noscript>
+            <button type="submit" class="h-14 rounded-full bg-primary-blue-dark text-base font-semibold text-white transition-colors hover:bg-primary-blue disabled:opacity-70">
+              <span data-label>Konfirmasi Donasi</span>
+            </button>
+            <p class="text-center text-[13px] leading-normal text-[#6B7693]">Data Anda hanya digunakan untuk mencatat donasi dan tidak ditampilkan di situs.</p>
+          </form>
+        ) : (
+          <div class="flex flex-col gap-4">
+            <p class="text-[15px] leading-relaxed text-[#4A5878]">Kami akan mengingatkan Anda melalui WhatsApp setiap tanggal {donation.remindDay}.</p>
+            <a href="/donasi/terima-kasih" class="flex h-14 items-center justify-center rounded-full bg-primary-blue-dark text-base font-semibold text-white hover:bg-primary-blue">
+              Selesai
+            </a>
+            <p class="text-center text-[13px] leading-normal text-[#6B7693]">Data Anda hanya digunakan untuk mencatat donasi dan tidak ditampilkan di situs.</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+</DonationLayout>
+
+<CopyButtonScript />
+
+<script>
+  import { sendProof } from '~/scripts/donation-proof';
+  sendProof();
+</script>

@@ -9,6 +9,12 @@
 //   GET  /api/public/blog              ?page=&pageSize=  featured + articles + paging (the contract's rules)
 //   GET  /api/public/blog/<slug>       { article, related }, or 404 { "error": "not_found" }
 //   POST /api/public/contact           the contact form: 201, 400, 429 (rate_limited, duplicate_recent)
+//   POST /api/public/donations         the donation form, step 1 (SAKEM-128): 201 { donation, token }, 200 on a change
+//                                      ({ id } + X-Sakem-Donation-Token), 400 validation_failed, 404 for a wrong token
+//   GET  /api/public/donations/<id>    { donation } with the token, else 404
+//   PUT  /api/public/donations/<id>/proof   the receipt (raw bytes): 200, 404, 409 proof_locked (a monthly donation)
+//   POST /api/public/donations/<id>/source  { source }: 200
+//        (an in-memory stand-in for cf/admin src/api/public/donations.ts: the real rules are tested there)
 //   GET  /api/public/shortlinks/<slug> { shortlink: { targetUrl } }, or 404 { "error": "not_found" } for an unknown or
 //                                      switched-off link (an ADDITION to the contract: docs/cloudflare/content-api.md).
 //                                      Like the real API it counts the click as it answers (see /__clicks).
@@ -37,7 +43,9 @@
 //   GET  /__contact-log         every contact request the fixture looked at: { clientIp, turnstileToken, headers, body }
 //                               (a TEST fixture: the real API stores messages in D1, and the site never logs them;
 //                               `turnstileToken` is the X-Sakem-Turnstile-Token header, or undefined when none came)
-//   POST /__reset               forget everything: mode, overrides, hits, requests, the contact log, limiter and duplicates
+//   GET  /__donation-log        every donation request: { method, path, clientIp, token, turnstileToken, body, bytes }
+//   POST /__reset               forget everything: mode, overrides, hits, requests, the contact log, limiter and duplicates,
+//                               the donations
 //
 // All names, titles, texts and links below are made up for the fixture (example.org is reserved).
 // The file paths are root-relative, as the API returns them; nothing serves those files here.
@@ -236,6 +244,8 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
   /** slug -> clicks counted, as the real API does after it has answered. */
   const clicks = new Map();
   const contact = { log: [], windows: new Map(), recent: new Map() };
+  /** id -> { token, donation } and every request, for the /donasi checks. */
+  const donations = { byId: new Map(), log: [] };
   /** The mode an endpoint answers in: its own override, else the global one. */
   const modeOf = (name) => overrides[name] ?? mode;
   const reset = () => {
@@ -248,6 +258,8 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
     contact.log.length = 0;
     contact.windows.clear();
     contact.recent.clear();
+    donations.byId.clear();
+    donations.log.length = 0;
   };
 
   const send = (res, status, body, headers = {}) => {
@@ -296,6 +308,7 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
     if (p === '/__hits') return send(res, 200, { hits: byEndpoint.team, mode, overrides, byEndpoint });
     if (p === '/__requests') return send(res, 200, requests[url.searchParams.get('for') ?? 'blog'] ?? []);
     if (p === '/__contact-log') return send(res, 200, contact.log);
+    if (p === '/__donation-log') return send(res, 200, donations.log);
     if (p === '/__clicks') return send(res, 200, Object.fromEntries(clicks));
     if (p === '/__reset') {
       reset();
@@ -442,6 +455,84 @@ export function startFixtureApi({ port = Number(process.env.FIXTURE_API_PORT ?? 
       }
       contact.recent.set(verdict.ok.email, now);
       return send(res, 201, { ok: true, message: MESSAGES.success }, noStore);
+    }
+
+    // ---- donations (SAKEM-128)
+    const donationPath = p.match(/^\/api\/public\/donations(?:\/([0-9a-f-]{36})(?:\/(proof|source))?)?$/);
+    if (donationPath) {
+      const noStore = { 'cache-control': 'no-store' };
+      const [, id, part] = donationPath;
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const raw = Buffer.concat(chunks);
+      const token = String(req.headers['x-sakem-donation-token'] ?? '') || undefined;
+      const entry = {
+        method: req.method,
+        path: p,
+        clientIp: String(req.headers['x-sakem-client-ip'] ?? ''),
+        token,
+        turnstileToken: String(req.headers['x-sakem-turnstile-token'] ?? '') || undefined,
+        body: undefined,
+        bytes: raw.length,
+      };
+      donations.log.push(entry);
+      if (modeOf('donation') === '500') return send(res, 500, { error: 'boom' }, noStore);
+      const json = () => {
+        try {
+          return JSON.parse(raw.toString('utf8'));
+        } catch {
+          return null;
+        }
+      };
+      const owned = (key) => {
+        const row = key && donations.byId.get(key);
+        return row && row.token === token ? row : null;
+      };
+      if (!id && req.method === 'POST') {
+        const body = json();
+        entry.body = body;
+        if (!body) return send(res, 400, { error: 'invalid_json' }, noStore);
+        const errors = {};
+        if (typeof body.name !== 'string' || body.name.trim().length < 2) errors.name = 'Tulis nama Anda.';
+        if (typeof body.whatsapp !== 'string' || !/^(\+?62|0)8[0-9 -]{7,15}$/.test(body.whatsapp.trim())) errors.whatsapp = 'Nomor WhatsApp belum benar.';
+        const amount = Number(String(body.amount ?? '').replace(/^Rp\s?/i, '').replace(/\./g, ''));
+        if (!Number.isInteger(amount) || amount < 1000) errors.amount = 'Pilih atau tulis nominal donasi.';
+        if (body.kind === 'monthly' && !body.remindDay) errors.remindDay = 'Pilih tanggal pengingat.';
+        if (Object.keys(errors).length) return send(res, 400, { error: 'validation_failed', message: 'Silakan periksa kembali isian formulir.', fieldErrors: errors }, noStore);
+        const fields = {
+          kind: body.kind === 'monthly' ? 'monthly' : 'once',
+          name: body.name.trim(),
+          whatsapp: body.whatsapp.replace(/[^0-9]/g, '').replace(/^0/, '62'),
+          amount,
+          startMonth: body.kind === 'monthly' ? body.startMonth ?? null : null,
+          remindDay: body.kind === 'monthly' ? Number(body.remindDay) : null,
+        };
+        if (body.id) {
+          const row = owned(body.id);
+          if (!row) return send(res, 404, { error: 'not_found' }, noStore);
+          Object.assign(row.donation, fields);
+          return send(res, 200, { donation: row.donation }, noStore);
+        }
+        const donation = { id: crypto.randomUUID(), ...fields, status: fields.kind === 'once' ? 'awaiting_transfer' : 'new', hasProof: false, source: null };
+        const fresh = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
+        donations.byId.set(donation.id, { token: fresh, donation });
+        return send(res, 201, { donation, token: fresh }, noStore);
+      }
+      const row = owned(id);
+      if (!row) return send(res, 404, { error: 'not_found', message: 'Data donasi tidak ditemukan.' }, noStore);
+      if (!part && req.method === 'GET') return send(res, 200, { donation: row.donation }, noStore);
+      if (part === 'proof' && req.method === 'PUT') {
+        if (row.donation.kind !== 'once') return send(res, 409, { error: 'proof_locked', message: 'Donasi bulanan tidak memerlukan bukti transfer di sini.' }, noStore);
+        if (raw.length === 0) return send(res, 400, { error: 'empty', message: 'Berkas kosong.' }, noStore);
+        Object.assign(row.donation, { hasProof: true, status: 'new' });
+        return send(res, 200, { donation: row.donation }, noStore);
+      }
+      if (part === 'source' && req.method === 'POST') {
+        entry.body = json();
+        row.donation.source = entry.body?.source ?? null;
+        return send(res, 200, { donation: row.donation }, noStore);
+      }
+      return send(res, 405, { error: 'method_not_allowed' }, noStore);
     }
 
     // ---- the lists
