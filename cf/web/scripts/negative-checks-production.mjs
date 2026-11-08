@@ -1,6 +1,6 @@
 // Proves the tests of the Phase A tooling are not vacuous (SAKEM-104): each check breaks ONE safeguard in
 // cf/scripts/production-deploy-command.mjs, cf/scripts/production-dry-run.mjs, cf/scripts/check-production-site.mjs,
-// cf/scripts/check-zone-export.mjs, a wrangler file, package.json or .gitignore, runs the tests that must notice, expects
+// cf/scripts/check-zone-export.mjs, cf/scripts/on-main.mjs, a wrangler file, package.json or .gitignore, runs the tests that must notice, expects
 // them to FAIL, and always restores the file.
 //
 //   node scripts/negative-checks-production.mjs                       (pnpm test:negative:production)
@@ -20,6 +20,7 @@ const PRINTER = '../scripts/production-deploy-command.mjs';
 const DRY_RUN = '../scripts/production-dry-run.mjs';
 const CHECKER = '../scripts/check-production-site.mjs';
 const ZONE = '../scripts/check-zone-export.mjs';
+const ON_MAIN = '../scripts/on-main.mjs';
 const SCRIPTS = 'tests/production-scripts.test.ts';
 const CHECK = 'tests/production-check.test.ts';
 const ZONE_TESTS = 'tests/zone-export.test.ts';
@@ -169,6 +170,12 @@ const checks = [
   { name: 'zone: a wildcard is only a warning', file: ZONE, from: "add('Z-02', allowWildcard ? 'WARN' : 'FAIL',", to: "add('Z-02', 'WARN',", tests: ZONE_TESTS },
   { name: 'zone: only an A wildcard is seen', file: ZONE, from: "r.name.split('.')[0] === '*');", to: "r.name.split('.')[0] === '*' && r.type === 'A');", tests: ZONE_TESTS },
   { name: 'zone: a proxied mail or autodiscover name is allowed', file: ZONE, from: '      return DNS_ONLY_LABELS.has(first) || ', to: '      return false || ', tests: ZONE_TESTS },
+  // ---------------------------------------------------------------- deploy only from origin/main (SAKEM-126)
+  { name: 'on-main: a checkout that is not origin/main passes', file: ON_MAIN, from: '  else if (head !== main) problems.push(', to: '  else if (false) problems.push(', tests: SCRIPTS },
+  { name: 'on-main: an unreadable origin/main passes', file: ON_MAIN, from: '  if (!main) problems.push(', to: '  if (false) problems.push(', tests: SCRIPTS },
+  { name: 'on-main: changes that are not committed pass', file: ON_MAIN, from: "  if (status.trim() !== '') problems.push(", to: '  if (false) problems.push(', tests: SCRIPTS },
+  { name: 'printer: the command no longer runs on-main first', file: PRINTER, from: "return [MAIN_PIN, '&&', ACCOUNT_PIN,", to: 'return [ACCOUNT_PIN,', tests: SCRIPTS },
+
   { name: 'zone: a proxied CNAME to Microsoft 365 is allowed', file: ZONE, from: "(r.type === 'CNAME' && MICROSOFT_TARGET.test(", to: "(false && MICROSOFT_TARGET.test(", tests: ZONE_TESTS },
   { name: 'zone: an unproxied apex is only a warning', file: ZONE, from: "else if (!apex.some((r) => r.proxied === true)) add('Z-05', 'FAIL',", to: "else if (!apex.some((r) => r.proxied === true)) add('Z-05', 'WARN',", tests: ZONE_TESTS },
   { name: 'zone: a record that points at workers.dev passes', file: ZONE, from: '  const workersDev = inZone.filter((r) => /workers\\.dev/i.test(r.rdata));', to: '  const workersDev = [];', tests: ZONE_TESTS },

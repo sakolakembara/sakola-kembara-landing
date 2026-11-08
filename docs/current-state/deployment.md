@@ -1,5 +1,7 @@
 # Deployment
 
+> **Superseded (2026-11-08).** Production runs on Cloudflare Workers, not on a VPS: the site Worker `sakola-kembara-web` (`cf/web`) and the API and admin Worker `sakem-admin` (`cf/admin`), with D1 and R2. **What is live is `main`:** both are deployed by hand with the command `pnpm deploy:prod:command` prints in `cf/web` or `cf/admin`, which refuses to run unless the checkout is exactly `origin/main` and clean (SAKEM-126) and pins the organisation account (SAKEM-123). Details: [`../cloudflare/cutover-runbook.md`](../cloudflare/cutover-runbook.md) section 14 and [`../cloudflare/README.md`](../cloudflare/README.md). Everything below describes the old VPS plan and is kept for history.
+
 > **Status: planned, in transition.** The repo previously deployed to shared cPanel; those scripts (`scripts/cpanel-*`, `scripts/deploy-cpanel.*`, `scripts/generate-ssh-key.sh`) have all been removed and we are migrating to a **VPS running Docker Compose**. This doc describes the target setup. Until it ships, there is no working production deploy in the repo — `npm run build` + `node .next/standalone/server.js` is enough to verify production behavior locally.
 
 The target deploy is defined in detail in [`../roadmap/infrastructure.md`](../roadmap/infrastructure.md). This doc is the operator-facing reference — what runs where, how a deploy happens day-to-day.

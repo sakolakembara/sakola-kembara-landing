@@ -226,9 +226,15 @@ export function missingRequired(worker, entries) {
  */
 export const ACCOUNT_PIN = 'ACCOUNT="$(node ../scripts/org-account-id.mjs)" && CLOUDFLARE_ACCOUNT_ID="$ACCOUNT"';
 
-/** The command as one string: the account pin, the deploy words, then one `--var 'NAME:value'` per entry (in the file's order). */
+/**
+ * The main pin in front of the account pin (SAKEM-126): on-main.mjs stops the deploy unless this checkout is exactly
+ * `origin/main` and clean, because what is live is what is on `main`.
+ */
+export const MAIN_PIN = 'node ../scripts/on-main.mjs';
+
+/** The command as one string: the main pin, the account pin, the deploy words, then one `--var 'NAME:value'` per entry (in the file's order). */
 export function buildCommand(worker, entries) {
-  return [ACCOUNT_PIN, ...WORKERS[worker].deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
+  return [MAIN_PIN, '&&', ACCOUNT_PIN, ...WORKERS[worker].deploy, ...entries.flatMap(({ name, value }) => ['--var', shellQuote(`${name}:${value}`)])].join(' ');
 }
 
 /**
@@ -420,6 +426,7 @@ function main(argv) {
   process.stderr.write(
     [
       `# ${config.name} (PRODUCTION, the real domain): this prints the command, it does not run it.`,
+      '# 0. the command first checks that this checkout is exactly origin/main and clean (../scripts/on-main.mjs): production is deployed only from main.',
       '# 1. the command pins the ORGANISATION account itself, by name (../scripts/org-account-id.mjs; the id is not printed), and stops if the login cannot see it.',
       `# 2. ${buildLine(worker, entries)}`,
       ...(worker === 'web'

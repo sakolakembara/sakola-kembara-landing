@@ -22,7 +22,7 @@ Ticket: SAKEM-084 (M5), task M5-B. Written for **Dzul on the day**; the agent's 
 - Staging runs on `*.workers.dev`: **no cache behaviour is tested there** (the Cache API is documented to work on custom domains and routes; `workers.dev` is not mentioned). The zone `sakolakembara.org` moves to Cloudflare (nameservers) **only on cutover day**, with every record copied identically and kept DNS-only first. The zone may not be in the organisation account yet: this runbook assumes it is not. (**Updated 2026-10-15:** it is now active in the organisation account with the WordPress site live behind it; see [section 14.1](#141-what-changed-since-sections-1-to-13-were-written).)
 - Every real Cloudflare or DNS action needs Dzul's explicit OK, per step.
 - Shortlinks of the old Postgres were not migrated: the real ones are recreated in the new admin before cutover (P-07).
-- All work lives on the long-lived branch `cloudflare`.
+- All work lives on `main` (until 2026-11-08 on the long-lived branch `cloudflare`, which was then fast-forwarded into `main` and removed, SAKEM-126). Production is deployed only from a clean checkout of `origin/main`.
 - **2026-10-15: cutover Phase A.** The public site and the admin first, the portal later; the zone is already active in the organisation account. Concrete steps, tests and rollback: [section 14](#14-cutover-phase-a-the-public-site-and-the-admin-first-sakem-104).
 
 ## 2. What is verified today and what is paper
