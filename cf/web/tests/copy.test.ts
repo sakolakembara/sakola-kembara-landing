@@ -44,7 +44,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Yayasan Sakola Kembara berkomitmen untuk memberikan kesempatan pendidikan yang setara kepada seluruh anak Indonesia.',
       'contact@sakolakembara.org',
       'Social Media',
-      'Yayasan Sakola Kembara Indonesia. All rights reserved.',
+      // the copyright sentence is Indonesian since SAKEM-062: checked in its own test below
     ],
   },
   {
@@ -379,5 +379,13 @@ describe('SAKEM-125: the head of /laporan (copy approved by Dzul, 2026-11-06)', 
     const page = readWeb('src/pages/laporan.astro');
     expect(page).toContain("title: 'Donasi & Laporan',");
     expect(page).toContain("'Dukung pendidikan setara untuk anak Indonesia lewat QRIS atau transfer bank, lalu unduh laporan tahunan, keuangan, dampak, dan donasi Sakola Kembara.'");
+  });
+});
+
+describe('SAKEM-062: the copyright line of the footer is Indonesian (copy approved by Dzul, 2026-11-08)', () => {
+  it('"Hak cipta dilindungi." after the legal name, and no English left', () => {
+    const footer = norm(readWeb('src/components/Footer.astro'));
+    expect(footer).toContain('Yayasan Sakola Kembara Indonesia. Hak cipta dilindungi.');
+    expect(footer).not.toContain('All rights reserved');
   });
 });
