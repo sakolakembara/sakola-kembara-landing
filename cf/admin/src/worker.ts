@@ -9,6 +9,7 @@ import { blogRoutes } from "./api/blog";
 import { dashboardRoutes } from "./api/dashboard";
 import { serveDevUpload } from "./api/dev-uploads";
 import { messageRoutes } from "./api/messages";
+import { donationRoutes } from "./api/donations";
 import { createPublicApp } from "./api/public";
 import { publicApiApp } from "./api/public/entrypoint";
 import { reportRoutes } from "./api/reports";
@@ -113,6 +114,7 @@ app.get("/uploads/*", serveDevUpload);
 
 app.route("/api/admin/announcements", announcementRoutes);
 app.route("/api/admin/messages", messageRoutes);
+app.route("/api/admin/donations", donationRoutes);
 app.route("/api/admin/batches", batchRoutes);
 app.route("/api/admin/applications", applicationRoutes);
 app.route("/api/admin/applications", applicationFileRoutes);

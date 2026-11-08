@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REDIRECTS } from '../redirects.config.mjs';
 import { absoluteUrl, buildSeo } from '~/lib/seo';
@@ -147,8 +147,11 @@ describe('/gabung-siswa', () => {
 describe('/gabung-siswa/docs', () => {
   const web = readWeb('src/pages/gabung-siswa/docs.astro');
 
-  it('loads the copy script from src/scripts and nothing else', () => {
-    expect([...web.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1].trim())).toEqual(["import '~/scripts/copy-button';"]);
+  it('loads the copy script from src/scripts and nothing else (one shared entry, as on /donasi/bayar)', () => {
+    expect(web).not.toMatch(/<script\b/);
+    expect(web).toContain('<CopyButtonScript />');
+    const wrapper = readFileSync(`${webRoot}src/components/scripts/CopyButtonScript.astro`, 'utf8');
+    expect([...wrapper.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1].trim())).toEqual(["import '~/scripts/copy-button';"]);
   });
 
   it('the anchors are ids of the category (#panduan, #berkas-pendaftaran, ...), labelled by their heading, with room under the fixed navbar', () => {
@@ -189,17 +192,23 @@ describe('SAKEM-105/121: the reports have one address, /laporan#laporan, and eve
     expect(donasi).not.toContain('export const prerender = true;');
   });
 
-  it('the redirect table sends the older /impact-reports to it with a 308, one hop (never without the fragment); /laporan is the page, no rule, and /donasi goes to the donation shortlink', () => {
+  it('the redirect table sends the older /impact-reports to it with a 308, one hop (never without the fragment); /laporan is the page, no rule, and so is /donasi (the donation form, SAKEM-128)', () => {
     for (const source of ['/impact-reports', '/impact-reports/[...path]']) {
       expect(REDIRECTS[source], source).toEqual({ status: 308, destination: REPORTS_SECTION_PATH });
     }
     expect(REDIRECTS['/laporan']).toBeUndefined();
-    expect(REDIRECTS['/donasi']).toEqual({ status: 307, destination: DONATION_PATH });
+    expect(REDIRECTS['/donasi']).toBeUndefined();
+    // The donate buttons still go to the shortlink (SAKEM-120), whose target is chosen in the admin.
+    expect(DONATION_PATH).toBe('/donasi-sekarang');
   });
 
-  it('the footer\'s "Laporan" goes to it, the menu has no Laporan, and the page /donasi is gone (SAKEM-121)', () => {
+  it('the footer\'s "Laporan" goes to it, the menu has no Laporan; /donasi is the donation form again (SAKEM-128), with its two later steps', () => {
     expect(footerLinks.filter((l) => l.label === 'Laporan').map((l) => l.href)).toEqual([REPORTS_SECTION_PATH]);
     expect(navLinks.map((l) => l.label)).not.toContain('Laporan');
-    for (const rel of ['src/pages/donasi.astro', 'src/pages/donasi/index.astro']) expect(existsSync(`${webRoot}${rel}`), rel).toBe(false);
+    expect(existsSync(`${webRoot}src/pages/donasi.astro`)).toBe(false);
+    // "Konfirmasi Donasi" on /laporan opens the site's form, no longer the Google Form
+    expect(readFileSync(`${webRoot}src/pages/laporan.astro`, 'utf8')).toContain("const CONFIRMATION_FORM_URL = '/donasi';");
+    expect(readFileSync(`${webRoot}src/pages/laporan.astro`, 'utf8')).not.toContain('docs.google.com/forms');
+    for (const rel of ['src/pages/donasi/index.astro', 'src/pages/donasi/bayar.astro', 'src/pages/donasi/terima-kasih.astro', 'src/pages/donasi/bukti.ts']) expect(existsSync(`${webRoot}${rel}`), rel).toBe(true);
   });
 });

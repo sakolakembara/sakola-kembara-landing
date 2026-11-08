@@ -128,7 +128,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
     ],
   },
   {
-    // SAKEM-121: the page of the legacy /donasi lives at /laporan now (/donasi is a redirect to the donation form).
+    // SAKEM-121: the page of the legacy /donasi lives at /laporan now (/donasi is the donation form itself since SAKEM-128).
     name: '/donasi (served at /laporan)',
     web: 'src/pages/laporan.astro',
     root: ['app/(public)/donasi/page.tsx', 'app/(public)/donasi/layout.tsx'],
@@ -157,7 +157,7 @@ const cases: { name: string; web: string; root: string[]; phrases: string[] }[] 
       'Terima Kasih atas Donasi Anda',
       'Setelah berdonasi, mohon konfirmasikan melalui formulir berikut agar donasi Anda dapat kami catat dengan baik.',
       'Konfirmasi Donasi',
-      'https://docs.google.com/forms/d/e/1FAIpQLSe0wQUmreIspbu75JpHYpuHHYbgVi4FaROcfNTiTvgchCywdQ/viewform',
+      // the Google Form's link gave way to the site's own form (SAKEM-128); tests/public-pages.test.ts pins CONFIRMATION_FORM_URL
       'Kontak Kami',
       'Ada pertanyaan seputar donasi, penyaluran dana, atau laporan penggunaannya? Tim kami siap membantu.',
       'Hubungi Kami',

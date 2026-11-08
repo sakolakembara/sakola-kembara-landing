@@ -111,6 +111,8 @@ export const menuItems = [
   { key: "reports", label: "Laporan", area: "konten" },
   { key: "team", label: "Tim", area: "konten" },
   { key: "shortlinks", label: "Shortlink", area: "konten" },
+  // The /donasi confirmations (SAKEM-128): the super admin only, so area `sistem` (Dzul, 2026-11-08).
+  { key: "donations", label: "Donasi", area: "sistem" },
   { key: "audit", label: "Aktivitas", area: "sistem" },
   { key: "settings", label: "Pengaturan", area: "sistem" },
 ] as const satisfies readonly { key: string; label: string; area: AdminArea }[];

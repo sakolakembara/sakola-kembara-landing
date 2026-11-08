@@ -38,7 +38,7 @@ export const TURNSTILE_TEST_SITE_KEYS = {
 export const TURNSTILE_HEADER = "x-turnstile-token";
 
 /** Actions a widget declares with `data-action`; Siteverify echoes them back. */
-export type TurnstileAction = "login" | "register" | "forgot-password" | "resend-verification" | "contact";
+export type TurnstileAction = "login" | "register" | "forgot-password" | "resend-verification" | "contact" | "donation";
 
 export interface TurnstileConfig {
   /** `TURNSTILE_SECRET_KEY`. */

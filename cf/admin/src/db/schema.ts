@@ -12,6 +12,7 @@
 //   blog                 blog_posts
 //   media                media                                          (R2 uploads)
 //   portal               application_drafts, application_files, private_storage, email_daily   (the student portal)
+//   donations            donations                                      (the /donasi form, SAKEM-128)
 //
 // Not ported on purpose: legacy `accounts` (Better Auth's `account` replaces
 // it) and `rate_limit_hits` (Cloudflare rate limit bindings replace it).
@@ -25,3 +26,4 @@ export * from "./schema/content";
 export * from "./schema/blog";
 export * from "./schema/media";
 export * from "./schema/portal";
+export * from "./schema/donations";

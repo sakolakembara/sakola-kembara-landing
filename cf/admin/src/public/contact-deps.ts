@@ -1,7 +1,7 @@
 import type { Bindings } from "../env";
 import { isProduction } from "../env";
 import { checkLimits, RATE_LIMITS, type LimitEnv } from "../security/rate-limit";
-import { verifyTurnstile } from "../security/turnstile";
+import { verifyTurnstile, type TurnstileAction } from "../security/turnstile";
 
 // The two collaborators of the contact route that other parts of the backend
 // own, as small interfaces. The route (src/api/public/contact.ts) only knows
@@ -115,9 +115,9 @@ export function sharedRateLimiter(env: LimitEnv): RateLimiter {
  * never lets a message through. Outside production without a secret the check
  * is skipped, like the forms of the auth routes.
  */
-export function sharedTurnstile(env: Pick<Bindings, "ENVIRONMENT" | "TURNSTILE_SECRET_KEY">): VerifyTurnstile {
+export function sharedTurnstile(env: Pick<Bindings, "ENVIRONMENT" | "TURNSTILE_SECRET_KEY">, action: TurnstileAction = "contact"): VerifyTurnstile {
   return async ({ token, ip }) => {
-    const result = await verifyTurnstile({ secret: env.TURNSTILE_SECRET_KEY, production: isProduction(env) }, token, ip, "contact");
+    const result = await verifyTurnstile({ secret: env.TURNSTILE_SECRET_KEY, production: isProduction(env) }, token, ip, action);
     if (result.ok) return true;
     if (result.reason === "rejected" || result.reason === "missing_token") return false;
     throw new ContactInfrastructureError("TurnstileUnavailable");

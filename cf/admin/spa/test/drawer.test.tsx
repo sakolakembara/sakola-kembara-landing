@@ -31,7 +31,7 @@ describe("mobile drawer", () => {
     expect(panel.getAttribute("aria-modal")).toBe("true");
     expect(opener.getAttribute("aria-expanded")).toBe("true");
     expect(within(panel).getByRole("navigation", { name: "Menu utama" })).toBeTruthy();
-    expect(within(panel).getAllByRole("link")).toHaveLength(13);
+    expect(within(panel).getAllByRole("link")).toHaveLength(14);
     // The first thing to reach is the close button.
     expect(document.activeElement).toBe(within(panel).getByRole("button", { name: "Tutup menu" }));
   });

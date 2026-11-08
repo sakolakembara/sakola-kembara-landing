@@ -4,12 +4,14 @@ import { CACHE_NONE } from "../../public/cache";
 import type { ContactDeps } from "../../public/contact-deps";
 import { resolveContactDeps } from "../../public/contact-deps";
 import { createContactRoutes } from "./contact";
+import { createDonationRoutes, resolveDonationDeps } from "./donations";
 import { markServiceBindingCall } from "./internal";
 import { publicReadRoutes } from "./read";
 import { publicShortlinkRoutes } from "./shortlink";
 
 export { publicReadRoutes } from "./read";
 export { createContactRoutes } from "./contact";
+export { createDonationRoutes } from "./donations";
 
 export const PUBLIC_BASE_PATH = "/api/public";
 
@@ -39,12 +41,17 @@ export function createPublicApp() {
  * before anything else, which is what lets the contact route trust
  * X-Sakem-Client-Ip.
  */
-export function createInternalApp(deps: (env: Bindings) => ContactDeps = resolveContactDeps) {
+export function createInternalApp(
+  deps: (env: Bindings) => ContactDeps = resolveContactDeps,
+  donationDeps: (env: Bindings) => ContactDeps = resolveDonationDeps,
+) {
   const app = new Hono<{ Bindings: Bindings }>();
   app.use("*", markServiceBindingCall);
   app.route(PUBLIC_BASE_PATH, publicReadRoutes);
   app.route(PUBLIC_BASE_PATH, publicShortlinkRoutes);
   app.route(PUBLIC_BASE_PATH, createContactRoutes(deps));
+  // The /donasi form (SAKEM-128): same transport and same trust as the contact route.
+  app.route(PUBLIC_BASE_PATH, createDonationRoutes(donationDeps));
   // The same JSON 404 and 500 as the public Worker, never cacheable.
   app.notFound((c) => c.json({ error: "not_found" }, 404, { "Cache-Control": CACHE_NONE }));
   app.onError((error, c) => {

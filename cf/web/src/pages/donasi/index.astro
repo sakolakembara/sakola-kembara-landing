@@ -1,0 +1,230 @@
+---
+import { env } from 'cloudflare:workers';
+import DonationLayout from '~/components/donation/DonationLayout.astro';
+import TurnstileScript from '~/components/scripts/TurnstileScript.astro';
+import {
+  AMOUNT_CHOICES,
+  DONATION_TURNSTILE_ACTION,
+  EMPTY_VALUES,
+  donationCookie,
+  isSameOrigin,
+  loadDonation,
+  readForm,
+  rupiah,
+  submitDonation,
+  valuesFromSummary,
+  type DonationFieldErrors,
+  type DonationValues,
+} from '~/lib/donation';
+import { TURNSTILE_MESSAGES, TURNSTILE_SCRIPT_URL, turnstileSiteKey } from '~/lib/turnstile';
+
+// /donasi, step 1 of the donation form (SAKEM-128): who, how often, how much. It replaces the redirect to the Google Form
+// (SAKEM-121). A plain HTML form: the monthly fields and "Nominal lain" show and hide with CSS (`:has`), so it works
+// without JavaScript; only the bot check (Turnstile) needs it, as on /kontak.
+//
+//   GET                 the form (`?ubah=1` with the cookie: the saved donation, to change it)
+//   POST, saved         303 to /donasi/bayar, the cookie set (a refresh does not post again)
+//   POST, anything else this page again with the API's messages and the typed values; never cached
+export const prerender = false;
+
+const noStore = { 'cache-control': 'no-store' };
+const method = Astro.request.method;
+if (method !== 'GET' && method !== 'HEAD' && method !== 'POST') {
+  return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD, POST', ...noStore } });
+}
+Astro.response.headers.set('cache-control', 'no-store');
+
+let values: DonationValues = { ...EMPTY_VALUES };
+let fieldErrors: DonationFieldErrors = {};
+let message: string | undefined;
+let update = false;
+
+if (method === 'POST') {
+  if (!isSameOrigin(Astro.request)) return new Response('Forbidden', { status: 403, headers: noStore });
+  const form = await readForm(Astro.request);
+  if (!form) {
+    Astro.response.status = 400;
+    message = 'Silakan periksa kembali isian formulir.';
+  } else {
+    const outcome = await submitDonation(Astro.request, form, env);
+    update = form.update === '1';
+    if (outcome.kind === 'saved') {
+      return new Response(null, { status: 303, headers: { location: '/donasi/bayar', 'set-cookie': donationCookie(outcome.ref), ...noStore } });
+    }
+    if (outcome.kind === 'gone') {
+      // The cookie points at nothing any more: start again, as a new donation.
+      Astro.response.headers.append('set-cookie', donationCookie(null));
+      Astro.response.status = 400;
+      update = false;
+      message = 'Data donasi sebelumnya tidak ditemukan. Silakan kirim formulir ini lagi.';
+    } else {
+      Astro.response.status = outcome.status;
+      if (outcome.kind === 'refused' && outcome.retryAfter) Astro.response.headers.set('retry-after', String(outcome.retryAfter));
+      message = outcome.message;
+      values = outcome.values;
+      if (outcome.kind === 'invalid') fieldErrors = outcome.fieldErrors;
+    }
+  }
+} else if (Astro.url.searchParams.get('ubah') === '1') {
+  const loaded = await loadDonation(Astro.request, env);
+  if (loaded.summary && loaded.summary.status !== 'checked') {
+    values = valuesFromSummary(loaded.summary);
+    update = true;
+  }
+}
+
+// The bot check guards a NEW donation only; a change is opened by the cookie's token.
+const turnstileKey = update ? null : turnstileSiteKey(env);
+
+// The months a monthly donor may have started in: three years back (an existing donor) to a year ahead.
+const now = new Date();
+const months: { value: string; label: string }[] = [];
+for (let offset = -36; offset <= 12; offset++) {
+  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1));
+  const value = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  months.push({ value, label: date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' }) });
+}
+const thisMonth = months[36]!.value;
+
+const label = 'block text-sm font-semibold mb-2';
+const control = 'h-[52px] w-full rounded-xl border-0 bg-[#F1F3F8] px-4 text-base text-primary-blue-dark placeholder:text-[#8A94AD] focus:outline-2 focus:outline-primary-blue-dark';
+const choice =
+  'flex h-[52px] cursor-pointer items-center justify-center rounded-[14px] border-[1.5px] border-[#D5DBE8] bg-white px-3 text-[15px] has-checked:border-primary-blue-dark has-checked:bg-primary-blue-dark has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary-blue-dark';
+const errorText = 'mt-1.5 text-[13px] text-danger-fg';
+const aria = (field: keyof DonationFieldErrors) => (fieldErrors[field] ? { 'aria-describedby': `${field}-error`, 'aria-invalid': 'true' as const } : {});
+---
+
+<DonationLayout
+  title="Bantu Mereka Sampai ke Kampus."
+  muted="Sekali, atau setiap bulan."
+  lead="Pendampingan satu siswa selama setahun membutuhkan sekitar Rp8.000.000."
+  seoTitle="Donasi"
+  description="Donasi untuk Sakola Kembara, sekali atau setiap bulan: isi data Anda, lalu transfer ke Bank Muamalat atau bayar dengan QRIS."
+  path="/donasi"
+>
+  <form id="donasi-form" method="post" action="/donasi" class="group/form flex flex-col gap-6" novalidate>
+    {
+      message && (
+        <div role="alert" class="rounded-lg border border-danger-border bg-danger-bg px-4 py-3 text-sm leading-relaxed text-danger-fg">
+          {message}
+        </div>
+      )
+    }
+    {update && <input type="hidden" name="update" value="1" />}
+
+    <fieldset>
+      <legend class="sr-only">Jenis donasi</legend>
+      <div class="grid grid-cols-2 gap-2">
+        <label class={choice}>
+          <input class="sr-only" type="radio" name="kind" value="once" id="kind-once" checked={values.kind !== 'monthly'} />
+          Donasi Sekali
+        </label>
+        <label class={choice}>
+          <input class="sr-only" type="radio" name="kind" value="monthly" id="kind-monthly" checked={values.kind === 'monthly'} />
+          Donasi Bulanan
+        </label>
+      </div>
+    </fieldset>
+
+    <div>
+      <label for="name" class={label}>
+        <span class="group-has-[#kind-monthly:checked]/form:hidden">Nama atau inisial</span>
+        <span class="hidden group-has-[#kind-monthly:checked]/form:inline">Nama lengkap</span>
+      </label>
+      <input id="name" name="name" type="text" autocomplete="name" maxlength="120" placeholder="Nama Anda" value={values.name} class={control} {...aria('name')} />
+      {fieldErrors.name && <p id="name-error" class={errorText}>{fieldErrors.name}</p>}
+    </div>
+
+    <div>
+      <label for="whatsapp" class={label}>Nomor WhatsApp</label>
+      <input id="whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="0812 3456 7890" value={values.whatsapp} class={control} {...aria('whatsapp')} />
+      {fieldErrors.whatsapp && <p id="whatsapp-error" class={errorText}>{fieldErrors.whatsapp}</p>}
+    </div>
+
+    <fieldset {...(fieldErrors.amount ? { 'aria-describedby': 'amount-error' } : {})}>
+      <legend class={label}>
+        <span class="group-has-[#kind-monthly:checked]/form:hidden">Nominal donasi</span>
+        <span class="hidden group-has-[#kind-monthly:checked]/form:inline">Donasi per bulan</span>
+      </legend>
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {
+          AMOUNT_CHOICES.map((amount) => (
+            <label class={choice}>
+              <input class="sr-only" type="radio" name="amount" value={String(amount)} checked={values.amountChoice === String(amount)} />
+              {rupiah(amount)}
+            </label>
+          ))
+        }
+        <label class={choice}>
+          <input class="sr-only" type="radio" name="amount" value="other" id="amount-other" checked={values.amountChoice === 'other'} />
+          Nominal lain
+        </label>
+      </div>
+      <div class="mt-2 hidden group-has-[#amount-other:checked]/form:block">
+        <label for="amountOther" class="sr-only">Nominal lain (Rupiah)</label>
+        <input id="amountOther" name="amountOther" type="text" inputmode="numeric" placeholder="Rp150.000" value={values.amountOther} class={control} />
+      </div>
+      {fieldErrors.amount && <p id="amount-error" class={errorText}>{fieldErrors.amount}</p>}
+    </fieldset>
+
+    <div class="hidden grid-cols-2 gap-4 group-has-[#kind-monthly:checked]/form:grid">
+      <div>
+        <label for="startMonth" class={label}>Mulai berdonasi</label>
+        <select id="startMonth" name="startMonth" class={control} {...aria('startMonth')}>
+          {months.map((month) => <option value={month.value} selected={(values.startMonth || thisMonth) === month.value}>{month.label}</option>)}
+        </select>
+        {fieldErrors.startMonth && <p id="startMonth-error" class={errorText}>{fieldErrors.startMonth}</p>}
+      </div>
+      <div>
+        <label for="remindDay" class={label}>Ingatkan setiap tanggal</label>
+        <select id="remindDay" name="remindDay" class={control} {...aria('remindDay')}>
+          <option value="" selected={!values.remindDay}>Pilih</option>
+          {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((day) => <option value={day} selected={values.remindDay === day}>{day}</option>)}
+        </select>
+        {fieldErrors.remindDay && <p id="remindDay-error" class={errorText}>{fieldErrors.remindDay}</p>}
+      </div>
+    </div>
+
+    {
+      turnstileKey && (
+        <div>
+          <div data-turnstile data-sitekey={turnstileKey} data-action={DONATION_TURNSTILE_ACTION} class="min-h-[65px]" />
+          <p data-turnstile-failed hidden role="status" class="mt-1.5 text-xs text-danger-fg">
+            {TURNSTILE_MESSAGES.failed}
+          </p>
+          <noscript>
+            <p class="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 text-sm leading-relaxed text-warning-fg">{TURNSTILE_MESSAGES.noScript}</p>
+          </noscript>
+        </div>
+      )
+    }
+
+    <button type="submit" class="h-14 rounded-full bg-primary-blue-dark text-base font-semibold text-white transition-colors hover:bg-primary-blue disabled:opacity-70">
+      <span data-label>Lanjut ke Pembayaran</span>
+    </button>
+  </form>
+</DonationLayout>
+
+{turnstileKey && <script is:inline src={TURNSTILE_SCRIPT_URL} async defer data-turnstile-api />}
+
+<TurnstileScript />
+
+<script>
+  // Optional: the form posts without it. While the post is in flight the button is disabled (no double post).
+  const form = document.getElementById('donasi-form');
+  const button = form?.querySelector<HTMLButtonElement>('[type=submit]');
+  const label = button?.querySelector('[data-label]');
+  if (form && button && label) {
+    const idle = label.textContent;
+    form.addEventListener('submit', () => {
+      button.disabled = true;
+      label.textContent = 'Menyimpan...';
+    });
+    addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        button.disabled = false;
+        label.textContent = idle;
+      }
+    });
+  }
+</script>

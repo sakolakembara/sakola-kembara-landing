@@ -8,6 +8,7 @@
  */
 export const TABLES_CHILD_FIRST = [
   "audit_log",
+  "donations",
   "admin_area_grants",
   "application_files",
   "application_drafts",

@@ -33,6 +33,14 @@ export type AuditAction =
   | "contact_message.submit"
   | "contact_message.read"
   | "contact_message.unread"
+  // Donation confirmations of the /donasi form (SAKEM-128, docs/cloudflare/donations.md): an admin marking one checked or not, writing the
+  // internal note, opening the receipt, exporting the list as CSV, deleting one. Ids, statuses and counts only, never a name or a number.
+  | "donation.check"
+  | "donation.uncheck"
+  | "donation.note"
+  | "donation.delete"
+  | "donation.export"
+  | "donation_proof.view"
   // New in D1 (the legacy blog had no draft state: every saved article was public). Docs: docs/cloudflare/admin-blog.md.
   | "blog.publish"
   | "blog.unpublish"
@@ -67,7 +75,8 @@ export type AuditResourceType =
   | "team_member"
   | "contact_message"
   | "site_resource"
-  | "shortlink";
+  | "shortlink"
+  | "donation";
 
 /** The legacy short names of the resources that have `<name>.create|update|delete` (the first part of the action). */
 export type CrudName = "announcement" | "report" | "blog" | "team" | "resource" | "shortlink" | "batch" | "contact_message";

@@ -21,6 +21,7 @@ export interface SitemapEntry {
 export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: SitemapEntry['changeFrequency'] }[] = [
   { path: '/', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/blog', priority: 0.9, changeFrequency: 'weekly' },
+  { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },
   { path: '/gabung-siswa', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/gabung-siswa/docs', priority: 0.6, changeFrequency: 'monthly' },

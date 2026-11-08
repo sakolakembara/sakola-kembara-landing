@@ -25,6 +25,13 @@ export const NEW_ACTION_LABEL: Record<string, string> = {
   "admin.deactivate": "Admin dinonaktifkan",
   "admin.reactivate": "Admin diaktifkan kembali",
   "admin.invite_resend": "Undangan admin dikirim ulang",
+  // Donation confirmations of the /donasi form (SAKEM-128).
+  "donation.check": "Donasi ditandai sudah dicek",
+  "donation.uncheck": "Tanda dicek pada donasi dibatalkan",
+  "donation.note": "Catatan donasi diubah",
+  "donation.delete": "Konfirmasi donasi dihapus",
+  "donation.export": "Daftar donasi diekspor (CSV)",
+  "donation_proof.view": "Bukti transfer dibuka",
 };
 
 /** The resource types the legacy table has no word for: the file of an upload, an applicant's file, and a draft that was never submitted (SAKEM-093). */
@@ -32,6 +39,7 @@ export const NEW_RESOURCE_LABEL: Record<string, string> = {
   media: "Berkas unggahan",
   application_file: "Berkas pendaftar",
   application_draft: "Draf pendaftaran",
+  donation: "Konfirmasi donasi",
 };
 
 /** The label of an audit action ("announcement.create" is "Pengumuman dibuat"); a name nobody labelled shows as it is. */
@@ -82,6 +90,12 @@ export const FILTER_ACTIONS = [
   "contact_message.submit",
   "contact_message.unread",
   "contact_message.update",
+  "donation.check",
+  "donation.delete",
+  "donation.export",
+  "donation.note",
+  "donation.uncheck",
+  "donation_proof.view",
   "report.create",
   "report.delete",
   "report.update",
@@ -118,6 +132,7 @@ export const FILTER_RESOURCE_TYPES = [
   "media",
   "application_file",
   "application_draft",
+  "donation",
 ] as const;
 
 export interface FilterOption {
@@ -163,6 +178,8 @@ export function activityHref(action: string, resourceType: string | null, resour
       return "/resources";
     case "shortlink":
       return `/shortlinks/${id}/edit`;
+    case "donation":
+      return `/donations/${id}`;
     default:
       return null;
   }

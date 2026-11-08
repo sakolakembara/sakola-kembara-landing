@@ -4,6 +4,7 @@ import {
   ChartColumn,
   FileText,
   FolderOpen,
+  HandHeart,
   Images,
   LayoutDashboard,
   Link2,
@@ -28,6 +29,7 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   reports: ChartColumn,
   team: UsersRound,
   shortlinks: Link2,
+  donations: HandHeart,
   activity: Activity,
   settings: Settings,
 };
