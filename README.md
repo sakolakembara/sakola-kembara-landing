@@ -1,232 +1,142 @@
-# Sakola Kembara — Website & Admin Dashboard
+# Sakola Kembara — Website & Admin
 
-Public website and (in development) admin dashboard for **Yayasan Sakola Kembara Indonesia** — a non-profit running free university-entrance-exam preparation for students from financially disadvantaged backgrounds across Indonesia.
+The public website and the admin for **Yayasan Sakola Kembara Indonesia**, a non-profit running free university-entrance-exam preparation for students from financially disadvantaged backgrounds across Indonesia.
 
-Live: <https://sakolakembara.org>
+- Site: <https://sakolakembara.org>
+- Admin: <https://admin.sakolakembara.org>
 
-> **Looking for the why and the how?** This README is the quick-start. The full project knowledge — strategy, brand guardrails, architecture decisions, roadmap — lives in [`docs/`](docs/). Read [`docs/README.md`](docs/README.md) first.
+> **`main` is what is live.** Branch from `main`, open the PR into `main`, and deploy only from a clean checkout of `origin/main`: the deploy command refuses anything else (SAKEM-126).
 
-## Stack at a glance
+## What runs where
 
-- **Next.js 16** (App Router) + **React 19** + **TypeScript 5** (strict)
-- **Tailwind CSS v4** with tokens declared in `app/globals.css` (no `tailwind.config.ts`)
-- **Lora** serif headings + **Plus Jakarta Sans** body via `next/font`
-- **framer-motion** for animation, **react-leaflet** for the branches map
-- File-based blog: `content/blog/*.md` → `lib/blog-posts.json`
-- **PostgreSQL 16 + Drizzle ORM** for the admin dashboard and the student portal
-- **Auth.js v5** — Google OAuth for everyone (students and admins) + email/password (bcryptjs) fallback for admin roles. See [`docs/architecture/authentication.md`](docs/architecture/authentication.md).
-- Public site under `app/(public)/`, admin dashboard under `app/(admin)/admin/`, student portal under `app/(portal)/portal/`, unified login at `app/(auth)/login/`
-- **Vitest** for unit tests (`__tests__/`) — schemas, rate limiter, admin service, auth guards
-- **Storybook 10** for the design-system components (`*.stories.tsx` next to each component); run locally, built by CI on every pull request
-- **Sentry** (`@sentry/nextjs`) wired into instrumentation + error boundaries; no-op when the DSN is unset
-- **Postgres-backed rate limiter** applied to public POST endpoints (`/kontak`, `/portal/daftar` submit, `/register` signup, credential sign-in)
-- **SSO handshake** to the upcoming LMS at `lms.sakolakembara.org` — sidecar `sakem-session` cookie on `.sakolakembara.org` + `/api/sso/{session,register,signout}` endpoints. Contract lives in [`docs/architecture/lms-integration.md`](docs/architecture/lms-integration.md).
-- **Transactional email** via **Resend** (`lib/email.ts`) powers email verification + self-service password reset. Outside production, mail is logged to stdout when `RESEND_API_KEY` is unset; in production a missing key means nothing is sent and the send reports failure.
-- Deploys to a small VPS via **Docker Compose + Caddy + GitHub Actions**
+Everything runs on **Cloudflare, on the Workers Free plan ($0)**. Design for 10 ms of CPU per request and 100k requests per day.
 
-## Prerequisites
+| Part | Folder | Built with | Address |
+| --- | --- | --- | --- |
+| Public site | [`cf/web/`](cf/web/) | Astro 6 on a Worker (`sakola-kembara-web`), most pages prerendered | `sakolakembara.org` |
+| API and admin | [`cf/admin/`](cf/admin/) | Hono API + React SPA (shadcn/ui) on a Worker (`sakem-admin`), D1, R2, Better Auth | `admin.sakolakembara.org` |
+| Uploaded files | R2 public bucket | Images and documents uploaded in the admin | `files.sakolakembara.org` |
+| Student portal | `cf/admin/portal-spa/`, `wrangler.portal.jsonc` | Built and tested, **switched off** in production (Phase B) | — |
 
-- **Node.js 22+** (`nvm install 22`)
-- **Docker** + Docker Compose plugin (for local Postgres)
-- **git**
+- The site reads its content (blog, team, reports, documents) from the admin Worker through a service binding.
+- Paths the new site does not own are passed through to the old WordPress site on the same host.
+- Email (invites, password reset) goes through **Resend**. Analytics: Cloudflare Web Analytics (cookie-free) and Google Tag Manager.
+- Each app under `cf/` has **its own `package.json` and lockfile**. It is not a pnpm workspace: install and run inside the app folder.
 
-## First-time setup
+The **Next.js app in the repository root** (`app/`, `components/`, `lib/`, `drizzle/`, `Dockerfile`, …) is the old version. It is **not deployed** and is kept for reference. Two parts of it are still used: the root `public/` folder (images, PDFs) and the icons in `app/` are the sources of the site's asset pipeline (`cf/web/scripts/sync-assets.mjs`, `build-assets.mjs`).
+
+## How we work
+
+1. **Ticket first.** Every change has a `SAKEM-NNN` ticket in Saung (project "Sakola Kembara"), created before the code. Tickets are not stored in this repo. Ask a maintainer for access.
+2. **Branch from `main`:** `feat/<topic>`, `fix/<topic>`, `docs/<topic>`. Put the ticket in every commit, `type(scope): summary (SAKEM-NNN)`, and in the PR's "Ticket" field.
+3. **One PR = one ticket, into `main`.** Say in the PR what you tested and what you did not.
+4. **After the merge, deploy from `main`** (see [Deploy](#deploy)), so what is on `main` and what is live stay the same.
+5. Close the ticket in Saung with the PR link.
+
+The full rules, for people and for Claude Code, are in [`CLAUDE.md`](CLAUDE.md).
+
+## Run it locally
+
+You need **Node.js 22.12+**, **pnpm** and **git**. Wrangler comes with each app's dependencies; no global install and no Cloudflare login are needed for local work.
+
+### Public site (`cf/web`)
 
 ```bash
-# 1. Clone
-git clone <repo-url> sakola-kembara-landing
-cd sakola-kembara-landing
-
-# 2. Install dependencies
-pnpm install
-
-# 3. Copy the env template and fill in at least DATABASE_URL + AUTH_SECRET
-cp .env.example .env.local
-#    Generate AUTH_SECRET with:  openssl rand -base64 32
-#    AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET are optional in dev — leave blank
-#    if you only intend to log in as an admin via email + password.
-
-# 4. Start the local Postgres container
-npm run db:up
-
-# 5. Apply the initial Drizzle migration (first time only)
-npm run db:migrate
-
-# 6. Start the dev server
-npm run dev
+cd cf/web
+pnpm install                    # its own lockfile
+cp dev.vars.example .dev.vars   # fake local values, untracked
+pnpm stub-origin                # terminal 1: stand-in for the pass-through origin, :4390
+pnpm fixture-api                # terminal 2: content API with sample data, :4391
+pnpm dev                        # terminal 3: astro dev on :4321 (the Worker runs in workerd)
 ```
 
-Open <http://localhost:3000>.
+### API and admin (`cf/admin`)
 
-Public routes: `/`, `/blog`, `/donasi`, `/gabung-siswa`, `/kontak`, `/tim`, `/program/pembinaan`.
+```bash
+cd cf/admin
+pnpm install
+cp dev.vars.example .dev.vars   # fake local values, untracked
+pnpm db:migrate:local           # D1 in .wrangler/state
+pnpm db:seed:local              # sample rows and one sign-in per role
+pnpm dev                        # builds the SPA, then wrangler dev
+```
 
-Signed-in student routes: `/portal` (home + application history) and `/portal/status` (per-application result view).
+`pnpm dev:spa` runs the admin SPA on Vite with hot reload and `/api` proxied to the Worker; `pnpm dev:spa:mock` runs it with no Worker at all. Locally, without `RESEND_API_KEY`, emails are printed to the wrangler console.
 
-The admin dashboard at `/admin` and the portal at `/portal` both redirect unauthenticated visitors to `/login`. See **Admin sign-in (local dev)** below for the seed + first-login flow.
+More detail: [`docs/cloudflare/web-skeleton.md`](docs/cloudflare/web-skeleton.md) and [`docs/cloudflare/admin-skeleton.md`](docs/cloudflare/admin-skeleton.md).
 
 ## Commands
 
-### Development
+Always take commands from the app's `package.json`. The ones you need most:
 
-| Command | What it does |
+| `cf/web` | What it does |
 | --- | --- |
-| `npm run dev` | Next dev server on `:3000` with HMR |
-| `npm run build` | Production build (`output: "standalone"` for the Docker image) |
-| `npm run start` | Serve the production build locally |
-| `npm run lint` | ESLint |
-| `npm test` | Run the Vitest unit suite once |
-| `npm run test:watch` | Vitest in watch mode |
-| `npm run test:coverage` | Vitest with v8 coverage report |
+| `pnpm dev` | Local site on :4321 |
+| `pnpm build` | Assets, Astro build, then the asset guard (`check-dist`) |
+| `pnpm check` | `astro check` (types) |
+| `pnpm test` | Unit tests (Vitest) |
+| `pnpm test:e2e` | End-to-end checks against a local build |
+| `pnpm test:negative:<area>` | Breaks one safeguard at a time and expects the tests to fail |
 
-### Design system
-
-The shared components live in `components/ui/` and `components/layout/`; the rules are in [`DESIGN.md`](DESIGN.md). Each component has a `*.stories.tsx` file next to it.
-
-| Command | What it does |
+| `cf/admin` | What it does |
 | --- | --- |
-| `pnpm storybook` | Storybook on `:6006`. Needs no database or env |
-| `pnpm build-storybook` | Static build into `storybook-static/` (what CI runs on every pull request) |
+| `pnpm dev` | Local API and admin |
+| `pnpm typecheck` | Worker, admin SPA and portal SPA types |
+| `pnpm test` | Worker, admin SPA and portal SPA tests (Vitest) |
+| `pnpm db:generate` | A new migration after a schema change (`cf/admin/migrations/`) |
+| `pnpm db:migrate:local` | Apply migrations to the local D1 |
+| `pnpm test:negative`, `pnpm test:negative:spa` | Negative checks for the Worker and the SPA |
 
-### Database
+## Deploy
 
-The local DB is a Postgres 16 container defined in `docker-compose.dev.yml`. Drizzle handles schema + migrations from `lib/db/schema/`.
-
-| Command | What it does |
-| --- | --- |
-| `npm run db:up` | Start the local Postgres container |
-| `npm run db:down` | Stop it |
-| `npm run db:generate` | Generate a new migration after editing `lib/db/schema/*.ts` |
-| `npm run db:migrate` | Apply pending migrations against the running DB |
-| `npm run db:push` | Push schema directly without writing a migration (dev shortcut) |
-| `npm run db:studio` | Open Drizzle Studio at <https://local.drizzle.studio> |
-
-### Admin
-
-| Command | What it does |
-| --- | --- |
-| `npm run seed:super-admin` | Upsert a `users` row with `role=super_admin` and a bcrypt password hash so a fresh deployment has someone who can sign in. Reads `SEED_SUPER_ADMIN_EMAIL`, `SEED_SUPER_ADMIN_PASSWORD` (min 8 chars), and optional `SEED_SUPER_ADMIN_NAME` from env. Safe to re-run — upserts by email and refreshes the hash. |
-
-### Blog content
-
-The blog is markdown under `content/blog/`. After editing any post or adding a new one, regenerate the JSON cache:
-
-| Command | What it does |
-| --- | --- |
-| `npm run blog:sync` | Regenerate `lib/blog-posts.json` from `content/blog/*.md` |
-| `npm run scrape:blog` | Re-scrape posts + images from the legacy WordPress site (rare) |
-
-Commit both the markdown and the regenerated `lib/blog-posts.json` together. Full pipeline details in [`docs/current-state/blog-pipeline.md`](docs/current-state/blog-pipeline.md).
-
-## Admin sign-in (local dev)
-
-Auth is Auth.js v5 with two providers side-by-side (see [`docs/architecture/authentication.md`](docs/architecture/authentication.md) for the full model):
-
-- **Google OAuth** — for students and any admin who wants to sign in with Google.
-- **Credentials (email + bcrypt password)** — admin roles only. Every account is a row in the `users` table with role `student | viewer | editor | super_admin`.
-
-Local dev needs one admin row to exist before you can reach `/admin`. Seed yourself once:
+Production is deployed **by hand**, from a clean checkout of `origin/main`, with the command the printer writes. Nothing deploys on push.
 
 ```bash
-# 1. Put your bootstrap credentials in .env.local
-cat >> .env.local <<'EOF'
-SEED_SUPER_ADMIN_EMAIL=you@example.com
-SEED_SUPER_ADMIN_PASSWORD=change-me-min-8-chars
-SEED_SUPER_ADMIN_NAME=Your Name
-EOF
-
-# 2. Upsert the super_admin row (safe to re-run)
-npm run db:up && npm run seed:super-admin
+git fetch origin && git switch --detach origin/main
+cd cf/web                           # or cf/admin
+pnpm deploy:prod:dry                # production build and wrangler dry run
+pnpm deploy:prod:command            # prints the build line and the deploy command; read it, then run it
 ```
 
-Day-to-day sign-in:
+The printed command first runs `cf/scripts/on-main.mjs` (it stops unless the checkout is exactly `origin/main` and clean), then picks the organisation Cloudflare account by name (SAKEM-123), then deploys with the public values from `.production.vars`. Never answer wrangler's "Select an account" prompt.
 
-1. `npm run db:up && npm run dev`
-2. Visit <http://localhost:3000/admin> → you're redirected to `/login?from=/admin`.
-3. Enter the email + password you seeded. The Credentials provider verifies the bcrypt hash and issues a JWT session; the middleware sees your `super_admin` role and lets you into `/admin`. (The same form works for students who registered locally — access is decided by role, not by which form was used.)
-4. To test Google sign-in, set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (see `.env.example` for the redirect URI). A first Google login for a new email auto-creates a row with role `student` — promote yourself to `super_admin` from `/admin/settings` or by re-running the seed script against your Google email.
-5. Sign out via "Keluar" in the sidebar. Sign-out lands on `/`.
+- **Database changes:** apply the D1 migration to production **before** deploying the admin Worker, and write the risk and the order in the ticket.
+- **Staging** runs on `workers.dev`: `pnpm deploy:staging:dry` and `pnpm deploy:staging:command`.
+- Every deploy and every remote Cloudflare command needs the project owner's OK.
 
-A few notes:
-
-- Sessions are JWT-only, so there's no `sessions` table. Role is stamped onto the token in the `jwt` callback and read by the middleware without a DB hit.
-- `/admin/*` requires an admin role; `/portal/*` requires any signed-in user. A student trying `/admin` is bounced to `/portal?error=admin-only`.
-- Production needs a Google Cloud OAuth client (Web application, callback `https://sakolakembara.org/api/auth/callback/google`) and the same seed step run once inside the app container.
-
-Full architecture: [`docs/architecture/authentication.md`](docs/architecture/authentication.md), [`docs/architecture/student-portal.md`](docs/architecture/student-portal.md), [`docs/architecture/admission-batches.md`](docs/architecture/admission-batches.md).
+Runbooks: [`docs/cloudflare/cutover-runbook.md`](docs/cloudflare/cutover-runbook.md) (production, section 14) and [`docs/cloudflare/staging-runbook.md`](docs/cloudflare/staging-runbook.md).
 
 ## Repo tour
 
 ```
-app/                       Next App Router
-  layout.tsx               Root metadata, fonts, <html lang="id">
-  sitemap.ts, robots.ts    SEO surfaces
-  (public)/                Public site
-    layout.tsx             Navbar + Footer wrapper
-    page.tsx               Homepage
-    blog/, donasi/, kontak/, tim/, gabung-siswa/, program/[id]/
-  (auth)/                  Unified sign-in surface
-    login/page.tsx         Google button + collapsible admin email/password form
-  (portal)/                Signed-in student area
-    portal/                Home (open-batch CTA + history) + status/ (per-app result)
-  (admin)/                 Admin-role-gated dashboard
-    admin/                 Dashboard pages
-      layout.tsx           Sidebar shell + server-side requireAdmin() guard
-      page.tsx             Stat cards + recent audit_log
-      applications/        Student-applicant list + detail
-      batches/             Admission-batch CRUD + publish action
-  api/auth/[...nextauth]/  Auth.js handler
-auth.config.ts             Edge-safe Auth.js config (Google-only; used by proxy.ts)
-auth.ts                    Node Auth.js (adds admin Credentials provider)
-proxy.ts                   Middleware — gates /admin/* (admin roles) and /portal/* (any signed-in user)
-components/                React components
-  layout/                  Navbar, Footer, PageHero, announcement strip, auth button
-  ui/                      Design-system atoms + molecules (Button, Heading, Tag, SocialLinks, …)
-  Map/GISMap.tsx           Leaflet, dynamically imported (ssr: false)
-  blog/BlogPostContent.tsx Markdown renderer
-  sections/                Homepage + reusable sections
-lib/
-  data.ts                  All hard-coded site copy & data
-  blog.ts, blog-posts.json Blog reader + generated cache
-  env.ts                   Zod-validated env (throws on boot)
-  db.ts, db/schema/        Drizzle + pg.Pool client + tables
-  audit.ts                 writeAudit() helper; every admin mutation calls it
-  seo.ts                   SITE constants, page-metadata + JSON-LD builders
-content/blog/              Markdown source for all blog posts
-public/                    Logo, hero photo, QRIS, blog images
-scripts/
-  blog-sync-from-markdown.mjs, scrape-blog.mjs, lib/blog-pipeline.mjs
-  seed-super-admin.mjs     Bootstrap a super_admin row (email + bcrypt password)
-docs/                      Project knowledge center — read this folder
-.github/workflows/         GitHub Actions (build + deploy on push to main)
-Dockerfile                 Multi-stage production image
-docker-compose.yml         Production stack (app + postgres + caddy + backup)
-docker-compose.dev.yml     Postgres-only for local dev
-Caddyfile                  Production reverse proxy + auto-TLS
-drizzle.config.ts          Migrations output to ./drizzle/
-drizzle/                   Generated SQL migrations (committed)
+cf/
+  web/                  Public site (Astro on Workers): src/pages, src/components, tests/, scripts/
+  admin/                API Worker (src/), admin SPA (spa/), portal SPA (portal-spa/), D1 migrations (migrations/)
+    DESIGN.md           Admin design rules (reuses the public DESIGN.md)
+  scripts/              Deploy printers and dry runs, the on-main check, the account pin, production and zone checkers
+docs/
+  cloudflare/           How the live system is built, run and deployed: start with its README
+  context/              Who Sakola Kembara is, audiences, tone of voice
+  current-state/, roadmap/, architecture/, runbook/   Mostly the old Next app and VPS plan (history)
+DESIGN.md               Public design system: colour, type, layout, components, imagery, motion, UI copy
+CLAUDE.md               Working rules for people and Claude Code
+public/                 Images and PDFs: the source of the site's asset pipeline
+app/, components/, lib/, drizzle/, …   The old Next.js app (not deployed)
 ```
 
 ## Where to read next
 
-The `docs/` folder is organized so each role gets what they need first:
+- **How the live system works:** [`docs/cloudflare/README.md`](docs/cloudflare/README.md).
+- **Editing public copy:** [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md). The Indonesian voice is fixed.
+- **Touching visuals:** [`DESIGN.md`](DESIGN.md) (public) and [`cf/admin/DESIGN.md`](cf/admin/DESIGN.md) (admin). Visual changes go through a ticket that also updates the design file.
+- **Database:** [`docs/cloudflare/d1-schema.md`](docs/cloudflare/d1-schema.md). **Uploads:** [`docs/cloudflare/uploads.md`](docs/cloudflare/uploads.md). **Sign-in:** [`docs/cloudflare/auth.md`](docs/cloudflare/auth.md).
+- **Free-plan limits:** [`docs/cloudflare/free-plan-audit.md`](docs/cloudflare/free-plan-audit.md).
 
-- **Editing public copy?** [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md) — the Indonesian-formal voice is locked.
-- **Touching visuals?** [`DESIGN.md`](DESIGN.md) — color, type, layout, components, imagery, motion, UI copy. Visual changes go through a ticket.
-- **Adding a feature?** [`docs/current-state/tech-stack.md`](docs/current-state/tech-stack.md) for the lay of the land, then the matching `docs/current-state/*` file.
-- **How auth / portal / batches work?** [`docs/architecture/authentication.md`](docs/architecture/authentication.md), [`docs/architecture/student-portal.md`](docs/architecture/student-portal.md), [`docs/architecture/admission-batches.md`](docs/architecture/admission-batches.md).
-- **Curious what's coming?** [`docs/roadmap/mvp-priorities.md`](docs/roadmap/mvp-priorities.md), [`admin-dashboard.md`](docs/roadmap/admin-dashboard.md), [`infrastructure.md`](docs/roadmap/infrastructure.md), [`data-model.md`](docs/roadmap/data-model.md).
-- **Provisioning prod?** [`docs/current-state/deployment.md`](docs/current-state/deployment.md).
+## Ground rules
 
-Index: [`docs/README.md`](docs/README.md).
-
-## Contributing
-
-- Branch from `main`, push your branch, and open a PR into `main`. `main` is what is live: production is deployed only from `origin/main` (SAKEM-126).
-- **Start from a ticket.** Every change has a `SAKEM-NNN` ticket in Saung (ask a maintainer for access). Put the ID in commit messages (`fix(map): align legend (SAKEM-NNN)`) and in the PR description. Tickets are not stored in this repo — see [`CLAUDE.md`](CLAUDE.md).
-- Use conventional-commit prefixes when it helps (`feat:`, `fix:`, `docs:`, `build:`, `ci:`). Mixed style is fine; check `git log` for examples.
-- **If your change is structural** (new route, new dep, new deploy step, new data model), update the relevant file under `docs/current-state/` in the same PR. Stale docs are worse than missing docs.
-- **Preserve tone; change visuals only through a ticket.** Don't rewrite Indonesian copy, and don't shift colors/fonts/spacing outside a SAKEM ticket that also updates [`DESIGN.md`](DESIGN.md). Voice: [`docs/context/tone-of-voice.md`](docs/context/tone-of-voice.md).
-- Unit tests live in `__tests__/` and cover the Zod schemas that gate DB writes, the rate limiter, the admin-user domain service, and the `requireAdmin` / `requireStudent` guards. Run `npm test` before pushing.
+- **Preserve tone; change visuals only through a ticket.** Don't rewrite Indonesian copy, and don't shift colours, fonts or spacing outside a SAKEM ticket that also updates the design file.
+- **No secrets or personal data** in tickets, commits, PRs or docs: no passwords, tokens, `.dev.vars` or `.production.vars` contents, account ids, or student and applicant data. Name the variable, never its value.
+- **If your change is structural** (new route, dependency, deploy step, data model), update the matching file under `docs/cloudflare/` in the same PR.
 
 ## Ownership
 
