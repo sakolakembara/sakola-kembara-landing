@@ -149,7 +149,9 @@ const checks = [
   { name: 'checker: the session address on a page is accepted', file: CHECKER, from: '        if (/get-session/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: the Masuk link on a page is accepted', file: CHECKER, from: '        if (/href=["\']\\/portal\\/login["\']|data-auth-link/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   { name: 'checker: a registration button in the navbar is accepted', file: CHECKER, from: '        if (/Daftar Sekarang|\\/daftar/.test(nav)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
-  { name: 'checker: a filled navbar slot is accepted', file: CHECKER, from: '        if (/justify-self-end/.test(answer.body)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a filled navbar slot is accepted', file: CHECKER, from: '        if (/justify-self-end/.test(nav)) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a robots.txt that blocks the whole site is accepted (T-04)', file: CHECKER, from: '        if (blocked.length > 0) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
+  { name: 'checker: a Disallow: / of any group counts again, the AI crawlers of the managed robots.txt too (T-04)', file: CHECKER, from: "blocked.push(...agents.filter((agent) => ['*', 'googlebot', 'bingbot'].includes(agent)))", to: 'blocked.push(...agents)', tests: CHECK },
   { name: 'checker: a wrong HSTS value on a Worker answer is accepted (T-36)', file: CHECKER, from: '        if (value !== EXPECT.hsts) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
   // ---- SAKEM-121/128: /donasi is the donation form, /donasi/ and /donasi-sekarang one 308 to it, /laporan is the page with the reports (T-37), the sitemap lists both (T-05), T-19 asks a static page
   { name: 'checker: /donasi may answer anything but 200 (T-37)', file: CHECKER, from: '        if (donasi.status !== 200) problems.push(', to: '        if (false) problems.push(', tests: CHECK },
