@@ -49,7 +49,7 @@ Area `konten` ([`d1-schema.md`](d1-schema.md#permission-model)): `super_admin` a
 
 Port of `app/(admin)/admin/reports/actions.ts`.
 
-**Where the public sees what is managed here (SAKEM-105, SAKEM-121):** the reports are the **Laporan section of `/laporan`** (`https://sakolakembara.org/laporan#laporan`), the page that also carries QRIS and the bank details. From SAKEM-105 to SAKEM-121 that page was `/donasi`; `/donasi` is now a redirect to the donation form (the shortlink `donasi-sekarang`). A saved change shows after the data cache window (60 s) and, where the page copy is on (`PAGE_CACHE_SECONDS`), the seconds it was set to; an empty list is the section's own empty state ("Laporan akan segera tersedia"), and an API that cannot answer is its failure panel with the rest of the page intact.
+**Where the public sees what is managed here (SAKEM-105, SAKEM-121):** the reports are the **Laporan section of `/laporan`** (`https://sakolakembara.org/laporan#laporan`), the page that also carries QRIS and the bank details. From SAKEM-105 to SAKEM-121 that page was `/donasi`; `/donasi` is the site's own donation form since SAKEM-128 (it was a redirect to the Google Form through the shortlink `donasi-sekarang` from SAKEM-121; that name is now a 308 to `/donasi` and reserved). A saved change shows after the data cache window (60 s) and, where the page copy is on (`PAGE_CACHE_SECONDS`), the seconds it was set to; an empty list is the section's own empty state ("Laporan akan segera tersedia"), and an API that cannot answer is its failure panel with the rest of the page intact.
 
 | Rule | Value |
 | --- | --- |

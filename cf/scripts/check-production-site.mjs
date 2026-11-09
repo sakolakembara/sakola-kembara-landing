@@ -280,7 +280,7 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
         if (!EXPECT.healthyBlogSources.includes(source)) problems.push(`x-blog-source is ${source ?? 'missing'}, expected ${EXPECT.healthyBlogSources.join(' or ')}`);
         const locs = [...sitemap.body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]);
         if (locs.length < minSitemapUrls) problems.push(`${locs.length} URLs, expected at least ${minSitemapUrls}`);
-        if (locs.includes(site('/donasi'))) problems.push('lists /donasi, which is a redirect since SAKEM-121 (a redirect is not a sitemap URL)');
+        if (!locs.includes(site('/donasi'))) problems.push('does not list /donasi (the donation form, a page again since SAKEM-128)');
         if (!locs.includes(site('/laporan'))) problems.push('does not list /laporan');
         const stray = locs.filter((loc) => !loc.startsWith(`${site('')}/`) && loc !== site(''));
         if (stray.length > 0) problems.push(`${stray.length} URL(s) not on ${HOSTS.site} (for example ${new URL(stray[0]).host})`);
@@ -397,7 +397,7 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       verdict('T-15', `/admin/blog?x=1 is a 308 to ${HOSTS.admin}/blog?x=1 (path and query kept)`, problems);
     }
 
-    // /gabung-siswa is still a static file of the assets layer (/donasi has been the Worker's since SAKEM-105, which folds its slash itself).
+    // /gabung-siswa is still a static file of the assets layer (/donasi is the Worker's, which folds its slash itself: T-37).
     const slash = await client.get(site('/gabung-siswa/'));
     examine(slash);
     {
@@ -406,18 +406,32 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
       verdict('T-19', '/gabung-siswa/ (a static page) is a 308 to /gabung-siswa (not the assets layer\'s 307)', problems);
     }
 
-    // ---- SAKEM-121: /donasi is ONE temporary hop to the donation shortlink, and the page with the reports is /laporan again (T-37)
+    // ---- SAKEM-128: /donasi is the donation form (step 1), and the old shortlink /donasi-sekarang is one permanent hop to it;
+    // the page with the reports is /laporan (SAKEM-121) (T-37). GET only: the checker never posts the form.
     const donasi = await client.get(site('/donasi'));
     const donasiSlash = await client.get(site('/donasi/'));
+    const donasiSekarang = await client.get(site('/donasi-sekarang'));
     const laporan = await client.get(site('/laporan'));
     examine(donasi);
     examine(donasiSlash);
+    examine(donasiSekarang);
     examine(laporan);
     {
       const problems = [];
-      expectRedirect(donasi, [307], site('/donasi-sekarang'), problems);
-      expectRedirect(donasiSlash, [307], site('/donasi-sekarang'), problems);
-      verdict('T-37', '/donasi and /donasi/ are each ONE 307 to /donasi-sekarang (the donation shortlink; no chain, no page of its own)', problems);
+      if (ok(donasi, problems)) {
+        if (donasi.status !== 200) problems.push(`status ${donasi.status}`);
+        if (!/html/i.test(donasi.headers['content-type'] ?? '')) problems.push(`content-type ${donasi.headers['content-type'] ?? 'missing'}`);
+        if (!/no-store/i.test(donasi.headers['cache-control'] ?? '')) problems.push(`cache-control is ${JSON.stringify(donasi.headers['cache-control'] ?? 'missing')}, expected no-store (a donor's typed values must never be cached)`);
+        if (canonicalOf(donasi.body) !== site('/donasi')) problems.push(`canonical ${canonicalOf(donasi.body) ?? 'missing'}`);
+        if (!/<form\b[^>]*\bid=["']donasi-form["'][^>]*\baction=["']\/donasi["']/i.test(donasi.body)) problems.push('no form id="donasi-form" posting to /donasi');
+      }
+      verdict('T-37', '/donasi: 200 html, no-store, the donation form (id="donasi-form", posting to /donasi), canonical /donasi', problems);
+    }
+    {
+      const problems = [];
+      expectRedirect(donasiSlash, [308], site('/donasi'), problems);
+      expectRedirect(donasiSekarang, [308], site('/donasi'), problems);
+      verdict('T-37', '/donasi/ and /donasi-sekarang (the old donation shortlink) are each ONE 308 to /donasi', problems);
     }
     {
       const problems = [];
@@ -710,7 +724,7 @@ export function render(results, { requests, seconds }) {
 // ------------------------------------------------------------------------------------------------ the program
 
 const HELP = `usage:
-  node ../scripts/check-production-site.mjs --allow-network [options]    ask the four hosts (about 47 GET requests, about a minute)
+  node ../scripts/check-production-site.mjs --allow-network [options]    ask the four hosts (about 51 GET requests, about a minute)
   node ../scripts/check-production-site.mjs --plan                      print what would be asked; nothing is sent
 
 options:
@@ -785,7 +799,7 @@ export function parseCli(argv) {
 
 /** The URLs the plan names (the discovered ones are added at run time and are on these hosts too). */
 export const PLAN = [
-  ['site', ['/', 'http://sakolakembara.org/', '/robots.txt', '/sitemap.xml', '/blog (twice)', '/blog/<first article of the sitemap>', '/cerita/<that slug>/', '/education/', '/no-such-page-check-1f3a', '/api/public/blog', '/api/check-x', '/admin/blog?x=1', '/gabung-siswa/', '/laporan', '/laporan/', '/donasi', 'the first /_astro/*.css and /_img/*.webp of the home page (twice each)', '/wp-content/uploads/<the first migrated image of that article>', '/daftar', '/daftar/', '/Daftar', '/gabung-siswa', '/wp-login.php', '/wp-admin/', '/wp-json/', '/login', '/register', '/forgot-password', '/portal', '/portal/status', '/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']],
+  ['site', ['/', 'http://sakolakembara.org/', '/robots.txt', '/sitemap.xml', '/blog (twice)', '/blog/<first article of the sitemap>', '/cerita/<that slug>/', '/education/', '/no-such-page-check-1f3a', '/api/public/blog', '/api/check-x', '/admin/blog?x=1', '/gabung-siswa/', '/laporan', '/laporan/', '/donasi', '/donasi/', '/donasi-sekarang', 'the first /_astro/*.css and /_img/*.webp of the home page (twice each)', '/wp-content/uploads/<the first migrated image of that article>', '/daftar', '/daftar/', '/Daftar', '/gabung-siswa', '/wp-login.php', '/wp-admin/', '/wp-json/', '/login', '/register', '/forgot-password', '/portal', '/portal/status', '/wp-adminx', '/wp-login', '/wp-login.php.bak', '/login/x', '/Login']],
   ['www', ['/blog?x=1']],
   ['admin', ['/', '/api/config', '/api/me', '/api/public/team', '/uploads/check-x', '/api/dev/mailbox']],
   ['files', ['/', '/uploads/check-x-missing.png', 'one uploaded file referenced by /tim or the first article (twice), when there is one']],
@@ -819,7 +833,7 @@ export async function main(argv, io = {}) {
     return 0;
   }
   if (!options.allowNetwork) {
-    err('refused: this sends about 47 GET requests to the real site. Add --allow-network once Dzul has approved the run (or --plan to see them). Nothing was contacted.\n');
+    err('refused: this sends about 51 GET requests to the real site. Add --allow-network once Dzul has approved the run (or --plan to see them). Nothing was contacted.\n');
     return 2;
   }
   const started = Date.now();

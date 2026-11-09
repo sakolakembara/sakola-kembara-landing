@@ -83,7 +83,7 @@ describe('a healthy Phase A site', () => {
 
   it('asks a known number of URLs (a new request is a decision) and none twice by accident', async () => {
     const { log, counts } = await run();
-    expect(log.calls.length).toBe(50);
+    expect(log.calls.length).toBe(51); // 51 since SAKEM-128: /donasi-sekarang, the old donation shortlink (T-37)
     expect([...counts.entries()].filter(([, n]) => n > 1).map(([url]) => url).sort()).toEqual([
       'https://files.sakolakembara.org/uploads/blog/2026/10/cover-1a2b3c.webp',
       'https://sakolakembara.org/_astro/Base.CYEQ0bMh.css',
@@ -277,23 +277,31 @@ describe('what each failure looks like', () => {
     expect(one(slash.results, 'T-19', 'FAIL')[0]!.text).toContain('status 307, expected 308');
   });
 
-  it('SAKEM-121 (T-37): /donasi and /donasi/ must each be ONE 307 to /donasi-sekarang: a page, another status, another target or a chain through the slashless address all fail', async () => {
+  it('SAKEM-128 (T-37): /donasi must be the donation form (200 html, no-store, the form, its canonical); /donasi/ and /donasi-sekarang ONE 308 to it', async () => {
+    const form = '<form id="donasi-form" method="post" action="/donasi"></form>';
+    const canonical = '<link rel="canonical" href="https://sakolakembara.org/donasi">';
+    const body = (extra: string, head = canonical) => `<!doctype html><html lang="id-ID"><head>${head}</head><body><main>${extra}</main></body></html>`;
+    const pageHeaders = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' };
     for (const [url, over, why] of [
-      [`${SITE}/donasi`, { status: 200, headers: {}, body: '<html lang="id-ID"></html>' }, 'status 200, expected 307'],
-      [`${SITE}/donasi`, { status: 308, headers: { location: '/donasi-sekarang' } }, 'status 308, expected 307'],
-      [`${SITE}/donasi`, { status: 307, headers: { location: '/laporan' } }, 'location https://sakolakembara.org/laporan, expected https://sakolakembara.org/donasi-sekarang'],
-      [`${SITE}/donasi/`, { status: 308, headers: { location: '/donasi' } }, 'status 308, expected 307'],
-      [`${SITE}/donasi/`, { status: 404, headers: {} }, 'status 404, expected 307'],
+      [`${SITE}/donasi`, { status: 307, headers: { location: '/donasi-sekarang' } }, 'status 307'],
+      [`${SITE}/donasi`, { status: 200, headers: { ...pageHeaders, 'cache-control': 'public, max-age=0, s-maxage=60' }, body: body(form) }, 'expected no-store'],
+      [`${SITE}/donasi`, { status: 200, headers: pageHeaders, body: body('<p>Donasi</p>') }, 'no form id="donasi-form" posting to /donasi'],
+      [`${SITE}/donasi`, { status: 200, headers: pageHeaders, body: body(form, '<link rel="canonical" href="https://sakolakembara.org/laporan">') }, 'canonical https://sakolakembara.org/laporan'],
+      [`${SITE}/donasi/`, { status: 307, headers: { location: '/donasi' } }, 'status 307, expected 308'],
+      [`${SITE}/donasi/`, { status: 200, headers: pageHeaders, body: body(form) }, 'status 200, expected 308'],
+      [`${SITE}/donasi-sekarang`, { status: 307, headers: { location: '/donasi' } }, 'status 307, expected 308'],
+      [`${SITE}/donasi-sekarang`, { status: 404, headers: {} }, 'status 404, expected 308'],
     ] as [string, Recorded, string][]) {
       const { results } = await run((site) => site.set(url, over));
       const found = one(results, 'T-37', 'FAIL');
       expect(found.length, `${url} ${JSON.stringify(over)}`).toBe(1);
       expect(found[0]!.text, url).toContain(why);
     }
-    // the healthy site: both are one hop (the checker never follows a redirect, so a chain would show as the first hop's target)
+    // the healthy site: the form, then both hops (the checker never follows a redirect, so a chain would show as the first hop's target)
     const healthy = await run();
     expect(one(healthy.results, 'T-37', 'PASS').map((r) => r.text)).toEqual([
-      expect.stringContaining('/donasi and /donasi/ are each ONE 307 to /donasi-sekarang'),
+      expect.stringContaining('/donasi: 200 html, no-store, the donation form'),
+      expect.stringContaining('/donasi/ and /donasi-sekarang (the old donation shortlink) are each ONE 308 to /donasi'),
       expect.stringContaining('/laporan: 200 html with the Laporan section'),
     ]);
   });
@@ -323,9 +331,9 @@ describe('what each failure looks like', () => {
     expect(one(cached.results, 'T-37', 'FAIL')).toEqual([]);
   });
 
-  it('SAKEM-121 (T-05): the sitemap lists /laporan and no longer /donasi, which is a redirect', async () => {
-    const withDonasi = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('</urlset>', '<url><loc>https://sakolakembara.org/donasi</loc></url></urlset>') }));
-    expect(one(withDonasi.results, 'T-05', 'FAIL')[0]!.text).toContain('lists /donasi, which is a redirect since SAKEM-121');
+  it('SAKEM-121, SAKEM-128 (T-05): the sitemap lists /laporan and /donasi (the donation form, a page again)', async () => {
+    const withoutDonasi = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('<url><loc>https://sakolakembara.org/donasi</loc></url>', '') }));
+    expect(one(withoutDonasi.results, 'T-05', 'FAIL')[0]!.text).toContain('does not list /donasi');
     const withoutLaporan = await run((site) => patch(site, `${SITE}/sitemap.xml`, { body: (entry(site, `${SITE}/sitemap.xml`).body ?? '').replace('<url><loc>https://sakolakembara.org/laporan</loc></url>', '') }));
     expect(one(withoutLaporan.results, 'T-05', 'FAIL')[0]!.text).toContain('does not list /laporan');
   });
