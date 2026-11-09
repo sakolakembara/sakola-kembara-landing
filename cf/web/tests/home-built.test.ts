@@ -90,7 +90,7 @@ describe.skipIf(!built)('home page build output', () => {
       const links = all(hero, /<a href="[^"]+"[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
         ['#activities', 'Lihat Program Kami'],
-        ['/donasi-sekarang', 'Dukung Misi Kami'],
+        ['/donasi', 'Dukung Misi Kami'],
       ]);
     });
   });
@@ -187,7 +187,7 @@ describe.skipIf(!built)('home page build output', () => {
       const links = all(cta, /<a href="[^"]+" class="group[^>]*>[\s\S]*?<\/a>/g).map((a) => [a.match(/href="([^"]+)"/)![1], text(a)]);
       expect(links).toEqual([
         ['/daftar', 'Menjadi Siswa Daftar Sekarang'], // SAKEM-103: straight to the registration shortlink
-        ['/donasi-sekarang', 'Menjadi Donatur Donasi Sekarang'],
+        ['/donasi', 'Menjadi Donatur Donasi Sekarang'],
         ['/kontak', 'Menjadi Relawan Gabung Tim'],
         ['/kontak', 'Menjadi Partner Hubungi Kami'],
       ]);

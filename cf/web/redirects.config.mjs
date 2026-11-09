@@ -100,14 +100,17 @@ export const REDIRECTS = {
   '/who-we-are': to('/tim'),
   '/our-partners': to('/tim'),
   '/contact-us': to('/kontak'),
-  // SAKEM-121: the WordPress donation pages go straight to the donation shortlink (src/lib/site.ts, DONATION_PATH), one hop.
-  '/donate': to('/donasi-sekarang'),
-  '/donation-confirmation': to('/donasi-sekarang'),
-  '/donation-confirmation-2': to('/donasi-sekarang'),
-  '/donation-failed': to('/donasi-sekarang'),
-  '/donation-failed-2': to('/donasi-sekarang'),
-  '/donor-dashboard': to('/donasi-sekarang'),
-  '/donor-dashboard-2': to('/donasi-sekarang'),
+  // The WordPress donation pages go straight to the donation form (src/lib/site.ts, DONATION_PATH), one hop. `/donasi-sekarang`
+  // was the admin shortlink the donate buttons used (SAKEM-120/121) until the form moved onto the site (SAKEM-128): links to it
+  // that are already out there (bio, posts, messages) land on the form too.
+  '/donasi-sekarang': to('/donasi'),
+  '/donate': to('/donasi'),
+  '/donation-confirmation': to('/donasi'),
+  '/donation-confirmation-2': to('/donasi'),
+  '/donation-failed': to('/donasi'),
+  '/donation-failed-2': to('/donasi'),
+  '/donor-dashboard': to('/donasi'),
+  '/donor-dashboard-2': to('/donasi'),
   '/work-with-us': to('/gabung-siswa'),
   // The 7 category archives and 77 tag archives of the live sitemap, and anything below them (/category/news/feed/,
   // /tag/x/page/2/): the blog index is the only listing the new site has. A splat, so a tag added later is covered too.
