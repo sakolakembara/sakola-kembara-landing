@@ -191,6 +191,16 @@ describe('what each failure looks like', () => {
       const { results } = await run((site) => patch(site, `${SITE}/robots.txt`, { body }));
       expect(one(results, 'T-04', 'FAIL')[0]!.text).toMatch(why);
     }
+    // a group of its own may block the whole site for search engines too (Googlebot, Bingbot), whatever the case of the field
+    for (const agent of ['Googlebot', 'bingbot']) {
+      const { results } = await run((site) => patch(site, `${SITE}/robots.txt`, { body: `${entry(site, `${SITE}/robots.txt`).body}\nUser-agent: GPTBot\nUser-agent: ${agent}\ndisallow: /\n` }));
+      expect(one(results, 'T-04', 'FAIL')[0]!.text, agent).toContain(`blocks the whole site for ${agent.toLowerCase()}`);
+    }
+    // Cloudflare's managed robots.txt: groups that block named AI crawlers, the * group allowed, are not a block of the site
+    const managed = await run((site) =>
+      patch(site, `${SITE}/robots.txt`, { body: `# BEGIN Cloudflare Managed content\nUser-agent: *\nContent-Signal: search=yes,ai-train=no\nAllow: /\n\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n# END Cloudflare Managed Content\n\n${entry(site, `${SITE}/robots.txt`).body}` }),
+    );
+    expect(one(managed.results, 'T-04', 'FAIL')).toEqual([]);
     const wrongType = await run((site) => patch(site, `${SITE}/robots.txt`, { headers: { 'content-type': 'text/html' } }));
     expect(one(wrongType.results, 'T-04', 'FAIL')[0]!.text).toContain('content-type text/html');
   });
@@ -474,6 +484,13 @@ describe('what each failure looks like', () => {
     expect(one(session.results, 'T-35', 'FAIL')[0]!.text).toContain("calls the portal's session address");
     const masuk = await run((site) => patch(site, `${SITE}/`, { body: entry(site, `${SITE}/`).body!.replace('<button', '<span>Masuk</span><button') }));
     expect(one(masuk.results, 'T-35', 'FAIL')[0]!.text).toContain('the navbar says "Masuk"');
+    // the word outside the navbar (a section, the footer's "Cabang" nav: SAKEM-111..113) is not the slot
+    const outside = await run((site) => {
+      for (const path of ['/', '/blog']) {
+        patch(site, `${SITE}${path}`, { body: entry(site, `${SITE}${path}`).body!.replace('</body>', '<p class="md:justify-self-end">x</p><footer><nav aria-label="Cabang" class="md:justify-self-end"></nav></footer></body>') });
+      }
+    });
+    expect(one(outside.results, 'T-35', 'FAIL')).toEqual([]);
   });
 
   it('HSTS must be exactly max-age=300 on the Worker\'s own answers: a long value, includeSubDomains, preload or none on /blog, /daftar, a 404, robots.txt or an image fails and names the path (T-36)', async () => {

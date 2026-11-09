@@ -261,7 +261,24 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
         if (!/text\/plain/i.test(robots.headers['content-type'] ?? '')) problems.push(`content-type ${robots.headers['content-type'] ?? 'missing'}`);
         const lines = robots.body.split(/\r?\n/).map((l) => l.trim());
         for (const rule of ['Disallow: /admin', 'Disallow: /api']) if (!lines.includes(rule)) problems.push(`no "${rule}"`);
-        if (lines.includes('Disallow: /')) problems.push('"Disallow: /" blocks the whole site');
+        // "Disallow: /" matters only in a group that reaches the search engines (`*`, Googlebot, Bingbot): Cloudflare's managed
+        // robots.txt (a zone setting, not this repository) prepends groups that block named AI crawlers with "Disallow: /".
+        const blocked = [];
+        let agents = [];
+        let inRules = false;
+        for (const line of lines) {
+          const field = /^([A-Za-z-]+)\s*:\s*(.*)$/.exec(line.replace(/#.*/, '').trim());
+          if (!field) continue;
+          const [key, value] = [field[1].toLowerCase(), field[2].trim()];
+          if (key === 'user-agent') {
+            if (inRules) [agents, inRules] = [[], false];
+            agents.push(value.toLowerCase());
+          } else {
+            inRules = true;
+            if (key === 'disallow' && value === '/') blocked.push(...agents.filter((agent) => ['*', 'googlebot', 'bingbot'].includes(agent)));
+          }
+        }
+        if (blocked.length > 0) problems.push(`"Disallow: /" blocks the whole site for ${blocked.join(', ')}`);
         if (!lines.includes(`Sitemap: ${site('/sitemap.xml')}`)) problems.push('no Sitemap line for the apex');
       }
       verdict('T-04', 'robots.txt: 200 text/plain, the disallow list, no "Disallow: /", the Sitemap line', problems);
@@ -325,7 +342,8 @@ export async function runChecks({ client, only = ['site', 'www', 'admin', 'files
         if (/href=["']\/portal\/login["']|data-auth-link/.test(answer.body)) problems.push(`${label} has the "Masuk" link`);
         if (/>\s*Masuk\s*</.test(nav)) problems.push(`${label}: the navbar says "Masuk"`);
         if (/Daftar Sekarang|\/daftar/.test(nav)) problems.push(`${label}: the navbar has a registration button`);
-        if (/justify-self-end/.test(answer.body)) problems.push(`${label}: the navbar slot of the button is not empty`);
+        // the navbar only: since SAKEM-111..113 page sections and the footer's "Cabang" nav use md:justify-self-end too
+        if (/justify-self-end/.test(nav)) problems.push(`${label}: the navbar slot of the button is not empty`);
       }
       verdict('T-35', 'the portal is OFF on a prerendered page (/) and a rendered one (/blog): no "Masuk", no session call, no button in the navbar', problems);
     }
