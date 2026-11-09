@@ -88,6 +88,11 @@ const thisMonth = months[36]!.value;
 
 const label = 'block text-sm font-semibold mb-2';
 const control = 'h-[52px] w-full rounded-xl border-0 bg-[#F1F3F8] px-4 text-base text-primary-blue-dark placeholder:text-[#8A94AD] focus:outline-2 focus:outline-primary-blue-dark';
+// The browser's own select arrow sits on the edge and looks different on every platform: hidden (appearance-none) and drawn
+// here instead, an aria-hidden chevron that clicks through to the select.
+const select = `${control} appearance-none cursor-pointer pr-11`;
+const chevron =
+  '<svg aria-hidden="true" class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#4A5878]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>';
 const choice =
   'flex h-[52px] cursor-pointer items-center justify-center rounded-[14px] border-[1.5px] border-[#D5DBE8] bg-white px-3 text-[15px] has-checked:border-primary-blue-dark has-checked:bg-primary-blue-dark has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary-blue-dark';
 const errorText = 'mt-1.5 text-[13px] text-danger-fg';
@@ -170,17 +175,23 @@ const aria = (field: keyof DonationFieldErrors) => (fieldErrors[field] ? { 'aria
     <div class="hidden grid-cols-2 gap-4 group-has-[#kind-monthly:checked]/form:grid">
       <div>
         <label for="startMonth" class={label}>Mulai berdonasi</label>
-        <select id="startMonth" name="startMonth" class={control} {...aria('startMonth')}>
-          {months.map((month) => <option value={month.value} selected={(values.startMonth || thisMonth) === month.value}>{month.label}</option>)}
-        </select>
+        <div class="relative">
+          <select id="startMonth" name="startMonth" class={select} {...aria('startMonth')}>
+            {months.map((month) => <option value={month.value} selected={(values.startMonth || thisMonth) === month.value}>{month.label}</option>)}
+          </select>
+          <Fragment set:html={chevron} />
+        </div>
         {fieldErrors.startMonth && <p id="startMonth-error" class={errorText}>{fieldErrors.startMonth}</p>}
       </div>
       <div>
         <label for="remindDay" class={label}>Ingatkan setiap tanggal</label>
-        <select id="remindDay" name="remindDay" class={control} {...aria('remindDay')}>
-          <option value="" selected={!values.remindDay}>Pilih</option>
-          {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((day) => <option value={day} selected={values.remindDay === day}>{day}</option>)}
-        </select>
+        <div class="relative">
+          <select id="remindDay" name="remindDay" class={select} {...aria('remindDay')}>
+            <option value="" selected={!values.remindDay}>Pilih</option>
+            {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((day) => <option value={day} selected={values.remindDay === day}>{day}</option>)}
+          </select>
+          <Fragment set:html={chevron} />
+        </div>
         {fieldErrors.remindDay && <p id="remindDay-error" class={errorText}>{fieldErrors.remindDay}</p>}
       </div>
     </div>
