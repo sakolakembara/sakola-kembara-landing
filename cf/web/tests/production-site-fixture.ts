@@ -50,7 +50,7 @@ const wordpressLogin =
   '<!DOCTYPE html><html lang="en-US"><head><title>Log In</title></head><body class="login"><form name="loginform" id="loginform" action="https://sakolakembara.org/wp-login.php" method="post"><input type="text" name="log" id="user_login"><input type="password" name="pwd"></form></body></html>';
 
 const sitemap = (): string => {
-  const locs = ['https://sakolakembara.org', 'https://sakolakembara.org/blog', 'https://sakolakembara.org/tim', 'https://sakolakembara.org/laporan', 'https://sakolakembara.org/gabung-siswa', 'https://sakolakembara.org/kontak', 'https://sakolakembara.org/program/pembinaan', 'https://sakolakembara.org/program/prapembinaan', 'https://sakolakembara.org/program/pasca-pembinaan'];
+  const locs = ['https://sakolakembara.org', 'https://sakolakembara.org/blog', 'https://sakolakembara.org/tim', 'https://sakolakembara.org/laporan', 'https://sakolakembara.org/donasi', 'https://sakolakembara.org/gabung-siswa', 'https://sakolakembara.org/kontak', 'https://sakolakembara.org/program/pembinaan', 'https://sakolakembara.org/program/prapembinaan', 'https://sakolakembara.org/program/pasca-pembinaan'];
   locs.push(`https://sakolakembara.org/blog/${SLUG}`, ...Array.from({ length: 85 }, (_, i) => `https://sakolakembara.org/blog/artikel-${i + 1}`));
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${locs.map((loc) => `<url><loc>${loc}</loc></url>`).join('')}</urlset>`;
 };
@@ -86,11 +86,17 @@ export function healthySite(): Map<string, Entry> {
   set('https://sakolakembara.org/api/public/blog', apiNotFound);
   set('https://sakolakembara.org/api/check-x', apiNotFound);
   set('https://sakolakembara.org/admin/blog?x=1', redirect(308, 'https://admin.sakolakembara.org/blog?x=1'));
-  // a static page of the assets layer: its slash is folded by a rule of _redirects (the 308 of T-19; /donasi is the Worker's since SAKEM-105)
+  // a static page of the assets layer: its slash is folded by a rule of _redirects (the 308 of T-19; /donasi is the Worker's, which folds its own slash)
   set('https://sakolakembara.org/gabung-siswa/', redirect(308, '/gabung-siswa'));
-  // SAKEM-121: /donasi is one temporary hop to the donation shortlink (the assets layer's rule, slash or not); /laporan is the Worker's page with the reports
-  set('https://sakolakembara.org/donasi', redirect(307, '/donasi-sekarang'));
-  set('https://sakolakembara.org/donasi/', redirect(307, '/donasi-sekarang'));
+  // SAKEM-128: /donasi is the Worker's donation form (never cached), its slash and the old shortlink /donasi-sekarang are one 308 to it;
+  // /laporan is the Worker's page with the reports (SAKEM-121)
+  set('https://sakolakembara.org/donasi', {
+    status: 200,
+    headers: { ...SECURITY, ...html, 'cache-control': 'no-store' },
+    body: page('<form id="donasi-form" method="post" action="/donasi" novalidate><button type="submit">Lanjut ke Pembayaran</button></form>', '<link rel="canonical" href="https://sakolakembara.org/donasi">'),
+  });
+  set('https://sakolakembara.org/donasi/', redirect(308, '/donasi'));
+  set('https://sakolakembara.org/donasi-sekarang', redirect(308, '/donasi'));
   set('https://sakolakembara.org/laporan', {
     status: 200,
     headers: { ...SECURITY, ...html, 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300', 'x-reports-source': 'network' },

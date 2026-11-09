@@ -106,9 +106,9 @@ const checks = [
   { name: 'the two copies of cachedJson drift apart', file: session, from: 'if (Date.now() - at < ttl(v)) return v;', to: 'if (Date.now() - at <= ttl(v)) return v;', tests: NAVBAR },
   { name: 'a signed-in student is sent to /admin', file: session, from: "a.href = admin ? '/admin' : '/portal';", to: "a.href = '/admin';", tests: NAVBAR },
 
-  // ---- SAKEM-105/121: the reports are a section of /laporan, /donasi goes to the donation shortlink (the menu, the footer, the anchor, the redirects, the sitemap)
+  // ---- SAKEM-105/121: the reports are a section of /laporan, /donasi is the donation form again and /donasi-sekarang a 308 to it since SAKEM-128 (the menu, the footer, the anchor, the redirects, the sitemap)
   { name: 'Laporan is back in the menu (it has five items since SAKEM-105)', file: site, from: NAV_TAIL, to: "  { href: '/donasi', label: 'Donasi' },\n  { href: '/laporan', label: 'Laporan' },\n  { href: '/blog', label: 'Blog' },\n];", tests: REPORTS },
-  { name: 'the footer\'s Laporan points at /donasi, which is a redirect to the form now', file: site, from: "{ href: REPORTS_SECTION_PATH, label: 'Laporan' },", to: "{ href: '/donasi#laporan', label: 'Laporan' },", tests: REPORTS },
+  { name: 'the footer\'s Laporan points at /donasi, which is the donation form now', file: site, from: "{ href: REPORTS_SECTION_PATH, label: 'Laporan' },", to: "{ href: '/donasi#laporan', label: 'Laporan' },", tests: REPORTS },
   { name: 'the footer loses its Laporan link', file: site, from: FOOTER_REPORTS, to: '', tests: REPORTS },
   { name: 'the footer\'s Laporan moves after Blog (it keeps its place between Donasi and Blog)', file: site, from: FOOTER_REPORTS + "  { href: '/blog', label: 'Blog' },\n", to: "  { href: '/blog', label: 'Blog' },\n" + FOOTER_REPORTS, tests: REPORTS },
   { name: 'the address of the reports names another anchor than the section\'s id', file: site, from: "export const REPORTS_SECTION_PATH = '/laporan#laporan';", to: "export const REPORTS_SECTION_PATH = '/laporan#reports';", tests: REPORTS },
@@ -118,12 +118,13 @@ const checks = [
   { name: '/laporan does not show the section', file: donasiPage, from: '    <ReportsSection section={reports} uploadsBase={env.UPLOADS_BASE_URL} />\n', to: '', tests: REPORTS },
   { name: '/laporan is a static file (it could not carry the reports)', file: donasiPage, from: 'export const prerender = false;', to: 'export const prerender = true;', tests: REPORTS },
   { name: 'the section\'s failure panel is shown for an empty list (null is the failure, [] is the legacy empty state)', file: reportsSection, from: 'reports === null ? (', to: 'total === 0 ? (', tests: REPORTS },
-  { name: '/donasi is not redirected any more (it would 404: its page moved to /laporan)', file: redirects, from: "  '/donasi': to('/donasi-sekarang', TEMPORARY),\n", to: '', tests: REPORTS_REDIRECT },
-  { name: '/donasi is a permanent redirect (the target of a donation may change)', file: redirects, from: "  '/donasi': to('/donasi-sekarang', TEMPORARY),", to: "  '/donasi': to('/donasi-sekarang'),", tests: REPORTS_REDIRECT },
-  { name: '/laporan is taken by a redirect again (its page would be unreachable)', file: redirects, from: "  '/donasi': to('/donasi-sekarang', TEMPORARY),", to: "  '/donasi': to('/donasi-sekarang', TEMPORARY),\n  '/laporan': to('/donasi#laporan'),", tests: REPORTS_REDIRECT },
+  { name: '/donasi-sekarang is not redirected any more (links already shared would 404: SAKEM-128)', file: redirects, from: "  '/donasi-sekarang': to('/donasi'),\n", to: '', tests: REPORTS_REDIRECT },
+  { name: '/donasi-sekarang is a temporary redirect (the form is its permanent home: SAKEM-128)', file: redirects, from: "  '/donasi-sekarang': to('/donasi'),", to: "  '/donasi-sekarang': to('/donasi', TEMPORARY),", tests: REPORTS_REDIRECT },
+  { name: '/donasi is taken by a redirect again (the donation form would be unreachable)', file: redirects, from: "  '/donasi-sekarang': to('/donasi'),", to: "  '/donasi-sekarang': to('/donasi'),\n  '/donasi': to('/laporan'),", tests: REPORTS_REDIRECT },
+  { name: '/laporan is taken by a redirect again (its page would be unreachable)', file: redirects, from: "  '/impact-reports': to('/laporan#laporan'),", to: "  '/impact-reports': to('/laporan#laporan'),\n  '/laporan': to('/donasi#laporan'),", tests: REPORTS_REDIRECT },
   { name: '/impact-reports loses the fragment (the visitor lands at the top of /laporan)', file: redirects, from: "  '/impact-reports': to('/laporan#laporan'),", to: "  '/impact-reports': to('/laporan'),", tests: REPORTS_REDIRECT },
   { name: 'the Worker\'s redirect puts the carried query AFTER the fragment (it would become part of the fragment and be lost)', file: redirects, from: FRAGMENT_QUERY, to: 'location += search;', tests: REPORTS_REDIRECT },
-  { name: 'the sitemap lists /donasi again (a redirect is not a sitemap URL)', file: sitemapLib, from: "  { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },\n", to: "  { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },\n  { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },\n", tests: SITEMAP },
+  { name: 'the sitemap loses /donasi (the donation form is a page again: SAKEM-128)', file: sitemapLib, from: "  { path: '/donasi', priority: 0.9, changeFrequency: 'monthly' },\n", to: '', tests: SITEMAP },
   { name: 'the sitemap loses /laporan', file: sitemapLib, from: "  { path: '/laporan', priority: 0.85, changeFrequency: 'monthly' },\n", to: '', tests: SITEMAP },
 
   // ---- the staging deploy-command printer

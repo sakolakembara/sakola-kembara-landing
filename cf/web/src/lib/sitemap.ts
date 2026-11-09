@@ -15,8 +15,8 @@ export interface SitemapEntry {
 }
 
 /**
- * Static routes of the sitemap: the root app/sitemap.ts list without /donasi (a redirect since SAKEM-121), plus the documents
- * page /gabung-siswa/docs, which the old sitemap left out (SAKEM-066).
+ * Static routes of the sitemap: the root app/sitemap.ts list (/donasi is the donation form again since SAKEM-128, after a spell as
+ * a redirect in SAKEM-121), plus /laporan (SAKEM-121) and the documents page /gabung-siswa/docs, which the old sitemap left out (SAKEM-066).
  */
 export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: SitemapEntry['changeFrequency'] }[] = [
   { path: '/', priority: 1.0, changeFrequency: 'weekly' },

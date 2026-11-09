@@ -296,7 +296,7 @@ for p in / /blog /tim /laporan /donasi /gabung-siswa /gabung-siswa/docs /kontak 
 | Request | Expected |
 | --- | --- |
 | `W/`, `/gabung-siswa`, `/program/prapembinaan`, `/robots.txt` | 200 (static files: no Worker request) |
-| `W/donasi` | **307** to `/donasi-sekarang` (SAKEM-121: a `_redirects` answer of the assets layer, no Worker request; the shortlink then needs its row in the staging D1, or it is a 404) |
+| `W/donasi` | **200**, `cache-control: no-store`, the donation form (SAKEM-128: the Worker's page; posting it needs the admin Worker and migration `0016_donations` on the staging D1, or it answers "Data belum dapat dikirim saat ini"); `W/donasi-sekarang` is **308** to `/donasi` (a `_redirects` answer of the assets layer, no Worker request) |
 | `W/blog`, `/tim`, `/laporan`, `/gabung-siswa/docs` | 200, the empty list states, until step 12 (a 503 means the site cannot reach the admin Worker: check the binding; `/laporan` is the exception, it stays a **200** and its Laporan section shows the failure panel; it is the page that was `/donasi` from SAKEM-105 to SAKEM-121) |
 | `W/kontak` | 200; `curl -s $W/kontak \| grep -c challenges.cloudflare.com` is `1` (the widget script) |
 | `W/sitemap.xml` | 200 (XML) |
