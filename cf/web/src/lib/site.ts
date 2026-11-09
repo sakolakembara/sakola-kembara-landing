@@ -21,14 +21,12 @@ export const REGISTRATION_SLUG = 'daftar';
 export const VOLUNTEER_PATH = '/apply';
 
 /**
- * Where the site's donate buttons go (SAKEM-120, Dzul 2026-11-06): `/donasi-sekarang`, an admin shortlink (D1) that answers a 307
- * to the donation form, for the navbar's "Donasi", the hero's "Dukung Misi Kami" and the homepage's "Menjadi Donatur". Like the
- * volunteer form, the form's address is NOT in this repository. Without a shortlink the visitor gets the generic 404, so the
- * shortlink is created before the site that links to it goes live. Since SAKEM-121 `/donasi` itself is a 307 to this shortlink
- * (redirects.config.mjs) and the page it was (QRIS, bank transfer, confirmation, reports) lives at `/laporan`; `navLinks` keeps
- * `/donasi` because it is the verbatim port.
+ * Where the site's donate buttons go: the navbar's "Donasi", the hero's "Dukung Misi Kami" and the homepage's "Menjadi Donatur".
+ * Since SAKEM-128 (Dzul 2026-11-09) that is the site's own donation form, `/donasi`. Before it (SAKEM-120/121) it was the admin
+ * shortlink `/donasi-sekarang` to a Google Form; that path is now a permanent redirect to `/donasi` (redirects.config.mjs) and a
+ * reserved shortlink name in the admin.
  */
-export const DONATION_PATH = '/donasi-sekarang';
+export const DONATION_PATH = '/donasi';
 
 /**
  * Where the reports are (SAKEM-105, variant A): the "Laporan" section of /donasi, `id="laporan"`

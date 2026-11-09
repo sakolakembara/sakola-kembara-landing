@@ -135,6 +135,8 @@ describe('the other rules, in the table and in the shipped _redirects file', () 
 const SAKEM_090_RULES = 16;
 /** SAKEM-105 added `/laporan`; SAKEM-121 swapped it for `/donasi` (to the donation shortlink); SAKEM-128 made /donasi the form: none left. */
 const SAKEM_105_RULES = 0;
+/** SAKEM-128: `/donasi-sekarang`, the donate buttons' old shortlink, is a permanent redirect to the form (/donasi). */
+const SAKEM_128_RULES = 1;
 
 /** [WordPress path as the live sitemap lists it (trailing slash), destination]. */
 const WORDPRESS_PAGES: [string, string][] = [
@@ -145,13 +147,13 @@ const WORDPRESS_PAGES: [string, string][] = [
   ['/who-we-are/', '/tim'],
   ['/our-partners/', '/tim'],
   ['/contact-us/', '/kontak'],
-  ['/donate/', '/donasi-sekarang'],
-  ['/donation-confirmation/', '/donasi-sekarang'],
-  ['/donation-confirmation-2/', '/donasi-sekarang'],
-  ['/donation-failed/', '/donasi-sekarang'],
-  ['/donation-failed-2/', '/donasi-sekarang'],
-  ['/donor-dashboard/', '/donasi-sekarang'],
-  ['/donor-dashboard-2/', '/donasi-sekarang'],
+  ['/donate/', '/donasi'],
+  ['/donation-confirmation/', '/donasi'],
+  ['/donation-confirmation-2/', '/donasi'],
+  ['/donation-failed/', '/donasi'],
+  ['/donation-failed-2/', '/donasi'],
+  ['/donor-dashboard/', '/donasi'],
+  ['/donor-dashboard-2/', '/donasi'],
   ['/work-with-us/', '/gabung-siswa'],
 ];
 
@@ -167,7 +169,6 @@ describe('SAKEM-090: the WordPress pages of the live sitemap', () => {
 
   it('the destination of every one is a real page of this site (a file of src/pages), so none of them ends in a 404', () => {
     for (const [, destination] of WORDPRESS_PAGES) {
-      if (destination === '/donasi-sekarang') continue; // SAKEM-121: the donation shortlink (D1), like /daftar; see tests/portal-links.test.ts
       const rel = destination === '/' ? 'index' : destination.slice(1);
       const candidates = [`src/pages/${rel}.astro`, `src/pages/${rel}/index.astro`];
       expect(
@@ -186,8 +187,8 @@ describe('SAKEM-090: the WordPress pages of the live sitemap', () => {
   });
 
   it('the query string is carried (a campaign link such as /donate/?utm_source=ig keeps it)', () => {
-    expect(matchRedirect('/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi-sekarang?utm_source=ig' });
-    expect(evalUnderscoreRedirects(file, '/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi-sekarang?utm_source=ig' });
+    expect(matchRedirect('/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi?utm_source=ig' });
+    expect(evalUnderscoreRedirects(file, '/donate/', '?utm_source=ig')).toEqual({ status: 308, location: '/donasi?utm_source=ig' });
   });
 });
 
@@ -349,12 +350,12 @@ describe('parity with the root next.config.ts', () => {
     }
   });
 
-  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103) and /apply (SAKEM-107), + /program + 2 x 7 category rules + the SAKEM-090 additions (no /donasi rule since SAKEM-128)', () => {
+  it('table = next.config.ts rules, minus /daftar (a shortlink since SAKEM-103) and /apply (SAKEM-107), + /program + 2 x 7 category rules + the SAKEM-090 additions (no /donasi rule since SAKEM-128) + /donasi-sekarang (SAKEM-128)', () => {
     const explicit = [...next.matchAll(/source:\s*"([^"]+)",\s*destination:/g)].length;
     // next.config.ts: 11 literal rules; the 14 category rules are generated from the list. Gone since SAKEM-075 and M4: the splat over
     // /wp-content/uploads (a rule per mirrored file is written at build time now) and the five auth pages (Phase A, SAKEM-103). /daftar and
     // /apply are shortlinks, so two rules fewer.
-    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 2 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES + SAKEM_105_RULES);
+    expect(Object.keys(REDIRECTS)).toHaveLength(explicit - 2 + WP_BLOG_CATEGORIES.length * 2 + 1 + SAKEM_090_RULES + SAKEM_105_RULES + SAKEM_128_RULES);
   });
 
   it('Phase A (SAKEM-103): no auth name is a redirect (/login is WordPress\'s, the others are the site\'s own 404), and nothing is redirected into /portal', () => {

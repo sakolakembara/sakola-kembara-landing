@@ -198,8 +198,9 @@ describe('SAKEM-105/121: the reports have one address, /laporan#laporan, and eve
     }
     expect(REDIRECTS['/laporan']).toBeUndefined();
     expect(REDIRECTS['/donasi']).toBeUndefined();
-    // The donate buttons still go to the shortlink (SAKEM-120), whose target is chosen in the admin.
-    expect(DONATION_PATH).toBe('/donasi-sekarang');
+    // The donate buttons go to the form itself (SAKEM-128); the old shortlink path is a redirect to it.
+    expect(DONATION_PATH).toBe('/donasi');
+    expect(REDIRECTS['/donasi-sekarang']).toEqual({ status: 308, destination: '/donasi' });
   });
 
   it('the footer\'s "Laporan" goes to it, the menu has no Laporan; /donasi is the donation form again (SAKEM-128), with its two later steps', () => {

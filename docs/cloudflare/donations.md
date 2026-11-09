@@ -13,7 +13,7 @@ Decided by Dzul on 2026-11-08: data in the admin, not straight to Google Sheets;
 | receipt | `PUT /donasi/bukti` | JavaScript only (`src/scripts/donation-proof.ts`): a photo over 1.5 MB is made into a 2000 px JPEG first, then the raw bytes are streamed through the site Worker to the API. Without JavaScript the page says to send the receipt on WhatsApp. |
 | end | `GET/POST /donasi/terima-kasih` | Thanks, a link to `/laporan`, and the optional "Dari mana Anda mengenal Sakola Kembara?" as buttons (one POST, 303 back with `?tersimpan=1`). |
 
-`/donasi` is in the sitemap again (priority 0.9, as the old sitemap had it); steps 2 and the end are `noindex`. Every page is `no-store`. The `/donasi` → `/donasi-sekarang` 307 of SAKEM-121 is gone; "Konfirmasi Donasi" on `/laporan` now opens `/donasi` in the same tab. The donate buttons still use the shortlink `/donasi-sekarang`, whose target is set in the admin.
+`/donasi` is in the sitemap again (priority 0.9, as the old sitemap had it); steps 2 and the end are `noindex`. Every page is `no-store`. The `/donasi` → `/donasi-sekarang` 307 of SAKEM-121 is gone; "Konfirmasi Donasi" on `/laporan` now opens `/donasi` in the same tab. The donate buttons (navbar, hero, homepage CTA) go straight to `/donasi` (`DONATION_PATH`, since 2026-11-09); `/donasi-sekarang`, the admin shortlink they used before, is a permanent redirect (308) to `/donasi` in `redirects.config.mjs`, so links already shared keep working, and a reserved shortlink name in the admin.
 
 ## The cookie and the token
 
@@ -44,7 +44,7 @@ Table `donations` (migration `cf/admin/migrations/0016_donations.sql`), CHECK co
 2. The admin Worker (the API and the menu).
 3. The site Worker (the pages).
 
-The other way round, step 1 of the form answers "Data belum dapat dikirim saat ini" until the admin is deployed. After the deploy, point the `donasi-sekarang` shortlink at `/donasi` in the admin if the donate buttons should land on the form.
+The other way round, step 1 of the form answers "Data belum dapat dikirim saat ini" until the admin is deployed.
 
 ## Tests
 

@@ -73,6 +73,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "our-partners",
   "contact-us",
   "donate",
+  // The donate buttons' old shortlink (SAKEM-120/121), a redirect of the site to the form since SAKEM-128:
+  "donasi-sekarang",
   "donation-confirmation",
   "donation-confirmation-2",
   "donation-failed",

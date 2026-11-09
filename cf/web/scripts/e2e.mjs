@@ -85,7 +85,7 @@ const MENU_OFF = '<ul class="hidden md:flex items-center gap-6 lg:gap-7 md:col-s
 const menuLists = (nav) => nav.match(/<ul class="hidden md:flex[^"]*">/g) ?? [];
 function navbarProblems(html) {
   const nav = html.slice(html.indexOf('<nav'), html.indexOf('</nav>'));
-  const menu = ['/', '/tim', '/gabung-siswa', '/blog', '/donasi-sekarang']; // five items since SAKEM-105; Donasi last, the one button, since SAKEM-111; to the donation shortlink since SAKEM-120
+  const menu = ['/', '/tim', '/gabung-siswa', '/blog', '/donasi']; // five items since SAKEM-105; Donasi last, the one button, since SAKEM-111; to the donation shortlink since SAKEM-120
   const hrefs = [...nav.matchAll(/<a\s[^>]*?href="([^"]*)"/g)].map((m) => m[1]);
   const problems = [];
   if (JSON.stringify(hrefs) !== JSON.stringify(['/', ...menu, ...menu])) problems.push(`links: ${hrefs.join(' ')}`);
@@ -220,14 +220,14 @@ const other = [
   // SAKEM-090: the WordPress pages and archives of the live sitemap, with the trailing slash WordPress used and without it.
   ...[
     ['/home', '/'], ['/sample-page', '/'], ['/who-we-are', '/tim'], ['/our-partners', '/tim'], ['/contact-us', '/kontak'],
-    ['/donate', '/donasi-sekarang'], ['/donation-confirmation', '/donasi-sekarang'], ['/donation-confirmation-2', '/donasi-sekarang'],
-    ['/donation-failed', '/donasi-sekarang'], ['/donation-failed-2', '/donasi-sekarang'], ['/donor-dashboard', '/donasi-sekarang'],
-    ['/donor-dashboard-2', '/donasi-sekarang'], ['/work-with-us', '/gabung-siswa'],
+    ['/donasi-sekarang', '/donasi'], ['/donate', '/donasi'], ['/donation-confirmation', '/donasi'], ['/donation-confirmation-2', '/donasi'],
+    ['/donation-failed', '/donasi'], ['/donation-failed-2', '/donasi'], ['/donor-dashboard', '/donasi'],
+    ['/donor-dashboard-2', '/donasi'], ['/work-with-us', '/gabung-siswa'],
   ].flatMap(([from, to]) => [[from, 308, to], [`${from}/`, 308, to]]),
   ...['/category/cerita', '/category/kiat-kiat', '/category/news', '/category/education', '/category/tips', '/category/testimonials', '/category/career',
     '/tag/ekonomi', '/tag/sakola-kembara', '/tag/snbt', '/tag/pendidkan'].flatMap((from) => [[from, 308, '/blog'], [`${from}/`, 308, '/blog']]),
   ['/category/news/feed/', 308, '/blog'], ['/tag/ekonomi/page/2/', 308, '/blog'], ['/tag/ekonomi/?utm_source=ig', 308, '/blog?utm_source=ig'],
-  ['/donate/?utm_source=ig', 308, '/donasi-sekarang?utm_source=ig'],
+  ['/donate/?utm_source=ig', 308, '/donasi?utm_source=ig'],
   ['/blog/perjalanan-seorang-founder-rommy-mendirikan-sakola-kembara-untuk-pendidikan-inklusif', 308, '/blog/perjalanan-seorang-founder'],
 ];
 for (const [from, status, to] of other) {
@@ -1830,7 +1830,7 @@ await check('home', '/ content counts: 4 metric cards, 3 problem facts, 3 progra
   assert.equal((html.match(/<a href="\/program\/[\w-]+"/g) ?? []).length, 3);
   assert.equal((html.slice(html.indexOf('id="cerita"'), html.indexOf('id="partners"')).match(/<figure[\s>]/g) ?? []).length, 7);
   assert.equal((between('id="partners"', 'id="blog"').match(/<li[\s>]/g) ?? []).length, 6);
-  assert.equal((html.match(/<a href="\/(?:daftar|donasi-sekarang|kontak)" class="group/g) ?? []).length, 4);
+  assert.equal((html.match(/<a href="\/(?:daftar|donasi|kontak)" class="group/g) ?? []).length, 4);
   const news = html.slice(html.indexOf('id="blog"'));
   assert.equal((news.match(/<a href="\/blog\/[^"]+" class="group/g) ?? []).length, 4);
 });

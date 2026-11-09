@@ -120,7 +120,7 @@ describe.skipIf(!built)('/gabung-siswa build output', async () => {
       .map((tag) => attr(tag, 'href'))
       .filter((href) => href.startsWith('/') && !href.startsWith('//'));
     expect(internal.length).toBeGreaterThan(5);
-    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak', '/daftar', '/donasi-sekarang']); // /daftar: the registration shortlink; /donasi-sekarang: the donation shortlink (SAKEM-120); /donasi: a redirect to it, kept for the footer (SAKEM-121); /laporan: the page with the reports again
+    const known = new Set(['/', '/tim', '/gabung-siswa', '/gabung-siswa/docs', '/donasi', '/laporan', '/blog', '/kontak', '/daftar']); // /daftar: the registration shortlink; /donasi-sekarang: the donation shortlink (SAKEM-120); /donasi: a redirect to it, kept for the footer (SAKEM-121); /laporan: the page with the reports again
     for (const href of internal) {
       const p = href.split(/[?#]/)[0];
       expect(known.has(p) || isLegacyPath(p) || isPortalOwnedPath(p), href).toBe(true);

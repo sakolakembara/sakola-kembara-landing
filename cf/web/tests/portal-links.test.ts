@@ -106,9 +106,9 @@ describe('the volunteer link (SAKEM-107)', () => {
   });
 });
 
-describe('the donation link (SAKEM-120)', () => {
-  it('the donate buttons (navbar, hero, homepage CTA) use DONATION_PATH, /donasi-sekarang, a shortlink name: the address of the donation form is in no file of this repository', () => {
-    expect(DONATION_PATH).toBe('/donasi-sekarang');
+describe('the donation link (SAKEM-120, SAKEM-128)', () => {
+  it('the donate buttons (navbar, hero, homepage CTA) use DONATION_PATH, /donasi, the donation form of this site: no external form address in any of them', () => {
+    expect(DONATION_PATH).toBe('/donasi');
     for (const file of ['src/components/Navbar.astro', 'src/components/sections/HeroSection.astro', 'src/components/sections/CTASection.astro']) {
       expect(readWeb(file), file).toContain('DONATION_PATH');
       expect(readWeb(file), file).not.toMatch(/s\.id|forms\.gle|docs\.google\.com|bit\.ly|linktr\.ee/);

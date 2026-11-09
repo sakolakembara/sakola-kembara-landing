@@ -270,8 +270,9 @@ describe("/api/me as the SPA reads it: the menu and the write controls follow th
 
   test("super_admin: everything, Sistem included", async () => {
     const me = await sidebarFor("super_admin");
-    expect(labelsOf(me)).toHaveLength(13);
+    expect(labelsOf(me)).toHaveLength(14);
     expect(labelsOf(me)).toContain("Pengaturan");
+    expect(labelsOf(me)).toContain("Donasi"); // SAKEM-128: Sistem, super admin only
     expect(visibleQuickActions(me)).toHaveLength(4);
   });
 
